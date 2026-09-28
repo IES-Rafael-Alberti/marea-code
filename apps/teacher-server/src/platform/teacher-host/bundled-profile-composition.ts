@@ -52,7 +52,13 @@ export function bundledDashboardProfileRelease(): DashboardProfileRelease<Dashbo
       })),
     },
     requiredIds: ["org.marea.theme.marea"],
-    capabilities: ["sessions/v1", "usage/v1", "health/v1", "reviewed-evidence/v1"],
+    capabilities: [
+      "sessions/v1",
+      "usage/v1",
+      "health/v1",
+      "reviewed-evidence/v1",
+      "educational-insights/v1",
+    ],
   };
 }
 
@@ -73,7 +79,19 @@ export const bundledDashboardProfileAuthority: DashboardProfileAuthority = {
 export function composeBundledDashboardProfiles(database: SqliteApplicationDatabase) {
   return composeDashboardProfiles({
     database,
-    release: bundledDashboardProfileRelease(),
+    release: (() => {
+      const release = bundledDashboardProfileRelease();
+      const educational =
+        database.readOne(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'marea_learning_settings'",
+        ) !== undefined;
+      return {
+        ...release,
+        capabilities: release.capabilities.filter(
+          (c) => educational || c !== "educational-insights/v1",
+        ),
+      };
+    })(),
     authority: bundledDashboardProfileAuthority,
     clock: systemClock,
     ids: cryptoIdGenerator,

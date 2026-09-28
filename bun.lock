@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "marea-code",
@@ -206,8 +207,29 @@
         "@marea/test-config": "workspace:*",
       },
     },
+    "plugins/dashboard-modules/class-reports": {
+      "name": "@marea/dashboard-modules-reports",
+      "version": "0.0.0",
+      "dependencies": {
+        "@marea/plugin-api": "workspace:*",
+      },
+    },
     "plugins/dashboard-modules/health": {
       "name": "@marea/dashboard-modules-health",
+      "version": "0.0.0",
+      "dependencies": {
+        "@marea/plugin-api": "workspace:*",
+      },
+    },
+    "plugins/dashboard-modules/map": {
+      "name": "@marea/dashboard-modules-map",
+      "version": "0.0.0",
+      "dependencies": {
+        "@marea/plugin-api": "workspace:*",
+      },
+    },
+    "plugins/dashboard-modules/progress": {
+      "name": "@marea/dashboard-modules-progress",
       "version": "0.0.0",
       "dependencies": {
         "@marea/plugin-api": "workspace:*",
@@ -483,6 +505,12 @@
     "@marea/dashboard": ["@marea/dashboard@workspace:apps/dashboard"],
 
     "@marea/dashboard-modules-health": ["@marea/dashboard-modules-health@workspace:plugins/dashboard-modules/health"],
+
+    "@marea/dashboard-modules-map": ["@marea/dashboard-modules-map@workspace:plugins/dashboard-modules/map"],
+
+    "@marea/dashboard-modules-progress": ["@marea/dashboard-modules-progress@workspace:plugins/dashboard-modules/progress"],
+
+    "@marea/dashboard-modules-reports": ["@marea/dashboard-modules-reports@workspace:plugins/dashboard-modules/class-reports"],
 
     "@marea/dashboard-modules-reviewed-evidence": ["@marea/dashboard-modules-reviewed-evidence@workspace:plugins/dashboard-modules/reviewed-evidence"],
 

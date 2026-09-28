@@ -18,12 +18,18 @@ it("keeps the release browser/server revisions aligned for production dashboard 
   expect(browserRevision).toMatch(/^[a-f0-9]{64}$/);
   expect(Object.keys(dashboardModuleLoaders)).toEqual([
     "org.marea.module.health",
+    "org.marea.module.map",
+    "org.marea.module.progress",
+    "org.marea.module.reports",
     "org.marea.module.reviewed-evidence",
     "org.marea.module.sessions",
     "org.marea.module.usage",
   ]);
   expect(Object.keys(dashboardModuleDescriptorLoaders)).toEqual([
     "org.marea.module.health",
+    "org.marea.module.map",
+    "org.marea.module.progress",
+    "org.marea.module.reports",
     "org.marea.module.reviewed-evidence",
     "org.marea.module.sessions",
     "org.marea.module.usage",
@@ -54,3 +60,13 @@ it("keeps the release browser/server revisions aligned for production dashboard 
     "org.marea.openrouter",
   ]);
 });
+
+it.each(["org.marea.module.map", "org.marea.module.progress", "org.marea.module.reports"] as const)(
+  "loads the educational browser entry and matching descriptor for %s",
+  async (id) => {
+    const load = dashboardModuleLoaders[id],
+      describe = dashboardModuleDescriptorLoaders[id];
+    expect(await load()).toHaveProperty("default.mount");
+    expect(await describe()).toHaveProperty("default.manifest.id", id);
+  },
+);

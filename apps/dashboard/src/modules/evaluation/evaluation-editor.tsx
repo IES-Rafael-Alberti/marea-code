@@ -15,7 +15,12 @@ export function EvaluationEditor({
 }) {
   const changeCriterion = (
     index: number,
-    patch: { readonly evidence?: string; readonly result?: string; readonly confidence?: string },
+    patch: {
+      readonly evidence?: string;
+      readonly result?: string;
+      readonly learningNote?: string;
+      readonly confidence?: string;
+    },
   ) => {
     const criterion = CriterionAssessmentSchema.safeParse({ ...draft.criteria[index], ...patch });
     if (criterion.success)
@@ -72,7 +77,22 @@ export function EvaluationEditor({
           <fieldset key={`${criterion.skillId}:${criterion.code}`}>
             <legend>
               {criterion.skillId} / {criterion.code}
+              {criterion.levelAttempted === undefined
+                ? ""
+                : ` · ${String(criterion.levelAttempted)}/4`}
             </legend>
+            {criterion.levelAttempted !== undefined && (
+              <label>
+                {m.learningNote}
+                <textarea
+                  maxLength={1000}
+                  value={criterion.learningNote ?? ""}
+                  onChange={(event) => {
+                    changeCriterion(index, { learningNote: event.currentTarget.value });
+                  }}
+                />
+              </label>
+            )}
             <label>
               {m.result}
               <select

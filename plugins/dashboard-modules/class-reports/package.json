@@ -1,0 +1,9 @@
+{
+  "name": "@marea/dashboard-modules-reports",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@marea/plugin-api": "workspace:*"
+  }
+}

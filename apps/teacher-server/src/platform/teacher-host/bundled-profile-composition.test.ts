@@ -46,6 +46,7 @@ it("binds the actual generated release, strict settings and only implemented per
     "usage/v1",
     "health/v1",
     "reviewed-evidence/v1",
+    "educational-insights/v1",
   ]);
   const selected = (moduleId: string, slot: "main" | "aside", size: "standard" | "wide") => ({
     moduleId,
@@ -58,6 +59,9 @@ it("binds the actual generated release, strict settings and only implemented per
     themeId: "org.marea.theme.marea",
     modules: [
       selected("org.marea.module.health", "aside", "standard"),
+      ...["map", "progress", "reports"].map((name) =>
+        selected(`org.marea.module.${name}`, "aside", "standard"),
+      ),
       { ...selected("org.marea.module.reviewed-evidence", "aside", "standard"), enabled: false },
       selected("org.marea.module.sessions", "main", "wide"),
       selected("org.marea.module.usage", "aside", "standard"),
@@ -65,6 +69,10 @@ it("binds the actual generated release, strict settings and only implemented per
   });
   expect(valid.modules.map((module) => [module.id, module.requiredPermissions])).toEqual([
     ["org.marea.module.health", ["class-read", "health-read"]],
+    ...["map", "progress", "reports"].map((name) => [
+      `org.marea.module.${name}`,
+      ["class-read", "evaluation-read"],
+    ]),
     ["org.marea.module.reviewed-evidence", ["class-read", "evaluation-read"]],
     ["org.marea.module.sessions", ["class-read", "session-read"]],
     ["org.marea.module.usage", ["class-read", "usage-read"]],
@@ -168,7 +176,15 @@ it.each([false, true])(
         const state = release.schemas.state.parse(await read.json());
         expect(state.effective).toEqual({
           ...release.defaults,
-          modules: release.defaults.modules.filter((module) => module.enabled),
+          modules: release.defaults.modules.filter(
+            (module) =>
+              module.enabled &&
+              ![
+                "org.marea.module.map",
+                "org.marea.module.progress",
+                "org.marea.module.reports",
+              ].includes(module.moduleId),
+          ),
         });
         const value = { themeId: "org.marea.theme.high-contrast", modules: [] };
         const save = {
@@ -192,7 +208,11 @@ it.each([false, true])(
           { ...envelope, kind: "dashboard-profile-catalog" },
           cookie,
         );
-        expect(release.catalogSchema.parse(await catalog.json()).modules).toEqual(release.modules);
+        expect(release.catalogSchema.parse(await catalog.json()).modules).toEqual(
+          release.modules.filter(
+            (module) => !module.requiredServerCapabilities.includes("educational-insights/v1"),
+          ),
+        );
       } else {
         expect(read.headers.get("x-marea-profile-mode")).toBe("legacy");
       }

@@ -1,3 +1,4 @@
+import { insightsMessages } from "./modules/educational-insights/messages.js";
 import { describe, expect, it } from "vitest";
 
 import { governanceMessages } from "./modules/governance/governance-messages.js";
@@ -20,6 +21,7 @@ describe("dashboard localization catalogs", () => {
     const evaluation = evaluationMessages(locale);
     const governance = governanceMessages(locale);
     expect({
+      insights: insightsMessages(locale),
       session,
       sessions,
       teaching,

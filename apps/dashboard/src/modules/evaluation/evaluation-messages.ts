@@ -4,6 +4,7 @@ export function evaluationMessages(locale: Locale) {
   return locale === "en"
     ? {
         heading: "Session evaluation",
+        learningNote: "Summary for the tutor",
         review: "Evaluation content",
         results: { passed: "Met", "not-passed": "Not met", "no-evidence": "No evidence" },
         confidences: { low: "Low", medium: "Medium", high: "High" },
@@ -51,6 +52,7 @@ export function evaluationMessages(locale: Locale) {
     : locale === "eu"
       ? {
           heading: "Saioen ebaluazioa",
+          learningNote: "Tutorearentzako laburpena",
           review: "Ebaluazio-edukia",
           results: {
             passed: "Beteta",
@@ -102,6 +104,7 @@ export function evaluationMessages(locale: Locale) {
         }
       : {
           heading: "Evaluación de sesiones",
+          learningNote: "Síntesis para el tutor",
           review: "Contenido de evaluación",
           results: {
             passed: "Cumplido",

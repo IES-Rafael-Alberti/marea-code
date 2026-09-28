@@ -1,3 +1,6 @@
+import { createEducationalAdapters } from "../modules/educational-insights/adapter.js";
+import { EducationalSettings } from "../modules/educational-insights/settings.js";
+import "../modules/educational-insights/insights.css";
 import { ModulePlugin, type ModuleAdapter } from "./module-plugin.js";
 import { PreviewPanel } from "../telemetry/preview-panel.js";
 import { createReviewedEvidenceAdapters } from "../modules/reviewed-evidence/adapter.js";
@@ -42,6 +45,15 @@ export function ProfileShell({
   const evidenceAdapters = useMemo(
     () =>
       createReviewedEvidenceAdapters(runtime.fetch, (sourceClass, runId, signal) =>
+        openEvidenceSession(session.current, sourceClass, runId, signal, () =>
+          window.confirm(m.confirm),
+        ),
+      ),
+    [runtime, m.confirm],
+  );
+  const educationalAdapters = useMemo(
+    () =>
+      createEducationalAdapters(runtime.fetch, (sourceClass, runId, signal) =>
         openEvidenceSession(session.current, sourceClass, runId, signal, () =>
           window.confirm(m.confirm),
         ),
@@ -123,6 +135,18 @@ export function ProfileShell({
           ))}
         </select>
       </label>
+      {modules.some((module) =>
+        ["org.marea.module.map", "org.marea.module.progress", "org.marea.module.reports"].includes(
+          module.moduleId,
+        ),
+      ) && (
+        <EducationalSettings
+          key={`education:${classId ?? "none"}`}
+          classId={classId}
+          locale={locale}
+          fetchRequest={runtime.fetch}
+        />
+      )}
       <PreviewPanel key={classId} classId={classId} locale={locale} fetchRequest={runtime.fetch} />
       {failed && (
         <p role="alert">
@@ -187,6 +211,7 @@ export function ProfileShell({
                     key={module.moduleId}
                     module={module}
                     adapter={
+                      educationalAdapters.get(module.moduleId) ??
                       evidenceAdapters.get(module.moduleId) ??
                       runtime.moduleAdapters?.get(module.moduleId)
                     }

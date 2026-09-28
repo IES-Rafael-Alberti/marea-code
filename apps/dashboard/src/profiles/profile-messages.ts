@@ -1,3 +1,4 @@
+import { insightsMessages } from "../modules/educational-insights/messages.js";
 import type { DashboardLocale } from "../messages.js";
 const en = {
   legacy: "Dashboard customization requires an offline server upgrade. Sessions remain available.",
@@ -161,10 +162,18 @@ const eu: typeof en = {
   draft: "Gorde gabeko profil-zirriborroa",
 };
 export function profileMessages(locale: DashboardLocale) {
-  return { en, es, eu }[locale];
+  return {
+    ...{ en, es, eu }[locale],
+    map: insightsMessages(locale).map,
+    progress: insightsMessages(locale).progress,
+    reports: insightsMessages(locale).reports,
+  };
 }
 
 const MODULE_LABELS = {
+  "org.marea.module.map": "map",
+  "org.marea.module.progress": "progress",
+  "org.marea.module.reports": "reports",
   "org.marea.module.sessions": "sessions",
   "org.marea.module.usage": "usage",
   "org.marea.module.health": "health",

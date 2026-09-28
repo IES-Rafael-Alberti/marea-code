@@ -1,0 +1,50 @@
+{
+  "id": "org.marea.module.map",
+  "displayNameKey": "plugins.map.name",
+  "descriptionKey": "plugins.map.description",
+  "implementationVersion": "1.0.0",
+  "entrypoint": "./src/index.ts",
+  "browserEntrypoint": "./src/browser.ts",
+  "configurationVersion": 1,
+  "kind": "dashboard-module",
+  "apiVersion": "2.0",
+  "capabilities": ["class-read", "evaluation-read"],
+  "runtimeTargets": ["dashboard-browser"],
+  "requiredServerCapabilities": ["educational-insights/v1"],
+  "requiredPermissions": ["class-read", "evaluation-read"],
+  "supportedPlacements": [
+    {
+      "slot": "main",
+      "size": "compact"
+    },
+    {
+      "slot": "main",
+      "size": "standard"
+    },
+    {
+      "slot": "main",
+      "size": "wide"
+    },
+    {
+      "slot": "aside",
+      "size": "compact"
+    },
+    {
+      "slot": "aside",
+      "size": "standard"
+    },
+    {
+      "slot": "aside",
+      "size": "wide"
+    }
+  ],
+  "defaultPlacement": {
+    "slot": "aside",
+    "size": "standard"
+  },
+  "defaultEnabled": true,
+  "freshness": {
+    "kind": "on-demand"
+  },
+  "minimumColumns": 1
+}

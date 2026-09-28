@@ -1,0 +1,38 @@
+.educational-settings {
+  margin-block: 1rem;
+  padding: 1rem;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+}
+.educational-settings form,
+.educational-insight {
+  display: grid;
+  gap: 0.8rem;
+}
+.educational-settings label,
+.educational-insight label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.educational-insight article {
+  border-inline-start: 0.3rem solid currentColor;
+  padding: 0.75rem;
+  border-radius: 0.3rem;
+}
+.educational-insight article[data-attention="green"] {
+  border-color: #26804a;
+}
+.educational-insight article[data-attention="yellow"] {
+  border-color: #a97800;
+}
+.educational-insight article[data-attention="red"] {
+  border-color: #bc3434;
+}
+.educational-insight button {
+  margin: 0.2rem;
+}
+.educational-insight p {
+  overflow-wrap: anywhere;
+}
