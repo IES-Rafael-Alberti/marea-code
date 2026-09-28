@@ -24,3 +24,5 @@ export * from "./dashboard-profile-document.boundary.js";
 export * from "./telemetry-preview.js";
 export * from "./usage-health.js";
 export * from "./reviewed-evidence.js";
+
+export * from "./educational-insights.js";

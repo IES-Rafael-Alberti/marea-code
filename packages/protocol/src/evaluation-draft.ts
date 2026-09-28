@@ -10,6 +10,8 @@ export const CriterionAssessmentSchema = z
     skillId: SkillIdSchema,
     code: z.string().min(1).max(64),
     result: z.enum(["passed", "not-passed", "no-evidence"]),
+    learningNote: z.string().max(1000).optional(),
+    levelAttempted: z.number().int().min(1).max(4).optional(),
     confidence: z.enum(["low", "medium", "high"]),
     evidence: z.string().trim().max(2_000),
   })
