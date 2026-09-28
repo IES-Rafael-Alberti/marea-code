@@ -1,0 +1,18 @@
+{
+  "exclude_directories": [
+    ".git",
+    ".stryker-tmp",
+    "catalogs",
+    "coverage",
+    "dist",
+    "migrations",
+    "node_modules",
+    "reports",
+    "references",
+    "static"
+  ],
+  "exclude_under": 1,
+  "include_comments": false,
+  "output_limit": 5000,
+  "score_cap": 1000
+}

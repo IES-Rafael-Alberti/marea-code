@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.bun.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@opentui/react",
+    "tsBuildInfoFile": "../../node_modules/.cache/typescript/student.tsbuildinfo"
+  },
+  "include": ["scripts/**/*.ts", "src/**/*.ts"]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "org.marea.theme.high-contrast",
+  "displayNameKey": "plugins.theme.high-contrast.name",
+  "descriptionKey": "plugins.theme.high-contrast.description",
+  "implementationVersion": "1.0.0",
+  "entrypoint": "./src/index.ts",
+  "configurationVersion": 1,
+  "kind": "dashboard-theme",
+  "apiVersion": "2.0",
+  "colorScheme": "light",
+  "highContrast": true,
+  "capabilities": ["light-color-scheme", "high-contrast"],
+  "runtimeTargets": ["dashboard-browser"]
+}

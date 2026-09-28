@@ -1,0 +1,36 @@
+{
+  "name": "@marea/student",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "marea": "./dist/marea"
+  },
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "bun build ./src/marea-entry.boundary.ts --compile --outfile ./dist/marea",
+    "mutation": "stryker run stryker.config.mjs",
+    "test": "vitest run --config vitest.config.mjs",
+    "test:bun": "bun --bun vitest run --config vitest.config.mjs && bun run scripts/verify-compiled-smoke.ts",
+    "test:coverage": "vitest run --config vitest.config.mjs --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@inquirer/input": "5.1.5",
+    "@inquirer/password": "5.2.1",
+    "@inquirer/select": "5.2.4",
+    "@marea/deepagents-adapter": "workspace:*",
+    "@marea/i18n": "workspace:*",
+    "@marea/private-filesystem": "workspace:*",
+    "@marea/protocol": "workspace:*",
+    "@marea/student-tui": "workspace:*",
+    "@marea/workspace-backend": "workspace:*",
+    "@opentui/react": "0.5.10",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@marea/test-config": "workspace:*"
+  }
+}

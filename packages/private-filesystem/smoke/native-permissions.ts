@@ -1,0 +1,123 @@
+import { openSqliteDatabaseFile } from "@marea/sqlite-storage";
+import { strict as assert } from "node:assert";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { inspectPrivatePath, securePrivatePath } from "../src/index.js";
+
+const root = mkdtempSync(join(tmpdir(), "marea-native-privacy-"));
+const checks: string[] = [];
+function powershell(source: string, path: string): void {
+  const script = `$ErrorActionPreference='Stop'; $path=[Console]::In.ReadToEnd(); ${source}`;
+  const result = spawnSync(
+    join(
+      process.env.SystemRoot ?? "C:\\Windows",
+      "System32",
+      "WindowsPowerShell",
+      "v1.0",
+      "powershell.exe",
+    ),
+    [
+      "-NoLogo",
+      "-NoProfile",
+      "-NonInteractive",
+      "-EncodedCommand",
+      Buffer.from(script, "utf16le").toString("base64"),
+    ],
+    { input: path, encoding: "utf8", timeout: 10_000, maxBuffer: 4096, windowsHide: true },
+  );
+  assert.equal(result.status, 0, "Native ACL fixture creation failed");
+}
+function rejectRule(name: string, sid: string, access: string, propagation: string): void {
+  securePrivatePath(root, 0o700);
+  const rights = access === "Deny" ? "Delete" : "FullControl";
+  powershell(
+    `$acl=Get-Acl -LiteralPath $path; $sid=${sid}; $rule=[Security.AccessControl.FileSystemAccessRule]::new($sid,[Security.AccessControl.FileSystemRights]::${rights},[Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit',[Security.AccessControl.PropagationFlags]::${propagation},[Security.AccessControl.AccessControlType]::${access}); $acl.SetAccessRule($rule); Set-Acl -LiteralPath $path -AclObject $acl`,
+    root,
+  );
+  assert.equal(inspectPrivatePath(root), undefined, name);
+  checks.push(name);
+}
+try {
+  securePrivatePath(root, 0o700);
+  assert.equal(inspectPrivatePath(root), "directory");
+  const child = join(root, "child");
+  mkdirSync(child, { mode: 0o700 });
+  assert.equal(inspectPrivatePath(child), "directory");
+  for (const name of ["database.sqlite", "database.sqlite-wal", "database.sqlite-shm", "lock"]) {
+    const path = join(child, name);
+    writeFileSync(path, "synthetic", { mode: 0o600 });
+    assert.equal(inspectPrivatePath(path), "file");
+  }
+  checks.push("private-created-child-files");
+  const databasePath = join(child, "live.sqlite");
+  writeFileSync(databasePath, "", { mode: 0o600 });
+  const storage = openSqliteDatabaseFile({ databasePath });
+  try {
+    storage.database.execute("CREATE TABLE native_privacy (value TEXT NOT NULL)");
+    storage.database.execute("INSERT INTO native_privacy VALUES ('synthetic')");
+    for (const suffix of ["", "-wal", "-shm"]) {
+      assert.equal(inspectPrivatePath(`${databasePath}${suffix}`), "file");
+    }
+    checks.push("real-sqlite-wal-and-shm-private");
+  } finally {
+    storage.close();
+  }
+  if (process.platform === "win32") {
+    rejectRule(
+      "broad-allow",
+      "[Security.Principal.SecurityIdentifier]::new('S-1-1-0')",
+      "Allow",
+      "None",
+    );
+    assert.equal(inspectPrivatePath(child), undefined, "Inherited broad grant must fail");
+    checks.push("inherited-broad-allow");
+    rejectRule(
+      "no-propagation",
+      "[Security.Principal.WindowsIdentity]::GetCurrent().User",
+      "Allow",
+      "NoPropagateInherit",
+    );
+    rejectRule(
+      "explicit-deny",
+      "[Security.Principal.WindowsIdentity]::GetCurrent().User",
+      "Deny",
+      "None",
+    );
+    securePrivatePath(root, 0o700);
+    powershell(
+      "$acl=Get-Acl -LiteralPath $path; $acl.SetSecurityDescriptorSddlForm('D:NO_ACCESS_CONTROL',[Security.AccessControl.AccessControlSections]::Access); Set-Acl -LiteralPath $path -AclObject $acl",
+      root,
+    );
+    assert.equal(inspectPrivatePath(root), undefined, "Null DACL must fail");
+    checks.push("null-dacl");
+    securePrivatePath(root, 0o700);
+    const link = join(root, "junction");
+    powershell(
+      "New-Item -ItemType Junction -Path (Join-Path $path 'junction') -Target (Join-Path $path 'child') | Out-Null",
+      root,
+    );
+    assert.equal(inspectPrivatePath(link), undefined);
+    assert.equal(inspectPrivatePath(join(link, "lock")), undefined);
+    assert.throws(() => {
+      securePrivatePath(link, 0o700);
+    });
+    assert.throws(() => {
+      securePrivatePath(join(link, "lock"), 0o600);
+    });
+    assert.throws(() => {
+      securePrivatePath(join(link, "absent"), 0o600);
+    });
+    assert.equal(inspectPrivatePath(join(link, "absent")), undefined);
+    assert.equal(inspectPrivatePath(child), "directory");
+    assert.equal(inspectPrivatePath(join(child, "lock")), "file");
+    checks.push("junction-and-junction-ancestor");
+  }
+  console.log(
+    JSON.stringify({ platform: process.platform, arch: process.arch, checks, status: "passed" }),
+  );
+} finally {
+  securePrivatePath(root, 0o700);
+  rmSync(root, { recursive: true, force: true });
+}

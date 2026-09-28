@@ -1,0 +1,142 @@
+.teaching-module {
+  min-width: 0;
+}
+
+.teaching-classes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.teaching-classes label {
+  display: grid;
+  gap: 0.4rem;
+  min-width: 12rem;
+}
+
+.teaching-module select,
+.teaching-module textarea,
+.teaching-module button {
+  font: inherit;
+  color: inherit;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.35rem;
+  padding: 0.6rem;
+  max-width: 100%;
+}
+
+.teaching-module button {
+  cursor: pointer;
+  margin: 0.25rem 0;
+}
+
+.teaching-module button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.teaching-module :focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.teaching-module h3 {
+  margin: 1.25rem 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.teaching-warning {
+  color: #8a4b08;
+  font-weight: 700;
+}
+
+.teaching-configuration {
+  min-width: 0;
+}
+
+.teaching-note {
+  color: var(--color-accent);
+}
+
+.teaching-editor,
+.teaching-skills {
+  margin: 1rem 0;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+}
+
+.teaching-editor label,
+.teaching-skill label {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.8rem 0;
+}
+
+.teaching-editor textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.teaching-skill p,
+.teaching-selection p {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.teaching-selection {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.5rem;
+}
+
+.teaching-selection-stale,
+.teaching-selection-missing {
+  border-color: #8a4b08;
+}
+
+.teaching-actions,
+.teaching-recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.teaching-recovery {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 2px solid var(--color-border-strong);
+  border-radius: 0.5rem;
+  min-width: 0;
+}
+
+.teaching-recovery pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.teaching-readback ul {
+  overflow-wrap: anywhere;
+}
+
+.teaching-switch {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 2px solid var(--color-accent);
+  border-radius: 0.5rem;
+}
+
+.teaching-automatic {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+@media (max-width: 48rem) {
+  .teaching-classes,
+  .teaching-actions,
+  .teaching-recovery-actions {
+    display: grid;
+  }
+}

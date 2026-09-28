@@ -1,0 +1,14 @@
+{
+  "id": "org.marea.theme.marea",
+  "displayNameKey": "plugins.theme.marea.name",
+  "descriptionKey": "plugins.theme.marea.description",
+  "implementationVersion": "1.0.0",
+  "entrypoint": "./src/index.ts",
+  "configurationVersion": 1,
+  "kind": "dashboard-theme",
+  "apiVersion": "2.0",
+  "colorScheme": "light",
+  "highContrast": false,
+  "capabilities": ["light-color-scheme"],
+  "runtimeTargets": ["dashboard-browser"]
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.bun.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "tsBuildInfoFile": "./node_modules/.cache/typescript/marea-code.tsbuildinfo"
+  },
+  "include": ["scripts/**/*.ts", "tests/**/*.ts", "tests/**/*.tsx", "*.config.ts"],
+  "exclude": [
+    ".stryker-tmp/**",
+    "**/dist/**",
+    "**/node_modules/**",
+    "**/reports/**",
+    "coverage/**",
+    "references/**"
+  ]
+}

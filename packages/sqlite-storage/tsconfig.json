@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.bun.json",
+  "compilerOptions": {
+    "rootDir": "."
+  },
+  "include": ["src/**/*.ts", "scripts/**/*.ts", "smoke/**/*.ts", "test-support/**/*.ts"]
+}

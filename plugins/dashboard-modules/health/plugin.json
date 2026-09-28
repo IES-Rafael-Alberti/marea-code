@@ -1,0 +1,50 @@
+{
+  "id": "org.marea.module.health",
+  "displayNameKey": "plugins.health.name",
+  "descriptionKey": "plugins.health.description",
+  "implementationVersion": "1.0.0",
+  "entrypoint": "./src/index.ts",
+  "browserEntrypoint": "./src/browser.ts",
+  "configurationVersion": 1,
+  "kind": "dashboard-module",
+  "apiVersion": "2.0",
+  "capabilities": ["class-read", "health-read"],
+  "runtimeTargets": ["dashboard-browser"],
+  "requiredServerCapabilities": ["health/v1"],
+  "requiredPermissions": ["class-read", "health-read"],
+  "supportedPlacements": [
+    {
+      "slot": "main",
+      "size": "compact"
+    },
+    {
+      "slot": "main",
+      "size": "standard"
+    },
+    {
+      "slot": "main",
+      "size": "wide"
+    },
+    {
+      "slot": "aside",
+      "size": "compact"
+    },
+    {
+      "slot": "aside",
+      "size": "standard"
+    },
+    {
+      "slot": "aside",
+      "size": "wide"
+    }
+  ],
+  "defaultPlacement": {
+    "slot": "aside",
+    "size": "standard"
+  },
+  "defaultEnabled": true,
+  "freshness": {
+    "kind": "on-demand"
+  },
+  "minimumColumns": 1
+}

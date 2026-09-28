@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.bun.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../node_modules/.cache/typescript/plugin-runtime.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"]
+}

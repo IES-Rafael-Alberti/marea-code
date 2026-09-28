@@ -1,0 +1,30 @@
+{
+  "id": "org.marea.fixture-dashboard-module",
+  "displayNameKey": "plugins.fixture-dashboard-module.name",
+  "descriptionKey": "plugins.fixture-dashboard-module.description",
+  "kind": "dashboard-module",
+  "apiVersion": "2.0",
+  "implementationVersion": "0.3.0",
+  "entrypoint": "./src/index.ts",
+  "configurationVersion": 1,
+  "capabilities": ["run-read"],
+  "runtimeTargets": ["dashboard-browser"],
+  "minimumColumns": 4,
+  "browserEntrypoint": "./src/browser.ts",
+  "requiredServerCapabilities": ["sessions/v1"],
+  "requiredPermissions": ["session-read"],
+  "supportedPlacements": [
+    {
+      "slot": "main",
+      "size": "standard"
+    }
+  ],
+  "defaultPlacement": {
+    "slot": "main",
+    "size": "standard"
+  },
+  "defaultEnabled": true,
+  "freshness": {
+    "kind": "on-demand"
+  }
+}

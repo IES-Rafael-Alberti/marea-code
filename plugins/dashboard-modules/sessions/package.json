@@ -1,0 +1,10 @@
+{
+  "name": "@marea/dashboard-modules-sessions",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@marea/plugin-api": "workspace:*",
+    "zod": "4.4.3"
+  }
+}

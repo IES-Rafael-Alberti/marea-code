@@ -1,0 +1,8 @@
+{
+  "extends": "../../tsconfig.bun.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "tsBuildInfoFile": "../../node_modules/.cache/typescript/teacher-server.tsbuildinfo"
+  },
+  "include": ["scripts/**/*.ts", "smoke/**/*.ts", "src/**/*.ts"]
+}

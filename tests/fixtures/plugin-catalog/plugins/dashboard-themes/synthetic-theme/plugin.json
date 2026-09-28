@@ -1,0 +1,14 @@
+{
+  "id": "org.marea.fixture-dashboard-theme",
+  "displayNameKey": "plugins.fixture-dashboard-theme.name",
+  "descriptionKey": "plugins.fixture-dashboard-theme.description",
+  "kind": "dashboard-theme",
+  "apiVersion": "2.0",
+  "implementationVersion": "1.0.0+fixture",
+  "entrypoint": "./src/index.ts",
+  "configurationVersion": 1,
+  "capabilities": ["light-color-scheme", "dark-color-scheme"],
+  "runtimeTargets": ["dashboard-browser"],
+  "colorScheme": "light",
+  "highContrast": false
+}

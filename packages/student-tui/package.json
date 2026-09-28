@@ -1,0 +1,43 @@
+{
+  "name": "@marea/student-tui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build:compiled": "bun build ./scripts/entry.ts --compile --outfile ./dist/marea-student-tui",
+    "mutation": "stryker run stryker.config.mjs",
+    "smoke:compiled": "bun run ./scripts/verify-compiled-smoke.ts",
+    "test": "vitest run --config vitest.config.mjs",
+    "test:bun": "bun --bun vitest run --config vitest.bun.config.mjs && bun run smoke:compiled",
+    "test:coverage": "vitest run --config vitest.config.mjs --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opentui/core": "0.5.10",
+    "@opentui/react": "0.5.10",
+    "highlight.js": "11.12.0",
+    "react": "19.2.8",
+    "web-tree-sitter": "0.25.10"
+  },
+  "devDependencies": {
+    "@marea/test-config": "workspace:*",
+    "@types/react": "19.2.18",
+    "react-devtools-core": "7.0.1",
+    "ws": "8.21.3"
+  },
+  "knip": {
+    "entry": [
+      "scripts/entry.ts",
+      "scripts/verify-compiled-smoke.ts"
+    ],
+    "project": [
+      "src/**/*.{ts,tsx}",
+      "scripts/**/*.ts",
+      "test-support/**/*.ts",
+      "tests-bun/**/*.tsx"
+    ]
+  }
+}

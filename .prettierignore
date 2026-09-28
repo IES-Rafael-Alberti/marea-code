@@ -1,0 +1,12 @@
+.DS_Store
+.stryker-tmp/
+bun.lock
+coverage/
+dist/
+docs/
+node_modules/
+reports/
+references/
+.github/
+content/skills/**/SKILL.md
+roadmap.md

@@ -1,0 +1,63 @@
+{
+  "name": "marea-code",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.4.0",
+  "engines": {
+    "bun": "1.4.0"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "plugins/*/*"
+  ],
+  "scripts": {
+    "architecture": "depcruise --validate .dependency-cruiser.mjs --include-only '^(apps|packages|plugins|scripts|node_modules|bun:|@langchain/|@opentui/|deepagents(?:/|$)|langchain(?:/|$))' .",
+    "catalog:check": "bun run scripts/generate-plugin-catalog.ts --check",
+    "catalog:generate": "bun run scripts/generate-plugin-catalog.ts",
+    "commitlint": "commitlint",
+    "compatibility:bun": "bun run scripts/run-bun-compatibility.mjs",
+    "dead-code": "knip",
+    "duplicates": "jscpd --config jscpd.json --format typescript,tsx,javascript --no-tips apps packages plugins scripts tests",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings 0",
+    "metrics:halstead": "bun run scripts/check-halstead.boundary.ts",
+    "mutation": "bun run scripts/run-mutation-suite.mjs",
+    "mutation:root": "stryker run stryker.config.mjs",
+    "quality": "bun run format:check && bun run catalog:check && bun run lint && bun run typecheck && bun run compatibility:bun && bun run architecture && bun run dead-code && bun run duplicates && bun run metrics:halstead && bun run test:coverage && bun run mutation",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "bun run typecheck:root && bun run --filter '*' typecheck",
+    "typecheck:root": "tsc --project tsconfig.json --noEmit",
+    "acceptance:resilience": "bun tests/resilience/campaign.mjs",
+    "acceptance:recovery": "bun tests/resilience/recovery.mjs",
+    "acceptance:backpressure": "bun tests/resilience/backpressure.mjs",
+    "acceptance:enospc": "bun tests/resilience/enospc.mjs",
+    "release:candidate": "bun scripts/release/build.mjs",
+    "release:install": "bun scripts/release/install.mjs"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "21.2.2",
+    "@commitlint/config-conventional": "21.2.2",
+    "@eslint/js": "10.0.1",
+    "@marea/private-filesystem": "workspace:*",
+    "@stryker-mutator/api": "10.0.0",
+    "@stryker-mutator/core": "10.0.0",
+    "@stryker-mutator/vitest-runner": "10.0.0",
+    "@types/bun": "1.4.0",
+    "@vitest/coverage-v8": "4.1.11",
+    "dependency-cruiser": "18.2.0",
+    "eslint": "10.9.1",
+    "eslint-plugin-sonarjs": "4.2.0",
+    "fta-cli": "3.0.1",
+    "jscpd": "5.1.2",
+    "knip": "6.34.0",
+    "prettier": "3.9.6",
+    "typescript": "6.0.2",
+    "typescript-eslint": "8.69.0",
+    "vitest": "4.1.11",
+    "zod": "4.4.3"
+  }
+}

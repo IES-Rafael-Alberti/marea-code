@@ -1,0 +1,36 @@
+{
+  "name": "@marea/deepagents-adapter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "mutation": "stryker run stryker.config.mjs",
+    "test": "vitest run",
+    "test:bun": "bun --bun vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@marea/test-config": "workspace:*"
+  },
+  "dependencies": {
+    "@langchain/core": "1.2.9",
+    "@langchain/langgraph": "1.4.12",
+    "@langchain/langgraph-checkpoint": "1.1.5",
+    "@langchain/langgraph-sdk": "1.9.28",
+    "@marea/protocol": "workspace:*",
+    "deepagents": "1.13.2",
+    "langchain": "1.5.10",
+    "langsmith": "0.8.9",
+    "zod": "4.5.4"
+  },
+  "knip": {
+    "ignoreDependencies": [
+      "@langchain/langgraph-sdk",
+      "langsmith"
+    ]
+  }
+}

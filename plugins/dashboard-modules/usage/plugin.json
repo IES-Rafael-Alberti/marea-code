@@ -1,0 +1,50 @@
+{
+  "id": "org.marea.module.usage",
+  "displayNameKey": "plugins.usage.name",
+  "descriptionKey": "plugins.usage.description",
+  "implementationVersion": "1.0.0",
+  "entrypoint": "./src/index.ts",
+  "browserEntrypoint": "./src/browser.ts",
+  "configurationVersion": 1,
+  "kind": "dashboard-module",
+  "apiVersion": "2.0",
+  "capabilities": ["class-read", "usage-read"],
+  "runtimeTargets": ["dashboard-browser"],
+  "requiredServerCapabilities": ["usage/v1"],
+  "requiredPermissions": ["class-read", "usage-read"],
+  "supportedPlacements": [
+    {
+      "slot": "main",
+      "size": "compact"
+    },
+    {
+      "slot": "main",
+      "size": "standard"
+    },
+    {
+      "slot": "main",
+      "size": "wide"
+    },
+    {
+      "slot": "aside",
+      "size": "compact"
+    },
+    {
+      "slot": "aside",
+      "size": "standard"
+    },
+    {
+      "slot": "aside",
+      "size": "wide"
+    }
+  ],
+  "defaultPlacement": {
+    "slot": "aside",
+    "size": "standard"
+  },
+  "defaultEnabled": true,
+  "freshness": {
+    "kind": "on-demand"
+  },
+  "minimumColumns": 1
+}

@@ -1,0 +1,52 @@
+{
+  "id": "org.marea.module.sessions",
+  "displayNameKey": "plugins.sessions.name",
+  "descriptionKey": "plugins.sessions.description",
+  "implementationVersion": "1.0.0",
+  "entrypoint": "./src/index.ts",
+  "browserEntrypoint": "./src/browser.ts",
+  "configurationVersion": 1,
+  "kind": "dashboard-module",
+  "apiVersion": "2.0",
+  "capabilities": ["class-read", "run-read", "evaluation-read"],
+  "runtimeTargets": ["dashboard-browser"],
+  "requiredServerCapabilities": ["sessions/v1"],
+  "requiredPermissions": ["class-read", "session-read"],
+  "supportedPlacements": [
+    {
+      "slot": "main",
+      "size": "compact"
+    },
+    {
+      "slot": "main",
+      "size": "standard"
+    },
+    {
+      "slot": "main",
+      "size": "wide"
+    },
+    {
+      "slot": "aside",
+      "size": "compact"
+    },
+    {
+      "slot": "aside",
+      "size": "standard"
+    },
+    {
+      "slot": "aside",
+      "size": "wide"
+    }
+  ],
+  "defaultPlacement": {
+    "slot": "main",
+    "size": "wide"
+  },
+  "defaultEnabled": true,
+  "freshness": {
+    "kind": "live",
+    "reconnectMs": 3000,
+    "fallbackIntervalMs": 2000
+  },
+  "minimumColumns": 1
+}

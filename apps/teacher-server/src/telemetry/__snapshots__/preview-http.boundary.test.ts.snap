@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`authenticated telemetry preview > authenticates a real SQLite cookie and previews an enabled runtime with zero outbound or lifecycle calls 1`] = `
+{
+  "destinationCount": 2,
+  "enabled": true,
+  "envelope": {
+    "attributes": [
+      {
+        "classification": "operational",
+        "key": "operation.duration-ms",
+        "value": 125,
+      },
+      {
+        "classification": "operational",
+        "key": "operation.succeeded",
+        "value": "[REDACTED]",
+      },
+    ],
+    "eventId": "operation",
+    "eventName": "operation.completed",
+    "kind": "metric",
+    "occurredAt": "2000-01-01T00:00:00.000Z",
+    "resource": {
+      "serviceName": "marea-teacher",
+      "serviceVersion": "1.0",
+    },
+    "schemaVersion": "1.0",
+  },
+  "kind": "telemetry-preview-result",
+  "mode": "operational-only",
+  "protocolVersion": "0.1",
+  "requestId": "request:preview",
+  "synthetic": true,
+}
+`;

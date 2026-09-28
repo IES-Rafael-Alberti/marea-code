@@ -1,0 +1,23 @@
+{
+  "name": "@marea/telemetry-pipeline",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/exporter-conformance.fixture.ts"
+  },
+  "scripts": {
+    "mutation": "stryker run stryker.config.mjs",
+    "test": "vitest run --config vitest.config.mjs",
+    "test:bun": "bun --bun vitest run --config vitest.config.mjs",
+    "test:coverage": "vitest run --config vitest.config.mjs --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@marea/test-config": "workspace:*"
+  },
+  "dependencies": {
+    "@marea/plugin-api": "workspace:*"
+  }
+}

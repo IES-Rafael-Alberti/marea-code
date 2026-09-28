@@ -1,0 +1,33 @@
+{
+  "name": "@marea/sqlite-storage",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./migrations": "./src/migration-catalog.ts"
+  },
+  "scripts": {
+    "mutation": "stryker run stryker.config.mjs",
+    "smoke:compiled": "bun run scripts/verify-compiled-smoke.ts",
+    "test": "vitest run --config vitest.config.mjs",
+    "test:bun": "bun --bun vitest run --config vitest.config.mjs && bun run smoke:compiled",
+    "test:coverage": "vitest run --config vitest.config.mjs --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@marea/test-config": "workspace:*"
+  },
+  "knip": {
+    "entry": [
+      "scripts/verify-compiled-smoke.ts",
+      "smoke/compiled-smoke.ts"
+    ],
+    "project": [
+      "src/**/*.ts",
+      "scripts/**/*.ts",
+      "smoke/**/*.ts",
+      "test-support/**/*.ts"
+    ]
+  }
+}

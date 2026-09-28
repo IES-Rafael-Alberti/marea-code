@@ -1,0 +1,21 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/**/*.ts"],
+      "project": ["scripts/**/*.ts"]
+    },
+    "apps/*": {
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/*": {
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/deepagents-adapter": {
+      "entry": ["src/public-api.test-d.ts"],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/test-config": {}
+  },
+  "ignoreBinaries": ["cosign", "mkfifo", "pwsh"]
+}

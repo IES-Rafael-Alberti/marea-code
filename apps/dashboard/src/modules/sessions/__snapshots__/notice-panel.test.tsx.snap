@@ -1,0 +1,17 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renders and routes the en notice outbox states > empty composer 1`] = `"<section class="notice-composer" aria-label="Message to the student" aria-busy="false"><label>Message to the student<textarea maxLength="16384"></textarea></label><button>Send message</button></section>"`;
+
+exports[`renders and routes the en notice outbox states > published 1`] = `"<section class="notice-composer" aria-label="Message to the student" aria-busy="false"><p class="message-text">A hint</p><p role="status">Published · awaiting receipt</p><button>New message</button></section>"`;
+
+exports[`renders and routes the en notice outbox states > received 1`] = `"<section class="notice-composer" aria-label="Message to the student" aria-busy="false"><p class="message-text">A hint</p><p role="status">Received by the student application</p><button>New message</button></section>"`;
+
+exports[`renders and routes the en notice outbox states > uncertain busy composer 1`] = `"<section class="notice-composer" aria-label="Message to the student" aria-busy="true"><label>Message to the student<textarea maxLength="16384" disabled="">Keep this draft</textarea></label><button disabled="">Retry the same message</button><p role="alert">Publication could not be confirmed. Check before retrying; the same message will not be published twice.</p><button disabled="">Check publication</button><p role="alert">Request failed. Your draft is preserved.</p></section>"`;
+
+exports[`renders and routes the es notice outbox states > empty composer 1`] = `"<section class="notice-composer" aria-label="Mensaje al estudiante" aria-busy="false"><label>Mensaje al estudiante<textarea maxLength="16384"></textarea></label><button>Enviar mensaje</button></section>"`;
+
+exports[`renders and routes the es notice outbox states > published 1`] = `"<section class="notice-composer" aria-label="Mensaje al estudiante" aria-busy="false"><p class="message-text">A hint</p><p role="status">Publicado · pendiente de recepción</p><button>Nuevo mensaje</button></section>"`;
+
+exports[`renders and routes the es notice outbox states > received 1`] = `"<section class="notice-composer" aria-label="Mensaje al estudiante" aria-busy="false"><p class="message-text">A hint</p><p role="status">Recibido por la aplicación del estudiante</p><button>Nuevo mensaje</button></section>"`;
+
+exports[`renders and routes the es notice outbox states > uncertain busy composer 1`] = `"<section class="notice-composer" aria-label="Mensaje al estudiante" aria-busy="true"><label>Mensaje al estudiante<textarea maxLength="16384" disabled="">Keep this draft</textarea></label><button disabled="">Reintentar el mismo mensaje</button><p role="alert">No se pudo confirmar la publicación. Comprueba antes de reintentar; el mismo mensaje no se publicará dos veces.</p><button disabled="">Comprobar publicación</button><p role="alert">La petición ha fallado. Tu borrador se conserva.</p></section>"`;

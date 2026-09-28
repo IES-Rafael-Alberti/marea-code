@@ -1,0 +1,22 @@
+{
+  "name": "@marea/langfuse-exporter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run --config vitest.config.mjs",
+    "test:bun": "bun --bun vitest run --config vitest.config.mjs",
+    "test:coverage": "vitest run --config vitest.config.mjs --coverage",
+    "mutation": "stryker run stryker.config.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@marea/plugin-api": "workspace:*"
+  },
+  "devDependencies": {
+    "@marea/test-config": "workspace:*"
+  }
+}

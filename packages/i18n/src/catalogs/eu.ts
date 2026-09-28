@@ -1,0 +1,188 @@
+import type { CompleteCatalog } from "../keys.js";
+const basqueCatalog = {
+  "bootstrap.checking-connection": "Irakaslearen zerbitzariarekiko konexioa egiaztatzen…",
+  "bootstrap.connection-failed":
+    "Ezin izan da irakaslearen zerbitzariarekin konektatu. Egiaztatu konexioa eta saiatu berriro.",
+  "bootstrap.login-required": "Hasi saioa Marea irakaslearen zerbitzariarekin konektatzeko.",
+  "bootstrap.ready": "Marea prest dago.",
+  "bootstrap.resuming-session": "Zure saioarekin jarraitzen…",
+  "bootstrap.starting-session": "Zure saioa hasten…",
+  "errors.auth.invalid": "Autentifikazioak huts egin du. Hasi saioa berriro.",
+  "errors.protocol.incompatible": "Bezero hau ez da bateragarria irakaslearen zerbitzariarekin.",
+  "errors.request.invalid": "Ezin izan da eskaera ulertu.",
+  "errors.run.unavailable": "Saioa ez dago erabilgarri.",
+  "errors.server.error": "Irakaslearen zerbitzariak ezin izan du eskaera osatu.",
+  "student.auth.display-name-label": "Irakasleak ikusiko duen izena",
+  "student.auth.enroll": "Sortu nire kontua gonbidapen batekin",
+  "student.auth.invitation-label": "Gonbidapen-kodea",
+  "student.auth.login": "Hasi saioa",
+  "student.auth.login-label": "Erabiltzailea",
+  "student.auth.method": "Nola jarraitu nahi duzu?",
+  "student.auth.method-rejected": "Gordetako saioa ez da baliozkoa. Nola jarraitu nahi duzu?",
+  "student.auth.password-label": "Pasahitza",
+  "student.auth.required": "Eremu hau beharrezkoa da.",
+  "student.cli.help":
+    "Erabilera: marea [--lang <locale>] [--no-mouse]\n       marea feedback\n       marea feedback --ack <notice-id>\n\nIreki Marea uneko proiektuan, irakurri irakaslearen irakurri gabeko feedbacka edo markatu ohar bat irakurritzat. Erabili --lang automatic, es, en edo eu exekuzio honetarako.",
+  "student.cli.invalid-language":
+    "{{option}} hizkuntza-aukera ez da baliozkoa. Erabili automatic, es, en edo eu.",
+  "student.cli.language-save-failed":
+    "Ezin izan da interfazearen hizkuntza gorde. Saio honetan bakarrik egongo da aktibo.",
+  "student.cli.server-url-missing": "Mareak oraindik ez du irakaslearen zerbitzariaren helbiderik.",
+  "student.cli.unexpected-error": "Marea ezin izan da hasi. Saiatu berriro.",
+  "student.feedback.ack-hint":
+    "Irakurri ondoren, markatu irakurritzat komando honekin: {{command}}",
+  "student.feedback.acknowledged": "Feedbacka irakurritzat markatu da.",
+  "student.feedback.empty": "Ez dago irakaslearen feedbackik irakurtzeko zain.",
+  "student.feedback.failed":
+    "Ezin izan da feedbacka berretsi. Errepikatu komando bera; segurua da berriro saiatzea.",
+  "student.feedback.heading": "Irakaslearen feedbacka irakurtzeko zain (gehienez 32 ohar)",
+  "student.feedback.login-required":
+    "Ez dago gordetako ikasle-saiorik zerbitzari eta proiektu honetarako. Hasi saioa lehenik marea aplikazioarekin.",
+  "student.git.cancel": "Utzi",
+  "student.git.cancelled": "Sortu biltegia prest zaudenean, eta hasi Marea berriro.",
+  "student.git.confirm":
+    "Mareak Git biltegi bat behar du zure aldaketak erregistratzeko eta irakasleari erakusteko. Sortu karpeta honetan?",
+  "student.git.create": "Bai, sortu biltegia",
+  "student.git.missing":
+    "Mareak Git behar du zure lana erregistratzeko. Instalatu Git eta hasi Marea berriro.",
+  "student.git.not-root": "Hasi Marea biltegiaren erroan, proiektu hau bakarrik erregistratzeko.",
+  "student.conversation.approve": "Y baimendu",
+  "student.conversation.input-placeholder": "Idatzi mezu bat",
+  "student.conversation.marea-label": "Marea",
+  "student.conversation.reject": "N baztertu",
+  "student.conversation.retry": "Idatzi /retry berriro saiatzeko",
+  "student.conversation.status-cancelled": "Txanda bertan behera utzita",
+  "student.conversation.status-failed": "Txandak huts egin du",
+  "student.conversation.student-label": "Zu",
+  "student.conversation.title": "Marea · ikasgela",
+  "student.tui.approval.approve": "Baimendu",
+  "student.tui.approval.approved": "Baimenduta",
+  "student.tui.approval.cancelled": "Bertan behera utzita",
+  "student.tui.approval.collapse": "v tolestu",
+  "student.tui.approval.edit-after": "+ ondoren",
+  "student.tui.approval.edit-before": "- aurretik",
+  "student.tui.approval.edit-all": "agerraldi guztiak",
+  "student.tui.approval.edit-one": "agerraldi bat",
+  "student.tui.approval.execute-warning":
+    "Komandoa zure sistemako baimenekin exekutatuko da eta proiektutik kanpoko fitxategiak alda ditzake.",
+  "student.tui.approval.expand": "> erakutsi dena",
+  "student.tui.approval.lines": "{{count}} lerro",
+  "student.tui.approval.lines.one": "{{count}} lerro",
+  "student.tui.approval.lines.other": "{{count}} lerro",
+  "student.tui.approval.reason-placeholder": "Aukerako arrazoia; Enter berresteko",
+  "student.tui.approval.reject": "Baztertu",
+  "student.tui.approval.rejected": "Baztertuta",
+  "student.tui.approval.rejected-with-reason": "Baztertuta: {{reason}}",
+  "student.tui.approval.title": "Baimendu · {{name}}",
+  "student.tui.banner.branch": "adarra",
+  "student.tui.banner.directory": "direktorioa",
+  "student.tui.banner.footer": "/help komandoetarako · /exit amaitzeko",
+  "student.tui.banner.model": "modeloa",
+  "student.tui.banner.repository": "biltegia",
+  "student.tui.command.details-description": "irteera trinkoen eta zehatzen artean aldatu",
+  "student.tui.command.exit-description": "irten Mareatik",
+  "student.tui.command.help-description": "erakutsi komandoak eta lasterbideak",
+  "student.tui.command.language-description": "aldatu interfazearen hizkuntza",
+  "student.tui.command.retry-description": "berrekin azken txanda etenari",
+  "student.tui.composer.placeholder": "Idatzi Mareari…",
+  "student.tui.failure.recovery-pending":
+    "Gordetako txanda bat dago. Berariaz aukeratu behar duzu harekin jarraitzea.",
+  "student.tui.failure.deadline-exceeded":
+    "Eskaera honetarako ezarritako denbora-muga gainditu da.",
+  "student.tui.failure.budget-exhausted": "Saioak ez du nahikoa aurrekontu beste eskaera baterako.",
+  "student.tui.failure.concurrency-limited": "Beste eskaera bat martxan dago. Itxaron amaitu arte.",
+  "student.tui.failure.provider-interrupted": "Hornitzaileak erantzuna eten du.",
+  "student.tui.failure.resume-detail": "Txandari gordetako azken puntutik berrekin diezaiokezu.",
+  "student.tui.help": `## Komandoak
+
+- \`/help\` — erakutsi laguntza hau.
+- \`/retry\` — berrekin azken txanda etenari zure mezua errepikatu gabe.
+- \`/details\` — aldatu irteera trinkoen eta osoen artean.
+- \`/language\` — aldatu interfazearen hizkuntza eta gorde hobespena.
+- \`/exit\` — amaitu saioa.
+
+## Teklatua
+
+- **Enter** teklak mezua bidaltzen du; **Shift+Enter** edo **Ctrl+J** teklek lerro bat gehitzen dute.
+- Marea erantzuten ari den bitartean hurrengo mezua zirriborratu dezakezu; txanda amaitu arte ez da bidaliko.
+- **Tab** eta **Shift+Tab** teklekin ekintzen artean mugi zaitezke; **Enter** edo **Space** teklekin aktiba ditzakezu.
+- **PageUp** eta **PageDown** teklekin elkarrizketan gora eta behera mugi zaitezke.
+- **Ctrl+O** teklak azken irteera zabaltzen edo tolesten du.
+- Sarrera-eremua hutsik dagoenean, **Ctrl+E** teklak txandako irteera guztiak zabaltzen edo tolesten ditu.
+- **Escape** teklak uneko txanda eteten du.
+- Gurpilarekin edo trackpadarekin elkarrizketan gora eta behera mugi zaitezke.
+- Hautatu testua saguarekin; sagua askatzean automatikoki kopiatuko da.
+- Hasi Marea \`--no-mouse\` aukerarekin terminalaren hautaketa erabili behar baduzu.
+- **Ctrl+D** teklak Marea ixten du.
+- Baimen-eskaeran, **y** teklak baimentzen du eta **n** teklak arrazoi batekin baztertzeko aukera ematen du.
+`,
+  "student.tui.hint.approval": "Y baimentzeko · N baztertzeko · Shift+Tab berrikusteko",
+  "student.tui.hint.questions": "Tab mugitzeko · Enter jarraitzeko",
+  "student.tui.hint.ready": "Ctrl+O azken irteera · PgUp/PgDn elkarrizketa · /help",
+  "student.tui.hint.turn": "Esc eteteko",
+  "student.tui.notice.clipboard": "Testua arbelean kopiatu da",
+  "student.tui.notice.quit-hint": "Sakatu Ctrl+D irteteko.",
+  "student.tui.notice.draft-kept": "Marea erantzuten amaitzean bidali ahal izango duzu.",
+  "student.tui.notice.no-outputs": "Oraindik ez dago irteerarik",
+  "student.tui.notice.no-retry": "Ez dago berriro saiatzeko txanda etenik",
+  "student.tui.notice.no-turn-outputs": "Txanda honek oraindik ez du irteerarik",
+  "student.tui.notice.language-changed": "Interfazearen hizkuntza: {{language}}",
+  "student.tui.notice.language-save-failed":
+    "Interfazearen hizkuntza berria aktibo dago, baina ezin izan da gorde.",
+  "student.tui.notice.outputs-compact": "Irteera trinkoak",
+  "student.tui.notice.outputs-detailed": "Irteera zehatzak",
+  "student.tui.notice.retrying": "↻ Eten den txandarekin berriro saiatzen…",
+  "student.tui.question.cancelled": "Bertan behera utzita",
+  "student.tui.question.next": "Hurrengoa",
+  "student.tui.question.placeholder": "Aukera-zenbakia edo erantzuna",
+  "student.tui.question.previous": "Aurrekoa",
+  "student.tui.question.progress": "{{total}} galderatik {{index}}.a",
+  "student.tui.question.required": "Galdera hau beharrezkoa da.",
+  "student.tui.question.send": "Bidali erantzunak",
+  "student.tui.question.sent": "Erantzunak bidalita",
+  "student.tui.question.title": "Agenteak zuk erabakitzea behar du",
+  "student.tui.status.detail": "{{seconds}} s",
+  "student.tui.status.finishing": "amaitzen",
+  "student.tui.status.preparing": "Saioa prestatzen…",
+  "student.tui.status.ready": "prest",
+  "student.tui.status.responding": "erantzuten",
+  "student.tui.status.retrying": "berriro saiatzen",
+  "student.tui.status.reviewing": "proiektua berrikusten",
+  "student.tui.status.starting": "prestatzen",
+  "student.tui.status.thinking": "pentsatzen",
+  "student.tui.status.unrecoverable": "berreskuraezina den errorea",
+  "student.tui.status.waiting-answer": "zure erantzunaren zain",
+  "student.tui.status.waiting-approval": "baimenaren zain",
+  "student.tui.tool.empty-output": "(irteerarik ez)",
+  "student.tui.tool.lines-read": "{{count}} lerro irakurrita",
+  "student.tui.tool.lines-read.one": "{{count}} lerro irakurrita",
+  "student.tui.tool.lines-read.other": "{{count}} lerro irakurrita",
+  "student.tui.tool.omitted-many": "… aurreko {{count}} lerro",
+  "student.tui.tool.omitted-many.one": "… aurreko {{count}} lerro",
+  "student.tui.tool.omitted-many.other": "… aurreko {{count}} lerro",
+  "student.tui.tool.omitted-one": "… aurreko lerro 1",
+  "student.tui.tool.output": "irteera",
+  "student.tui.tool.question": "galdera",
+  "student.tui.tool.see-content": "Ctrl+O edukia ikusteko",
+  "student.tui.tool.see-output": "Ctrl+O irteera osoa ikusteko",
+  "student.tui.tool.subagent": "azpiagentea",
+  "student.tui.turn.driver-failed": "Interfazeak ezin izan du txanda osatu.",
+  "student.tui.turn.interrupted": "Txanda etenda.",
+  "student.tui.turn.retry": "Berriro saiatu / jarraitu",
+  "student.tui.turn.retry-started": "Berriro saiatzen hasi da",
+  "skills.allowed-tools.forbidden":
+    "Kendu `allowed-tools`; hezkuntza-skill baten metadatuek ezin dute tresnen baimenik eman.",
+  "skills.criteria.duplicate": "Eman `codigo` bakarra irizpide bakoitzari skillaren barruan.",
+  "skills.criteria.forbidden":
+    "Kendu `criterios`; ebaluazio-skillek ebaluazio-metodoa definitzen dute, ez ikaskuntza-irizpideak.",
+  "skills.frontmatter.invalid": "{{location}}-ko frontmatter-a ez da baliozkoa. {{action}}",
+  "skills.frontmatter.missing":
+    "Gehitu `---` bidez mugatutako YAML frontmatter-a SKILL.md-ren hasieran.",
+  "skills.module.forbidden":
+    "Kendu `module`; Marearen hezkuntza-skill-ek ezin dute koderik exekutatu.",
+  "skills.name.invalid":
+    "Erabili 1 eta 64 karaktere arteko izen eramangarria, ASCII letra xeheak, zenbakiak eta marratxo bakunak soilik erabiliz.",
+  "skills.name.mismatch":
+    "Aldatu direktorioaren izena '{{name}}' izatera edo ezarri name '{{directory}}' gisa.",
+} as const satisfies CompleteCatalog;
+export const BASQUE_CATALOG = Object.freeze(basqueCatalog);

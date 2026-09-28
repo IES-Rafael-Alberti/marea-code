@@ -1,0 +1,19 @@
+{
+  "name": "@marea/workspace-backend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "mutation": "stryker run stryker.config.mjs",
+    "test": "vitest run",
+    "test:bun": "bun --bun vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@marea/test-config": "workspace:*"
+  }
+}

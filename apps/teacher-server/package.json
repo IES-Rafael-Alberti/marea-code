@@ -1,0 +1,57 @@
+{
+  "name": "@marea/teacher-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./classes": "./src/classes/index.ts",
+    "./dashboard-api": "./src/dashboard-api/index.ts",
+    "./dashboard-assets": "./src/dashboard-assets/index.ts",
+    "./identity": "./src/identity/index.ts",
+    "./governance": "./src/governance/index.ts",
+    "./evaluation": "./src/evaluation/evaluation-module.ts",
+    "./model-gateway": "./src/model-gateway/index.ts",
+    "./product-http": "./src/product-http/index.ts",
+    "./platform/persistence": "./src/platform/persistence/index.ts",
+    "./sessions": "./src/sessions/index.ts",
+    "./teaching/skills": "./src/teaching/skills/index.ts"
+  },
+  "scripts": {
+    "build:operator-cli": "bun build cli-entry.ts --compile --outfile dist/marea-admin",
+    "build:operations-cli": "bun build operations-entry.ts --compile --outfile dist/marea-operations",
+    "build:teacher-host": "bun build teacher-host-entry.ts --compile --outfile dist/marea-teacher",
+    "smoke:compiled-operator-cli": "bun run smoke/compiled-operator-cli.ts",
+    "smoke:compiled-operations": "bun run smoke/compiled-operations.ts",
+    "smoke:compiled-teacher-host": "bun run smoke/compiled-teacher-host.ts",
+    "smoke:compiled-interruption": "bun run smoke/compiled-interruption.ts",
+    "smoke:compiled-lifecycle": "bun run smoke/compiled-lifecycle.ts",
+    "smoke:compiled-rollback": "bun run smoke/compiled-rollback.ts",
+    "smoke:compiled-transfer": "bun run smoke/compiled-transfer.ts",
+    "acceptance:installation-lifecycle": "bun run smoke/installation-lifecycle-acceptance.ts",
+    "smoke:compiled-dashboard": "bun run scripts/verify-compiled-dashboard.ts",
+    "smoke:compiled-authoring": "bun run scripts/verify-compiled-authoring.ts",
+    "smoke:teacher-core": "bun run smoke/teacher-core.ts",
+    "smoke:evaluation": "bun run smoke/evaluation.ts",
+    "mutation": "stryker run stryker.config.mjs",
+    "test": "vitest run --config vitest.config.mjs",
+    "smoke:compiled-model-timeout": "bun run smoke/compiled-model-timeout.ts",
+    "test:bun": "bun --bun vitest run src/dashboard-assets && bun run smoke:compiled-dashboard && bun run smoke:teacher-core && bun run smoke:evaluation && bun run smoke:compiled-model-timeout",
+    "test:coverage": "vitest run --config vitest.config.mjs --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@marea/plugin-api": "workspace:*",
+    "@marea/plugin-runtime": "workspace:*",
+    "@marea/private-filesystem": "workspace:*",
+    "@marea/protocol": "workspace:*",
+    "@marea/sqlite-storage": "workspace:*",
+    "@marea/telemetry-pipeline": "workspace:*",
+    "@marea/transport-server": "workspace:*",
+    "hono": "4.12.32",
+    "yaml": "2.8.2",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@marea/test-config": "workspace:*"
+  }
+}

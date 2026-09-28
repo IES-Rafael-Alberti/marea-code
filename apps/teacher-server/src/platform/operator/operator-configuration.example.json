@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "classes": [
+    {
+      "classId": "class:synthetic",
+      "policy": {
+        "route": {
+          "version": "route:1",
+          "modelAlias": "marea",
+          "providerRoute": {
+            "providerId": "synthetic-provider",
+            "model": "synthetic-model",
+            "budget": {
+              "inputTokenCeiling": 1000,
+              "tutoring": {
+                "version": "usage:tutoring-1",
+                "costUnit": "credit",
+                "inputCostUnitsPerToken": 1,
+                "outputCostUnitsPerToken": 2,
+                "maxRequests": 10,
+                "maxTokens": 4000,
+                "maxCostUnits": 10000,
+                "maxConcurrentRequests": 1,
+                "maxRequestDurationMs": 5000,
+                "maxInputTokens": 2000,
+                "maxOutputTokens": 2000,
+                "maxToolCalls": 5
+              },
+              "evaluation": {
+                "version": "usage:evaluation-1",
+                "costUnit": "credit",
+                "inputCostUnitsPerToken": 1,
+                "outputCostUnitsPerToken": 2,
+                "maxRequests": 10,
+                "maxTokens": 4000,
+                "maxCostUnits": 10000,
+                "maxConcurrentRequests": 1,
+                "maxRequestDurationMs": 5000,
+                "maxInputTokens": 2000,
+                "maxOutputTokens": 2000,
+                "maxToolCalls": 5
+              }
+            }
+          }
+        },
+        "teacherToolPolicy": {
+          "version": "policy:1",
+          "restrictions": [{ "tool": "workspace.write", "effect": "require-approval" }]
+        }
+      }
+    }
+  ]
+}

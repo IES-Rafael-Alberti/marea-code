@@ -1,0 +1,21 @@
+{
+  "name": "@marea/private-filesystem",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "mutation": "stryker run stryker.config.mjs",
+    "test": "vitest run --config vitest.config.mjs",
+    "test:bun": "bun --bun vitest run --config vitest.config.mjs && bun run smoke:native-permissions",
+    "test:coverage": "vitest run --config vitest.config.mjs --coverage",
+    "typecheck": "tsc --noEmit",
+    "smoke:native-permissions": "bun smoke/native-permissions.ts"
+  },
+  "devDependencies": {
+    "@marea/test-config": "workspace:*",
+    "@marea/sqlite-storage": "workspace:*"
+  }
+}

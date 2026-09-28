@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.bun.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "@opentui/react",
+    "rootDir": "."
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "scripts/**/*.ts",
+    "test-support/**/*.ts",
+    "tests-bun/**/*.tsx"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "id": "org.marea.fixture-inference",
+  "displayNameKey": "plugins.fixture-inference.name",
+  "descriptionKey": "plugins.fixture-inference.description",
+  "kind": "inference-provider",
+  "apiVersion": "1.0",
+  "implementationVersion": "1.2.3",
+  "entrypoint": "./src/index.ts",
+  "configurationVersion": 1,
+  "capabilities": ["streaming", "tool-calls"],
+  "runtimeTargets": ["teacher-server"],
+  "dataClassifications": ["student-content", "usage-metadata"]
+}

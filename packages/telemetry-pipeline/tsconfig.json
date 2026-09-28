@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.bun.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../node_modules/.cache/typescript/telemetry-pipeline.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"]
+}

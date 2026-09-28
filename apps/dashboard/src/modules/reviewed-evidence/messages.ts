@@ -1,0 +1,88 @@
+import type { DashboardLocale } from "../../messages.js";
+const en = {
+  title: "Reviewed evidence",
+  meaning:
+    "Teacher-approved observations, not a learning score. Skill versions are shown separately.",
+  empty: "Select a class to see reviewed evidence.",
+  loading: "Loading reviewed evidence…",
+  error: "Reviewed evidence is unavailable. Try again.",
+  denied: "Access denied. Select an authorized class or sign in again.",
+  none: "No approved evidence in this selection.",
+  students: "Students",
+  criteria: "Criteria and versions",
+  refresh: "Refresh from the first page",
+  more: "Next page",
+  history: "View evidence history",
+  open: "Open source session",
+  blocked:
+    "The session could not be opened. Enable Sessions and keep or discard pending drafts before navigating.",
+  generation: "Generation",
+  older: "This session has a later approval.",
+  version: "Skill version",
+  confidence: "Recorded confidence",
+  passed: "Passed",
+  "not-passed": "Not passed",
+  "no-evidence": "No evidence",
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+};
+const es: typeof en = {
+  title: "Evidencias revisadas",
+  meaning:
+    "Observaciones aprobadas por el docente, no una puntuación de aprendizaje. Las versiones de las habilidades se muestran por separado.",
+  empty: "Selecciona una clase para ver las evidencias revisadas.",
+  loading: "Cargando evidencias revisadas…",
+  error: "Las evidencias revisadas no están disponibles. Inténtalo de nuevo.",
+  denied: "Acceso denegado. Selecciona una clase autorizada o inicia sesión de nuevo.",
+  none: "No hay evidencias aprobadas en esta selección.",
+  students: "Alumnos",
+  criteria: "Criterios y versiones",
+  refresh: "Actualizar desde la primera página",
+  more: "Página siguiente",
+  history: "Ver historial de evidencias",
+  open: "Abrir sesión de origen",
+  blocked:
+    "No se ha podido abrir la sesión. Activa Sesiones y conserva o descarta los borradores pendientes antes de navegar.",
+  generation: "Generación",
+  older: "Esta sesión tiene una aprobación posterior.",
+  version: "Versión de la habilidad",
+  confidence: "Confianza registrada",
+  passed: "Superado",
+  "not-passed": "No superado",
+  "no-evidence": "Sin evidencia",
+  low: "Baja",
+  medium: "Media",
+  high: "Alta",
+};
+const eu: typeof en = {
+  title: "Berrikusitako ebidentziak",
+  meaning:
+    "Irakasleak onartutako behaketak dira, ez ikaskuntzaren puntuazioa. Trebetasunen bertsioak bereizita erakusten dira.",
+  empty: "Hautatu ikasgela bat berrikusitako ebidentziak ikusteko.",
+  loading: "Berrikusitako ebidentziak kargatzen…",
+  error: "Berrikusitako ebidentziak ez daude erabilgarri. Saiatu berriro.",
+  denied: "Sarbidea ukatuta. Hautatu baimendutako ikasgela bat edo hasi saioa berriro.",
+  none: "Ez dago onartutako ebidentziarik hautaketa honetan.",
+  students: "Ikasleak",
+  criteria: "Irizpideak eta bertsioak",
+  refresh: "Eguneratu lehen orrialdetik",
+  more: "Hurrengo orrialdea",
+  history: "Ikusi ebidentzien historia",
+  open: "Ireki jatorrizko saioa",
+  blocked:
+    "Ezin izan da saioa ireki. Gaitu Saioak eta gorde edo baztertu zirriborroak nabigatu aurretik.",
+  generation: "Sorkuntza",
+  older: "Saio honek geroagoko onarpen bat du.",
+  version: "Trebetasunaren bertsioa",
+  confidence: "Erregistratutako konfiantza",
+  passed: "Gaindituta",
+  "not-passed": "Gainditu gabe",
+  "no-evidence": "Ebidentziarik ez",
+  low: "Baxua",
+  medium: "Ertaina",
+  high: "Altua",
+};
+export function reviewedEvidenceMessages(locale: DashboardLocale): typeof en {
+  return { en, es, eu }[locale];
+}

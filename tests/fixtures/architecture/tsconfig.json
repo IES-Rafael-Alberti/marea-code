@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2024"
+  },
+  "include": ["apps/**/*.js", "plugins/**/*.js", "scripts/**/*.js"]
+}

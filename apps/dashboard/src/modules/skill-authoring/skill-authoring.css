@@ -1,0 +1,207 @@
+.skill-authoring-module {
+  min-width: 0;
+}
+
+.skill-authoring-module button,
+.skill-authoring-module input,
+.skill-authoring-module select,
+.skill-authoring-module textarea {
+  max-width: 100%;
+  font: inherit;
+  color: inherit;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 0.35rem;
+  padding: 0.6rem;
+}
+
+.skill-authoring-module button {
+  cursor: pointer;
+  margin: 0.25rem 0;
+}
+
+.skill-authoring-module button:disabled,
+.skill-authoring-module input:disabled,
+.skill-authoring-module select:disabled,
+.skill-authoring-module textarea:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.skill-authoring-module :focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.skill-authoring-module h3,
+.skill-authoring-module h4 {
+  overflow-wrap: anywhere;
+}
+
+.skill-authoring-classes,
+.skill-authoring-catalog,
+.skill-authoring-editor,
+.skill-authoring-recovery,
+.skill-authoring-switch {
+  min-width: 0;
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+.skill-authoring-classes label,
+.skill-authoring-personal-form label,
+.skill-authoring-draft-fields label,
+.skill-authoring-file label,
+.skill-authoring-copy label {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.7rem 0;
+}
+
+.skill-authoring-classes select,
+.skill-authoring-personal-form input,
+.skill-authoring-draft-fields input,
+.skill-authoring-draft-fields select,
+.skill-authoring-file input,
+.skill-authoring-file textarea,
+.skill-authoring-copy input {
+  width: 100%;
+}
+
+.skill-authoring-catalog-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  list-style: none;
+}
+
+.skill-authoring-catalog-entry {
+  min-width: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.5rem;
+}
+
+.skill-authoring-catalog-entry-selected {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.skill-authoring-catalog-entry dl,
+.skill-authoring-metadata {
+  display: grid;
+  grid-template-columns: minmax(7rem, auto) minmax(0, 1fr);
+  gap: 0.35rem 0.75rem;
+  margin: 0.65rem 0;
+}
+
+.skill-authoring-catalog-entry dt,
+.skill-authoring-metadata dt {
+  color: var(--color-accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.skill-authoring-catalog-entry dd,
+.skill-authoring-metadata dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.skill-authoring-draft-fields,
+.skill-authoring-file,
+.skill-authoring-copy {
+  min-width: 0;
+  margin: 1rem 0;
+  border: 1px solid var(--color-border);
+}
+
+.skill-authoring-draft-fields textarea,
+.skill-authoring-file textarea {
+  resize: vertical;
+}
+
+.skill-authoring-files {
+  display: grid;
+  gap: 1rem;
+}
+
+.skill-authoring-file {
+  padding: 0.75rem;
+}
+
+.skill-authoring-file h4 {
+  margin-top: 0;
+}
+
+.skill-authoring-file pre,
+.skill-authoring-readback-files pre {
+  max-height: 24rem;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.skill-authoring-file-actions,
+.skill-authoring-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.skill-authoring-file-input {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.skill-authoring-file-input input {
+  width: auto;
+}
+
+.skill-authoring-note,
+.skill-authoring-content-status {
+  color: var(--color-accent);
+}
+
+.skill-authoring-switch {
+  border: 2px solid var(--color-accent);
+}
+
+.skill-authoring-recovery {
+  border: 2px solid var(--color-border-strong);
+}
+
+.skill-authoring-import-confirmation {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  border: 2px solid var(--color-accent);
+  border-radius: 0.5rem;
+}
+
+.skill-authoring-readback-files article {
+  margin: 0.75rem 0;
+}
+
+.skill-authoring-readback-files h4 {
+  margin-bottom: 0.35rem;
+}
+
+@media (max-width: 48rem) {
+  .skill-authoring-file-actions,
+  .skill-authoring-actions {
+    display: grid;
+  }
+
+  .skill-authoring-catalog-entry dl,
+  .skill-authoring-metadata {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+}

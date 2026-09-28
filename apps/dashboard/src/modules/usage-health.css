@@ -1,0 +1,61 @@
+.class-projection {
+  display: grid;
+  gap: var(--space-small, 8px);
+  overflow-wrap: anywhere;
+}
+.class-projection h2,
+.class-projection p {
+  margin: 0;
+}
+.class-projection form,
+.class-projection nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-small, 8px);
+  align-items: end;
+}
+.class-projection label {
+  display: grid;
+  gap: 0.25rem;
+}
+.class-projection input,
+.class-projection button {
+  padding: 0.5rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-strong);
+}
+.class-projection button:focus-visible,
+.class-projection input:focus-visible {
+  outline: 3px solid var(--color-focus, currentColor);
+  outline-offset: 2px;
+}
+.class-projection-table {
+  max-width: 100%;
+  overflow-x: auto;
+  /* Keyboard users can scroll the table region on narrow screens. */
+  outline-offset: 2px;
+}
+.class-projection table {
+  border-collapse: collapse;
+  min-width: 100%;
+}
+.class-projection th,
+.class-projection td {
+  padding: 0.25rem 0.5rem;
+  overflow-wrap: normal;
+  white-space: nowrap;
+  text-align: start;
+  border-bottom: 1px solid var(--color-border-strong);
+}
+.class-projection dl {
+  display: grid;
+  gap: var(--space-small, 8px);
+  margin: 0;
+}
+.class-projection dd {
+  margin: 0;
+}
+.class-projection dt {
+  font-weight: 600;
+}

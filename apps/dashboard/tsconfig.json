@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.browser.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../node_modules/.cache/typescript/dashboard.tsbuildinfo"
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "vite.config.ts",
+    "browser/typed-module-host.fixture.tsx"
+  ]
+}

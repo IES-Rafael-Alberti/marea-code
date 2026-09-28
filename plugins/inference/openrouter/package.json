@@ -1,0 +1,23 @@
+{
+  "name": "@marea/openrouter-provider",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "mutation": "stryker run stryker.config.mjs",
+    "test": "vitest run --config vitest.config.mjs",
+    "test:bun": "bun --bun vitest run --config vitest.config.mjs",
+    "test:coverage": "vitest run --config vitest.config.mjs --coverage",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@marea/plugin-api": "workspace:*",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@marea/test-config": "workspace:*"
+  }
+}

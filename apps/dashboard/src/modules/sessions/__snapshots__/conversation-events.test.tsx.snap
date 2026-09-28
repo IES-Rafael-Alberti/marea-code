@@ -1,0 +1,48 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renders closed and unfinished code fences while escaping model HTML > escaped text and fences 1`] = `
+"<article class="conversation-event event-assistant-message"><header><strong>Marea</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>&lt;script&gt;bad()&lt;/script&gt;</p><pre><code>print(1)
+</code></pre><p>Then:</p><pre><code>print(2)</code></pre><p></p></div></article>"
+`;
+
+exports[`renders each durable event as readable en evidence with optional raw detail > approval-requested Authorization requested 1`] = `
+"<article class="conversation-event event-approval-requested"><header><strong>Authorization requested</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>write_file
+Create an example</p></div></article>"
+`;
+
+exports[`renders each durable event as readable en evidence with optional raw detail > approval-resolved Authorized 1`] = `"<article class="conversation-event event-approval-resolved"><header><strong>Authorized</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
+
+exports[`renders each durable event as readable en evidence with optional raw detail > approval-resolved Rejected 1`] = `"<article class="conversation-event event-approval-resolved"><header><strong>Rejected</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
+
+exports[`renders each durable event as readable en evidence with optional raw detail > assistant-message Marea 1`] = `"<article class="conversation-event event-assistant-message"><header><strong>Marea</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>A hint</p></div></article>"`;
+
+exports[`renders each durable event as readable en evidence with optional raw detail > run-activated Session opened 1`] = `"<article class="conversation-event event-run-activated"><header><strong>Session opened</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
+
+exports[`renders each durable event as readable en evidence with optional raw detail > run-closed Session finished 1`] = `"<article class="conversation-event event-run-closed"><header><strong>Session finished</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
+
+exports[`renders each durable event as readable en evidence with optional raw detail > student-message Student 1`] = `"<article class="conversation-event event-student-message"><header><strong>Student</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>My question</p></div></article>"`;
+
+exports[`renders each durable event as readable en evidence with optional raw detail > tutor-startup Tutor preparation 1`] = `"<article class="conversation-event event-tutor-startup"><header><strong>Tutor preparation</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
+
+exports[`renders each durable event as readable en evidence with optional raw detail > workspace-edit File changed 1`] = `"<article class="conversation-event event-workspace-edit"><header><strong>File changed</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>main.py</p></div></article>"`;
+
+exports[`renders each durable event as readable es evidence with optional raw detail > approval-requested Autorización solicitada 1`] = `
+"<article class="conversation-event event-approval-requested"><header><strong>Autorización solicitada</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>write_file
+Create an example</p></div></article>"
+`;
+
+exports[`renders each durable event as readable es evidence with optional raw detail > approval-resolved Autorizado 1`] = `"<article class="conversation-event event-approval-resolved"><header><strong>Autorizado</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
+
+exports[`renders each durable event as readable es evidence with optional raw detail > approval-resolved Rechazado 1`] = `"<article class="conversation-event event-approval-resolved"><header><strong>Rechazado</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
+
+exports[`renders each durable event as readable es evidence with optional raw detail > assistant-message Marea 1`] = `"<article class="conversation-event event-assistant-message"><header><strong>Marea</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>A hint</p></div></article>"`;
+
+exports[`renders each durable event as readable es evidence with optional raw detail > run-activated Sesión abierta 1`] = `"<article class="conversation-event event-run-activated"><header><strong>Sesión abierta</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
+
+exports[`renders each durable event as readable es evidence with optional raw detail > run-closed Sesión finalizada 1`] = `"<article class="conversation-event event-run-closed"><header><strong>Sesión finalizada</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
+
+exports[`renders each durable event as readable es evidence with optional raw detail > student-message Estudiante 1`] = `"<article class="conversation-event event-student-message"><header><strong>Estudiante</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>My question</p></div></article>"`;
+
+exports[`renders each durable event as readable es evidence with optional raw detail > tutor-startup Preparación del tutor 1`] = `"<article class="conversation-event event-tutor-startup"><header><strong>Preparación del tutor</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
+
+exports[`renders each durable event as readable es evidence with optional raw detail > workspace-edit Archivo modificado 1`] = `"<article class="conversation-event event-workspace-edit"><header><strong>Archivo modificado</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>main.py</p></div></article>"`;

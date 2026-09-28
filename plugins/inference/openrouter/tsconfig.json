@@ -1,0 +1,7 @@
+{
+  "extends": "../../../tsconfig.bun.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../../node_modules/.cache/typescript/openrouter-provider.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"]
+}

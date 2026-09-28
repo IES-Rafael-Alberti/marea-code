@@ -1,0 +1,13 @@
+{
+  "id": "org.marea.openrouter",
+  "displayNameKey": "plugins.openrouter.name",
+  "descriptionKey": "plugins.openrouter.description",
+  "implementationVersion": "0.1.0",
+  "entrypoint": "./src/index.ts",
+  "configurationVersion": 1,
+  "kind": "inference-provider",
+  "apiVersion": "1.0",
+  "capabilities": ["streaming", "tool-calls"],
+  "runtimeTargets": ["teacher-server"],
+  "dataClassifications": ["student-content", "usage-metadata"]
+}

@@ -1,0 +1,20 @@
+{
+  "absolute": true,
+  "gitignore": true,
+  "ignore": [
+    "**/catalogs/**",
+    "**/dist/**",
+    "packages/plugin-runtime/src/generated/plugin-catalog.ts",
+    "**/node_modules/**",
+    "**/reports/**",
+    "**/static/**",
+    "coverage/**",
+    "migrations/**",
+    "references/**"
+  ],
+  "minLines": 8,
+  "minTokens": 50,
+  "mode": "strict",
+  "reporters": ["console"],
+  "threshold": 0
+}

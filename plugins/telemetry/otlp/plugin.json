@@ -1,0 +1,14 @@
+{
+  "id": "org.marea.otlp",
+  "displayNameKey": "plugins.otlp.name",
+  "descriptionKey": "plugins.otlp.description",
+  "implementationVersion": "0.1.0",
+  "entrypoint": "./src/index.ts",
+  "configurationVersion": 1,
+  "kind": "telemetry-exporter",
+  "apiVersion": "1.0",
+  "capabilities": ["metric-export"],
+  "runtimeTargets": ["teacher-server"],
+  "acceptedDataClassifications": ["operational"],
+  "destination": "external"
+}
