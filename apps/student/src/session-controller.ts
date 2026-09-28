@@ -59,6 +59,8 @@ export interface ActiveStudentSession {
 export class StudentSessionController {
   private readonly lifecycle = new SerialOperationQueue();
   private readonly deliveries = new SerialOperationQueue();
+  private presenceTimer: ReturnType<typeof setInterval> | undefined;
+  private presenceBusy = false;
   private readonly closeAbort = new AbortController();
   private closeAttempt: Promise<void> | null = null;
   private closeRequested: StoredCloseReason | null = null;
@@ -88,6 +90,29 @@ export class StudentSessionController {
       const active = await this.startInternal(projectDisplayName);
       await this.options.evidence?.start();
       await this.flushOutbox();
+      if (
+        !this.closeAbort.signal.aborted &&
+        this.options.server.heartbeat !== undefined &&
+        this.presenceTimer === undefined
+      ) {
+        const send = async () => {
+          if (this.presenceBusy || this.closeRequested !== null) return;
+          this.presenceBusy = true;
+          try {
+            const token = await this.modelRunToken();
+            if (!this.closeAbort.signal.aborted) await this.options.server.heartbeat?.(token);
+          } catch {
+            /* Presence never interrupts a student session. */
+          } finally {
+            this.presenceBusy = false;
+          }
+        };
+        this.presenceTimer = setInterval(() => {
+          void send();
+        }, 30000);
+        this.presenceTimer.unref();
+        void send();
+      }
       return active;
     });
   }
@@ -123,6 +148,8 @@ export class StudentSessionController {
   }
 
   close(reason: StoredCloseReason = "student-exit"): Promise<void> {
+    clearInterval(this.presenceTimer);
+    this.presenceTimer = undefined;
     this.closeRequested ??= reason;
     this.closeAbort.abort();
     if (this.closeAttempt !== null) return this.closeAttempt;

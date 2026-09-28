@@ -1,5 +1,8 @@
+import { StudentHttpError } from "./http-error.js";
+export { StudentHttpError } from "./http-error.js";
 import { boundedEventDelivery } from "./event-delivery.js";
 import {
+  RequestIdSchema,
   AppendRunEventsResponseSchema,
   MAX_RUN_EVENTS_REQUEST_BYTES,
   CapabilitiesResponseSchema,
@@ -85,20 +88,6 @@ export interface StudentHttpOptions {
 
 export interface ModelGatewayHttpOptions extends StudentHttpOptions {
   readonly runToken: () => Promise<RunToken>;
-}
-
-export class StudentHttpError extends Error {
-  readonly code: string;
-  readonly retryable: boolean;
-  readonly status: number;
-
-  constructor(status: number, code: string, retryable: boolean) {
-    super("The Marea teacher server rejected the request.");
-    this.name = "StudentHttpError";
-    this.status = status;
-    this.code = code;
-    this.retryable = retryable;
-  }
 }
 
 export interface HttpClient {
@@ -400,6 +389,16 @@ export function createHttpStudentServer(options: StudentHttpOptions): StudentSer
   const client = createHttpClient(options);
   const paths = options.paths ?? STUDENT_HTTP_PATHS;
   return Object.freeze({
+    async heartbeat(token: RunToken): Promise<void> {
+      const requestId = RequestIdSchema.parse(`presence:${crypto.randomUUID()}`);
+      await client.json(
+        "/v1/runs/presence",
+        requestId,
+        { requestId },
+        z.object({ requestId: RequestIdSchema }).strict(),
+        token,
+      );
+    },
     readSkill: (token: RunToken, request: RunSkillRequest) => {
       const validated = RunSkillRequestSchema.parse(request);
       return client.json(

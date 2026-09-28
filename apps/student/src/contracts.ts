@@ -152,6 +152,7 @@ export class TurnAttemptFailed extends Error {
 }
 
 export interface StudentServer {
+  heartbeat?(token: RunToken): Promise<void>;
   readSkill(token: RunToken, request: RunSkillRequest): Promise<RunSkillResponse>;
   appendRunEvents(
     token: RunToken,
