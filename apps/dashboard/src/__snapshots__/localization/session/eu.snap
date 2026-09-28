@@ -1,0 +1,20 @@
+{
+  "checking": "Zure saioa egiaztatzen…",
+  "heading": "Hasi saioa",
+  "interpolated": {
+    "signedInAs": "Ada gisa saioa hasita",
+  },
+  "intro": "Hasi saioa administrazioak sortutako irakasle-kontuarekin.",
+  "login": "Erabiltzailea",
+  "password": "Pasahitza",
+  "problems": {
+    "invalid": "Erabiltzailea edo pasahitza ez da zuzena.",
+    "not-teacher": "Panel hau irakasleentzat da. Ikasleek marea aplikazioa erabiltzen dute.",
+    "unavailable": "Ezin izan da irakaslearen zerbitzariarekin konektatu. Saiatu berriro une batean.",
+  },
+  "signOut": "Itxi saioa",
+  "signedInAs": [Function],
+  "signingOut": "Saioa ixten…",
+  "submit": "Hasi saioa",
+  "submitting": "Saioa hasten…",
+}

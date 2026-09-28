@@ -1,0 +1,20 @@
+{
+  "checking": "Comprobando tu sesión…",
+  "heading": "Iniciar sesión",
+  "interpolated": {
+    "signedInAs": "Sesión iniciada como Ada",
+  },
+  "intro": "Inicia sesión con la cuenta de docente que te ha creado la administración.",
+  "login": "Usuario",
+  "password": "Contraseña",
+  "problems": {
+    "invalid": "El usuario o la contraseña no son correctos.",
+    "not-teacher": "Este panel es para docentes. El alumnado usa la aplicación marea.",
+    "unavailable": "No se ha podido contactar con el servidor docente. Inténtalo de nuevo en un momento.",
+  },
+  "signOut": "Cerrar sesión",
+  "signedInAs": [Function],
+  "signingOut": "Cerrando sesión…",
+  "submit": "Iniciar sesión",
+  "submitting": "Iniciando sesión…",
+}

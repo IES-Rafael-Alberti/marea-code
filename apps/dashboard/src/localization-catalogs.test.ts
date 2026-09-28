@@ -12,39 +12,58 @@ import { healthMessages } from "./modules/health/health-messages.js";
 import { reviewedEvidenceMessages } from "./modules/reviewed-evidence/messages.js";
 import { profileMessages } from "./profiles/profile-messages.js";
 
-describe("dashboard localization catalogs", () => {
-  it.each(["es", "en", "eu"] as const)("publishes every module catalog in %s", (locale) => {
-    const session = sessionMessages(locale);
-    const sessions = sessionsMessages(locale);
-    const teaching = teachingMessages(locale);
-    const authoring = skillAuthoringMessages(locale);
-    const evaluation = evaluationMessages(locale);
-    const governance = governanceMessages(locale);
-    expect({
-      insights: insightsMessages(locale),
-      session,
-      sessions,
-      teaching,
-      authoring,
-      evaluation,
-      governance,
-      usage: usageMessages(locale),
-      health: healthMessages(locale),
-      profile: profileMessages(locale),
-      reviewedEvidence: reviewedEvidenceMessages(locale),
+const catalogs = {
+  insights: insightsMessages,
+  session: (locale: Parameters<typeof sessionMessages>[0]) => {
+    const messages = sessionMessages(locale);
+    return { ...messages, interpolated: { signedInAs: messages.signedInAs("Ada") } };
+  },
+  sessions: sessionsMessages,
+  teaching: (locale: Parameters<typeof teachingMessages>[0]) => {
+    const messages = teachingMessages(locale);
+    return {
+      ...messages,
       interpolated: {
-        signedInAs: session.signedInAs("Ada"),
-        savedVersion: teaching.savedVersion("v1"),
-        switchPrompt: teaching.switchPrompt("Physics"),
-        exportSaved: authoring.exportSaved("out"),
-        exportDraft: authoring.exportDraft("out"),
-        copySource: authoring.copySource("skill:one"),
-        pendingPrompt: authoring.pendingPrompt("Physics"),
-        serverVersion: governance.serverVersion("v1"),
-        selection: governance.selection(1, 2),
-        expiresAt: governance.expiresAt("2026-09-21T12:00:00Z"),
-        revokedAt: governance.revokedAt("2026-09-21T11:00:00Z"),
+        savedVersion: messages.savedVersion("v1"),
+        switchPrompt: messages.switchPrompt("Physics"),
       },
-    }).toMatchSnapshot();
+    };
+  },
+  authoring: (locale: Parameters<typeof skillAuthoringMessages>[0]) => {
+    const messages = skillAuthoringMessages(locale);
+    return {
+      ...messages,
+      interpolated: {
+        exportSaved: messages.exportSaved("out"),
+        exportDraft: messages.exportDraft("out"),
+        copySource: messages.copySource("skill:one"),
+        pendingPrompt: messages.pendingPrompt("Physics"),
+      },
+    };
+  },
+  evaluation: evaluationMessages,
+  governance: (locale: Parameters<typeof governanceMessages>[0]) => {
+    const messages = governanceMessages(locale);
+    return {
+      ...messages,
+      interpolated: {
+        serverVersion: messages.serverVersion("v1"),
+        selection: messages.selection(1, 2),
+        expiresAt: messages.expiresAt("2026-09-21T12:00:00Z"),
+        revokedAt: messages.revokedAt("2026-09-21T11:00:00Z"),
+      },
+    };
+  },
+  usage: usageMessages,
+  health: healthMessages,
+  profile: profileMessages,
+  "reviewed-evidence": reviewedEvidenceMessages,
+};
+
+describe.each(Object.entries(catalogs))("%s localization catalog", (name, messages) => {
+  it.each(["es", "en", "eu"] as const)("publishes the %s catalog", async (locale) => {
+    await expect(messages(locale)).toMatchFileSnapshot(
+      `./__snapshots__/localization/${name}/${locale}.snap`,
+    );
   });
 });

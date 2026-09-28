@@ -1,0 +1,20 @@
+{
+  "checking": "Checking your session…",
+  "heading": "Sign in",
+  "interpolated": {
+    "signedInAs": "Signed in as Ada",
+  },
+  "intro": "Sign in with the teacher account your administrator created for you.",
+  "login": "Username",
+  "password": "Password",
+  "problems": {
+    "invalid": "The username or password is not correct.",
+    "not-teacher": "This dashboard is for teachers. Students use the marea application.",
+    "unavailable": "The teacher server could not be reached. Try again in a moment.",
+  },
+  "signOut": "Sign out",
+  "signedInAs": [Function],
+  "signingOut": "Signing out…",
+  "submit": "Sign in",
+  "submitting": "Signing in…",
+}
