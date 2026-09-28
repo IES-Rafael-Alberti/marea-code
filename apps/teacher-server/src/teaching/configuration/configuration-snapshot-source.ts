@@ -8,7 +8,13 @@ import type { TeachingConfigurationRepository } from "./contracts.js";
 export class ConfigurationSnapshotSource implements RunSnapshotSource {
   readonly #repository: TeachingConfigurationRepository;
 
-  constructor(repository: TeachingConfigurationRepository) {
+  constructor(
+    repository: TeachingConfigurationRepository,
+    private readonly adapt?: (
+      capture: RunSnapshotCapture,
+      identity: AuthenticatedIdentity,
+    ) => RunSnapshotCapture,
+  ) {
     this.#repository = repository;
   }
 
@@ -17,7 +23,7 @@ export class ConfigurationSnapshotSource implements RunSnapshotSource {
       throw new TeacherDomainError("run.unavailable");
     const configuration = this.#repository.loadForStudent(identity);
     if (configuration === null) throw new TeacherDomainError("run.unavailable");
-    return Object.freeze({
+    const capture = Object.freeze({
       snapshot: StudentRunSnapshotSchema.parse({
         ...configuration.publicTemplate,
         id: snapshotId,
@@ -34,5 +40,6 @@ export class ConfigurationSnapshotSource implements RunSnapshotSource {
       providerRoute: configuration.providerRoute,
       teaching: configuration.content,
     });
+    return this.adapt?.(capture, identity) ?? capture;
   }
 }

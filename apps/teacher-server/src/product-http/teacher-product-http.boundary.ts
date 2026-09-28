@@ -1,3 +1,5 @@
+import { parseJsonRequest, type ParseResult } from "./request-json.boundary.js";
+import { registerPresenceRoute } from "./presence-http.boundary.js";
 import { registerDashboardModuleRoutes } from "./dashboard-module-routes.js";
 import { registerLiveRoute, teacherCookieIdentity } from "./live-http.boundary.js";
 import { parseCookie, dashboardCookie, validateCookieName } from "./dashboard-cookie.js";
@@ -30,7 +32,7 @@ import {
   SoftwareVersionSchema,
   type RequestId,
 } from "@marea/protocol";
-import { isJson, parseBearerCredential, readRequest, RequestPolicy } from "@marea/transport-server";
+import { parseBearerCredential, RequestPolicy } from "@marea/transport-server";
 import * as z from "zod";
 import { TeacherDomainError } from "../identity/errors.js";
 import type { AuthenticatedIdentity } from "../identity/contracts.js";
@@ -58,11 +60,6 @@ const CAPABILITIES = [
   "marea.runs.history",
   "marea.teacher.notices",
 ] as const;
-interface Parsed<T> {
-  readonly ok: true;
-  readonly value: T;
-}
-type ParseResult<T> = Parsed<T> | { readonly ok: false; readonly response: Response };
 function policyMiddleware(
   policy: RequestPolicy,
   allowSearch: boolean,
@@ -75,31 +72,6 @@ function policyMiddleware(
     await next();
     return context.res;
   };
-}
-async function parseJsonRequest<T>(
-  request: Request,
-  schema: z.ZodType<T>,
-  maxBytes = JSON_REQUEST_LIMIT,
-): Promise<ParseResult<T>> {
-  if (!isJson(request.headers.get("content-type") ?? undefined)) {
-    return { ok: false, response: protocolError(415, "request.invalid", false) };
-  }
-  const text = await readRequest(request, maxBytes);
-  if (text instanceof Response) {
-    return { ok: false, response: protocolError(text.status, "request.invalid", false) };
-  }
-  let input: unknown;
-  // Stryker disable BlockStatement: Emptying this catch still delegates undefined to the same schema error.
-  try {
-    input = JSON.parse(text);
-  } catch {
-    return { ok: false, response: protocolError(400, "request.invalid", false) };
-  }
-  // Stryker restore BlockStatement
-  const parsed = schema.safeParse(input);
-  return parsed.success
-    ? { ok: true, value: parsed.data }
-    : { ok: false, response: protocolError(400, "request.invalid", false) };
 }
 function bearer(request: Request): string {
   const token = parseBearerCredential(request.headers.get("authorization") ?? undefined);
@@ -181,6 +153,14 @@ export function createTeacherProductHttp(
   const secureCookie = options.secureDashboardCookie ?? true;
   const app = new Hono();
   const productPolicy = policyMiddleware(policy, false);
+  registerPresenceRoute(
+    app,
+    productPolicy,
+    options.services,
+    parseJsonRequest,
+    bearer,
+    safeOperation,
+  );
   const dashboardPolicy = policyMiddleware(policy, true);
   const teacherIdentity = teacherCookieIdentity(options.services.identity, cookieName);
   registerDashboardModuleRoutes({

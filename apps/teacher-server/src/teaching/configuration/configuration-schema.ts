@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import {
+  AdaptiveContextSchema,
   PromptSnapshotSchema,
   RevisionIdSchema,
   SkillBundleSchema,
@@ -47,6 +48,7 @@ export const TeachingSnapshotContentSchema = z
       .max(1)
       .readonly(),
     automaticEvaluation: z.boolean(),
+    adaptive: AdaptiveContextSchema.optional(),
   })
   .strict()
   .refine(

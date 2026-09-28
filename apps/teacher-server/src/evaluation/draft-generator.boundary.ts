@@ -23,7 +23,7 @@ Return one JSON object matching the supplied schema, without Markdown fences or 
 Assess each listed didactic criterion exactly once using its exact skillId and code; use no-evidence
 when the record cannot support a conclusion. Do not invent numeric grades or adaptive memory.
 In free mode, criteria must be empty. The selected method's teacher_note means teacherNote,
-student_feedback means studentFeedback. Omit skill_summaries; adaptive memory is not enabled.`;
+student_feedback means studentFeedback. Do not invent personal history. When adaptive targets are supplied, include levelAttempted for each criterion exactly matching its captured target, and learningNote: a concise pedagogical summary for the next tutor session, reviewed by the teacher before use.`;
 
 export interface DraftGeneratorOptions {
   readonly ledger: UsageLedger;
@@ -46,6 +46,7 @@ export class EvaluationDraftGenerator {
       throw new EvaluationGenerationError("unconfigured");
     const material = JSON.stringify({
       mode: input.mode,
+      adaptiveTargets: content.teaching.adaptive?.targets,
       evaluationMethod: content.teaching.evaluationSkills,
       didacticSkills: content.teaching.didacticSkills,
       events: content.events.filter(
@@ -98,6 +99,7 @@ export class EvaluationDraftGenerator {
         EvaluationDraftSchema.parse(parsed),
         input.mode,
         content.teaching.didacticSkills,
+        content.teaching.adaptive?.targets,
       );
     } catch {
       throw new EvaluationGenerationError("invalid-draft");

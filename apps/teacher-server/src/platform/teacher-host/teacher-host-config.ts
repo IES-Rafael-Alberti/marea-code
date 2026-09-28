@@ -1,3 +1,4 @@
+import { EducationalConfigurationSchema } from "../../educational-insights/configuration.js";
 import { telemetryRuntimeConfigurationSchema } from "../telemetry/runtime-configuration.boundary.js";
 import { realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -18,6 +19,7 @@ function hostSchema() {
   return z
     .object({
       version: z.literal(1),
+      educationalInsights: EducationalConfigurationSchema.exactOptional(),
       telemetry: telemetryRuntimeConfigurationSchema().exactOptional(),
       releaseId: RevisionIdSchema,
       listen: z

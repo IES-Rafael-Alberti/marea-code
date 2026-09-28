@@ -1,3 +1,5 @@
+import { EducationalInsightsService } from "../../educational-insights/service.js";
+import type { EducationalConfiguration } from "../../educational-insights/configuration.js";
 import { ReviewedEvidenceService } from "../../reviewed-evidence/service.js";
 import { SqliteReviewedEvidenceRepository } from "../persistence/sqlite-reviewed-evidence-repository.js";
 import { UsageHealthService } from "../../usage-health/service.js";
@@ -68,6 +70,7 @@ export interface TeacherHostServiceDependencies {
   /** Activate after validating the matched production dashboard release. */
   readonly profiles?:
     ((database: SqliteApplicationDatabase) => DashboardProfileEndpoint) | undefined;
+  readonly educationalInsights?: EducationalConfiguration | undefined;
   readonly database: SqliteApplicationDatabase;
   readonly clock: Clock;
   readonly ids: IdGenerator;
@@ -149,18 +152,41 @@ export async function composeTeacherServices(
     ].flatMap((reader) => (reader === undefined ? [] : [reader]));
     return new CompositeSkillSource([skills.core, ...owned]);
   };
+  const insights =
+    database.readOne(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'marea_learning_settings'",
+    ) === undefined
+      ? undefined
+      : new EducationalInsightsService(
+          database,
+          clock,
+          dependencies.providers,
+          dependencies.educationalInsights ?? {},
+        );
   const runs = new RunSessionService({
     clock,
     digest,
     ids,
     repository: new SqliteRunSessionRepository(database),
     secrets,
-    snapshots: new ConfigurationSnapshotSource(configurations),
+    snapshots: new ConfigurationSnapshotSource(
+      configurations,
+      insights === undefined
+        ? undefined
+        : (capture, identity) => insights.progress.capture(capture, identity),
+    ),
   });
   const ledger = new SqliteUsageLedger(database);
   const createReservationId = () => ids.createId("event");
   const evaluations = createEvaluationModule({
-    repository: new SqliteEvaluationRepository(database),
+    repository: new SqliteEvaluationRepository(
+      database,
+      insights === undefined
+        ? undefined
+        : (input, draft, actor, now) => {
+            insights.progress.apply(input, draft, actor, now);
+          },
+    ),
     ids,
     clock,
     ledger,
@@ -176,6 +202,7 @@ export async function composeTeacherServices(
   );
   const governanceIds = governanceIdGenerator(ids);
   const services: TeacherProductServices = {
+    ...(insights === undefined ? {} : { educationalInsights: insights }),
     usageHealth: new UsageHealthService(new SqliteUsageHealthRepository(database), clock),
     reviewedEvidence: new ReviewedEvidenceService(new SqliteReviewedEvidenceRepository(database)),
     ...(dependencies.profiles === undefined ? {} : { profiles: dependencies.profiles(database) }),
@@ -252,6 +279,19 @@ export async function composeTeacherServices(
       digest,
       clock,
     },
-    evaluations,
+    evaluations: {
+      recoverAfterExclusiveStartup() {
+        evaluations.recoverAfterExclusiveStartup();
+        insights?.recover();
+      },
+      start() {
+        evaluations.start();
+        insights?.start();
+      },
+      async stop() {
+        await insights?.stop();
+        await evaluations.stop();
+      },
+    },
   });
 }

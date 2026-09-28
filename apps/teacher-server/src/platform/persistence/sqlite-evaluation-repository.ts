@@ -34,7 +34,15 @@ const AUTOMATIC_ELIGIBILITY = `runs.state = 'closed'
   AND NOT EXISTS (SELECT 1 FROM marea_evaluations WHERE run_id = runs.id)`;
 
 export class SqliteEvaluationRepository implements EvaluationRepository {
-  public constructor(private readonly database: SqliteApplicationDatabase) {}
+  public constructor(
+    private readonly database: SqliteApplicationDatabase,
+    private readonly applyProgress?: (
+      input: EvaluationInput,
+      draft: EvaluationDraft,
+      actor: string,
+      now: string,
+    ) => void,
+  ) {}
 
   public automaticCandidates(): readonly string[] {
     return this.database
@@ -149,7 +157,12 @@ export class SqliteEvaluationRepository implements EvaluationRepository {
       if (typeof result === "string") failure = EvaluationFailureSchema.parse(result);
       else {
         if (input.content === null) conflict();
-        draft = validateEvaluationDraft(result, input.mode, input.content.teaching.didacticSkills);
+        draft = validateEvaluationDraft(
+          result,
+          input.mode,
+          input.content.teaching.didacticSkills,
+          input.content.teaching.adaptive?.targets,
+        );
       }
       this.database.execute(
         `UPDATE marea_evaluations SET state = ?2, draft_json = ?3, failure_code = ?4,
@@ -197,6 +210,7 @@ export class SqliteEvaluationRepository implements EvaluationRepository {
         request.draft,
         captured.mode,
         captured.content.teaching.didacticSkills,
+        captured.content.teaching.adaptive?.targets,
       );
       const notice = publishNoticeInTransaction(this.database, {
         noticeId,
@@ -223,6 +237,7 @@ export class SqliteEvaluationRepository implements EvaluationRepository {
           fingerprint,
         ],
       );
+      this.applyProgress?.(captured, draft, identity.userId, now);
       return evaluationRecord(this.requiredRow(request.evaluationId));
     });
   }

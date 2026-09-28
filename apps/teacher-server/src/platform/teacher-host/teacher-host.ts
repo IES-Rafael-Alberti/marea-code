@@ -17,6 +17,7 @@ import { MAX_TEACHING_CONFIGURATION_BYTES } from "@marea/protocol";
 import {
   createAuditMigrationCatalog,
   createProfileMigrationCatalog,
+  createEducationalMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
   openSqliteDatabaseFile,
@@ -157,15 +158,21 @@ function hostPorts(root: string, profiles: boolean) {
         operations,
         storage: storageConfigurationOf(root, operations),
       };
+      const educational =
+        inspectSqliteSchemaVersion({ databasePath: operator.databasePath }) ===
+        createEducationalMigrationCatalog().length;
       state.profiles =
+        educational ||
         profiles ||
         inspectSqliteSchemaVersion({ databasePath: operator.databasePath }) ===
           createProfileMigrationCatalog().length;
       return Promise.resolve<HostInstallationConfig>({
         releaseId: host.releaseId,
-        schemaVersion: state.profiles
-          ? createProfileMigrationCatalog().length
-          : createAuditMigrationCatalog().length,
+        schemaVersion: educational
+          ? createEducationalMigrationCatalog().length
+          : state.profiles
+            ? createProfileMigrationCatalog().length
+            : createAuditMigrationCatalog().length,
         databasePath: operator.databasePath,
         indexPath: operations.indexPath,
         statusPath: host.statusPath,
@@ -207,7 +214,13 @@ function hostPorts(root: string, profiles: boolean) {
         }) => {
           const storage = initializeSqliteStorage({
             databasePath: config.databasePath,
-            schema: state.profiles ? "dashboard-profiles" : "retention-audit",
+            schema:
+              inspectSqliteSchemaVersion({ databasePath: loaded().operator.databasePath }) ===
+              createEducationalMigrationCatalog().length
+                ? "educational-insights"
+                : state.profiles
+                  ? "dashboard-profiles"
+                  : "retention-audit",
           });
           state.handle = {
             mode,
@@ -266,6 +279,7 @@ async function composeHostServices(
       createSqliteCreationGate(ports.indexDatabase(), ports.loaded().storage),
     ),
     evaluationIntervalMs: host.evaluationIntervalMs,
+    educationalInsights: host.educationalInsights,
     onEvaluationError: options.onEvaluationError,
     onInferenceDiagnostic: options.onInferenceDiagnostic,
   });

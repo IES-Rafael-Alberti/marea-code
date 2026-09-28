@@ -1,4 +1,4 @@
-import { EvaluationDraftSchema, type EvaluationDraft } from "@marea/protocol";
+import { EvaluationDraftSchema, type LearningTarget, type EvaluationDraft } from "@marea/protocol";
 
 import { TeacherDomainError } from "../identity/errors.js";
 import type { SkillBundle } from "../teaching/skills/skill-source.js";
@@ -8,6 +8,7 @@ export function validateEvaluationDraft(
   input: EvaluationDraft,
   mode: "tutoring" | "free",
   didacticSkills: readonly SkillBundle[],
+  adaptiveTargets?: readonly LearningTarget[],
 ): EvaluationDraft {
   const draft = EvaluationDraftSchema.parse(input);
   const targets = new Set(
@@ -22,5 +23,12 @@ export function validateEvaluationDraft(
       throw new TeacherDomainError("request.conflict");
   }
   if (targets.size !== 0) throw new TeacherDomainError("request.conflict");
+  for (const target of adaptiveTargets ?? []) {
+    const assessment = draft.criteria.find(
+      (c) => c.skillId === target.skillId && c.code === target.code,
+    );
+    if (assessment?.levelAttempted !== target.target)
+      throw new TeacherDomainError("request.conflict");
+  }
   return draft;
 }
