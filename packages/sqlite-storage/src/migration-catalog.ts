@@ -46,6 +46,13 @@ function validateStatement(statement: string): void {
   const transactionPattern = /\b(?:BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE)\b/iu;
   const userVersionPattern = /\buser_version\b/iu;
   const trimmed = statement.trim();
+  // SQLite trigger bodies are one statement despite their required delimiter.
+  const trigger =
+    /^CREATE TRIGGER [a-z_]+ BEFORE DELETE ON [a-z_]+ BEGIN (UPDATE [\s\S]+); END$/u.exec(trimmed);
+  if (trigger?.[1] !== undefined) {
+    validateStatement(trigger[1]);
+    return;
+  }
   if (
     trimmed.length === 0 ||
     trimmed.includes(";") ||

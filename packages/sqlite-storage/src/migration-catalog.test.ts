@@ -1,3 +1,4 @@
+import { createEducationalMigrationCatalog } from "./educational-migration-catalog.js";
 import { describe, expect, it } from "vitest";
 
 import { SqliteStorageError } from "./contracts.js";
@@ -60,6 +61,16 @@ function recalculateChecksum(migration: MigrationDefinition): void {
 }
 
 describe("migration catalog", () => {
+  it("round-trips educational triggers without permitting extra statements", () => {
+    const educational = createEducationalMigrationCatalog();
+    expect(parseMigrationCatalog(educational)).toEqual(educational);
+    for (const statement of [
+      "CREATE TRIGGER example BEFORE DELETE ON example BEGIN UPDATE example SET id = 1; COMMIT; END",
+      "CREATE TRIGGER example BEFORE DELETE ON example BEGIN UPDATE example SET id = 1; END; DELETE FROM example",
+      "CREATE TRIGGER example BEFORE DELETE ON example BEGIN UPDATE example SET id = 1; UPDATE example SET id = 2; END",
+    ])
+      expectInvalid([createMigration({ statements: [statement] })]);
+  });
   it("round-trips every shipped migration through the storage boundary", () => {
     expect(parseMigrationCatalog(MIGRATIONS)).toEqual(MIGRATIONS);
   });

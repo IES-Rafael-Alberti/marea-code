@@ -1,3 +1,4 @@
+import { educationalAccountRows } from "./educational-retention.js";
 import { profileRetentionRows } from "./profile-retention.js";
 import { canonicalJsonBytes, protocolDigest } from "../canonical-encoder.js";
 import type { ReadOnlySqliteApplicationDatabase } from "../contracts.js";
@@ -138,6 +139,10 @@ export function inspectAccount(
       .map((row) => String(row.id)),
     memberships: membershipNodes(database, userId),
     blockers: blockersOf(database, accountBlockers(), node, userId, now),
-    ...measure(database, [...accountRows(), ...profileRetentionRows(database)], userId),
+    ...measure(
+      database,
+      [...accountRows(), ...profileRetentionRows(database), ...educationalAccountRows(database)],
+      userId,
+    ),
   };
 }

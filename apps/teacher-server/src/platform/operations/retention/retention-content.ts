@@ -1,3 +1,4 @@
+import { hasEducationalStorage } from "./educational-retention.js";
 import { hasProfileStorage } from "./profile-retention.js";
 import type { SqliteApplicationDatabase } from "@marea/sqlite-storage";
 
@@ -39,6 +40,22 @@ function removeRows(database: SqliteApplicationDatabase, plan: RowPlan): number 
       for (const statement of statements)
         removed += database.readAll(`${statement} RETURNING 1`, [id]).length;
   };
+  if (hasEducationalStorage(database)) {
+    run(
+      [
+        "DELETE FROM marea_learning_history WHERE run_id = ?1",
+        "DELETE FROM marea_class_report_sources WHERE run_id = ?1",
+      ],
+      plan.runIds,
+    );
+    run(
+      [
+        "DELETE FROM marea_learning_history WHERE student_id = ?1 AND run_id IS NULL",
+        "DELETE FROM marea_learning_progress WHERE student_id = ?1",
+      ],
+      plan.accountIds,
+    );
+  }
   run(RUN_DELETIONS, plan.runIds);
   run(SNAPSHOT_DELETIONS, plan.snapshotIds);
   if (hasProfileStorage(database))

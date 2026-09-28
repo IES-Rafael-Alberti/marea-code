@@ -4,6 +4,7 @@ import { join } from "node:path";
 import {
   createAuditMigrationCatalog,
   createProfileMigrationCatalog,
+  createEducationalMigrationCatalog,
   inspectSqliteSchemaVersion,
 } from "@marea/sqlite-storage";
 
@@ -31,9 +32,11 @@ export async function readInstallationStatus(root: string): Promise<Summary> {
     ? inspectSqliteSchemaVersion({ databasePath: config.databasePath })
     : null;
   const supported =
-    schemaVersion === createProfileMigrationCatalog().length
-      ? createProfileMigrationCatalog().length
-      : createAuditMigrationCatalog().length;
+    schemaVersion === createEducationalMigrationCatalog().length
+      ? createEducationalMigrationCatalog().length
+      : schemaVersion === createProfileMigrationCatalog().length
+        ? createProfileMigrationCatalog().length
+        : createAuditMigrationCatalog().length;
   // Older schemas are activated forward; a newer one belongs to a later release.
   const upgrade =
     schemaVersion === null
@@ -55,15 +58,15 @@ export async function readInstallationStatus(root: string): Promise<Summary> {
           statusPath: hostConfig.statusPath,
         });
   return {
-    ...(schemaVersion === 9 || schemaVersion === 10
+    ...(schemaVersion === 9 || schemaVersion === 10 || schemaVersion === 11
       ? {
           profileUpgrade: {
-            targetSchemaVersion: 10,
-            state: schemaVersion === 10 ? "active" : "available-offline",
+            targetSchemaVersion: 11,
+            state: schemaVersion === 11 ? "active" : "available-offline",
             release: profileReleaseReadiness(root, config.releaseId),
             command: "installation upgrade-profiles --input <private-json-with-new-backup-name>",
             recovery:
-              "After interruption inspect status: schema 9 requires a new backup name and retry; schema 10 is committed. Recover abandoned ownership through the existing lock workflow.",
+              "After interruption inspect status: schema 9 or 10 requires a new backup name and retry; schema 11 is committed. Recover abandoned ownership through the existing lock workflow.",
             rollback:
               "Stop the host. Use backup restore into an isolated destination; reconcile against the current deletion index. Switch the restored database, matching previous binaries/assets/config together under installation ownership; retain the current deletion index. Never downgrade the live database or copy an old deletion index.",
           },

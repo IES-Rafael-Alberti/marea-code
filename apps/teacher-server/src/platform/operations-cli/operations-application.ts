@@ -1,9 +1,20 @@
+import type {
+  ContinueInput,
+  OperationsApplication,
+  PreviewInput,
+  MarkFailedInput,
+  ReconcileInput,
+  RestoreInput,
+  RestoreResult,
+} from "./operations-application-contracts.js";
+export type { OperationsApplication } from "./operations-application-contracts.js";
 import { existsSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 import {
   createAuditMigrationCatalog,
   createProfileMigrationCatalog,
+  createEducationalMigrationCatalog,
   createMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
@@ -22,9 +33,8 @@ import {
   restoreRecoveryBundle,
 } from "../recovery/recovery-bundle-service.js";
 import { PREVIEW_LIFETIME_MS } from "../operations/canonical-encoder.js";
-import type { MaintenanceCoordinator, RecoveryInspection } from "../operations/contracts.js";
+import type { MaintenanceCoordinator } from "../operations/contracts.js";
 import { createDeletionRecoveryService } from "../operations/deletion-recovery/deletion-recovery.js";
-import type { RecoveryInput } from "../operations/recovery-schemas.js";
 import { createAuthorizedRecoveryBundle } from "../operations/restore-authority/authorized-backup.js";
 import { reconcileRestoredBundle } from "../operations/restore-authority/restore-reconciliation.js";
 import {
@@ -33,13 +43,7 @@ import {
 } from "../operations/retention/retention-backups.boundary.js";
 import { retentionGraphReader } from "../operations/retention/retention-graph.js";
 import { createRetentionService } from "../operations/retention/retention-service.js";
-import {
-  RetentionPreviewRequestSchema,
-  type PreviewArtifact,
-  type Reconciliation,
-  type RetentionConfirmation,
-  type TargetRef,
-} from "../operations/schemas.js";
+import { RetentionPreviewRequestSchema, type PreviewArtifact } from "../operations/schemas.js";
 import { createApplicationAuditStores } from "../operations/storage/application-audit-store.js";
 import { parseStorageConfiguration } from "../operations/storage/configuration.js";
 import { createSqliteAuditIndexEvidence } from "../operations/storage/sqlite-audit-index-evidence.js";
@@ -52,72 +56,10 @@ import {
   createInstallationTransfer,
   recordedTransferDestination,
   type TransferStep,
-  type TransferSummary,
 } from "./installation-transfer.js";
 import { readOperationsConfig, type OperationsConfig } from "./operations-config.js";
 import { upgradeProfilesOffline } from "./profile-upgrade.js";
 import type { TransferContinuation } from "./transfer-schemas.js";
-
-interface PreviewInput {
-  readonly requestId: string;
-  readonly previewId: string;
-  readonly policyRevision: string;
-  readonly targets: readonly TargetRef[];
-}
-
-type ContinueInput = Pick<
-  Extract<RecoveryInput, { action: "continue-exact" }>,
-  "operationId" | "expectedIndexGeneration" | "artifactDigest"
->;
-type MarkFailedInput = Pick<
-  Extract<RecoveryInput, { action: "mark-failed" }>,
-  "operationId" | "expectedIndexGeneration"
->;
-interface ReconcileInput {
-  readonly bundlePath: string;
-  readonly restoredDatabasePath: string;
-}
-interface RestoreInput {
-  readonly bundlePath: string;
-  readonly destinationRoot: string;
-}
-interface RestoreResult {
-  readonly state: "restored" | "blocked";
-  readonly reasonCode: Reconciliation["reasonCode"] | "no-deletions-recorded";
-  readonly schemaVersion: number;
-  readonly checked: number;
-  readonly tombstoned: number;
-  readonly path: string | null;
-}
-
-/**
- * Every command except initialization, activation, pre-activation backup and restore requires an
- * audit-activated installation.
- */
-export interface OperationsApplication {
-  initialize(): { readonly schemaVersion: number };
-  activate(): { readonly schemaVersion: number };
-  upgradeProfiles(
-    name: string,
-  ): Promise<{ readonly schemaVersion: number; readonly backupPath: string }>;
-  preview(input: PreviewInput): Promise<PreviewArtifact>;
-  confirm(artifact: PreviewArtifact): Promise<RetentionConfirmation>;
-  inspect(operationId: string | undefined): Promise<RecoveryInspection>;
-  continueExact(input: ContinueInput): Promise<RecoveryInspection>;
-  markFailed(input: MarkFailedInput): Promise<RecoveryInspection>;
-  createBackup(name: string): Promise<{ readonly path: string; readonly files: number }>;
-  reconcile(input: ReconcileInput): Promise<Reconciliation>;
-  restore(input: RestoreInput): Promise<RestoreResult>;
-  transferStart(input: {
-    readonly handoffId: string;
-    readonly destinationInstallation: string;
-  }): Promise<TransferSummary>;
-  transferContinue(input: TransferContinuation): Promise<TransferSummary>;
-  transferAbort(input: { readonly handoffId: string }): Promise<TransferSummary>;
-  transferInspect(): Promise<TransferSummary | null>;
-  close(): void;
-}
-
 function unavailable(): OperatorCliError {
   return new OperatorCliError("prerequisite-unavailable");
 }
@@ -151,7 +93,8 @@ export function createOperationsApplication(
   const schemaVersion = existsSync(config.databasePath)
     ? inspectSqliteSchemaVersion({ databasePath: config.databasePath })
     : null;
-  let profiles = schemaVersion === profileVersion;
+  let educational = schemaVersion === createEducationalMigrationCatalog().length;
+  let profiles = educational || schemaVersion === profileVersion;
   const activated = schemaVersion === auditVersion || profiles;
   const storageConfiguration = parseStorageConfiguration({
     installationRoot: capability.installationRoot,
@@ -168,7 +111,11 @@ export function createOperationsApplication(
     if (!activated) throw unavailable();
     storage ??= initializeSqliteStorage({
       databasePath: config.databasePath,
-      schema: profiles ? "dashboard-profiles" : "retention-audit",
+      schema: educational
+        ? "educational-insights"
+        : profiles
+          ? "dashboard-profiles"
+          : "retention-audit",
     });
     indexFile ??= openSqliteDatabaseFile({ databasePath: config.indexPath });
     return { storage, indexDatabase: indexFile.database };
@@ -311,7 +258,11 @@ export function createOperationsApplication(
       }
       const upgraded = initializeSqliteStorage({
         databasePath: config.databasePath,
-        schema: profiles ? "dashboard-profiles" : "retention-audit",
+        schema: educational
+          ? "educational-insights"
+          : profiles
+            ? "dashboard-profiles"
+            : "retention-audit",
       });
       try {
         return { schemaVersion: upgraded.schema.version };
@@ -332,6 +283,7 @@ export function createOperationsApplication(
         installations.profileUpgradeDurable,
       );
       profiles = true;
+      educational = true;
       return result;
     },
     async preview(input: PreviewInput) {
@@ -433,6 +385,7 @@ export function createOperationsApplication(
         [legacyVersion, "application" as const],
         [auditVersion, "retention-audit" as const],
         [profileVersion, "dashboard-profiles" as const],
+        [createEducationalMigrationCatalog().length, "educational-insights" as const],
       ]).get(release.schemaVersion);
       if (catalog === undefined) throw unavailable();
       const blocked = (reasonCode: RestoreResult["reasonCode"], checked = 0, tombstoned = 0) => ({

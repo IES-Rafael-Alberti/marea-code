@@ -62,7 +62,8 @@ export interface SqliteApplicationDatabase {
  * `application` is the accepted base catalog. `retention-audit` adds the explicit
  * retention audit migration; opening an application database with it activates that schema.
  */
-export type SqliteSchemaCatalog = "application" | "retention-audit" | "dashboard-profiles";
+export type SqliteSchemaCatalog =
+  "application" | "retention-audit" | "dashboard-profiles" | "educational-insights";
 
 export interface SqliteDatabaseFileOptions {
   readonly databasePath: string;

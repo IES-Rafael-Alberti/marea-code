@@ -1,3 +1,4 @@
+import { educationalRunRows } from "./educational-retention.js";
 import { protocolDigest } from "../canonical-encoder.js";
 import type { ReadOnlySqliteApplicationDatabase } from "../contracts.js";
 import { TargetRefSchema, type TargetRef } from "../schemas.js";
@@ -157,7 +158,7 @@ export function inspectRun(
     node,
     snapshotId,
     blockers: blockersOf(database, runBlockers(), node, runId, now),
-    ...measure(database, runRows(), runId),
+    ...measure(database, [...runRows(), ...educationalRunRows(database)], runId),
   };
 }
 

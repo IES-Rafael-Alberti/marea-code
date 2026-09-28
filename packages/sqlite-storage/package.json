@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./migrations": "./src/migration-catalog.ts"
+    "./migrations": "./src/migration-catalog.ts",
+    "./catalogs": "./src/catalogs.ts"
   },
   "scripts": {
     "mutation": "stryker run stryker.config.mjs",

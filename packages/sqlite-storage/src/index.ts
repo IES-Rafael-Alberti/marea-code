@@ -36,3 +36,5 @@ export { createAuditMigrationCatalog } from "./audit-migration-catalog.js";
 export { createDashboardProfileStore, type StoredDashboardProfile } from "./profile-storage.js";
 
 export { createProfileMigrationCatalog } from "./profile-migration-catalog.js";
+
+export { createEducationalMigrationCatalog } from "./educational-migration-catalog.js";

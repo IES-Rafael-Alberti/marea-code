@@ -9,6 +9,7 @@ import {
 import {
   createAuditMigrationCatalog,
   createProfileMigrationCatalog,
+  createEducationalMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
   type SqliteStorage,
@@ -102,7 +103,8 @@ export function createOperatorCliApplication(
 ): ComposedInstallation {
   capability.assertOwned();
   const version = inspectSqliteSchemaVersion({ databasePath: config.databasePath });
-  const profiles = version === createProfileMigrationCatalog().length;
+  const educational = version === createEducationalMigrationCatalog().length;
+  const profiles = educational || version === createProfileMigrationCatalog().length;
   const activated = version === createAuditMigrationCatalog().length || profiles;
   if (!activated && version !== createMigrationCatalog().length) throw unavailable();
   // After OPERATIONS activation, account creation consults the deletion index of this installation.
@@ -115,7 +117,11 @@ export function createOperatorCliApplication(
       activated
         ? {
             databasePath: config.databasePath,
-            schema: profiles ? "dashboard-profiles" : "retention-audit",
+            schema: educational
+              ? "educational-insights"
+              : profiles
+                ? "dashboard-profiles"
+                : "retention-audit",
           }
         : { databasePath: config.databasePath },
     );

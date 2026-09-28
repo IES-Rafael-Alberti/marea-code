@@ -1,4 +1,7 @@
-import { createProfileMigrationCatalog } from "@marea/sqlite-storage";
+import {
+  createProfileMigrationCatalog,
+  createEducationalMigrationCatalog,
+} from "@marea/sqlite-storage";
 import { createHash, randomUUID } from "node:crypto";
 import {
   chmodSync,
@@ -234,9 +237,11 @@ export function createInstallationTransfer(options: {
         destinationRoot: staging,
         path: bundlePath(record),
         schema:
-          bundle.manifest.release.schemaVersion === createProfileMigrationCatalog().length
-            ? "dashboard-profiles"
-            : "retention-audit",
+          bundle.manifest.release.schemaVersion === createEducationalMigrationCatalog().length
+            ? "educational-insights"
+            : bundle.manifest.release.schemaVersion === createProfileMigrationCatalog().length
+              ? "dashboard-profiles"
+              : "retention-audit",
       },
       bundle.manifest.release,
       destination.config.limits,

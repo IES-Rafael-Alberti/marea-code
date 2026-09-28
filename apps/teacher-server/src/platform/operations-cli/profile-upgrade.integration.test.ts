@@ -52,11 +52,11 @@ describe("explicit offline profile upgrade", () => {
           command: "installation upgrade-profiles --input <private-json-with-new-backup-name>",
           release: { ready: true },
           rollback: expect.stringContaining("current deletion index") as unknown,
-          recovery: expect.stringContaining("schema 10 is committed") as unknown,
+          recovery: expect.stringContaining("schema 11 is committed") as unknown,
         },
       });
       expect(await owned.app.upgradeProfiles("before-profiles")).toEqual({
-        schemaVersion: 10,
+        schemaVersion: 11,
         backupPath: join(f.root, "backups", "before-profiles"),
       });
       expect(
@@ -76,7 +76,7 @@ describe("explicit offline profile upgrade", () => {
     }
     const restarted = open(f);
     try {
-      expect(restarted.app.activate()).toEqual({ schemaVersion: 10 });
+      expect(restarted.app.activate()).toEqual({ schemaVersion: 11 });
       expect(await readInstallationStatus(f.root)).toMatchObject({
         profileUpgrade: { state: "active" },
       });
@@ -96,7 +96,7 @@ describe("explicit offline profile upgrade", () => {
         owned.close();
       }
       expect(inspectSqliteSchemaVersion({ databasePath: f.databasePath })).toBe(
-        step === "backed-up" ? 9 : 10,
+        step === "backed-up" ? 9 : 11,
       );
       expect(
         inspectSqliteSchemaVersion({
@@ -107,7 +107,7 @@ describe("explicit offline profile upgrade", () => {
       try {
         await expect(restarted.app.upgradeProfiles("interrupted")).rejects.toThrow();
         if (step === "backed-up")
-          expect(await restarted.app.upgradeProfiles("retry")).toMatchObject({ schemaVersion: 10 });
+          expect(await restarted.app.upgradeProfiles("retry")).toMatchObject({ schemaVersion: 11 });
       } finally {
         restarted.close();
       }
