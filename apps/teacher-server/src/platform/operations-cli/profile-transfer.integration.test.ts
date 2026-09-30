@@ -7,30 +7,33 @@ import {
   cleanupTransferInstallations,
 } from "./operations-transfer.fixture.js";
 afterEach(cleanupTransferInstallations);
-it("transfers schema-10 profile reset revisions with the installation authority", async () => {
-  const source = await activatedSource();
-  const storage = initializeSqliteStorage({
-    databasePath: source.config.databasePath,
-    schema: "dashboard-profiles",
-  });
-  const user = storage.database.readOne("SELECT id FROM marea_users LIMIT 1");
-  if (typeof user?.id !== "string") throw new Error("Missing synthetic user");
-  const value = {
-    schemaVersion: 1,
-    revision: "transferred-reset",
-    updatedAt: "2026-09-22T12:00:00Z",
-    serializedValue: null,
-  };
-  createDashboardProfileStore(storage.database).write(user.id, null, value);
-  storage.close();
-  const destination = await transfer(source);
-  const restored = initializeSqliteStorage({
-    databasePath: destination.config.databasePath,
-    schema: "dashboard-profiles",
-  });
-  expect(createDashboardProfileStore(restored.database).read(user.id, null)).toEqual(value);
-  restored.close();
-});
+it.each(["dashboard-profiles", "educational-insights"] as const)(
+  "transfers %s with profile reset revisions and installation authority",
+  async (schema) => {
+    const source = await activatedSource();
+    const storage = initializeSqliteStorage({
+      databasePath: source.config.databasePath,
+      schema,
+    });
+    const user = storage.database.readOne("SELECT id FROM marea_users LIMIT 1");
+    if (typeof user?.id !== "string") throw new Error("Missing synthetic user");
+    const value = {
+      schemaVersion: 1,
+      revision: "transferred-reset",
+      updatedAt: "2026-09-22T12:00:00Z",
+      serializedValue: null,
+    };
+    createDashboardProfileStore(storage.database).write(user.id, null, value);
+    storage.close();
+    const destination = await transfer(source);
+    const restored = initializeSqliteStorage({
+      databasePath: destination.config.databasePath,
+      schema,
+    });
+    expect(createDashboardProfileStore(restored.database).read(user.id, null)).toEqual(value);
+    restored.close();
+  },
+);
 
 it("preserves schema 9 when transferring an installation without profiles", async () => {
   const source = await activatedSource();

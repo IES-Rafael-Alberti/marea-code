@@ -30,18 +30,18 @@ export function ReportsView({ model, props, shared }: Props) {
     action,
   } = model;
   const list = reportsSchema.safeParse(data);
-  const download = async () => {
+  const download = async (reportId: string) => {
     try {
       const v = await client(
         props.classId,
-        { kind: "download", reportId: selectedReport },
+        { kind: "download", reportId },
         z.object({ html: z.string() }),
         abort.current.signal,
       );
       const url = URL.createObjectURL(new Blob([v.html], { type: "text/html;charset=utf-8" }));
       const a = document.createElement("a");
       a.href = url;
-      a.download = `class-report-${selectedReport ?? "report"}.html`;
+      a.download = `class-report-${reportId}.html`;
       a.click();
       setTimeout(() => {
         URL.revokeObjectURL(url);
@@ -122,15 +122,18 @@ export function ReportsView({ model, props, shared }: Props) {
               {m.back}
             </button>
           )}
-          {list.success && list.data.entries.length === 51 && (
-            <button
-              onClick={() => {
-                setPage(list.data.entries.at(-1)?.id ?? null);
-              }}
-            >
-              {m.more}
-            </button>
-          )}
+          {list.success &&
+            list.data.entries.length === 51 &&
+            list.data.entries.slice(-1).map((last) => (
+              <button
+                key={last.id}
+                onClick={() => {
+                  setPage(last.id);
+                }}
+              >
+                {m.more}
+              </button>
+            ))}
           {list.success && !list.data.configured && <p>{m.unconfigured}</p>}
           {list.success &&
             list.data.entries.map((r) => (
@@ -176,7 +179,7 @@ export function ReportsView({ model, props, shared }: Props) {
               )}
               {report.result !== null && (
                 <>
-                  <button onClick={() => void download()}>{m.download}</button>
+                  <button onClick={() => void download(report.id)}>{m.download}</button>
                   {report.result.partial && <p role="status">{m.partial}</p>}
                   <p>{report.result.synthesis.summary}</p>
                   {report.result.synthesis.findings.map((f, i) => (

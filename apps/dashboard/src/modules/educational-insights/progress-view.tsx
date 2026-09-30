@@ -61,18 +61,20 @@ export function ProgressView({ model, props, shared }: Props) {
           {m.back}
         </button>
       )}
-      {students.length === 101 && (
-        <button
-          disabled={busy}
-          onClick={() => {
-            setPage(students.at(-1)?.id ?? null);
-            setStudent("");
-            setData(null);
-          }}
-        >
-          {m.more}
-        </button>
-      )}
+      {students.length === 101 &&
+        students.slice(-1).map((last) => (
+          <button
+            key={last.id}
+            disabled={busy}
+            onClick={() => {
+              setPage(last.id);
+              setStudent("");
+              setData(null);
+            }}
+          >
+            {m.more}
+          </button>
+        ))}
       {value.success && (
         <>
           <label>

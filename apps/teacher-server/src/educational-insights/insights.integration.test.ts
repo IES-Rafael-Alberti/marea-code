@@ -1,3 +1,4 @@
+import { RunIdSchema } from "@marea/protocol";
 import { SqliteEvaluationRepository } from "../platform/persistence/sqlite-evaluation-repository.js";
 import { reviewRequest } from "../../test-support/evaluation-fixture.js";
 import { describe, expect, it, vi } from "vitest";
@@ -345,4 +346,131 @@ it("commits reviewed progress atomically with approval and never advances on a d
   repository.approve(request);
   expect(targetOf(capture(f)).achieved).toBe(1);
   expect(f.database.readAll("SELECT * FROM marea_teacher_notices")).toHaveLength(1);
+});
+it("dispatches audited adjustments and returns their typed history", () => {
+  const f = fixture();
+  enabled(f);
+  const target = targetOf(capture(f));
+  const revision = f.progress.read("class:one", "s1", null).revision;
+  const result = f.service.read(
+    teacher,
+    f.query({
+      kind: "adjust",
+      studentId: "s1",
+      keys: [target.key],
+      level: 4,
+      reason: "Observed independently",
+      expectedRevision: revision,
+    }),
+  );
+  expect(result.data).toMatchObject({ entries: [expect.objectContaining({ level: 4 })] });
+  expect(targetOf(capture(f))).toMatchObject({ achieved: 4, target: 4 });
+  expect(
+    f.service.read(
+      teacher,
+      f.query({ kind: "history", studentId: "s1", key: target.key, after: 0 }),
+    ).data,
+  ).toMatchObject({
+    entries: [expect.objectContaining({ previousLevel: 0, level: 4, actor: teacher.userId })],
+  });
+  expect(() => {
+    f.progress.adjust(
+      "class:one",
+      "s1",
+      ["missing"],
+      0,
+      "Reset",
+      f.progress.read("class:one", "s1", null).revision ?? "",
+      teacher.userId,
+      NOW,
+    );
+  }).toThrow("request.conflict");
+});
+it("skips missing teaching, nonclass identities and nonadaptive evaluation inputs", () => {
+  const f = fixture();
+  enabled(f);
+  const captured = capture(f);
+  expect(f.progress.capture(captured, teacher)).toBe(captured);
+  const withoutTeaching = { snapshot: captured.snapshot, providerRoute: captured.providerRoute };
+  expect(f.progress.capture(withoutTeaching, student)).toBe(withoutTeaching);
+  const input = captureEvaluationInput(f.database, "run:b");
+  f.progress.apply({ ...input, mode: "free" }, EVALUATION_DRAFT, teacher.userId, NOW);
+  f.progress.apply({ ...input, content: null }, EVALUATION_DRAFT, teacher.userId, NOW);
+  f.progress.apply(input, EVALUATION_DRAFT, teacher.userId, NOW);
+  expect(f.database.readAll("SELECT * FROM marea_learning_history")).toEqual([]);
+});
+it("does not advance failed criteria or removed progress and rejects missing runs", () => {
+  const f = fixture();
+  enabled(f);
+  const captured = capture(f);
+  approve(f, captured, false);
+  expect(targetOf(capture(f)).achieved).toBe(0);
+  f.database.execute("DELETE FROM marea_learning_history");
+  f.database.execute("DELETE FROM marea_learning_progress");
+  approve(f, captured);
+  expect(f.database.readAll("SELECT * FROM marea_learning_history")).toEqual([]);
+  const input = captureEvaluationInput(f.database, "run:b");
+  if (input.content === null || captured.teaching === undefined) throw new Error("input");
+  const teaching = captured.teaching;
+  const content = input.content;
+  expect(() => {
+    f.progress.apply(
+      {
+        ...input,
+        runId: RunIdSchema.parse("missing"),
+        mode: "tutoring",
+        content: { ...content, teaching },
+      },
+      EVALUATION_DRAFT,
+      teacher.userId,
+      NOW,
+    );
+  }).toThrow("run.unavailable");
+});
+it("rejects missing adaptive assessments and retains a level already achieved", () => {
+  const f = fixture();
+  enabled(f);
+  const captured = capture(f),
+    target = targetOf(captured);
+  const input = captureEvaluationInput(f.database, "run:b");
+  if (input.content === null || captured.teaching === undefined) throw new Error("input");
+  const adaptive = {
+    ...input,
+    mode: "tutoring" as const,
+    content: { ...input.content, teaching: captured.teaching },
+  };
+  expect(() => {
+    f.progress.apply(adaptive, EVALUATION_DRAFT, teacher.userId, NOW);
+  }).toThrow("request.conflict");
+  f.database.execute("UPDATE marea_learning_progress SET level = 1");
+  const assessment = {
+    skillId: target.skillId,
+    code: target.code,
+    result: "passed" as const,
+    confidence: "high" as const,
+    evidence: "Observed",
+    levelAttempted: target.target,
+  };
+  f.progress.apply(
+    adaptive,
+    { ...EVALUATION_DRAFT, criteria: [{ ...assessment, code: "other" }, assessment] },
+    teacher.userId,
+    NOW,
+  );
+  expect(f.database.readOne("SELECT level,memory FROM marea_learning_progress")).toMatchObject({
+    level: 1n,
+    memory: "",
+  });
+});
+it("defaults missing progress after concurrent deletion without retaining stale memory", () => {
+  const f = fixture();
+  enabled(f);
+  const read = f.database.readOne.bind(f.database);
+  const spy = vi
+    .spyOn(f.database, "readOne")
+    .mockImplementation((sql, values) =>
+      sql.startsWith("SELECT level, epoch, memory") ? undefined : read(sql, values),
+    );
+  expect(targetOf(capture(f))).toMatchObject({ achieved: 0, epoch: 0, target: 1 });
+  spy.mockRestore();
 });

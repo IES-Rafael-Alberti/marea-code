@@ -26,156 +26,168 @@ import { release, schemas } from "../../dashboard-profiles/release.fixture.js";
 import { profileRetentionRows } from "../operations/retention/profile-retention.js";
 import { removeRemainingRetentionContent } from "../operations/retention/retention-content.js";
 afterEach(cleanupTeacherHostInstallations);
-it("starts the production host on schema 10, authenticates, persists, reopens and restores profiles", async () => {
-  const f = teacherHostInstallation();
-  const upgraded = initializeSqliteStorage({
-    databasePath: f.databasePath,
-    schema: "dashboard-profiles",
-  });
-  expect(upgraded.schema.version).toBe(10);
-  upgraded.close();
-  const host = await startTeacherHost({
-    installationRoot: f.root,
-    releaseId: "release:host",
-    serve: f.serve,
-    ...syntheticProfileHostServices(() => "profile-host-revision"),
-  });
-  expect(host.state).toBe("ready");
-  if (host.state !== "ready" || f.served.fetch === undefined) throw new Error("Host not ready");
-  const fetch = f.served.fetch;
-  const post = (path: string, body: object, cookie = "") =>
-    fetch(
-      new Request(`http://teacher.test${path}`, {
-        method: "POST",
-        headers: {
-          host: "teacher.test",
-          origin: "https://dashboard.test",
-          cookie,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }),
-    );
-  const login = await post("/v1/auth/login", {
-    protocolVersion: "0.1",
-    requestId: "login-request",
-    kind: "credential-login",
-    credentials: { login: "teacher", password: "teacher-password" },
-  });
-  expect(login.status).toBe(200);
-  const cookie = login.headers.get("set-cookie")?.split(";")[0];
-  if (cookie === undefined) throw new Error("No cookie");
-  const saved = await post(
-    "/api/v1/dashboard/profiles/save",
-    {
+it.each([
+  ["dashboard-profiles", 10],
+  ["educational-insights", 11],
+] as const)(
+  "starts the production host on %s, authenticates, persists, reopens and restores profiles",
+  async (schema, version) => {
+    const f = teacherHostInstallation();
+    const upgraded = initializeSqliteStorage({
+      databasePath: f.databasePath,
+      schema,
+    });
+    expect(upgraded.schema.version).toBe(version);
+    upgraded.close();
+    const host = await startTeacherHost({
+      installationRoot: f.root,
+      releaseId: "release:host",
+      serve: f.serve,
+      ...syntheticProfileHostServices(() => "profile-host-revision"),
+    });
+    expect(host.state).toBe("ready");
+    if (host.state !== "ready" || f.served.fetch === undefined) throw new Error("Host not ready");
+    const fetch = f.served.fetch;
+    const post = (path: string, body: object, cookie = "") =>
+      fetch(
+        new Request(`http://teacher.test${path}`, {
+          method: "POST",
+          headers: {
+            host: "teacher.test",
+            origin: "https://dashboard.test",
+            cookie,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }),
+      );
+    const login = await post("/v1/auth/login", {
       protocolVersion: "0.1",
-      requestId: "save-request",
-      kind: "dashboard-profile-save",
-      scope: { kind: "teacher" },
-      expectedRevision: null,
-      expectedPersonalRevision: null,
-      catalogRevision: release.revision,
-      discardUnavailable: false,
-      value: release.defaults,
-    },
-    cookie,
-  );
-  expect(saved.status).toBe(200);
-  expect(schemas.state.parse(await saved.json()).personal.revision).toBe("profile-host-revision");
-  await host.stop();
-  const reopened = initializeSqliteStorage({
-    databasePath: f.databasePath,
-    schema: "dashboard-profiles",
-  });
-  const store = createDashboardProfileStore(reopened.database);
-  expect(store.read("user:teacher", null)?.revision).toBe("profile-host-revision");
-  expect(profileRetentionRows(reopened.database)).toHaveLength(1);
-  const backup = reopened.createBackup();
-  expect(backup.schemaVersion).toBe(10);
-  reopened.close();
-  const restored = restoreSqliteBackup({
-    databasePath: join(f.root, "restored.sqlite"),
-    schema: "dashboard-profiles",
-    backup,
-  });
-  expect(
-    createDashboardProfileStore(restored.database).read("user:teacher", null)?.serializedValue,
-  ).toBe(JSON.stringify(release.defaults));
-  restored.database.execute("DELETE FROM marea_auth_sessions");
-  expect(
-    removeRemainingRetentionContent(restored.database, {
-      accountIds: ["user:teacher"],
-      runIds: [],
-      snapshotIds: [],
-    }),
-  ).toBe(2);
-  expect(createDashboardProfileStore(restored.database).read("user:teacher", null)).toBeNull();
-  restored.close();
-  expect(() =>
-    initializeSqliteStorage({ databasePath: f.databasePath, schema: "retention-audit" }),
-  ).toThrow();
-});
-
-it("includes schema-10 profiles in the authorized operations backup and restore workflow", async () => {
-  const f = teacherHostInstallation();
-  const storage = initializeSqliteStorage({
-    databasePath: f.databasePath,
-    schema: "dashboard-profiles",
-  });
-  createDashboardProfileStore(storage.database).write("user:teacher", null, {
-    schemaVersion: 1,
-    revision: "backup-revision",
-    updatedAt: "2026-09-22T12:00:00Z",
-    serializedValue: JSON.stringify(release.defaults),
-  });
-  storage.close();
-  const owned = acquireInstallation(f.root);
-  const operations = createOperationsApplication(
-    owned.capability,
-    readOperationsConfig(f.root),
-    () => "2026-09-22T12:00:00Z",
-  );
-  try {
-    expect(operations.activate().schemaVersion).toBe(10);
-    const backup = await operations.createBackup("profiles-backup");
-    const destination = `${f.root}-profiles-restored`;
-    try {
-      const result = await operations.restore({
-        bundlePath: backup.path,
-        destinationRoot: destination,
-      });
-      expect(result).toMatchObject({ state: "restored", schemaVersion: 10 });
-      const restored = initializeSqliteStorage({
-        databasePath: join(destination, "database.sqlite"),
-        schema: "dashboard-profiles",
-      });
-      expect(
-        createDashboardProfileStore(restored.database).read("user:teacher", null)?.revision,
-      ).toBe("backup-revision");
-      restored.close();
-    } finally {
-      rmSync(destination, { recursive: true, force: true });
-    }
-  } finally {
-    operations.close();
-    owned.release();
-  }
-  const operatorOwnership = acquireInstallation(f.root);
-  try {
-    const operator = createOperatorCliApplication(
-      operatorOwnership.capability,
-      readOperatorCliConfig(f.root),
+      requestId: "login-request",
+      kind: "credential-login",
+      credentials: { login: "teacher", password: "teacher-password" },
+    });
+    expect(login.status).toBe(200);
+    const cookie = login.headers.get("set-cookie")?.split(";")[0];
+    if (cookie === undefined) throw new Error("No cookie");
+    const saved = await post(
+      "/api/v1/dashboard/profiles/save",
+      {
+        protocolVersion: "0.1",
+        requestId: "save-request",
+        kind: "dashboard-profile-save",
+        scope: { kind: "teacher" },
+        expectedRevision: null,
+        expectedPersonalRevision: null,
+        catalogRevision: release.revision,
+        discardUnavailable: false,
+        value: release.defaults,
+      },
+      cookie,
     );
-    operator.close();
-  } finally {
-    operatorOwnership.release();
-  }
-  expect(await readInstallationStatus(f.root)).toMatchObject({
-    schemaVersion: 10,
-    supportedSchemaVersion: 10,
-    upgrade: "none",
-  });
-});
+    expect(saved.status).toBe(200);
+    expect(schemas.state.parse(await saved.json()).personal.revision).toBe("profile-host-revision");
+    await host.stop();
+    const reopened = initializeSqliteStorage({
+      databasePath: f.databasePath,
+      schema,
+    });
+    const store = createDashboardProfileStore(reopened.database);
+    expect(store.read("user:teacher", null)?.revision).toBe("profile-host-revision");
+    expect(profileRetentionRows(reopened.database)).toHaveLength(1);
+    const backup = reopened.createBackup();
+    expect(backup.schemaVersion).toBe(version);
+    reopened.close();
+    const restored = restoreSqliteBackup({
+      databasePath: join(f.root, "restored.sqlite"),
+      schema,
+      backup,
+    });
+    expect(
+      createDashboardProfileStore(restored.database).read("user:teacher", null)?.serializedValue,
+    ).toBe(JSON.stringify(release.defaults));
+    restored.database.execute("DELETE FROM marea_auth_sessions");
+    expect(
+      removeRemainingRetentionContent(restored.database, {
+        accountIds: ["user:teacher"],
+        runIds: [],
+        snapshotIds: [],
+      }),
+    ).toBe(2);
+    expect(createDashboardProfileStore(restored.database).read("user:teacher", null)).toBeNull();
+    restored.close();
+    expect(() =>
+      initializeSqliteStorage({ databasePath: f.databasePath, schema: "retention-audit" }),
+    ).toThrow();
+  },
+);
+
+it.each([
+  ["dashboard-profiles", 10],
+  ["educational-insights", 11],
+] as const)(
+  "includes %s in the authorized operations backup and restore workflow",
+  async (schema, version) => {
+    const f = teacherHostInstallation();
+    const storage = initializeSqliteStorage({
+      databasePath: f.databasePath,
+      schema,
+    });
+    createDashboardProfileStore(storage.database).write("user:teacher", null, {
+      schemaVersion: 1,
+      revision: "backup-revision",
+      updatedAt: "2026-09-22T12:00:00Z",
+      serializedValue: JSON.stringify(release.defaults),
+    });
+    storage.close();
+    const owned = acquireInstallation(f.root);
+    const operations = createOperationsApplication(
+      owned.capability,
+      readOperationsConfig(f.root),
+      () => "2026-09-22T12:00:00Z",
+    );
+    try {
+      expect(operations.activate().schemaVersion).toBe(version);
+      const backup = await operations.createBackup("profiles-backup");
+      const destination = `${f.root}-profiles-restored`;
+      try {
+        const result = await operations.restore({
+          bundlePath: backup.path,
+          destinationRoot: destination,
+        });
+        expect(result).toMatchObject({ state: "restored", schemaVersion: version });
+        const restored = initializeSqliteStorage({
+          databasePath: join(destination, "database.sqlite"),
+          schema,
+        });
+        expect(
+          createDashboardProfileStore(restored.database).read("user:teacher", null)?.revision,
+        ).toBe("backup-revision");
+        restored.close();
+      } finally {
+        rmSync(destination, { recursive: true, force: true });
+      }
+    } finally {
+      operations.close();
+      owned.release();
+    }
+    const operatorOwnership = acquireInstallation(f.root);
+    try {
+      const operator = createOperatorCliApplication(
+        operatorOwnership.capability,
+        readOperatorCliConfig(f.root),
+      );
+      operator.close();
+    } finally {
+      operatorOwnership.release();
+    }
+    expect(await readInstallationStatus(f.root)).toMatchObject({
+      schemaVersion: version,
+      supportedSchemaVersion: version,
+      upgrade: "none",
+    });
+  },
+);
 function missingRelease(): never {
   validateDashboardProfileRelease({ ...release, themes: [] });
   throw new Error("Invalid release was accepted");

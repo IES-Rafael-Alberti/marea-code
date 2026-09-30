@@ -1,3 +1,4 @@
+import { educationalAccountRows } from "../platform/operations/retention/educational-retention.js";
 import { it, expect } from "vitest";
 import { fixture } from "./insights.fixture.js";
 import { NOW, teacher } from "../../test-support/evaluation-fixture.js";
@@ -26,4 +27,12 @@ it("includes report dependencies in retention previews and invalidates them duri
   );
   expect(f.service.reports.read(report.id, "class:one").state).toBe("invalidated");
   expect(f.database.readOne("SELECT id FROM marea_runs WHERE id = 'run:b'")).toBeUndefined();
+});
+
+it("includes learning progress and manual history in account retention", () => {
+  const f = fixture();
+  expect(educationalAccountRows(f.database).map(([name]) => name)).toEqual([
+    "learningProgress",
+    "learningManualHistory",
+  ]);
 });

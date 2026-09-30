@@ -33,6 +33,9 @@ vi.mock("@marea/plugin-runtime/browser", async () => {
   const load = () => Promise.resolve({ typedEntry: { mount: mountDashboardHostView } });
   return {
     dashboardModuleLoaders: {
+      "org.marea.module.map": load,
+      "org.marea.module.progress": load,
+      "org.marea.module.reports": load,
       "org.marea.module.usage": load,
       "org.marea.module.health": load,
       "org.marea.module.reviewed-evidence": load,
@@ -219,3 +222,33 @@ it("mounts optional reviewed evidence with a class-bound navigation callback", a
   expect(navigate).toHaveBeenCalledWith(null, "run:1", expect.any(AbortSignal));
   dispose();
 });
+it.each(["map", "progress", "reports"])(
+  "mounts the educational %s adapter and binds navigation",
+  async (kind) => {
+    const { createEducationalAdapters } = await import("./educational-insights/adapter.js");
+    const { InsightView } = await import("./educational-insights/view.js");
+    const navigate = vi.fn().mockResolvedValue(true);
+    const id = `org.marea.module.${kind}`;
+    const adapter = createEducationalAdapters(vi.fn(), navigate).get(id);
+    if (!adapter) throw new Error("missing adapter");
+    const abort = new AbortController();
+    await adapter({ moduleId: id, ...selection }).mount(
+      element,
+      { classId: "class:a", locale: "en", signal: abort.signal, timeRange: { from: "", to: "" } },
+      vi.fn(),
+    );
+    const context = mocks.contexts.at(-1);
+    if (!context) throw new Error("missing context");
+    const dispose = (await context.data.read(context.signal))(element);
+    const root = mocks.roots.at(-1);
+    const view = root?.render.mock.lastCall?.[0] as ReactElement<Parameters<typeof InsightView>[0]>;
+    expect(view.type).toBe(InsightView);
+    expect(view.props.kind).toBe(kind);
+    expect(await view.props.navigate("run:1")).toBe(true);
+    expect(navigate).toHaveBeenCalledWith("class:a", "run:1", abort.signal);
+    dispose();
+    expect(root?.unmount).not.toHaveBeenCalled();
+    await Promise.resolve();
+    expect(root?.unmount).toHaveBeenCalledOnce();
+  },
+);

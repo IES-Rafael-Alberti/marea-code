@@ -55,3 +55,56 @@ it("enforces independent durable budgets and reserves no student usage", async (
   ).rejects.toThrow("input-too-large");
   expect(calls).toBe(2);
 });
+it.each([
+  [{ type: "completed", finishReason: "length" }],
+  [{ type: "tool-call", callId: "call", name: "unexpected", arguments: {} }],
+  [{ type: "text-delta", text: "x".repeat(1048577) }],
+] as InferenceProviderEvent[][])("rejects unsafe analysis output %#", async (...events) => {
+  const f = fixture();
+  const inference = new EducationalInference(
+    f.database,
+    {
+      resolve: () => ({
+        async *stream() {
+          await Promise.resolve();
+          yield { type: "usage", inputTokens: 1, outputTokens: 1 };
+          for (const event of events.flat()) yield event;
+        },
+      }),
+    },
+    { now: () => NOW },
+  );
+  await expect(
+    inference.generate(
+      routeOf(f),
+      "invalid-output",
+      "Analyze",
+      {},
+      z.object({ ok: z.boolean() }),
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow("invalid-output");
+});
+it("rejects missing providers and exposes absent and configured budgets", async () => {
+  const f = fixture();
+  expect(f.service.inference.usage("missing", undefined)).toBeNull();
+  expect(f.service.inference.usage("missing", f.service.configuration.map)).toMatchObject({
+    requests: 0,
+  });
+  await expect(
+    f.service.inference.generate(
+      routeOf(f),
+      "missing",
+      "Analyze",
+      {},
+      z.object({}),
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow("unconfigured");
+});
+
+function routeOf(f: ReturnType<typeof fixture>) {
+  const route = f.service.configuration.map;
+  if (!route) throw new Error("missing route");
+  return route;
+}

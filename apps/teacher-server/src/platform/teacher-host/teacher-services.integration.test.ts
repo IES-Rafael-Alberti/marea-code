@@ -1,3 +1,10 @@
+import { fixture as insightsFixture } from "../../educational-insights/insights.fixture.js";
+import {
+  EVALUATION_DRAFT,
+  reviewRequest,
+  teacher as evaluationTeacher,
+} from "../../../test-support/evaluation-fixture.js";
+import { createEducationalMigrationCatalog } from "@marea/sqlite-storage/catalogs";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -62,6 +69,7 @@ async function composedHost(
 ) {
   const provider = new RecordingProvider();
   const composed = await composeTeacherServices({
+    educationalInsights: {},
     database,
     clock: { now: () => NOW },
     ids: cryptoIdGenerator,
@@ -112,107 +120,122 @@ function login(loginName: string, password: string) {
 }
 
 describe("composed teacher host services", () => {
-  it("serves a real student run, budgeted inference and the teacher dashboard over one database", async () => {
-    const base = teachingConfiguration("free");
-    const host = await composedHost(
-      seededDatabase({ ...base, providerRoute: syntheticOperatorPolicy.route.providerRoute }),
-    );
-    const student = await host.call("/v1/auth/login", login("student", "student-password"));
-    expect(student.status).toBe(200);
-    const token = (student.body.session as { token: string }).token;
-    const bootstrap = await host.call(
-      "/v1/classes/bootstrap",
-      { kind: "class-bootstrap", protocolVersion: "0.1", requestId: "request:bootstrap" },
-      token,
-    );
-    expect(bootstrap).toMatchObject({ status: 200, body: { activeRun: null } });
-    const opened = await host.call(
-      "/v1/runs/open",
-      {
-        clientSessionId: "client:one",
-        clientVersion: "0.2.0",
-        idempotencyKey: "open:one",
-        intent: { kind: "new" },
-        project: { displayName: "Wave lab" },
-        protocolVersion: "0.1",
-        requestId: "request:open",
-      },
-      token,
-    );
-    expect(opened.status).toBe(201);
-    const lease = opened.body.lease as { token: string; runId: string };
-
-    const model = await host.app.fetch(
-      request(
-        "/v1/model/stream",
+  it.each([false, true])(
+    "serves a real student run, inference and dashboard (educational storage: %s)",
+    async (educational) => {
+      const base = teachingConfiguration("free");
+      const database = seededDatabase({
+        ...base,
+        providerRoute: syntheticOperatorPolicy.route.providerRoute,
+      });
+      if (educational)
+        for (const migration of createEducationalMigrationCatalog().slice(8))
+          for (const sql of migration.statements) database.executeScript(sql);
+      const host = await composedHost(database);
+      const student = await host.call("/v1/auth/login", login("student", "student-password"));
+      expect(student.status).toBe(200);
+      const token = (student.body.session as { token: string }).token;
+      const bootstrap = await host.call(
+        "/v1/classes/bootstrap",
+        { kind: "class-bootstrap", protocolVersion: "0.1", requestId: "request:bootstrap" },
+        token,
+      );
+      expect(bootstrap).toMatchObject({ status: 200, body: { activeRun: null } });
+      const opened = await host.call(
+        "/v1/runs/open",
         {
-          kind: "model-gateway-request",
-          messages: [{ content: "Please help.", role: "student" }],
-          modelAlias: "marea",
+          clientSessionId: "client:one",
+          clientVersion: "0.2.0",
+          idempotencyKey: "open:one",
+          intent: { kind: "new" },
+          project: { displayName: "Wave lab" },
           protocolVersion: "0.1",
-          requestId: "request:model",
-          tools: [],
+          requestId: "request:open",
         },
+        token,
+      );
+      expect(opened.status).toBe(201);
+      const lease = opened.body.lease as { token: string; runId: string };
+      const presence = await host.call("/v1/runs/presence", { requestId: "presence" }, lease.token);
+      expect(presence.status).toBe(200);
+      expect((await host.call("/v1/runs/presence", {}, lease.token)).status).toBe(400);
+      if (educational)
+        expect(host.composed.services.educationalInsights?.map.presence.has(lease.runId)).toBe(
+          true,
+        );
+
+      const model = await host.app.fetch(
+        request(
+          "/v1/model/stream",
+          {
+            kind: "model-gateway-request",
+            messages: [{ content: "Please help.", role: "student" }],
+            modelAlias: "marea",
+            protocolVersion: "0.1",
+            requestId: "request:model",
+            tools: [],
+          },
+          lease.token,
+        ),
+      );
+      expect(model.status).toBe(200);
+      expect(await model.text()).toContain("I can help.");
+      expect(host.provider.requests).toHaveLength(1);
+      expect(String(host.database.readOne("SELECT id FROM marea_usage_attempts")?.id)).toMatch(
+        /^event:[0-9a-f-]{36}$/u,
+      );
+
+      const teacher = await host.app.fetch(
+        request("/v1/auth/login", login("teacher", "teacher-password")),
+      );
+      expect(teacher.status).toBe(200);
+      const cookie = String(teacher.headers.get("set-cookie")).split(";")[0] ?? "";
+      const dashboard = await host.app.fetch(
+        new Request(
+          "http://teacher.test/api/v1/dashboard/active-runs?kind=active-runs-query&protocolVersion=0.1&requestId=request%3Adashboard&limit=50",
+          { headers: { cookie, host: "teacher.test" } },
+        ),
+      );
+      expect(dashboard.status).toBe(200);
+      expect(await dashboard.json()).toMatchObject({
+        runs: [{ runId: lease.runId, studentDisplayName: "Student", state: "active" }],
+      });
+
+      const teacherIdentity = {
+        userId: "t1",
+        role: "teacher" as const,
+        classId: null,
+        displayName: "Teacher",
+      };
+      const notice = host.composed.services.notices.publish(
+        teacherIdentity,
+        PublishTeacherNoticeRequestSchema.parse({
+          kind: "teacher-notice-publish",
+          protocolVersion: "0.1",
+          requestId: "request:notice",
+          idempotencyKey: "notice:one",
+          runId: lease.runId,
+          text: "Well done",
+        }),
+      );
+      expect(notice).toMatchObject({ notice: { text: "Well done" } });
+      const closed = await host.call(
+        "/v1/runs/close",
+        { protocolVersion: "0.1", reason: "student-exit", requestId: "request:close" },
         lease.token,
-      ),
-    );
-    expect(model.status).toBe(200);
-    expect(await model.text()).toContain("I can help.");
-    expect(host.provider.requests).toHaveLength(1);
-    expect(String(host.database.readOne("SELECT id FROM marea_usage_attempts")?.id)).toMatch(
-      /^event:[0-9a-f-]{36}$/u,
-    );
-
-    const teacher = await host.app.fetch(
-      request("/v1/auth/login", login("teacher", "teacher-password")),
-    );
-    expect(teacher.status).toBe(200);
-    const cookie = String(teacher.headers.get("set-cookie")).split(";")[0] ?? "";
-    const dashboard = await host.app.fetch(
-      new Request(
-        "http://teacher.test/api/v1/dashboard/active-runs?kind=active-runs-query&protocolVersion=0.1&requestId=request%3Adashboard&limit=50",
-        { headers: { cookie, host: "teacher.test" } },
-      ),
-    );
-    expect(dashboard.status).toBe(200);
-    expect(await dashboard.json()).toMatchObject({
-      runs: [{ runId: lease.runId, studentDisplayName: "Student", state: "active" }],
-    });
-
-    const teacherIdentity = {
-      userId: "t1",
-      role: "teacher" as const,
-      classId: null,
-      displayName: "Teacher",
-    };
-    const notice = host.composed.services.notices.publish(
-      teacherIdentity,
-      PublishTeacherNoticeRequestSchema.parse({
-        kind: "teacher-notice-publish",
-        protocolVersion: "0.1",
-        requestId: "request:notice",
-        idempotencyKey: "notice:one",
-        runId: lease.runId,
-        text: "Well done",
-      }),
-    );
-    expect(notice).toMatchObject({ notice: { text: "Well done" } });
-    const closed = await host.call(
-      "/v1/runs/close",
-      { protocolVersion: "0.1", reason: "student-exit", requestId: "request:close" },
-      lease.token,
-    );
-    expect(closed).toMatchObject({ status: 200, body: { state: "closed", runId: lease.runId } });
-    expect(
-      Number(
-        host.database.readOne("SELECT COUNT(*) AS total FROM marea_runs WHERE state = 'closed'")
-          ?.total,
-      ),
-    ).toBe(1);
-    host.composed.evaluations.recoverAfterExclusiveStartup();
-    host.composed.evaluations.start();
-    await host.composed.evaluations.stop();
-  });
+      );
+      expect(closed).toMatchObject({ status: 200, body: { state: "closed", runId: lease.runId } });
+      expect(
+        Number(
+          host.database.readOne("SELECT COUNT(*) AS total FROM marea_runs WHERE state = 'closed'")
+            ?.total,
+        ),
+      ).toBe(1);
+      host.composed.evaluations.recoverAfterExclusiveStartup();
+      host.composed.evaluations.start();
+      await host.composed.evaluations.stop();
+    },
+  );
 
   it("composes class skill sources from the class center and the teacher's own library", async () => {
     const database = seededDatabase();
@@ -376,4 +399,20 @@ describe("composed teacher host services", () => {
       "preview:revision:random",
     ]);
   });
+});
+
+it("composes reviewed progress with the approval transaction", async () => {
+  const f = insightsFixture();
+  const host = await composedHost(f.database);
+  const insights = host.composed.services.educationalInsights;
+  if (!insights) throw new Error("missing insights");
+  const apply = vi.spyOn(insights.progress, "apply");
+  f.queue();
+  const claim = f.repository.claim("worker", NOW);
+  if (!claim) throw new Error("missing claim");
+  f.repository.finish(claim, EVALUATION_DRAFT, NOW);
+  const result = host.composed.services.evaluations.approve(evaluationTeacher, reviewRequest());
+  expect(result.evaluation?.state).toBe("approved");
+  expect(apply).toHaveBeenCalledOnce();
+  await host.composed.evaluations.stop();
 });

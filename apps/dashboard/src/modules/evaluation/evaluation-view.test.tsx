@@ -272,3 +272,29 @@ describe("teacher draft editor", () => {
     ).toContain("(0)");
   });
 });
+it.each([undefined, "Previous guidance"])("edits adaptive learning notes (%s)", (learningNote) => {
+  const first = DRAFT.criteria[0];
+  if (!first) throw new Error("missing criterion");
+  const criterion = {
+    ...first,
+    levelAttempted: 2,
+    ...(learningNote === undefined ? {} : { learningNote }),
+  };
+  const draft = { ...DRAFT, criteria: [criterion] };
+  const edit = vi.fn();
+  const elements = reviewElements(
+    <EvaluationEditor
+      draft={draft}
+      disabled={false}
+      messages={evaluationMessages("en")}
+      edit={edit}
+    />,
+  );
+  const notes = elements.filter((element) => element.type === "textarea")[3];
+  expect(notes?.props.value).toBe(learningNote ?? "");
+  notes?.props.onChange?.({ currentTarget: { value: "Practice independently" } });
+  expect(edit).toHaveBeenCalledWith({
+    ...draft,
+    criteria: [{ ...criterion, learningNote: "Practice independently" }],
+  });
+});

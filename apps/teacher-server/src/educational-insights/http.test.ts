@@ -46,3 +46,16 @@ it("authorizes every request and serializes SQL-backed reports without exposing 
     (await post({ ...f.query({ kind: "map", viewerId: "v", visible: true }), extra: true })).status,
   ).toBe(400);
 });
+it("returns unavailable when educational insights are not configured", async () => {
+  const app = new Hono();
+  registerEducationalInsightsRoutes({
+    app,
+    service: undefined,
+    authenticate: () => teacher,
+    policy: async (_context, next) => {
+      await next();
+    },
+  });
+  const response = await app.request(EDUCATIONAL_INSIGHTS_PATH, { method: "POST" });
+  expect(response.status).toBe(503);
+});

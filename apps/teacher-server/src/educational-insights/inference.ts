@@ -16,7 +16,6 @@ export function educationalLedger(database: SqliteApplicationDatabase) {
       database.execute(sql(query), values);
     },
     readOne: (query, values) => database.readOne(sql(query), values),
-    readAll: (query, values) => database.readAll(sql(query), values),
     transaction: (work) => database.transaction(work),
   });
 }

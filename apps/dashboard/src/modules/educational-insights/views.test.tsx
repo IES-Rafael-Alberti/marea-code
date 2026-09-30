@@ -1,51 +1,11 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { insightsMessages } from "./messages.js";
-import { insightsClient } from "./client.js";
-import type { useInsightModel, InsightViewProps } from "./model.js";
 import { MapView } from "./map-view.js";
 import { ProgressView } from "./progress-view.js";
 import { ReportsView } from "./reports-view.js";
 import { InsightView } from "./view.js";
 import { AnalysisBudget } from "./budget-view.js";
-function model(): ReturnType<typeof useInsightModel> {
-  return {
-    m: insightsMessages("es"),
-    client: insightsClient(vi.fn()),
-    abort: { current: new AbortController() },
-    error: false,
-    setError: vi.fn(),
-    busy: false,
-    data: null,
-    setData: vi.fn(),
-    student: "student",
-    setStudent: vi.fn(),
-    students: [{ id: "student", displayName: "Ana" }],
-    page: null,
-    setPage: vi.fn(),
-    reason: "Reviewed",
-    setReason: vi.fn(),
-    level: 2,
-    setLevel: vi.fn(),
-    selectedReport: null,
-    setSelectedReport: vi.fn(),
-    report: null,
-    setReport: vi.fn(),
-    from: "2026-09-27T00:00",
-    setFrom: vi.fn(),
-    to: "2026-09-28T00:00",
-    setTo: vi.fn(),
-    load: () => Promise.resolve(),
-    action: () => Promise.resolve(),
-  };
-}
-const props: InsightViewProps & { classId: string } = {
-  kind: "map",
-  classId: "class:a",
-  locale: "es",
-  fetchRequest: vi.fn(),
-  navigate: () => Promise.resolve(true),
-};
+import { model, props } from "./interactions.fixture.js";
 describe("educational dashboard views", () => {
   it("asks for a class and labels attention without relying on color", () => {
     expect(renderToStaticMarkup(<InsightView {...props} classId={null} />)).toContain(

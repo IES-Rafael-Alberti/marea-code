@@ -21,7 +21,12 @@ import {
 import { rowInteger, rowJson, rowText } from "./row-parser.boundary.js";
 
 export class SqliteUsageLedger implements UsageLedger {
-  public constructor(private readonly database: SqliteApplicationDatabase) {}
+  public constructor(
+    private readonly database: Pick<
+      SqliteApplicationDatabase,
+      "execute" | "readOne" | "transaction"
+    >,
+  ) {}
 
   public configure(account: UsageAccount, policy: UsagePolicy, now: string): void {
     const serialized = JSON.stringify(UsagePolicySchema.parse(policy));

@@ -166,3 +166,84 @@ it("ignores a response after disposal", async () => {
   expect(render("map").error).toBe(false);
   expect(render("map").data).toBeNull();
 });
+it.each(["map", "progress", "reports"] as const)(
+  "ignores stale successful %s responses and keeps newer errors",
+  async (kind) => {
+    const pending = Promise.withResolvers<Response>();
+    let response = new Response();
+    const delayed: InsightViewProps["fetchRequest"] = async (url, init) => {
+      response = await fetchRequest(url, init);
+      return pending.promise;
+    };
+    const state = render(kind, { fetchRequest: delayed });
+    const first = state.load();
+    await Promise.resolve();
+    const newer = render(kind, { fetchRequest: () => Promise.reject(new Error("offline")) });
+    await newer.load();
+    pending.resolve(response);
+    await first;
+    expect(render(kind).error).toBe(true);
+    expect(render(kind).data).toBeNull();
+    expect(render(kind).students).toEqual([]);
+  },
+);
+it.each([false, true])("ignores disposed mutations (failure: %s)", async (failure) => {
+  const pending = Promise.withResolvers<Response>();
+  let response = new Response();
+  const state = render("reports", {
+    fetchRequest: async (url, init) => {
+      response = await fetchRequest(url, init);
+      return pending.promise;
+    },
+  });
+  const action = state.action({ kind: "cancel", reportId: report.id });
+  await Promise.resolve();
+  state.abort.current.abort();
+  if (failure) pending.reject(new Error("cancelled"));
+  else pending.resolve(response);
+  await action;
+  expect(render("reports").report).toBeNull();
+  expect(render("reports").error).toBe(false);
+});
+it.each(["progress", "reports"] as const)(
+  "ignores disposed selected %s responses",
+  async (kind) => {
+    let state = render(kind);
+    state.setStudent("student");
+    state.setSelectedReport(report.id);
+    state = render(kind);
+    state.abort.current.abort();
+    await state.load();
+    expect(render(kind).data).toBeNull();
+    expect(render(kind).report).toBeNull();
+  },
+);
+it("refreshes progress on visibility changes without polling and disposes the listener", async () => {
+  render("progress");
+  const dispose = hooks.effects.map((effect) => effect());
+  await vi.advanceTimersByTimeAsync(15000);
+  expect(requests).toHaveLength(1);
+  document.dispatchEvent(new Event("visibilitychange"));
+  await vi.advanceTimersByTimeAsync(1);
+  expect(requests).toHaveLength(2);
+  for (const cleanup of dispose) cleanup?.();
+  document.dispatchEvent(new Event("visibilitychange"));
+  expect(requests).toHaveLength(2);
+});
+it("handles a failed viewer removal without leaking a rejected promise", async () => {
+  render("map", { fetchRequest: () => Promise.reject(new Error("offline")) });
+  const dispose = hooks.effects.map((effect) => effect());
+  for (const cleanup of dispose) cleanup?.();
+  await vi.advanceTimersByTimeAsync(1);
+  expect(render("map").error).toBe(false);
+});
+it("rejects a response with the wrong operation", async () => {
+  const state = render("map", {
+    fetchRequest: async (url, init) => {
+      const response = await fetchRequest(url, init);
+      return Response.json({ ...(await response.json()), kind: "reports" });
+    },
+  });
+  await state.load();
+  expect(render("map").error).toBe(true);
+});

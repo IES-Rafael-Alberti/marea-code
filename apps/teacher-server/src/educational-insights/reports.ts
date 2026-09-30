@@ -80,13 +80,14 @@ export class ClassReports {
       const aliases = new Map<string, string>();
       const sources = runs.map((r) => {
         const studentId = String(r.student_id);
-        if (!aliases.has(studentId))
-          aliases.set(studentId, `A${String(aliases.size + 1).padStart(3, "0")}`);
+        const alias = aliases.get(studentId) ?? `A${String(aliases.size + 1).padStart(3, "0")}`;
+        aliases.set(studentId, alias);
+        const runId = String(r.id);
         const snapshot = StudentRunSnapshotSchema.parse(JSON.parse(String(r.public_snapshot_json)));
         const teaching = TeachingSnapshotContentSchema.parse(JSON.parse(String(r.teaching_json)));
         const approved = this.progress.database.readOne(
           "SELECT draft_json FROM marea_evaluations WHERE run_id = ?1 AND state = 'approved' ORDER BY generation DESC LIMIT 1",
-          [r.id ?? null],
+          [runId],
         );
         const person = this.progress.database.readOne(
           "SELECT display_name,login FROM marea_users WHERE id = ?1",
@@ -94,7 +95,7 @@ export class ClassReports {
         );
         const events = this.progress.database.readAll(
           "SELECT payload_json FROM marea_run_events WHERE run_id = ?1 AND event_type IN ('student-message','assistant-message','tool-finished','project-change') AND occurred_at <= ?2 ORDER BY sequence LIMIT 2001",
-          [r.id ?? null, query.to],
+          [runId, query.to],
         );
         let material = JSON.stringify({
           teaching,
@@ -102,11 +103,11 @@ export class ClassReports {
         });
         for (const identifier of [person?.display_name, person?.login])
           if (typeof identifier === "string" && identifier.length > 1)
-            material = material.replaceAll(identifier, aliases.get(studentId) ?? "student");
+            material = material.replaceAll(identifier, alias);
         return {
-          runId: String(r.id),
+          runId,
           studentId,
-          alias: aliases.get(studentId) ?? "",
+          alias,
           mode: snapshot.agentMode,
           teaching,
           skills: teaching.didacticSkills.map((s) => s.id),
@@ -117,7 +118,7 @@ export class ClassReports {
               : anonymizeDraft(
                   EvaluationDraftSchema.parse(JSON.parse(String(approved.draft_json))),
                   [String(person?.display_name ?? ""), String(person?.login ?? "")],
-                  aliases.get(studentId) ?? "student",
+                  alias,
                 ),
         };
       });
@@ -305,18 +306,18 @@ export class ClassReports {
               controller.signal,
             );
       validateFindings(synthesis, usable);
-      if (accessible())
-        this.progress.database.execute(
-          "UPDATE marea_class_reports SET state = 'complete', result_json = ?2 WHERE id = ?1",
-          [
-            id,
-            JSON.stringify({
-              synthesis: computedDenominators(synthesis, usable),
-              evidence,
-              partial: evidence.some((e) => e.status === "unavailable"),
-            }),
-          ],
-        );
+      if (!accessible()) return;
+      this.progress.database.execute(
+        "UPDATE marea_class_reports SET state = 'complete', result_json = ?2 WHERE id = ?1",
+        [
+          id,
+          JSON.stringify({
+            synthesis: computedDenominators(synthesis, usable),
+            evidence,
+            partial: evidence.some((e) => e.status === "unavailable"),
+          }),
+        ],
+      );
     } catch {
       if (!controller.signal.aborted)
         this.progress.database.execute(

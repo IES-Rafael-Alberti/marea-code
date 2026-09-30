@@ -1,3 +1,4 @@
+import { rowText } from "../platform/persistence/row-parser.boundary.js";
 import { createHash, randomUUID } from "node:crypto";
 import {
   StudentRunSnapshotSchema,
@@ -102,7 +103,8 @@ export class LearningProgress {
     const context = targets
       .filter((item) => item.achieved < 4)
       .map(
-        (item) => `${item.skillId}/${item.code}: ${item.levels[item.target - 1] ?? item.statement}`,
+        (item) =>
+          `${item.skillId}/${item.code}: ${item.levels.slice(item.target - 1, item.target).join("")}`,
       )
       .join("\n");
     const content = `${captured.snapshot.prompt.content}\n\nObjetivos pedagógicos revisados para esta sesión. Adapta la ayuda a estos objetivos sin revelar notas privadas ni presentar niveles como calificaciones:\n${context}\nSíntesis pedagógica revisada:\n${memories.join("\n")}`;
@@ -122,6 +124,8 @@ export class LearningProgress {
       input.runId,
     ]);
     if (run === undefined) throw new TeacherDomainError("run.unavailable");
+    const classId = rowText(run, "class_id");
+    const studentId = rowText(run, "student_id");
     for (const target of targets) {
       const assessment = draft.criteria.find(
         (item) => item.skillId === target.skillId && item.code === target.code,
@@ -130,7 +134,7 @@ export class LearningProgress {
         throw new TeacherDomainError("request.conflict");
       const row = this.database.readOne(
         "SELECT * FROM marea_learning_progress WHERE class_id = ?1 AND student_id = ?2 AND criterion_key = ?3",
-        [run.class_id ?? null, run.student_id ?? null, target.key],
+        [classId, studentId, target.key],
       );
       if (
         row === undefined ||
@@ -147,8 +151,8 @@ export class LearningProgress {
       this.database.execute(
         "INSERT INTO marea_learning_history (class_id, student_id, criterion_key, run_id, previous_level, level, reason, actor, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
         [
-          run.class_id ?? null,
-          run.student_id ?? null,
+          classId,
+          studentId,
           target.key,
           input.runId,
           previous,
@@ -161,8 +165,8 @@ export class LearningProgress {
       this.database.execute(
         "UPDATE marea_learning_progress SET level = ?4, revision = ?5, memory = ?6, memory_run_id = ?7 WHERE class_id = ?1 AND student_id = ?2 AND criterion_key = ?3",
         [
-          run.class_id ?? null,
-          run.student_id ?? null,
+          classId,
+          studentId,
           target.key,
           next,
           randomUUID(),

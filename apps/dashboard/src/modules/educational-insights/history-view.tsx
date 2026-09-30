@@ -59,11 +59,12 @@ export function CriterionHistory(props: {
               </li>
             ))}
           </ol>
-          {more && (
-            <button disabled={busy} onClick={() => void load(entries.at(-1)?.id ?? 0)}>
-              {m.more}
-            </button>
-          )}
+          {more &&
+            entries.slice(-1).map((last) => (
+              <button key={last.id} disabled={busy} onClick={() => void load(last.id)}>
+                {m.more}
+              </button>
+            ))}
         </>
       )}
     </section>
