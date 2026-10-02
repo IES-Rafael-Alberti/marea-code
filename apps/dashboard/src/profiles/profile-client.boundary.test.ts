@@ -207,3 +207,15 @@ it("recognizes only the authenticated explicit legacy-host marker, never ordinar
     );
   }
 });
+it("releases an unread error body even when the stream refuses cancellation", async () => {
+  const body = new ReadableStream({
+    cancel() {
+      throw new Error("synthetic-cancel-failure");
+    },
+  });
+  const client = createProfileClient(
+    vi.fn<DashboardFetch>().mockResolvedValue(new Response(body, { status: 500 })),
+    release,
+  );
+  await expect(client.read(scope, signal)).rejects.toBeInstanceOf(ProfileRequestError);
+});

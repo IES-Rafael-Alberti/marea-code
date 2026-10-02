@@ -48,9 +48,13 @@ export function createProfileClient(
       `/api/v1/dashboard/profiles/${operation}`,
       dashboardPost(body, signal),
     );
-    if (response.status === 503 && response.headers.get("x-marea-profile-mode") === "legacy")
-      throw new LegacyProfileModeError();
-    if (!response.ok) throw new ProfileRequestError(response.status);
+    if (!response.ok) {
+      // An unread error body keeps the request open; release it before reporting the status.
+      await response.body?.cancel().catch(() => undefined);
+      if (response.status === 503 && response.headers.get("x-marea-profile-mode") === "legacy")
+        throw new LegacyProfileModeError();
+      throw new ProfileRequestError(response.status);
+    }
     const reader = response.body?.getReader();
     if (reader === undefined) throw new Error("Missing profile response.");
     const chunks: Uint8Array[] = [];
