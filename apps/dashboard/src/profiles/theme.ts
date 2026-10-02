@@ -2,7 +2,7 @@ import { DashboardThemeTokensSchema, type DashboardThemeTokens } from "@marea/pl
 
 const fonts = {
   "system-sans": "system-ui, sans-serif",
-  "system-serif": "ui-serif, Georgia, serif",
+  "system-serif": 'ui-serif, "Iowan Old Style", "Source Serif 4", Palatino, Georgia, serif',
   "system-mono": "ui-monospace, monospace",
 };
 /** Validated token data maps only to this fixed host allowlist. */

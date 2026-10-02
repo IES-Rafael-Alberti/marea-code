@@ -56,4 +56,4 @@ export const dashboardThemeCatalog: readonly DashboardThemeCatalogEntry[] = Obje
 ]);
 
 export const dashboardCatalogRevision =
-  "24601834d6eff60e478549043c9eacde27c8c8b2596a2f139b4a68dc88281a97";
+  "b96bd6a040c795bd36524a4863b6bf4f0d4ee174da7941f1b545c3f7473ff063";

@@ -116,7 +116,7 @@ function TeachingClassConfiguration({
   return (
     <div className="teaching-configuration">
       <h3>{selected === null ? state.classId : selected.displayName}</h3>
-      <p>
+      <p className="teaching-version">
         {state.configuration === null
           ? m.firstConfiguration
           : m.savedVersion(state.configuration.version)}

@@ -236,14 +236,11 @@ function TeachingSkillGroup({
               />
               {entry.name}
             </label>
-            <p>
-              {m.source}: {entry.source}
-            </p>
-            <p>
+            <p className="teaching-skill-description">
               {m.description}: {entry.description}
             </p>
-            <p>
-              {m.digest}: <code>{entry.digest}</code>
+            <p className="teaching-skill-meta">
+              {m.source}: {entry.source} · {m.digest}: <code>{entry.digest}</code>
             </p>
           </div>
         );

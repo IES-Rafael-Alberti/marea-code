@@ -374,14 +374,23 @@ body {
   border: 1px solid var(--color-border);
   box-shadow: 0 0.5rem 2rem #0002;
 }
-.workspace-content .session-list {
-  background: var(--color-surface);
+.workspace-content .session-list li button {
+  background: transparent;
 }
+/* Insight views are flat pages on the canvas, as in Marejada. */
 .workspace-content .educational-insight {
-  padding: 1rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 0.4rem;
+  max-width: 72rem;
+  padding: 0.5rem 0 0;
+  background: transparent;
+  border: 0;
+}
+.workspace-content .educational-insight > h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+.workspace-content .profile-module:has(.map-grid) .educational-insight {
+  max-width: none;
 }
 .workspace-content .educational-insight article {
   background: var(--color-background);
@@ -453,4 +462,433 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+/* Marejada's classroom language: one compact header, monospace controls, square edges, flat pages. */
+.profile-shell {
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+.masthead:has(.account-menu) {
+  padding-bottom: 0.6rem;
+}
+.masthead:has(.account-menu) .eyebrow {
+  flex-basis: auto;
+  order: 2;
+  margin: 0;
+  font: 0.7rem var(--mono, monospace);
+  letter-spacing: 0.1em;
+  color: var(--color-muted);
+}
+.masthead:has(.account-menu) h1 {
+  flex: 0 1 auto;
+  font-weight: 500;
+}
+.masthead:has(.account-menu) .account-menu {
+  order: 3;
+}
+.workspace-toolbar {
+  align-items: center;
+  padding-block: 0.6rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.workspace-class {
+  padding: 0;
+  font: 0.72rem var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.workspace-class select {
+  font: 0.85rem var(--mono);
+  text-transform: none;
+  letter-spacing: normal;
+  border-color: var(--color-border);
+  border-radius: 0;
+}
+.workspace-navigation,
+.settings-navigation {
+  gap: 0.4rem;
+}
+.workspace-navigation button {
+  padding: 0.45em 0.9em;
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  background: var(--color-surface);
+  font: 0.75rem var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.workspace-navigation button[aria-current="page"] {
+  border-color: var(--color-accent);
+  font-weight: 400;
+}
+.workspace-navigation button:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.settings-navigation button {
+  font: 0.75rem var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+/* Actions share one look; navigation, list rows and disclosure toggles keep their own. */
+.profile-shell
+  button:not(
+    .workspace-navigation button,
+    .settings-navigation button,
+    .session-list li button,
+    .skill-authoring-catalog-entry button
+  ) {
+  padding: 0.45em 0.9em;
+  border: 1px solid var(--color-accent);
+  border-radius: 0;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: 0.75rem var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.profile-shell
+  button:not(
+    .workspace-navigation button,
+    .settings-navigation button,
+    .session-list li button,
+    .skill-authoring-catalog-entry button
+  ):hover:not(:disabled) {
+  background: var(--color-accent);
+  color: var(--color-surface);
+}
+.profile-shell button:disabled {
+  opacity: 0.5;
+}
+.profile-shell :is(input:not([type="checkbox"], [type="radio"]), select, textarea) {
+  border: 1px solid var(--color-border);
+  border-radius: 0;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+.profile-shell textarea {
+  font: 0.8rem/1.5 var(--mono);
+}
+/* Settings read as one page of sections, not stacked cards. */
+.settings-page .dashboard-module,
+.settings-page .workspace-advanced,
+.settings-modules > * {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.settings-page > * + * {
+  margin-top: 2rem;
+}
+.settings-page h2,
+.settings-page h3,
+.settings-page .workspace-advanced > summary {
+  margin: 0 0 0.3rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.settings-page .workspace-advanced > summary {
+  padding: 0;
+}
+.settings-page .workspace-advanced > :not(summary) {
+  margin: 0.75rem 0 0;
+}
+.settings-page :is(.server-help, .settings-intro) {
+  max-width: 60ch;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+.settings-page fieldset {
+  margin: 1.5rem 0 0;
+  padding: 0;
+  border: 0;
+}
+.settings-page legend {
+  margin-bottom: 0.3rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+/* Sessions fill the viewport: the list and the conversation scroll on their own. */
+.workspace-view .session-workspace {
+  height: calc(100dvh - 9.5rem);
+  min-height: 26rem;
+  border-top: 0;
+}
+.workspace-view .session-list {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 1rem 0 0;
+}
+.workspace-view .session-list h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.workspace-view .session-list ul {
+  flex: 1;
+  max-height: none;
+  margin: 0.25rem 0 0;
+  overflow-y: auto;
+}
+.workspace-view .session-list li button {
+  gap: 0.15rem;
+  padding: 0.9rem 1.1rem;
+}
+.workspace-view .session-detail {
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: 0.25rem;
+}
+.workspace-view .conversation-scroll {
+  max-height: calc(100dvh - 22rem);
+}
+.session-row-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.session-state {
+  flex: 0 0 0.9rem;
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+.session-state-active {
+  background: #2f7d4f;
+  box-shadow: 0 0 0 2px #2f7d4f22;
+}
+.session-state-closed {
+  border: 1.5px solid var(--color-muted);
+}
+@media (prefers-color-scheme: dark) {
+  .session-state-active {
+    background: #7fd39b;
+    box-shadow: 0 0 0 2px #7fd39b22;
+  }
+}
+@media (max-width: 48rem) {
+  .workspace-view .show-detail .session-list,
+  .workspace-view .show-list .session-detail {
+    display: none;
+  }
+}
+@media (max-width: 60rem) {
+  .workspace-view .session-workspace {
+    height: auto;
+    min-height: 0;
+  }
+  .workspace-view .session-list {
+    padding: 0;
+  }
+  .workspace-view .session-list ul {
+    max-height: 60dvh;
+  }
+  .workspace-view .conversation-scroll {
+    max-height: 70dvh;
+  }
+}
+/* One header row: title, views, class and account, as in Marejada. */
+.shell:has(> .profile-shell) {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  align-items: stretch;
+  padding-top: 0;
+}
+.shell:has(> .profile-shell) > :is(.masthead, .profile-shell) {
+  display: contents;
+}
+.shell:has(> .profile-shell) > *,
+.shell:has(> .profile-shell) > .profile-shell > * {
+  grid-column: 1 / -1;
+}
+.shell:has(> .profile-shell) .masthead > :is(h1, .eyebrow, .account-menu),
+.shell:has(> .profile-shell) .workspace-toolbar {
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  margin: 0 0 1rem;
+  padding-block: 0.9rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.shell:has(> .profile-shell) .masthead > h1 {
+  grid-column: 1;
+  padding-right: 0.6rem;
+}
+.shell:has(> .profile-shell) .masthead > .eyebrow {
+  grid-column: 2;
+  padding-right: 1.5rem;
+}
+.shell:has(> .profile-shell) .workspace-toolbar {
+  grid-column: 3;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1.25rem;
+}
+.shell:has(> .profile-shell) .masthead > .account-menu {
+  grid-column: 4;
+  justify-content: flex-end;
+  padding-left: 1.25rem;
+}
+.workspace-toolbar .workspace-navigation {
+  order: 1;
+}
+.workspace-toolbar .workspace-class {
+  order: 2;
+}
+.account-menu > summary {
+  border-radius: 0;
+  font: 0.75rem var(--mono, monospace);
+  letter-spacing: 0.05em;
+}
+/* The detail header reads like Marejada's metadata line. */
+.workspace-view .session-detail-header h2 {
+  font-weight: 600;
+}
+.workspace-view .session-detail-header :is(.project-context, [role="status"], .muted) {
+  margin: 0 0 0.3rem;
+  font: 0.72rem var(--mono, monospace);
+  color: var(--color-muted);
+}
+.workspace-view .session-detail-header [role="status"] {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.workspace-view .session-detail-header [role="status"]::before {
+  content: "";
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-muted);
+}
+.workspace-view .session-detail-header .connection-current::before {
+  background: var(--color-accent);
+}
+.workspace-view .detail-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.75rem 0 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+}
+@media (max-width: 60rem) {
+  .shell:has(> .profile-shell) {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .shell:has(> .profile-shell) .masthead > .eyebrow {
+    grid-column: 2;
+    padding-right: 0;
+  }
+  .shell:has(> .profile-shell) .masthead > .account-menu {
+    grid-column: 3;
+  }
+  .shell:has(> .profile-shell) .masthead > :is(h1, .eyebrow, .account-menu) {
+    margin-bottom: 0;
+    border-bottom: 0;
+  }
+  .shell:has(> .profile-shell) .workspace-toolbar {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    flex-direction: column;
+    align-items: stretch;
+    flex-wrap: nowrap;
+    padding-top: 0;
+  }
+  .workspace-toolbar .workspace-class {
+    order: 0;
+  }
+}
+@media (max-width: 32rem) {
+  .shell:has(> .profile-shell) .masthead > .eyebrow {
+    display: none;
+  }
+}
+/* Class settings: muted guidance, quiet technical identifiers, an always reachable save. */
+.settings-page :is(.teaching-note, .teaching-version) {
+  max-width: 60ch;
+  margin: 0.3rem 0 0.8rem;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+.settings-page .teaching-version {
+  font: 0.72rem var(--mono, monospace);
+}
+.settings-page .teaching-actions {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.6rem 0;
+  background: var(--color-background);
+  border-bottom: 1px solid var(--color-border);
+}
+.settings-page .teaching-editor,
+.settings-page .teaching-skills {
+  margin: 2rem 0 0;
+  padding: 0;
+  border: 0;
+}
+.settings-page .teaching-editor > legend,
+.settings-page .teaching-skills > legend {
+  margin-bottom: 0.3rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.teaching-skills .teaching-skill .teaching-skill-description {
+  font-size: 0.85rem;
+}
+.teaching-skills .teaching-skill .teaching-skill-meta {
+  font: 0.68rem var(--mono, monospace);
+  opacity: 0.8;
+}
+.settings-page .educational-settings {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+.session-live {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.6rem;
+  font: 0.72rem var(--mono, monospace);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.session-live::before {
+  content: "";
+  flex: 0 0 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-muted);
+}
+.session-live.connection-current::before {
+  background: var(--color-accent);
+}
+.workspace-view .session-list :is(input, select) {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0 0 0.5rem;
+}
+@media (max-width: 32rem) {
+  .workspace-navigation {
+    gap: 0.25rem;
+  }
+  .workspace-navigation button {
+    flex: 1 1 auto;
+    padding: 0.5em 0.35em;
+    font-size: 0.66rem;
+    letter-spacing: 0.02em;
+  }
 }
