@@ -1,3 +1,4 @@
+import type { ServerSettingsEndpoint } from "../server-settings/contracts.js";
 import type { EducationalInsightsService } from "../educational-insights/service.js";
 import type { ReviewedEvidenceService } from "../reviewed-evidence/service.js";
 import type { UsageHealthService } from "../usage-health/service.js";
@@ -69,6 +70,7 @@ export interface InferenceProviderResolver {
 
 export interface TeacherProductServices {
   readonly usageHealth?: UsageHealthService;
+  readonly serverSettings?: ServerSettingsEndpoint;
   readonly educationalInsights?: EducationalInsightsService;
   readonly reviewedEvidence?: ReviewedEvidenceService;
   readonly profiles?: DashboardProfileEndpoint;

@@ -21,12 +21,17 @@ export class EducationalInsightsService {
     readonly database: SqliteApplicationDatabase,
     readonly clock: Clock,
     providers: InferenceProviderResolver,
-    readonly configuration: EducationalConfiguration,
+    public configuration: EducationalConfiguration,
   ) {
     this.progress = new LearningProgress(database);
     this.inference = new EducationalInference(database, providers, clock);
     this.map = new LiveAttentionMap(this.progress, this.inference, clock, configuration.map);
     this.reports = new ClassReports(this.progress, this.inference, clock, configuration.reports);
+  }
+  configureRoutes(configuration: EducationalConfiguration) {
+    this.configuration = configuration;
+    this.map.route = configuration.map;
+    this.reports.route = configuration.reports;
   }
   read(identity: AuthenticatedIdentity, input: InsightsRequest) {
     const q = InsightsRequestSchema.parse(input);

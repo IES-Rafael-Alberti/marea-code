@@ -69,6 +69,16 @@ function inspection(value: RecoveryInspection): { readonly summary: Summary } {
 export function operationsCommands(): Readonly<Record<string, Spec>> {
   const input = inputs();
   return Object.freeze({
+    "server-settings initialize": command<OperationsApplication>(
+      ["userId", "name"],
+      async (app, request) => {
+        const parsed = z
+          .object({ userId: RevisionIdSchema, name: input.backup.shape.name })
+          .strict()
+          .parse(request.payload);
+        return { summary: await app.initializeServerSettings(parsed.userId, parsed.name) };
+      },
+    ),
     "installation initialize": command<OperationsApplication>(
       [],
       (app) => Promise.resolve({ summary: app.initialize() }),

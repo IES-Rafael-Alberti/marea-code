@@ -37,7 +37,8 @@ import {
   cryptoSecretIssuer,
   systemClock,
 } from "../../identity/system-security.boundary.js";
-import { createInferenceProviderResolver } from "../../model-gateway/provider-resolver.js";
+import { managedProviderResolver } from "../../model-gateway/managed-provider-resolver.js";
+import { serverSettingsStore } from "./server-settings-store.boundary.js";
 import { protocolError } from "../../product-http/response.js";
 import { createTeacherProductHttp } from "../../product-http/teacher-product-http.boundary.js";
 import { BundledSkillSource } from "../../teaching/skills/bundled-skill-source.boundary.js";
@@ -245,7 +246,9 @@ async function composeHostServices(
 ) {
   const { host, operator } = ports.loaded();
   const database = required(ports.state.handle).database as SqliteApplicationDatabase;
+  const settings = serverSettingsStore(options.installationRoot);
   return composeTeacherServices({
+    serverSettings: { store: settings, catalog: inferenceProviderCatalog },
     profiles:
       options.profiles ?? (ports.state.profiles ? composeBundledDashboardProfiles : undefined),
     database,
@@ -265,8 +268,9 @@ async function composeHostServices(
       teachers: new Map(operator.teachers.map((owner) => [owner.id, owner.root])),
       operatorPersonalOwnerForClass: personalOwnerForClass(operator),
     },
-    providers: createInferenceProviderResolver(
+    providers: managedProviderResolver(
       inferenceProviderCatalog,
+      () => settings.read(),
       Object.fromEntries(
         host.providers.map(({ pluginId, credentialPath, ...configuration }) => [
           pluginId,

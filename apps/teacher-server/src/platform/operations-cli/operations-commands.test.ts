@@ -170,6 +170,17 @@ describe("operations command table", () => {
           65536,
           false,
         ],
+        "server-settings initialize": [
+          [
+            "userId",
+            "name",
+          ],
+          [
+            "input",
+          ],
+          65536,
+          false,
+        ],
         "transfer abort": [
           [
             "handoffId",
@@ -264,4 +275,19 @@ it("parses a closed new-backup name for explicit profile upgrade", async () => {
   for (const payload of [{ name: "../escape" }, { name: "before", extra: true }, {}])
     await expect(spec?.run(app, request(payload))).rejects.toThrow();
   expect(upgradeProfiles).toHaveBeenCalledTimes(1);
+});
+
+it("grants server settings to an explicit teacher after a named safety backup", async () => {
+  const initializeServerSettings = vi
+    .fn()
+    .mockResolvedValue({ administrator: "user:teacher", revision: 0 });
+  const app = { initializeServerSettings } as unknown as OperationsApplication;
+  const spec = operationsCommands()["server-settings initialize"];
+  expect(await spec?.run(app, request({ userId: "user:teacher", name: "before" }))).toEqual({
+    summary: { administrator: "user:teacher", revision: 0 },
+  });
+  expect(initializeServerSettings).toHaveBeenCalledWith("user:teacher", "before");
+  for (const payload of [{ userId: "user:teacher", name: "../escape" }, { name: "before" }])
+    await expect(spec?.run(app, request(payload))).rejects.toThrow();
+  expect(initializeServerSettings).toHaveBeenCalledOnce();
 });

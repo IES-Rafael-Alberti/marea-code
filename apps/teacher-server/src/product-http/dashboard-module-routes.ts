@@ -1,3 +1,4 @@
+import { registerServerSettingsRoutes } from "./server-settings-http.boundary.js";
 import { registerEducationalInsightsRoutes } from "./educational-insights-http.boundary.js";
 import type { Hono, MiddlewareHandler } from "hono";
 import type { AuthenticatedIdentity } from "../identity/contracts.js";
@@ -13,6 +14,7 @@ export function registerDashboardModuleRoutes(options: {
   readonly authenticate: (request: Request) => AuthenticatedIdentity;
   readonly services: TeacherProductServices;
 }): void {
+  registerServerSettingsRoutes({ ...options, service: options.services.serverSettings });
   registerEducationalInsightsRoutes({ ...options, service: options.services.educationalInsights });
   registerDashboardProfileRoutes({ ...options, service: options.services.profiles });
   registerUsageHealthRoutes({ ...options, service: options.services.usageHealth });

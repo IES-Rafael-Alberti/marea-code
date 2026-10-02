@@ -43,6 +43,13 @@ export interface RestoreResult {
  * audit-activated installation.
  */
 export interface OperationsApplication {
+  initializeServerSettings(
+    userId: string,
+    backupName: string,
+  ): Promise<{
+    readonly administrator: string;
+    readonly revision: number;
+  }>;
   initialize(): { readonly schemaVersion: number };
   activate(): { readonly schemaVersion: number };
   upgradeProfiles(

@@ -1,3 +1,6 @@
+import { ServerSettingsService } from "../../server-settings/service.boundary.js";
+import type { ServerSettingsStore } from "../../server-settings/contracts.js";
+import type { InferenceProviderCatalogEntry } from "@marea/plugin-api";
 import { EducationalInsightsService } from "../../educational-insights/service.js";
 import type { EducationalConfiguration } from "../../educational-insights/configuration.js";
 import { ReviewedEvidenceService } from "../../reviewed-evidence/service.js";
@@ -67,6 +70,10 @@ interface TeacherHostSkillOwners {
 }
 
 export interface TeacherHostServiceDependencies {
+  readonly serverSettings?: {
+    readonly store: ServerSettingsStore;
+    readonly catalog: readonly InferenceProviderCatalogEntry[];
+  };
   /** Activate after validating the matched production dashboard release. */
   readonly profiles?:
     ((database: SqliteApplicationDatabase) => DashboardProfileEndpoint) | undefined;
@@ -161,7 +168,9 @@ export async function composeTeacherServices(
           database,
           clock,
           dependencies.providers,
-          dependencies.educationalInsights ?? {},
+          dependencies.serverSettings?.store.read()?.education ??
+            dependencies.educationalInsights ??
+            {},
         );
   const runs = new RunSessionService({
     clock,
@@ -169,12 +178,14 @@ export async function composeTeacherServices(
     ids,
     repository: new SqliteRunSessionRepository(database),
     secrets,
-    snapshots: new ConfigurationSnapshotSource(
-      configurations,
-      insights === undefined
-        ? undefined
-        : (capture, identity) => insights.progress.capture(capture, identity),
-    ),
+    snapshots: new ConfigurationSnapshotSource(configurations, (capture, identity) => {
+      const settings = dependencies.serverSettings?.store.read();
+      const current =
+        settings?.useCommonRoute && settings.route !== null
+          ? { ...capture, providerRoute: settings.route }
+          : capture;
+      return insights === undefined ? current : insights.progress.capture(current, identity);
+    }),
   });
   const ledger = new SqliteUsageLedger(database);
   const createReservationId = () => ids.createId("event");
@@ -201,7 +212,21 @@ export async function composeTeacherServices(
     dependencies.identities,
   );
   const governanceIds = governanceIdGenerator(ids);
+  const serverSettings =
+    dependencies.serverSettings === undefined
+      ? undefined
+      : new ServerSettingsService(
+          dependencies.serverSettings.store,
+          dependencies.serverSettings.catalog,
+          // Saved educational routes apply to the running service without a restart.
+          insights === undefined
+            ? undefined
+            : (settings) => {
+                insights.configureRoutes(settings.education);
+              },
+        );
   const services: TeacherProductServices = {
+    ...(serverSettings === undefined ? {} : { serverSettings }),
     ...(insights === undefined ? {} : { educationalInsights: insights }),
     usageHealth: new UsageHealthService(new SqliteUsageHealthRepository(database), clock),
     reviewedEvidence: new ReviewedEvidenceService(new SqliteReviewedEvidenceRepository(database)),

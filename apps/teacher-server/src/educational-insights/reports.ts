@@ -35,7 +35,7 @@ export class ClassReports {
     readonly progress: LearningProgress,
     readonly inference: EducationalInference,
     readonly clock: Clock,
-    readonly route: EducationalRoute | undefined,
+    public route: EducationalRoute | undefined,
   ) {}
   private get(id: string, classId: string) {
     const row = this.progress.database.readOne(

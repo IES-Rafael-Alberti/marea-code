@@ -28,7 +28,7 @@ export class LiveAttentionMap {
     readonly progress: LearningProgress,
     readonly inference: EducationalInference,
     readonly clock: Clock,
-    readonly route: EducationalRoute | undefined,
+    public route: EducationalRoute | undefined,
   ) {}
   heartbeat(runId: string): void {
     this.presence.set(runId, Date.parse(this.clock.now()));

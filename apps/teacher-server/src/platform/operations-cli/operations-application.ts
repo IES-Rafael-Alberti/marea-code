@@ -1,3 +1,7 @@
+import {
+  commitServerSettings,
+  prepareServerSettings,
+} from "../teacher-host/initialize-server-settings.js";
 import type {
   ContinueInput,
   OperationsApplication,
@@ -167,7 +171,14 @@ export function createOperationsApplication(
   const bundleInput = (name: string) => ({
     destinationPath: join(config.backupRoot, name),
     sourceRoot: capability.installationRoot,
-    files: config.stateFiles,
+    files: [
+      ...new Set([
+        ...config.stateFiles,
+        ...(existsSync(join(capability.installationRoot, "config/server-settings.json"))
+          ? ["config/server-settings.json"]
+          : []),
+      ]),
+    ],
     limits: config.limits,
   });
   const reconcileAgainstAuthority = (bundlePath: string, restored: SqliteApplicationDatabase) => {
@@ -239,6 +250,11 @@ export function createOperationsApplication(
     return result;
   };
   const application: OperationsApplication = Object.freeze({
+    async initializeServerSettings(userId: string, backupName: string) {
+      const prepared = prepareServerSettings(capability, services().opened.database, userId);
+      await application.createBackup(backupName);
+      return { administrator: userId, ...commitServerSettings(capability, prepared) };
+    },
     initialize() {
       // A clean installation starts from no database; an existing one is never reinitialized.
       if (schemaVersion !== null) throw new TeacherDomainError("request.conflict");
