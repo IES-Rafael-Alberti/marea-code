@@ -31,6 +31,19 @@ describe("educational dashboard views", () => {
     expect(html).toContain("Necesita atención");
     expect(html).toContain("Repeated test failure");
     expect(html).toContain("Abrir sesión");
+    const time = new Intl.DateTimeFormat("es", { hour: "2-digit", minute: "2-digit" }).format(
+      new Date("2026-09-28T00:00:00Z"),
+    );
+    expect(html).toContain(`<p class="map-meta">Confianza alta · ${time}</p>`);
+    expect(html).toContain('<p class="map-reason">Repeated test failure</p>');
+    // The legend names every attention colour in order.
+    for (const label of [
+      "Necesita atención",
+      "Conviene observar",
+      "Progresa",
+      "Pendiente de análisis",
+    ])
+      expect(html).toContain(`<i aria-hidden="true"></i>${label}</li>`);
   });
   it("shows the four criteria levels and requires a reason before adjusting", () => {
     const state = model();

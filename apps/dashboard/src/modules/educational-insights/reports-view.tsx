@@ -54,66 +54,68 @@ export function ReportsView({ model, props, shared }: Props) {
   return (
     <>
       {shared}
-      <p>{m.reportNote}</p>
+      <p className="insight-note">{m.reportNote}</p>
       {selectedReport === null ? (
         <>
-          <label>
-            {m.period}
-            <select
-              defaultValue="24"
-              onChange={(e) => {
-                if (e.currentTarget.value !== "custom") {
-                  setTo(localTime(Date.now()));
-                  setFrom(localTime(Date.now() - Number(e.currentTarget.value) * 3600000));
-                }
-              }}
+          <div className="insight-controls">
+            <label>
+              {m.period}
+              <select
+                defaultValue="24"
+                onChange={(e) => {
+                  if (e.currentTarget.value !== "custom") {
+                    setTo(localTime(Date.now()));
+                    setFrom(localTime(Date.now() - Number(e.currentTarget.value) * 3600000));
+                  }
+                }}
+              >
+                {[
+                  ["6", m.hours6],
+                  ["24", m.hours24],
+                  ["72", m.hours72],
+                  ["168", m.days7],
+                  ["custom", m.custom],
+                ].map(([v, label]) => (
+                  <option key={v} value={v}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {m.from}
+              <input
+                type="datetime-local"
+                value={from}
+                onChange={(e) => {
+                  setFrom(e.currentTarget.value);
+                }}
+              />
+            </label>
+            <label>
+              {m.to}
+              <input
+                type="datetime-local"
+                value={to}
+                onChange={(e) => {
+                  setTo(e.currentTarget.value);
+                }}
+              />
+            </label>
+            <button
+              disabled={busy || !list.success || !list.data.configured || from >= to}
+              onClick={() =>
+                void action({
+                  kind: "generate",
+                  from: new Date(from).toISOString(),
+                  to: new Date(to).toISOString(),
+                  locale: props.locale,
+                })
+              }
             >
-              {[
-                ["6", m.hours6],
-                ["24", m.hours24],
-                ["72", m.hours72],
-                ["168", m.days7],
-                ["custom", m.custom],
-              ].map(([v, label]) => (
-                <option key={v} value={v}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            {m.from}
-            <input
-              type="datetime-local"
-              value={from}
-              onChange={(e) => {
-                setFrom(e.currentTarget.value);
-              }}
-            />
-          </label>
-          <label>
-            {m.to}
-            <input
-              type="datetime-local"
-              value={to}
-              onChange={(e) => {
-                setTo(e.currentTarget.value);
-              }}
-            />
-          </label>
-          <button
-            disabled={busy || !list.success || !list.data.configured || from >= to}
-            onClick={() =>
-              void action({
-                kind: "generate",
-                from: new Date(from).toISOString(),
-                to: new Date(to).toISOString(),
-                locale: props.locale,
-              })
-            }
-          >
-            {m.generate}
-          </button>
+              {m.generate}
+            </button>
+          </div>
           {page !== null && (
             <button
               onClick={() => {
@@ -151,7 +153,8 @@ export function ReportsView({ model, props, shared }: Props) {
                     setReport(null);
                   }}
                 >
-                  {r.createdAt} · {statusLabel(r.state, m)}
+                  <time dateTime={r.createdAt}>{reportTime(r.createdAt, props.locale)}</time> ·{" "}
+                  {statusLabel(r.state, m)}
                 </button>
               </p>
             ))}
@@ -235,4 +238,12 @@ function statusLabel(state: string, m: ReturnType<typeof insightsMessages>): str
 function localTime(time: number): string {
   const date = new Date(time);
   return new Date(time - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+/** Server timestamps are ISO dates; anything else is shown unchanged rather than hidden. */
+function reportTime(timestamp: string, locale: string) {
+  const date = new Date(timestamp);
+  return Number.isNaN(date.getTime())
+    ? timestamp
+    : new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(date);
 }

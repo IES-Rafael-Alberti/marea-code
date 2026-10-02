@@ -21,15 +21,6 @@
   padding: 0.75rem;
   border-radius: 0.3rem;
 }
-.educational-insight article[data-attention="green"] {
-  border-color: #26804a;
-}
-.educational-insight article[data-attention="yellow"] {
-  border-color: #a97800;
-}
-.educational-insight article[data-attention="red"] {
-  border-color: #bc3434;
-}
 .educational-insight button {
   margin: 0.2rem;
 }
@@ -51,4 +42,233 @@
 .educational-insight select {
   max-width: 100%;
   min-width: 0;
+}
+/* Attention map as Marejada's classroom grid: one coloured card per active session. */
+.map-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+}
+.map-note {
+  max-width: 60ch;
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font:
+    0.68rem ui-monospace,
+    Menlo,
+    monospace;
+  color: var(--color-muted);
+}
+.map-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.map-legend i {
+  width: 0.65rem;
+  height: 0.65rem;
+  border: 1px solid var(--map-border);
+  background: var(--map-fill);
+}
+.map-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(13rem, 100%), 1fr));
+  gap: 0.85rem;
+  align-items: start;
+}
+[data-attention] {
+  --map-fill: #e4e9e6;
+  --map-border: #82918d;
+  --map-ink: #132127;
+}
+[data-attention="green"] {
+  --map-fill: #deeee2;
+  --map-border: #4f8260;
+}
+[data-attention="yellow"] {
+  --map-fill: #f5e9bd;
+  --map-border: #9b791b;
+}
+[data-attention="red"],
+[data-attention="error"] {
+  --map-fill: #f2dce1;
+  --map-border: #a8324a;
+}
+@media (prefers-color-scheme: dark) {
+  [data-attention] {
+    --map-fill: #253330;
+    --map-border: #71827e;
+    --map-ink: #e1e8e5;
+  }
+  [data-attention="green"] {
+    --map-fill: #193c2b;
+    --map-border: #6fa982;
+    --map-ink: #e7f1e9;
+  }
+  [data-attention="yellow"] {
+    --map-fill: #493b16;
+    --map-border: #c6a344;
+    --map-ink: #f6edcf;
+  }
+  [data-attention="red"],
+  [data-attention="error"] {
+    --map-fill: #47222b;
+    --map-border: #d26b80;
+    --map-ink: #f6e5e9;
+  }
+}
+.educational-insight .map-card {
+  position: relative;
+  display: grid;
+  gap: 0.35rem;
+  min-height: 8.5rem;
+  padding: 1rem;
+  border: 1px solid var(--map-border);
+  border-radius: 0;
+  background: var(--map-fill);
+  color: var(--map-ink);
+}
+.workspace-content .educational-insight .map-card {
+  background: var(--map-fill);
+}
+.map-card .map-name {
+  margin: 0;
+  padding-right: 1.6rem;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+.map-card .map-project {
+  margin: 0;
+  font-size: 0.85rem;
+}
+.map-card .map-state,
+.map-card .map-meta {
+  font:
+    0.7rem ui-monospace,
+    Menlo,
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.map-card .map-meta {
+  margin: 0;
+  opacity: 0.75;
+}
+.map-card .map-reason {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  font-size: 0.8rem;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.map-card .map-icon {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.9rem;
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font:
+    700 0.72rem ui-monospace,
+    Menlo,
+    monospace;
+}
+.map-card button {
+  justify-self: start;
+  margin-top: 0.25rem;
+}
+/* Progress and reports share Marejada's control bar and criterion rows. */
+.insight-note {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--color-muted);
+}
+.educational-insight .insight-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.7rem 1rem;
+  padding: 1rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.educational-insight .insight-controls label {
+  display: grid;
+  gap: 0.25rem;
+  font:
+    0.72rem ui-monospace,
+    Menlo,
+    monospace;
+  color: var(--color-muted);
+}
+.educational-insight .insight-controls :is(input, select) {
+  min-width: 0;
+  padding: 0.45rem;
+  font:
+    0.85rem ui-monospace,
+    Menlo,
+    monospace;
+  color: var(--color-text);
+}
+.educational-insight .progress-adjust {
+  border-left: 3px solid var(--color-accent);
+  background: var(--color-shoal);
+}
+.educational-insight .progress-criterion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.3rem 1rem;
+  padding: 0.9rem 0;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+  background: transparent;
+}
+.workspace-content .educational-insight .progress-criterion {
+  background: transparent;
+}
+.progress-criterion > h3 {
+  grid-column: 1;
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--color-status);
+}
+.progress-criterion > .progress-level {
+  grid-column: 2;
+  grid-row: 1;
+  margin: 0;
+  font:
+    600 0.85rem ui-monospace,
+    Menlo,
+    monospace;
+  color: var(--color-accent);
+}
+.progress-criterion > :not(h3, .progress-level) {
+  grid-column: 1 / -1;
+}
+.progress-criterion ol {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+.progress-criterion button {
+  justify-self: start;
 }

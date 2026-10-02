@@ -31,12 +31,19 @@ it("shows loading, empty and disabled maps and reports failed navigation", async
       },
     ],
   };
+  const html = renderToStaticMarkup(view());
+  // Without a reason or analysis time the card shows neither, and the empty notice is gone.
+  expect(html).not.toContain("map-reason");
+  expect(html).toContain(`<p class="map-meta">${state.m.low}</p>`);
+  expect(html).not.toContain(state.m.empty);
   const navigate = vi.mocked(props.navigate);
-  for (const ok of [true, false]) {
-    navigate.mockResolvedValueOnce(ok);
-    button(view(), state.m.session).onClick?.();
-    await Promise.resolve();
-  }
+  navigate.mockResolvedValueOnce(true);
+  button(view(), state.m.session).onClick?.();
+  await Promise.resolve();
+  expect(state.setError).not.toHaveBeenCalled();
+  navigate.mockResolvedValueOnce(false);
+  button(view(), state.m.session).onClick?.();
+  await Promise.resolve();
   expect(navigate).toHaveBeenCalledWith("run");
   expect(state.setError).toHaveBeenCalledExactlyOnceWith(true);
 });
@@ -102,9 +109,17 @@ it("paginates reports, selects a period and generates with explicit dates", () =
     entries: Array.from({ length: 51 }, (_, i) => ({
       id: `r${String(i)}`,
       state: i === 0 ? "future-status" : "queued",
-      createdAt: "now",
+      createdAt: i === 1 ? "2026-10-02T08:00:00.000Z" : "now",
     })),
   };
+  // Server dates are formatted; anything else is shown unchanged.
+  const created = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(
+    new Date("2026-10-02T08:00:00.000Z"),
+  );
+  expect(renderToStaticMarkup(view())).toContain(
+    `<time dateTime="2026-10-02T08:00:00.000Z">${created}</time> · `,
+  );
+  expect(renderToStaticMarkup(view())).toContain('<time dateTime="now">now</time>');
   state.page = "previous";
   button(view(), state.m.more).onClick?.();
   expect(state.setPage).toHaveBeenLastCalledWith("r50");
