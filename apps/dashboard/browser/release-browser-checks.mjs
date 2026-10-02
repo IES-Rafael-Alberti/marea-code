@@ -1,5 +1,6 @@
 /* global document, getComputedStyle */
 import assert from "node:assert/strict";
+import { classSelection, openSettings, openView } from "./workspace-navigation.mjs";
 
 /** The sessions entry of the composition editor, independent of catalog order. */
 export function sessionsModule(editor) {
@@ -13,10 +14,13 @@ export function sessionsModule(editor) {
 
 export async function releaseBrowserChecks(page, editor) {
   const sessions = sessionsModule(editor);
+  await openView(page, "sessions");
   await page.locator(".session-list li button").first().click();
   const notice = page.locator(".notice-composer textarea");
   await notice.fill("Synthetic unsent notice");
   const selected = page.locator('.session-list button[aria-current="true"]');
+  // The session stays mounted, with its draft, while the teacher edits the panel in Settings.
+  await openSettings(page);
   await editor.locator('input[type="checkbox"]').nth(0).uncheck();
   for (const theme of ["org.marea.theme.high-contrast", "org.marea.theme.marea"]) {
     await selectReleaseTheme(page, editor, theme);
@@ -56,9 +60,9 @@ export async function releaseBrowserChecks(page, editor) {
     await page.setViewportSize({ width: 1280, height: 900 });
   }
   // Rejecting the real native navigation decision preserves session and notice.
-  const selection = page.locator(".profile-shell > label select").first();
+  const selection = classSelection(page);
   page.once("dialog", (dialog) => dialog.dismiss());
-  await selection.selectOption("");
+  await selection.selectOption("class:other");
   assert.equal(await selection.inputValue(), "class:ready");
   assert.equal(await notice.inputValue(), "Synthetic unsent notice");
   page.once("dialog", (dialog) => dialog.accept());
@@ -77,13 +81,15 @@ export async function releaseBrowserChecks(page, editor) {
   await page.waitForTimeout(2300);
   assert.equal(queries, stopped, "disabled module must stop polling");
   await sessions.locator('input[type="checkbox"]').check();
-  await page.locator(".session-workspace").waitFor();
+  await page.locator(".session-workspace").waitFor({ state: "attached" });
+  await openView(page, "sessions");
   await page.locator(".session-list li button").first().click();
   assert.equal(
     await notice.inputValue(),
     "",
     "disposed module must not resurrect its unsent draft",
   );
+  await openSettings(page);
   await sessions.locator("select").first().selectOption("main");
   await editor.locator('input[type="checkbox"]').nth(1).check();
   await editor.locator('input[type="checkbox"]').nth(0).check();
@@ -97,6 +103,7 @@ export async function releaseBrowserChecks(page, editor) {
     await delayed.promise;
     await route.fulfill({ response });
   });
+  await openView(page, "sessions");
   await page.locator(".session-list .actions button").first().click();
   await arrived.promise;
   await selection.selectOption("class:other");
@@ -108,9 +115,11 @@ export async function releaseBrowserChecks(page, editor) {
   await page.unroute("**/history/classes");
   await selection.selectOption("class:ready");
   // Returning to a cached dirty profile requires explicit reconciliation with its fresh read.
+  await openSettings(page);
   await editor
     .getByRole("button", { name: "Keep draft against current revision", exact: true })
     .click();
+  await openView(page, "sessions");
   await page.locator(".session-list li button").first().waitFor();
 }
 

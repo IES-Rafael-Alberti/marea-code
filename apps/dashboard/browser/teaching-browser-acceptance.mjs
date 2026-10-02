@@ -10,6 +10,7 @@ import {
   skillText,
 } from "./teaching-acceptance-support.mjs";
 import { launchAcceptanceBrowser, newDiagnosticContext } from "./browser-acceptance-context.mjs";
+import { classSelection, openSettings } from "./workspace-navigation.mjs";
 
 const require = createRequire(import.meta.url);
 const { expect } = require("playwright/test");
@@ -36,8 +37,12 @@ try {
   }
   const teaching = page.locator(".teaching-module");
   const authoring = page.locator(".skill-authoring-module");
-  const classOf = (module) =>
-    module.locator(".teaching-classes select, .skill-authoring-classes select");
+  // Teaching and skill editing share the workspace class selector, under Settings > This class.
+  await openSettings(page, "classroom");
+  await page
+    .locator(".settings-page:not([hidden]) details.workspace-advanced > summary")
+    .first()
+    .click();
   const textOf = () => authoring.getByLabel("File text", { exact: true }).first();
   const click = (module, name) => module.getByRole("button", { name, exact: true }).click();
   const authoringPosts = () => p.requests.filter(({ path }) => path.startsWith(AUTHORING));
@@ -47,11 +52,12 @@ try {
     p.requests.filter(({ path }) => path === `${TEACHING}/read` || path === `${TEACHING}/save`);
   const writes = () =>
     p.requests.filter(({ path }) => path.endsWith("/save") || path.endsWith("/copy"));
-  const select = async (module, classId) => {
+  const select = async (classId) => {
     const catalog = await p.action(`${TEACHING}/catalog`, () =>
-      classOf(module).selectOption(classId),
+      classSelection(page).selectOption(classId),
     );
-    await p.idle(module);
+    await p.idle(teaching);
+    await p.idle(authoring);
     assert.equal(catalog.classId, classId);
     assert.deepEqual(
       catalog.skills.filter(({ source }) => source === "center").map(({ id }) => id),
@@ -86,21 +92,19 @@ try {
     await p.idle(teaching);
   };
 
-  await expect(classOf(teaching).locator("option")).toHaveCount(3);
-  await expect(classOf(authoring).locator("option")).toHaveCount(3);
-  await select(teaching, "class:one");
-  await select(authoring, "class:one");
+  await expect(classSelection(page).locator("option")).toHaveCount(3);
+  await select("class:one");
   assert.equal(await p.readTeaching(), null);
   await teaching
     .getByRole("textbox", { name: /^Guided mode instructions/ })
     .fill("Class one original");
   const original = await saveTeaching();
-  await select(teaching, "class:two");
+  await select("class:two");
   await teaching
     .getByRole("textbox", { name: /^Guided mode instructions/ })
     .fill("Class two original");
   const originalTwo = await saveTeaching();
-  await select(teaching, "class:one");
+  await select("class:one");
 
   // Create is exercised independently of copying, and validation cannot publish.
   await openPersonal("browser-journey");
@@ -247,7 +251,8 @@ try {
   await p.verifyTeaching(originalTwo, "class:two");
   await expect(checkbox).toHaveCount(4);
 
-  // Each module owns its dirty class navigation. Cancel and discard never touch the sibling.
+  // One class selector drives both modules: dirty drafts need one explicit decision, and
+  // declining keeps every draft while accepting discards them before either module navigates.
   await teaching
     .getByRole("textbox", { name: /^Guided mode instructions/ })
     .fill("Dirty teaching survives authoring");
@@ -256,38 +261,27 @@ try {
     importedFiles[1],
   ];
   await textOf().fill(navDraft[0].content);
-  const beforeTeachingNavigation = authoringPosts();
-  await classOf(teaching).selectOption("class:two");
-  await expect(teaching.getByRole("alertdialog")).toBeVisible();
-  await click(teaching, "Cancel");
+  const beforeNavigation = writes();
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await classSelection(page).selectOption("class:two");
+  await expect(classSelection(page)).toHaveValue("class:one");
   await expect(teaching.getByRole("textbox", { name: /^Guided mode instructions/ })).toHaveValue(
     "Dirty teaching survives authoring",
   );
   await p.draftFiles(authoring, navDraft);
-  await classOf(teaching).selectOption("class:two");
-  await p.action(`${TEACHING}/catalog`, () => click(teaching, "Discard draft and switch"));
+  page.once("dialog", (dialog) => dialog.accept());
+  await p.action(`${TEACHING}/catalog`, () => classSelection(page).selectOption("class:two"));
   await p.idle(teaching);
-  await expect(classOf(teaching)).toHaveValue("class:two");
-  await expect(classOf(authoring)).toHaveValue("class:one");
-  await p.draftFiles(authoring, navDraft);
-  assert.deepEqual(authoringPosts(), beforeTeachingNavigation);
+  await p.idle(authoring);
+  await expect(classSelection(page)).toHaveValue("class:two");
+  await expect(authoring.getByLabel("File text", { exact: true })).toHaveCount(0);
+  await expect(
+    teaching.getByRole("textbox", { name: /^Guided mode instructions/ }),
+  ).not.toHaveValue("Dirty teaching survives authoring");
+  assert.deepEqual(writes(), beforeNavigation);
   await teaching
     .getByRole("textbox", { name: /^Guided mode instructions/ })
     .fill("Dirty class two");
-  const beforeAuthoringNavigation = teachingPosts();
-  await classOf(authoring).selectOption("class:two");
-  await expect(authoring.getByRole("alertdialog")).toBeVisible();
-  await click(authoring, "Keep editing");
-  await p.draftFiles(authoring, navDraft);
-  await classOf(authoring).selectOption("class:two");
-  await p.action(`${TEACHING}/catalog`, () => click(authoring, "Discard edits and navigate"));
-  await p.idle(authoring);
-  await expect(classOf(authoring)).toHaveValue("class:two");
-  await expect(authoring.getByLabel("File text", { exact: true })).toHaveCount(0);
-  await expect(teaching.getByRole("textbox", { name: /^Guided mode instructions/ })).toHaveValue(
-    "Dirty class two",
-  );
-  assert.deepEqual(teachingPosts(), beforeAuthoringNavigation);
   await p.verifyTeaching(disabled);
   await p.verifyTeaching(originalTwo, "class:two");
 
@@ -418,7 +412,7 @@ try {
     [`${AUTHORING}/save`, 409],
   ]);
   console.log(
-    "TEACHING composed browser acceptance passed: two classes, create/validate/copy/edit, native encoded resources, exact selection and immutable content, independent navigation/conflict recovery, durable SQLite/files and authorization denials.",
+    "TEACHING composed browser acceptance passed: two classes, create/validate/copy/edit, native encoded resources, exact selection and immutable content, shared class navigation/conflict recovery, durable SQLite/files and authorization denials.",
   );
 } catch (error) {
   if (page !== undefined && !page.isClosed()) {

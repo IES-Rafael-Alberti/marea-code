@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { launchReleaseBrowser } from "./release-browser-runtime.mjs";
+import { classSelection, openSettings, openView } from "./workspace-navigation.mjs";
 const browser = await launchReleaseBrowser();
 try {
   for (const mode of ["unavailable", "future"]) {
@@ -25,8 +26,9 @@ try {
         await page.getByLabel("Username", { exact: true }).fill("teacher");
         await page.getByLabel("Password", { exact: true }).fill("teacher-password");
         await page.getByRole("button", { name: "Sign in", exact: true }).click();
-        await page.locator(".profile-shell > label select").first().selectOption("class:ready");
+        await classSelection(page).selectOption("class:ready");
         const editor = page.locator(".profile-editor");
+        await openSettings(page);
         await editor.locator("summary").click();
         const message =
           mode === "future"
@@ -38,18 +40,18 @@ try {
             getComputedStyle(document.documentElement).getPropertyValue("--color-text").trim() !==
             "",
         );
-        assert.equal(await page.getByRole("button", { name: "Sign out", exact: true }).count(), 1);
+        assert.equal(await page.locator(".account-menu summary").count(), 1);
         if (mode === "future") {
           assert.equal(
             await editor.getByRole("button", { name: "Save", exact: true }).isDisabled(),
             true,
           );
+          await openView(page, "sessions");
           await page.locator(".session-workspace").waitFor();
         } else {
+          await openView(page, "sessions");
           await page
-            .getByText("No visible modules. Use dashboard appearance to enable them.", {
-              exact: true,
-            })
+            .getByText("This view is not enabled in your dashboard.", { exact: true })
             .waitFor();
         }
         await page.screenshot({ path: `/tmp/p4-release-recovery-${mode}.png`, fullPage: true });

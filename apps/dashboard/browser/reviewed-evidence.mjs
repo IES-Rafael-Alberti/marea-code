@@ -6,6 +6,7 @@ import {
   stopReleaseHost,
 } from "./release-browser-runtime.mjs";
 import { sessionsModule, selectReleaseTheme } from "./release-browser-checks.mjs";
+import { classSelection, openSettings, openView } from "./workspace-navigation.mjs";
 const browser = await launchReleaseBrowser();
 const host = await startReleaseHost(false, ["--evidence"]);
 const errors = [];
@@ -59,10 +60,20 @@ async function evaluationDraft(page, editor, evidence) {
   const evaluationResponse = await evaluationRead;
   assert.equal(evaluationResponse.status(), 200);
   assert.equal((await evaluationResponse.json()).evaluation.state, "draft");
-  const feedback = page.getByRole("textbox", { name: "Feedback sent to the student", exact: true });
-  const note = page.getByRole("textbox", { name: "Private teacher note", exact: true });
+  // Drafts stay mounted in the hidden Sessions view while Settings and Progress are open.
+  const feedback = page.getByRole("textbox", {
+    name: "Feedback sent to the student",
+    exact: true,
+    includeHidden: true,
+  });
+  const note = page.getByRole("textbox", {
+    name: "Private teacher note",
+    exact: true,
+    includeHidden: true,
+  });
   await feedback.fill("Reviewed edited feedback");
   await note.fill("PRIVATE EDITED NOTE");
+  await openSettings(page);
   await editor.locator('input[type="checkbox"]').nth(0).uncheck();
   for (const theme of ["org.marea.theme.high-contrast", "org.marea.theme.marea"]) {
     await selectReleaseTheme(page, editor, theme);
@@ -71,16 +82,18 @@ async function evaluationDraft(page, editor, evidence) {
   }
   await sessionsModule(editor).locator("select").first().selectOption("aside");
   assert.equal(await feedback.inputValue(), "Reviewed edited feedback");
+  await openView(page, "progress");
   page.once("dialog", (dialog) => dialog.dismiss());
   await evidence.getByRole("button", { name: labels.en.open, exact: true }).first().click();
   await evidence.getByRole("alert").waitFor();
   assert.equal(await feedback.inputValue(), "Reviewed edited feedback");
-  const selection = page.locator(".profile-shell > label select").first();
+  const selection = classSelection(page);
   page.once("dialog", (dialog) => dialog.dismiss());
   await selection.selectOption("class:other");
   assert.equal(await selection.inputValue(), "class:ready");
   assert.equal(await feedback.inputValue(), "Reviewed edited feedback");
   // Only this explicit click may publish the reviewed feedback.
+  await openView(page, "sessions");
   const approved = page.waitForResponse(
     (r) => r.url().endsWith("/evaluations/approve") && r.status() === 200,
   );
@@ -108,9 +121,10 @@ try {
       (r) =>
         r.url().endsWith("/profiles/read") && r.request().postDataJSON().scope.kind === "class",
     );
-    await page.locator(".profile-shell > label select").first().selectOption("class:ready");
+    await classSelection(page).selectOption("class:ready");
     await profile;
     const editor = page.locator(".profile-editor");
+    await openSettings(page);
     await editor.locator("summary").click();
     const m = labels[locale];
     const evidence = page.getByRole("region", { name: m.title, exact: true });
@@ -123,6 +137,8 @@ try {
       descriptor.locator('input[type="checkbox"]').check(),
     );
     assert.equal(students.entries.length, 2, "homonymous students keep separate IDs");
+    // Reviewed evidence is learning evidence, shown with Progress.
+    await openView(page, "progress");
     const criteria = await waitRead(page, "criteria", () =>
       evidence
         .getByRole("button", { name: "Synthetic student · student:release", exact: true })

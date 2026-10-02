@@ -171,6 +171,13 @@ export function proofSupport(context, page, root, baseUrl, expect) {
   }
   async function verifyErrors(expectedRejections) {
     assert.deepEqual(errors, [], "page errors, failed requests or unhandled rejections");
+    // This host composes only teaching, skill authoring and the governance access probe. The
+    // shared class selector also loads the workspace's other class modules, which this host
+    // rejects; strict accounting applies to the services under test.
+    const underTest = (path) =>
+      path.startsWith(TEACHING) ||
+      path.startsWith(AUTHORING) ||
+      path === "/api/v1/dashboard/governance/access";
     // Controllers abort their previous signal before a new operation. Chromium can
     // report that cancellation even after the UI consumed the complete response.
     // Accept only ERR_ABORTED for a correlated, received HTTP response, never a
@@ -182,6 +189,7 @@ export function proofSupport(context, page, root, baseUrl, expect) {
     for (const request of failedRequests) {
       assert.equal(request.error, "net::ERR_ABORTED", JSON.stringify(request));
       const status = receivedResponses.get(request.requestId);
+      if (!underTest(request.path)) continue;
       assert.equal(
         status === 200 ||
           expectedRejections.some(
@@ -203,11 +211,12 @@ export function proofSupport(context, page, root, baseUrl, expect) {
     }
     // Chromium may request a favicon; only its exact 404 is optional.
     assert.deepEqual(
-      rejectedResponses.filter(([path]) => path !== "/favicon.ico"),
+      rejectedResponses.filter(([path]) => path !== "/favicon.ico" && underTest(path)),
       expectedRejections,
     );
     for (const entry of consoleErrors) {
       const path = new URL(entry.url).pathname;
+      if (!underTest(path)) continue;
       const matching = rejectedResponses.filter(
         ([candidate, status]) =>
           candidate === path &&

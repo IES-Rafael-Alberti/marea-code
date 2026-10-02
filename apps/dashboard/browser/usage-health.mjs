@@ -5,6 +5,7 @@ import {
   startReleaseHost,
   stopReleaseHost,
 } from "./release-browser-runtime.mjs";
+import { classSelection, openSettings, signOut } from "./workspace-navigation.mjs";
 const browser = await launchReleaseBrowser();
 const origin = "http://127.0.0.1:5196";
 const screenshots = process.env.MAREA_SCREENSHOTS ?? "/tmp";
@@ -82,6 +83,8 @@ async function signIn(context, locale) {
   await page.locator(".interface-language select").selectOption(locale);
   await page.locator(".session-form button[type=submit]").click();
   await page.locator(".profile-shell").waitFor();
+  // Usage and health are panel diagnostics, mounted only while that settings page is open.
+  await openSettings(page);
   return { page, requests };
 }
 const posted = (requests, path) => requests.filter((url) => url.endsWith(path)).length;
@@ -102,7 +105,7 @@ async function modules(context, locale) {
   await usage.getByText(m.selectUsage, { exact: true }).waitFor();
   await health.getByText(m.selectHealth, { exact: true }).waitFor();
   assert.equal(posted(requests, "/usage/query") + posted(requests, "/health/read"), 0);
-  const selection = page.locator(".profile-shell > label select").first();
+  const selection = classSelection(page);
   await selection.selectOption("class:ready");
 
   // Usage: page-scoped pricing, keyset paging and the conservative reservation estimate.
@@ -186,10 +189,11 @@ async function modules(context, locale) {
     });
     assert.equal(denied.status(), 403);
   }
-  await selection.selectOption("");
-  await usage.getByText(m.selectUsage, { exact: true }).waitFor();
-  await health.getByText(m.selectHealth, { exact: true }).waitFor();
-  assert.equal(await usage.locator("table").count(), 0);
+  // Another class has no recorded attempts: nothing from the previous class may remain.
+  await selection.selectOption("class:other");
+  await health.getByText(m.delivery, { exact: true }).waitFor();
+  await page.waitForTimeout(250);
+  assert.equal(await usage.locator("tbody tr").count(), 0);
   if (locale === "en") await lifecycle(page, usage, health, selection);
   assert.equal(
     requests.every((url) => url.startsWith(origin)),
@@ -220,7 +224,7 @@ async function lifecycle(page, usage, health, selection) {
   assert.equal(await page.getByText("private-diagnostic", { exact: false }).count(), 0);
   await page.unroute("**/dashboard/usage/query");
   await page.unroute("**/dashboard/health/read");
-  // A response released after the class is cleared must not render.
+  // A response released after the class changes must not render.
   let release;
   let received;
   const arrived = new Promise((resolve) => {
@@ -238,15 +242,14 @@ async function lifecycle(page, usage, health, selection) {
   await usage.getByRole("button", { name: "Refresh usage" }).click();
   await arrived;
   await usage.getByText("Loading usage…", { exact: true }).waitFor();
-  await selection.selectOption("");
+  await selection.selectOption("class:other");
   release();
-  await usage.getByText(copy.en.selectUsage, { exact: true }).waitFor();
   await page.waitForTimeout(250);
-  assert.equal(await usage.locator("table").count(), 0);
+  assert.equal(await usage.locator("tbody tr").count(), 0);
   await page.unroute("**/dashboard/usage/query");
   await selection.selectOption("class:ready");
   await usage.getByText(copy.en.complete, { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await signOut(page);
   await page.getByRole("button", { name: "Sign in", exact: true }).waitFor();
   assert.equal(await page.getByRole("region", { name: copy.en.usage }).count(), 0);
   assert.equal(await page.getByRole("region", { name: copy.en.health }).count(), 0);
@@ -263,7 +266,7 @@ async function journey(legacy) {
       try {
         if (legacy) {
           const { page, requests } = await signIn(context, locale);
-          await page.locator(".profile-shell > label select").first().selectOption("class:ready");
+          await classSelection(page).selectOption("class:ready");
           await page
             .getByText("Dashboard customization requires an offline server upgrade.", {
               exact: false,

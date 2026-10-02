@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { sessionsModule } from "./release-browser-checks.mjs";
+import { classSelection, openSettings } from "./workspace-navigation.mjs";
 const require = createRequire(process.env.PLAYWRIGHT_PACKAGE);
 const { chromium } = require("playwright");
 const catalog = JSON.parse(await readFile("/tmp/profiles-dashboard-browser-catalog.json", "utf8"));
@@ -133,10 +134,11 @@ try {
     await page.locator('input[autocomplete="username"]').fill("synthetic");
     await page.locator('input[type="password"]').fill("synthetic-password");
     await page.locator('form button[type="submit"]').click();
+    await openSettings(page);
     await page.locator(".profile-editor summary").click();
     await page.locator(".profile-editor select").first().waitFor();
     assert.equal(queries, 0);
-    await page.locator(".profile-shell > label select").first().selectOption("class:a");
+    await classSelection(page).selectOption("class:a");
     await page.waitForFunction(() => document.querySelector(".session-workspace"));
     const editor = page.locator(".profile-editor");
     // Independently override modules, disable, and confirm polling has stopped.
@@ -219,6 +221,7 @@ try {
     await editor.locator('[role="alert"]').waitFor();
     assert.ok(await editor.getByRole("button", { name: /^(Save|Guardar|Gorde)$/ }).isDisabled());
     assert.equal(writes, 2);
+    await page.locator(".account-menu summary").click();
     await page.locator(".session-bar button").click();
     await page.locator('input[type="password"]').waitFor();
     const signedOutQueries = queries;

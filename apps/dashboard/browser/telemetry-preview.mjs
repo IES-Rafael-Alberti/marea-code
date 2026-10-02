@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { once } from "node:events";
 import { spawn } from "node:child_process";
 import assert from "node:assert/strict";
+import { classSelection, openDiagnostics, signOut } from "./workspace-navigation.mjs";
 const installedPlaywright = createRequire(process.env.PLAYWRIGHT_PACKAGE);
 const { chromium } = installedPlaywright("playwright");
 const browser = await chromium.launch({
@@ -62,12 +63,14 @@ async function journey(legacy) {
         await page.getByLabel("Password", { exact: true }).fill("teacher-password");
         await page.locator(".interface-language select").selectOption(locale);
         await page.locator(".session-form button[type=submit]").click();
+        await page.locator(".telemetry-preview").waitFor({ state: "attached" });
+        await openDiagnostics(page);
         await page.locator(".telemetry-preview").waitFor();
         const [title, disabled, destinations, refresh, empty] = copy[locale];
         const panel = page.getByRole("region", { name: title, exact: true });
         await panel.getByText(empty, { exact: true }).waitFor();
         assert.equal(requests.filter((url) => url.endsWith("telemetry/preview")).length, 0);
-        const selection = page.locator(".profile-shell > label select").first();
+        const selection = classSelection(page);
         await selection.selectOption("class:ready");
         await panel.getByText(disabled, { exact: true }).waitFor();
         if (!legacy) {
@@ -126,9 +129,9 @@ async function journey(legacy) {
           },
         });
         assert.equal(denied.status(), 403);
-        await selection.selectOption("");
-        await panel.getByText(empty, { exact: true }).waitFor();
-        assert.equal(await panel.locator("pre").count(), 0);
+        // A class change remounts the preview for the new class; there is no class-less workspace.
+        await selection.selectOption("class:other");
+        await panel.getByText(disabled, { exact: true }).waitFor();
         if (locale === "en" && !legacy) await failureAndLifecycle(page, panel, selection);
         assert.equal(
           requests.every((url) => url.startsWith(origin)),
@@ -179,19 +182,21 @@ async function failureAndLifecycle(page, panel, selection) {
     const response = await route.fetch();
     received();
     await gate;
-    await route.fulfill({ response });
+    // Switching class aborts the held request, so the page may already have handled it.
+    await route.fulfill({ response }).catch(() => undefined);
   });
   await panel.getByRole("button", { name: "Refresh preview" }).click();
   await arrived;
   await panel.getByText("Loading telemetry preview…", { exact: true }).waitFor();
-  await selection.selectOption("");
+  await selection.selectOption("class:other");
   release();
-  await panel.getByText(copy.en[4], { exact: true }).waitFor();
-  assert.equal(await panel.locator("pre").count(), 0);
   await page.unroute("**/telemetry/preview");
+  // The held response belongs to the previous class and never reaches the remounted preview.
+  await panel.getByText(copy.en[1], { exact: true }).waitFor();
+  assert.equal(await panel.getByText("Loading telemetry preview…", { exact: true }).count(), 0);
   await selection.selectOption("class:ready");
   await panel.getByText(copy.en[1], { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await signOut(page);
   await page.getByRole("button", { name: "Sign in", exact: true }).waitFor();
   assert.equal(await page.locator(".telemetry-preview").count(), 0);
   assert.equal(await page.getByText("[REDACTED]", { exact: false }).count(), 0);

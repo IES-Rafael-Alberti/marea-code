@@ -5,6 +5,7 @@ import { randomUUID } from "node:crypto";
 import { URL } from "node:url";
 
 import { newDiagnosticContext } from "./browser-acceptance-context.mjs";
+import { openSettings } from "./workspace-navigation.mjs";
 
 const require = createRequire(import.meta.url);
 const { expect } = require("playwright/test");
@@ -56,6 +57,8 @@ export async function expectTeacherWithoutAdministration(session, baseUrl) {
 /** Opens the administration module and returns it with its center navigation. */
 export async function openAdministration(page, baseUrl, centerCount) {
   await page.goto(baseUrl);
+  // Center administration is a settings page, shown only to center administrators.
+  await openSettings(page, "administration");
   const module = page.locator(".governance-module");
   await expect(module.getByRole("heading", { name: "Center administration" })).toBeVisible();
   const centers = module.getByRole("navigation", { name: "Centers" });

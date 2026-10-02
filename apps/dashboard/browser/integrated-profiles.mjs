@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { releaseProfileHttp } from "./release-profile-http.mjs";
 import { releaseBrowserChecks, sessionsModule } from "./release-browser-checks.mjs";
 import { once } from "node:events";
+import { classSelection, openSettings, signOut } from "./workspace-navigation.mjs";
 import {
   launchReleaseBrowser,
   startReleaseHost,
@@ -26,11 +27,9 @@ async function teacher(login = "teacher") {
       response.url().endsWith("/profiles/read") &&
       response.request().postDataJSON().scope.kind === "class",
   );
-  await page.locator(".profile-shell > label select").first().selectOption("class:ready");
+  await classSelection(page).selectOption("class:ready");
   await classRead;
-  await page.waitForFunction(
-    () => !document.querySelector(".profile-shell > label:nth-of-type(2) select")?.disabled,
-  );
+  await page.waitForFunction(() => !document.querySelector(".workspace-class select")?.disabled);
   try {
     await page.locator(".session-workspace").waitFor();
   } catch (error) {
@@ -68,8 +67,10 @@ try {
   try {
     const first = await teacher();
     const editor = first.page.locator(".profile-editor");
+    await openSettings(first.page);
     await editor.locator("summary").click();
     await releaseBrowserChecks(first.page, editor);
+    await openSettings(first.page);
     await editor.locator('input[type="checkbox"]').nth(0).uncheck();
     await editor.locator("select").first().selectOption("org.marea.theme.high-contrast");
     const saved = first.page.waitForResponse(
@@ -205,7 +206,7 @@ try {
     first.page.on("request", (request) => {
       if (request.url().endsWith("/history/classes")) signedOutQueries++;
     });
-    await first.page.getByRole("button", { name: "Sign out", exact: true }).click();
+    await signOut(first.page);
     await first.page.getByRole("button", { name: "Sign in", exact: true }).waitFor();
     const stoppedAtSignOut = signedOutQueries;
     await first.page.waitForTimeout(2300);
@@ -221,6 +222,7 @@ try {
   host = await start(true);
   try {
     const legacy = await teacher();
+    await openSettings(legacy.page);
     await legacy.page
       .getByText(
         "Dashboard customization requires an offline server upgrade. Sessions remain available.",

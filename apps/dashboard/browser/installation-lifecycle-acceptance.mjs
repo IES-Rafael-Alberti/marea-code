@@ -73,7 +73,7 @@ async function signInThroughTheForm() {
   };
   await page.goto(baseUrl);
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-  await expect(page.getByText("Active sessions")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Sessions", exact: true })).toHaveCount(0);
 
   await signIn("teacher1", "not-the-right-password");
   await expect(page.getByRole("alert")).toHaveText("The username or password is not correct.");
@@ -82,17 +82,22 @@ async function signInThroughTheForm() {
   await expect(page.getByRole("alert")).toHaveText(
     "This dashboard is for teachers. Students use the marea application.",
   );
-  await expect(page.getByText("Active sessions")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Sessions", exact: true })).toHaveCount(0);
 
   await signIn("teacher1", PASSWORDS.teacher1);
-  await expect(page.getByText("Signed in as Tomas Teacher")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Active sessions" })).toBeVisible();
+  // The account menu carries the signed-in identity and the sign-out action.
+  const account = async () => {
+    await page.locator(".account-menu > summary").click();
+    await expect(page.getByText("Signed in as Tomas Teacher")).toBeVisible();
+  };
+  await account();
+  await expect(page.getByRole("heading", { name: "Sessions", exact: true })).toBeVisible();
   await page.reload();
-  await expect(page.getByText("Signed in as Tomas Teacher")).toBeVisible();
+  await account();
 
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-  await expect(page.getByText("Active sessions")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Sessions", exact: true })).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
   await context.close();

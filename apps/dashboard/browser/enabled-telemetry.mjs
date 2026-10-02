@@ -1,6 +1,7 @@
 /* global process, console */
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import { classSelection, openDiagnostics } from "./workspace-navigation.mjs";
 const require = createRequire(process.env.PLAYWRIGHT_PACKAGE);
 const { chromium } = require("playwright");
 const browser = await chromium.launch({
@@ -15,7 +16,8 @@ try {
   await page.getByLabel("Username", { exact: true }).fill("teacher");
   await page.getByLabel("Password", { exact: true }).fill("teacher-password");
   await page.locator(".session-form button[type=submit]").click();
-  await page.locator(".profile-shell > label select").first().selectOption("class:one");
+  await classSelection(page).selectOption("class:one");
+  await openDiagnostics(page);
   const panel = page.getByRole("region", { name: "Telemetry preview", exact: true });
   await panel.getByText("Telemetry enabled", { exact: true }).waitFor();
   await panel.getByText("Configured destinations: 2", { exact: true }).waitFor();
