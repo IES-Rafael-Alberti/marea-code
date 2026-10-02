@@ -15,7 +15,7 @@ import type { RunSnapshotCapture } from "../sessions/contracts.js";
 import type { EvaluationInput } from "../evaluation/evaluation-input.js";
 import { SqliteTeachingConfigurationRepository } from "../platform/persistence/sqlite-teaching-configuration-repository.js";
 
-export const digest = (value: string): string =>
+const digest = (value: string): string =>
   `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const DEFAULT_LEVELS = [
   "Completar la tarea con guía paso a paso",

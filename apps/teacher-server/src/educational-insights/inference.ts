@@ -9,7 +9,7 @@ import { SqliteUsageLedger } from "../platform/persistence/sqlite-usage-ledger.j
 import type { EducationalRoute } from "./configuration.js";
 
 /** A separate durable ledger prevents dashboard analysis from consuming student budgets. */
-export function educationalLedger(database: SqliteApplicationDatabase) {
+function educationalLedger(database: SqliteApplicationDatabase) {
   const sql = (query: string) => query.replaceAll("marea_usage_", "marea_educational_usage_");
   return new SqliteUsageLedger({
     execute: (query, values) => {
