@@ -42,7 +42,7 @@ export function writeArtifactBytes(
   limits: RecoveryBundleLimits,
 ): void {
   try {
-    mkdirSync(dirname(path), { recursive: true });
+    mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     writeFileSync(path, bytes, { mode: 0o600 });
   } catch {
     throw new RecoveryBundleError("bundle-filesystem-invalid");
@@ -346,7 +346,7 @@ export function copyVerifiedArtifactFile(
   const destination = safeArtifactPath(destinationRoot, record.path, "bundle-filesystem-invalid");
   const bytes = verifyFileBytes(sourcePath, record, limits, "bundle-filesystem-invalid");
   try {
-    mkdirSync(dirname(destination), { recursive: true });
+    mkdirSync(dirname(destination), { recursive: true, mode: 0o700 });
     writeFileSync(destination, bytes, { mode: 0o600 });
   } catch {
     throw new RecoveryBundleError("bundle-restore-failed");
