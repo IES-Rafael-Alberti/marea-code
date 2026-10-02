@@ -1,6 +1,7 @@
 import type { Locale } from "@marea/i18n";
 const en = {
   heading: "Sessions",
+  listed: "listed",
   commands: "Commands",
   writes: "Writes requested",
   skillsRead: "Skills read",
@@ -70,6 +71,7 @@ const en = {
 };
 const es: typeof en = {
   heading: "Sesiones",
+  listed: "en la lista",
   commands: "Comandos",
   writes: "Escrituras solicitadas",
   skillsRead: "Skills leídas",
@@ -140,6 +142,7 @@ const es: typeof en = {
 export type SessionsMessages = typeof en;
 const eu: SessionsMessages = {
   heading: "Saioak",
+  listed: "zerrendan",
   commands: "Komandoak",
   writes: "Eskatutako idazketak",
   skillsRead: "Irakurritako skill-ak",

@@ -1,4 +1,6 @@
 import { expect, it, vi } from "vitest";
+// Session times are local; scenes use a fixed label so snapshots match on every machine.
+vi.mock("./session-time.js", () => ({ sessionTime: () => "08:00" }));
 import { renderToStaticMarkup } from "react-dom/server";
 import {
   CanonicalRunEventSchema,
@@ -53,6 +55,18 @@ it.each(["en", "es"] as const)(
     expect(html()).toMatchSnapshot("connecting and empty");
     await controller.start();
     expect(html()).toMatchSnapshot("unselected session list");
+    // Inside the workspace the class is already chosen, so rows omit its name.
+    const workspace = renderToStaticMarkup(
+      <SessionsModule
+        locale={locale}
+        controller={controller}
+        classes={[]}
+        classSelection={false}
+      />,
+    );
+    expect(workspace).toContain("session-row-head");
+    expect(workspace).not.toContain("· Programming ·");
+    expect(workspace).toMatch(/08:00<\/time> · (Finished|Finalizada|Amaituta)/);
     await controller.select("run:one");
     expect(html()).toMatchSnapshot("conversation and draft");
     controller.state = {

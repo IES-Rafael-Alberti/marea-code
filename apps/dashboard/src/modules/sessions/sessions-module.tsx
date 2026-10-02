@@ -9,6 +9,7 @@ import type { SessionsController } from "./sessions-controller.js";
 import { sessionsMessages } from "./sessions-messages.js";
 import { ConversationEvent } from "./conversation-events.js";
 import { NoticePanel } from "./notice-panel.js";
+import { sessionTime } from "./session-time.js";
 export interface SessionsModuleProperties {
   readonly locale: DashboardLocale;
   readonly classSelection?: boolean;
@@ -57,6 +58,9 @@ export function SessionsModule({
     >
       <aside className="session-list">
         <h2>{m.heading}</h2>
+        <p className={`session-live connection-${state.connection}`}>
+          {m[state.connection]} · {runs.length} {m.listed}
+        </p>
         {classSelection && (
           <label>
             {m.classLabel}
@@ -104,10 +108,15 @@ export function SessionsModule({
                   void controller.select(run.runId);
                 }}
               >
-                <strong>{run.studentDisplayName}</strong>
+                <span className="session-row-head">
+                  <span className={`session-state session-state-${run.state}`} aria-hidden="true" />
+                  <strong>{run.studentDisplayName}</strong>
+                </span>
                 <span>{run.projectDisplayName}</span>
                 <small>
-                  {run.classDisplayName} · {run.state === "active" ? m.active : m.closed}
+                  <time dateTime={run.openedAt}>{sessionTime(run.openedAt, locale)}</time>
+                  {classSelection ? ` · ${run.classDisplayName}` : ""} ·{" "}
+                  {run.state === "active" ? m.active : m.closed}
                 </small>
               </button>
             </li>
