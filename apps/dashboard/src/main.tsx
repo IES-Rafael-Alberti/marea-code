@@ -1,7 +1,8 @@
+// Must stay first: protocol schemas are created at import time and the CSP forbids eval probes.
+import "./browser-schema-config.js";
 import { subscribeSessionChanges } from "./modules/sessions/session-live.boundary.js";
 import { createSessionsClient } from "./modules/sessions/sessions-client.boundary.js";
 import { createNoticeClient } from "./modules/sessions/notice-client.boundary.js";
-import "./browser-schema-config.js";
 import "./styles.css";
 import "./profiles/profiles.css";
 
