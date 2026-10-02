@@ -112,6 +112,7 @@ export interface SkillAuthoringActions {
 }
 
 export interface SkillAuthoringModuleProperties {
+  readonly classSelection?: boolean;
   readonly locale: DashboardLocale;
   readonly state: SkillAuthoringState;
   readonly controller: SkillAuthoringActions;

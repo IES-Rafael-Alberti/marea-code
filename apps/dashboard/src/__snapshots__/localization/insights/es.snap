@@ -9,6 +9,7 @@
   "cancelled": "Cancelado",
   "complete": "Completo",
   "confidence": "Confianza",
+  "configureConnection": "Configurar conexión",
   "confirmReset": "¿Reiniciar todos los criterios de esta skill?",
   "custom": "Personalizado",
   "date": "Fecha",
@@ -70,6 +71,6 @@
   "to": "Hasta",
   "tokens": "Tokens",
   "unavailable": "No disponible",
-  "unconfigured": "Un administrador debe configurar el modelo y el presupuesto.",
+  "unconfigured": "Falta configurar el modelo y los límites de esta función.",
   "yellow": "Conviene observar",
 }

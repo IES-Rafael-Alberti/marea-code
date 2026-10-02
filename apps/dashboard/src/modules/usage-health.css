@@ -1,7 +1,11 @@
 .class-projection {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-small, 8px);
   overflow-wrap: anywhere;
+}
+.class-projection > * {
+  min-width: 0;
 }
 .class-projection h2,
 .class-projection p {
@@ -58,4 +62,10 @@
 }
 .class-projection dt {
   font-weight: 600;
+}
+.class-projection form > *,
+.class-projection label,
+.class-projection input {
+  min-width: 0;
+  max-width: 100%;
 }

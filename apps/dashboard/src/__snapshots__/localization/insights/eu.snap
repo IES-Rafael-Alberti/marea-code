@@ -9,6 +9,7 @@
   "cancelled": "Bertan behera",
   "complete": "Osoa",
   "confidence": "Konfiantza",
+  "configureConnection": "Konfiguratu konexioa",
   "confirmReset": "Trebetasun honetako irizpide guztiak berrabiarazi?",
   "custom": "Pertsonalizatua",
   "date": "Data",
@@ -70,6 +71,6 @@
   "to": "Amaiera",
   "tokens": "Tokenak",
   "unavailable": "Ez dago erabilgarri",
-  "unconfigured": "Administratzaile batek modeloa eta aurrekontua konfiguratu behar ditu.",
+  "unconfigured": "Funtzio honen eredua eta mugak konfiguratu behar dira.",
   "yellow": "Behatu",
 }

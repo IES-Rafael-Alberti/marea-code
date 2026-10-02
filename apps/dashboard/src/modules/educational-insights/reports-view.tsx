@@ -4,6 +4,7 @@ import * as z from "zod";
 import { insightsMessages } from "./messages.js";
 import { reportsSchema } from "./schemas.js";
 import type { useInsightModel, InsightViewProps } from "./model.js";
+import { UnconfiguredNotice } from "./unconfigured.js";
 interface Props {
   model: ReturnType<typeof useInsightModel>;
   props: InsightViewProps & { classId: string };
@@ -134,7 +135,13 @@ export function ReportsView({ model, props, shared }: Props) {
                 {m.more}
               </button>
             ))}
-          {list.success && !list.data.configured && <p>{m.unconfigured}</p>}
+          {list.success && !list.data.configured && (
+            <UnconfiguredNotice
+              text={m.unconfigured}
+              action={m.configureConnection}
+              configure={props.configure}
+            />
+          )}
           {list.success &&
             list.data.entries.map((r) => (
               <p key={r.id}>

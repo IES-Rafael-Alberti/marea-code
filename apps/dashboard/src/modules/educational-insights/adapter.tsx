@@ -6,6 +6,7 @@ import { InsightView } from "./view.js";
 export function createEducationalAdapters(
   fetchRequest: DashboardFetch,
   navigate: (classId: string | null, runId: string, signal: AbortSignal) => Promise<boolean>,
+  configure?: () => void,
 ) {
   return new Map(
     (["map", "progress", "reports"] as const).flatMap((kind) =>
@@ -17,6 +18,7 @@ export function createEducationalAdapters(
           const root = createRoot(container);
           root.render(
             <InsightView
+              configure={configure}
               kind={kind}
               classId={environment.classId}
               locale={environment.locale}

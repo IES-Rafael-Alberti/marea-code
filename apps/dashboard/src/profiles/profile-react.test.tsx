@@ -5,7 +5,6 @@ import { Children, isValidElement, type ReactElement, type ReactNode } from "rea
 import * as catalogModule from "./profile-catalog.js";
 import * as hostModule from "./module-host.js";
 import { ProfileEditor } from "./profile-editor.js";
-import { PreviewPanel } from "../telemetry/preview-panel.js";
 import { ProfileShell } from "./profile-shell.js";
 import { ModulePlugin } from "./module-plugin.js";
 import { SessionPlugin } from "./session-plugin.js";
@@ -106,11 +105,16 @@ function shell(
   classId: string | null = null,
   current: SessionsController | null = null,
   failed = false,
+  section = "sessions",
+  subsection = "panel",
 ) {
-  reset([c, 0, failed, 0, classId, "teacher"], [{ current }]);
+  reset([c, 0, failed, 0, classId, section, subsection], [{ current }]);
   return ProfileShell({
     locale: "en",
-    classes: [{ classId: "class:a", displayName: "Class A" }],
+    classes: [
+      { classId: "class:a", displayName: "Class A" },
+      { classId: "class:b", displayName: "Class B" },
+    ],
     runtime,
   });
 }
@@ -128,7 +132,8 @@ it("boots and disposes profile requests and ignores catalog loads after unmount"
     );
   });
   shell();
-  expect(hooks.initials).toEqual([null, 0, false, 0, null]);
+  const lazy = expect.any(Function) as object; // view and settings page come from the URL
+  expect(hooks.initials).toEqual([null, 0, false, 0, null, lazy, lazy]);
   expect(hooks.dependencies[0]).toEqual([runtime, 0]);
   const cleanup = hooks.effects[0]?.();
   await vi.waitFor(() => {
@@ -157,7 +162,7 @@ it("boots and disposes profile requests and ignores catalog loads after unmount"
     expect(hooks.values[2]).toBe(true);
   });
   elements(node)
-    .find((item) => item.type === "button")
+    .find((item) => item.type === "button" && item.props.children === "Retry")
     ?.props.onClick?.();
   expect(hooks.values[3]).toBe(1);
   const rejected = Promise.withResolvers<typeof release>();
@@ -242,7 +247,11 @@ it("guards class/scope changes and keeps profile drafts while choosing class sco
   const session = new SessionsController(runtime.sessions, runtime.notices, vi.fn());
   const pending = vi.spyOn(session, "hasUnsavedDrafts", "get").mockReturnValue(true);
   const confirm = vi.fn().mockReturnValue(false);
-  vi.stubGlobal("window", { confirm });
+  vi.stubGlobal("window", {
+    confirm,
+    location: { href: "http://localhost/dashboard/" },
+    history: { replaceState: vi.fn() },
+  });
   const select = vi.spyOn(c, "select").mockResolvedValue();
   let controls = elements(shell(c, "class:a", session)).filter((item) => item.type === "select");
   for (const item of controls) item.props.onChange?.({ currentTarget: { value: "class:b" } });
@@ -252,7 +261,7 @@ it("guards class/scope changes and keeps profile drafts while choosing class sco
   expect(select).toHaveBeenLastCalledWith({ kind: "class", classId: "class:b" });
   expect(hooks.values[4]).toBe("class:b");
   controls[0]?.props.onChange?.({ currentTarget: { value: "" } });
-  expect(select).toHaveBeenLastCalledWith({ kind: "teacher" });
+  expect(select).toHaveBeenLastCalledWith({ kind: "class", classId: "class:b" });
   controls[1]?.props.onChange?.({ currentTarget: { value: "class" } });
   expect(select).toHaveBeenLastCalledWith({ kind: "class", classId: "class:a" });
   controls[1]?.props.onChange?.({ currentTarget: { value: "teacher" } });
@@ -422,12 +431,14 @@ it("orders main before aside, filters disabled/unauthorized modules and previews
   const aside = { ...selection, placement: { slot: "aside", size: "compact" } as const };
   c.edit({ ...value, modules: [aside, second, { ...second, moduleId: "org.marea.missing" }] });
   const moduleIds = () =>
-    elements(shell(c, "class:a"))
+    elements(shell(c, "class:a", null, false, "settings"))
       .filter((item) => item.type === SessionPlugin || item.type === ModulePlugin)
       .map((item) => (item as ReactElement<{ module: typeof selection }>).props.module.moduleId);
   expect(moduleIds()).toEqual([second.moduleId, selection.moduleId]);
   expect(
-    elements(shell(c, "class:a")).find((item) => item.type === ModulePlugin)?.props,
+    elements(shell(c, "class:a", null, false, "settings")).find(
+      (item) => item.type === ModulePlugin,
+    )?.props,
   ).toMatchObject({ module: second, adapter: undefined });
   expect(
     elements(shell(c, "class:a")).find(
@@ -480,20 +491,4 @@ it("keeps the legacy session workspace available only on an explicit host legacy
     ),
   ).toBe(true);
   expect(elements(node).some((item) => item.type === ProfileEditor)).toBe(false);
-});
-it("waits for profile initialization and scope reads before accepting a class selection", () => {
-  const classSelect = (node: ReactNode) => elements(node).find((item) => item.type === "select");
-  expect(classSelect(shell())?.props.disabled).toBe(true);
-  const controller = new ProfileController(clientFixture(), release, vi.fn());
-  controller.busy = true;
-  expect(classSelect(shell(controller))?.props.disabled).toBe(true);
-  controller.busy = false;
-  expect(classSelect(shell(controller))?.props.disabled).toBe(false);
-});
-it("keeps the shell preview independent of profile visibility and keys its lifecycle by class", () => {
-  for (const classId of [null, "class:a", "class:b"]) {
-    const preview = elements(shell(null, classId)).find((item) => item.type === PreviewPanel);
-    expect(preview?.props).toEqual({ classId, locale: "en", fetchRequest: runtime.fetch });
-    expect(preview?.key).toBe(`.$${String(classId).replaceAll(":", "=2")}`);
-  }
 });

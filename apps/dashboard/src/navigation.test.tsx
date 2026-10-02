@@ -182,3 +182,19 @@ it("does not start legacy unscoped reads when the profile host owns module lifec
   expect(sessions.classes).not.toHaveBeenCalled();
   handle.dispose();
 });
+it("hides administration while governance access is still unknown", () => {
+  const controller = new GovernanceController(controllerClient(), vi.fn());
+  const state = { ...controller.state, access: undefined } as never;
+  const elements = reviewElements(
+    <DashboardApp locale="en" governance={{ controller, state }} />,
+  ) as readonly ReactElement<NavigationProperties>[];
+  const navigation = elements.find((element) => element.props.className === "task-navigation");
+  const buttons = reviewElements(
+    navigation?.props.children,
+  ) as readonly ReactElement<NavigationProperties>[];
+  expect(buttons.map((button) => button.props.children)).toEqual([
+    "Sessions",
+    "Teaching",
+    "Skills",
+  ]);
+});

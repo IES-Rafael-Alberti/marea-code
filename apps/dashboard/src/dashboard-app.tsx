@@ -1,4 +1,5 @@
-import { ProfileShell, type ProfileRuntime } from "./profiles/profile-shell.js";
+import { TeacherWorkspace } from "./profiles/teacher-workspace.js";
+import type { ProfileRuntime } from "./profiles/profile-shell.js";
 import {
   SessionsModule,
   type SessionsModuleProperties,
@@ -99,48 +100,63 @@ export function DashboardApp({
       <header className="masthead">
         <p className="eyebrow">{messages.eyebrow}</p>
         <h1>Marea Code</h1>
-        {session !== undefined && signedIn && <SessionBar locale={locale} {...session} />}
+        {session !== undefined && signedIn && (
+          <details className="account-menu">
+            <summary>{session.state.displayName}</summary>
+            <SessionBar locale={locale} {...session} />
+          </details>
+        )}
       </header>
       {signIn}
       {signedIn && (
         <>
-          <nav className="task-navigation" aria-label={messages.mainNavigation}>
-            {Object.entries(tabs)
-              .filter(
-                ([id]) =>
-                  id !== "administration" || governance?.state.access?.administrator === true,
-              )
-              .map(([id, label]) => (
-                <button
-                  key={id}
-                  aria-current={section === id ? "page" : undefined}
-                  onClick={() => {
-                    navigation?.select(id);
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-          </nav>
-          <div hidden={section !== "sessions"}>
-            <SessionPanel
+          {profiles !== undefined ? (
+            <TeacherWorkspace
               locale={locale}
               profiles={profiles}
-              workspace={workspace}
               teaching={teaching}
-              state={state}
-              evaluation={evaluation}
+              authoring={authoring}
+              governance={governance}
             />
-          </div>
-          <div hidden={section !== "teaching"}>
-            {teaching !== undefined && <TeachingModule locale={locale} {...teaching} />}
-          </div>
-          <div hidden={section !== "skills"}>
-            {authoring !== undefined && <SkillAuthoringModule locale={locale} {...authoring} />}
-          </div>
-          <div hidden={section !== "administration"}>
-            {governance !== undefined && <GovernanceModule locale={locale} {...governance} />}
-          </div>
+          ) : (
+            <>
+              <nav className="task-navigation" aria-label={messages.mainNavigation}>
+                {Object.entries(tabs)
+                  .filter(
+                    ([id]) =>
+                      id !== "administration" || governance?.state.access?.administrator === true,
+                  )
+                  .map(([id, label]) => (
+                    <button
+                      key={id}
+                      aria-current={section === id ? "page" : undefined}
+                      onClick={() => {
+                        navigation?.select(id);
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+              </nav>
+              <div hidden={section !== "sessions"}>
+                <SessionPanel
+                  locale={locale}
+                  workspace={workspace}
+                  state={state}
+                  evaluation={evaluation}
+                />
+              </div>
+              <div hidden={section !== "teaching"}>
+                {teaching !== undefined && <TeachingModule locale={locale} {...teaching} />}
+              </div>
+              <div hidden={section !== "skills"}>
+                {authoring !== undefined && <SkillAuthoringModule locale={locale} {...authoring} />}
+              </div>
+              <div hidden={section !== "administration"}>
+                {governance !== undefined && <GovernanceModule locale={locale} {...governance} />}
+              </div>
+            </>
+          )}
         </>
       )}
     </main>
@@ -179,25 +195,18 @@ function InterfaceLanguageSelector({
   );
 }
 
+/** The pre-profile session surfaces, used only when no profile runtime is composed. */
 function SessionPanel({
   locale,
-  profiles,
   workspace,
-  teaching,
   state,
   evaluation,
 }: {
   readonly locale: DashboardLocale;
-  readonly profiles: DashboardAppProperties["profiles"];
   readonly workspace: DashboardAppProperties["workspace"];
-  readonly teaching: DashboardAppProperties["teaching"];
   readonly state: DashboardState;
   readonly evaluation: DashboardAppProperties["evaluation"];
 }) {
-  if (profiles !== undefined)
-    return (
-      <ProfileShell locale={locale} runtime={profiles} classes={teaching?.state.classes ?? []} />
-    );
   if (workspace !== undefined) return <SessionsModule locale={locale} {...workspace} />;
   return (
     <>

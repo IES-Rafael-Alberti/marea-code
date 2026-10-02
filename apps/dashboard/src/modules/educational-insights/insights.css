@@ -36,3 +36,19 @@
 .educational-insight p {
   overflow-wrap: anywhere;
 }
+.educational-settings form,
+.educational-insight {
+  grid-template-columns: minmax(0, 1fr);
+}
+.educational-insight > *,
+.educational-settings form > * {
+  min-width: 0;
+}
+.educational-insight h2 {
+  overflow-wrap: anywhere;
+}
+.educational-insight input,
+.educational-insight select {
+  max-width: 100%;
+  min-width: 0;
+}

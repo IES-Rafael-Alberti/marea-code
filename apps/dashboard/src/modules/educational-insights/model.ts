@@ -13,6 +13,7 @@ import { insightsClient } from "./client.js";
 import { insightsMessages } from "./messages.js";
 
 export interface InsightViewProps {
+  readonly configure?: (() => void) | undefined;
   readonly visible?: boolean;
   readonly kind: "map" | "progress" | "reports";
   readonly classId: string | null;

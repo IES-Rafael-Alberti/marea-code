@@ -18,6 +18,7 @@ import type { SkillAuthoringMessages } from "./skill-authoring-messages.js";
 type SkillBundle = NonNullable<SkillAuthoringReadResponse["skill"]>;
 
 export interface SkillAuthoringViewProperties {
+  readonly classSelection?: boolean;
   readonly state: SkillAuthoringState;
   readonly controller: SkillAuthoringActions;
   readonly messages: SkillAuthoringMessages;
@@ -103,10 +104,12 @@ function ClassNavigation({
   state,
   controller,
   messages: m,
+  classSelection,
 }: {
   readonly state: SkillAuthoringState;
   readonly controller: SkillAuthoringActions;
   readonly messages: SkillAuthoringMessages;
+  readonly classSelection: boolean;
 }) {
   const classOptions = state.classes.map(({ classId, displayName }) => (
     <option key={classId} value={classId}>
@@ -122,33 +125,38 @@ function ClassNavigation({
   const navigationDisabled = state.busy || state.pendingTarget !== null;
   return (
     <>
-      <section
-        className="skill-authoring-classes"
-        aria-labelledby="skill-authoring-classes-heading"
-      >
-        <h3 id="skill-authoring-classes-heading">{m.classesHeading}</h3>
-        {state.problem === "load" && <p role="alert">{m.errors.load}</p>}
-        {!state.classesLoaded && <p role="status">{m.classesLoading}</p>}
-        {state.classesLoaded && state.classes.length === 0 && <p role="status">{m.classesEmpty}</p>}
-        <button disabled={state.busy} onClick={() => void controller.loadClasses()}>
-          {m.reloadClasses}
-        </button>
-        {state.classes.length > 0 && (
-          <label>
-            {m.classSelector}
-            <select
-              disabled={navigationDisabled}
-              value={state.classId ?? ""}
-              onChange={(event) => void controller.selectClass(event.currentTarget.value)}
-            >
-              <option value="" disabled>
-                {m.chooseClass}
-              </option>
-              {classOptions}
-            </select>
-          </label>
-        )}
-      </section>
+      {/* A host with a shared class selector omits only this selector, never the catalog. */}
+      {classSelection && (
+        <section
+          className="skill-authoring-classes"
+          aria-labelledby="skill-authoring-classes-heading"
+        >
+          <h3 id="skill-authoring-classes-heading">{m.classesHeading}</h3>
+          {state.problem === "load" && <p role="alert">{m.errors.load}</p>}
+          {!state.classesLoaded && <p role="status">{m.classesLoading}</p>}
+          {state.classesLoaded && state.classes.length === 0 && (
+            <p role="status">{m.classesEmpty}</p>
+          )}
+          <button disabled={state.busy} onClick={() => void controller.loadClasses()}>
+            {m.reloadClasses}
+          </button>
+          {state.classes.length > 0 && (
+            <label>
+              {m.classSelector}
+              <select
+                disabled={navigationDisabled}
+                value={state.classId ?? ""}
+                onChange={(event) => void controller.selectClass(event.currentTarget.value)}
+              >
+                <option value="" disabled>
+                  {m.chooseClass}
+                </option>
+                {classOptions}
+              </select>
+            </label>
+          )}
+        </section>
+      )}
       {selectedClassId !== null && (
         <section
           className="skill-authoring-catalog"
@@ -288,11 +296,17 @@ export function SkillAuthoringView({
   messages: m,
   files,
   liveFileOperations,
+  classSelection = true,
 }: SkillAuthoringViewProperties) {
   const usesLiveFileOperations = resolveSkillAuthoringLiveFileOperations(liveFileOperations);
   return (
     <>
-      <ClassNavigation controller={controller} messages={m} state={state} />
+      <ClassNavigation
+        controller={controller}
+        messages={m}
+        state={state}
+        classSelection={classSelection}
+      />
       <SkillAuthoringStatus controller={controller} messages={m} state={state} />
       <SkillAuthoringDraftPanel
         controller={controller}

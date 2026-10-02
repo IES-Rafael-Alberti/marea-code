@@ -29,6 +29,7 @@ export function SkillAuthoringModule({
   state,
   controller,
   files,
+  classSelection = true,
   liveFileOperations = defaultSkillAuthoringLiveFileOperations(),
 }: SkillAuthoringModuleViewProperties) {
   const messages = skillAuthoringMessages(locale);
@@ -41,6 +42,7 @@ export function SkillAuthoringModule({
       <h2 id="skill-authoring-heading">{messages.heading}</h2>
       {state.busy && <p role="status">{messages.busy}</p>}
       <SkillAuthoringView
+        classSelection={classSelection}
         controller={controller}
         files={files ?? defaultSkillAuthoringFiles}
         liveFileOperations={liveFileOperations}

@@ -9,6 +9,7 @@
   "cancelled": "Cancelled",
   "complete": "Complete",
   "confidence": "Confidence",
+  "configureConnection": "Configure connection",
   "confirmReset": "Reset all criteria in this skill?",
   "custom": "Custom",
   "date": "Date",
@@ -70,6 +71,6 @@
   "to": "To",
   "tokens": "Tokens",
   "unavailable": "Unavailable",
-  "unconfigured": "An administrator must configure the model and budget.",
+  "unconfigured": "No model and budget are configured for this feature yet.",
   "yellow": "Observe",
 }

@@ -1,3 +1,5 @@
+import { PreviewPanel } from "../telemetry/preview-panel.js";
+import { moduleSection } from "./workspace-navigation.js";
 import { Children, isValidElement, type ReactNode, type DependencyList } from "react";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { ProfileController } from "./profile-controller.js";
@@ -14,6 +16,8 @@ import { sessionPorts } from "../../browser/typed-host-data.fixture.js";
 const hooks = vi.hoisted(() => ({
   controller: null as ProfileController | null,
   index: 0,
+  section: "sessions",
+  subsection: "panel",
   classId: null as string | null,
   session: null as SessionsController | null,
   memos: [] as { dependencies: DependencyList; value: object }[],
@@ -33,7 +37,10 @@ vi.mock("react", async (original) => ({
     hooks.memos[index] = { dependencies, value };
     return value;
   },
-  useState: () => [[hooks.controller, 0, false, 0, hooks.classId][hooks.index++], vi.fn()],
+  useState: () => [
+    [hooks.controller, 0, false, 0, hooks.classId, hooks.section, hooks.subsection][hooks.index++],
+    vi.fn(),
+  ],
   useRef: (current: object | null) => ({ current: current ?? hooks.session }),
   useEffect: vi.fn(),
 }));
@@ -66,6 +73,7 @@ it.each([
   };
   controller.edit({ ...value, modules: [library] });
   hooks.controller = controller;
+  hooks.section = moduleSection(moduleId);
   hooks.index = 0;
   hooks.memoIndex = 0;
   const adapter = vi.fn<ModuleAdapter>();
@@ -88,22 +96,36 @@ it.each([
     throw new Error("Missing module");
   expect(child.props.module).toEqual(library);
   if (moduleId === "synthetic.library") expect(child.props.adapter).toBe(adapter);
-  else expect(child.props.adapter).toBeTypeOf("function");
+  // First-party insight and evidence adapters take precedence over a same-named runtime adapter.
+  else {
+    expect(child.props.adapter).toBeTypeOf("function");
+    expect(child.props.adapter).not.toBe(adapter);
+  }
   expect(adapter).not.toHaveBeenCalled();
 });
 
-it("binds evidence navigation to the mounted session and the localized dirty-draft decision", async () => {
+/** A mounted session with an unsent draft whose discard decision the teacher declines. */
+function draftSession() {
   const runtime = { ...sessionPorts, fetch: vi.fn() };
   const session = new SessionsController(runtime.sessions, runtime.notices, vi.fn());
   session.state = { ...session.state, classId: "class:a", connection: "current" };
   vi.spyOn(session, "hasUnsavedDrafts", "get").mockReturnValue(true);
   const confirm = vi.fn().mockReturnValue(false);
-  vi.stubGlobal("window", { confirm });
-  const adapters = vi.spyOn(evidenceAdapterModule, "createReviewedEvidenceAdapters");
+  vi.stubGlobal("window", {
+    confirm,
+    location: { href: "http://localhost/dashboard/" },
+    history: { replaceState: vi.fn() },
+  });
   hooks.controller = null;
   hooks.index = 0;
   hooks.memoIndex = 0;
   hooks.session = session;
+  return { runtime, session, confirm };
+}
+
+it("binds evidence navigation to the mounted session and the localized dirty-draft decision", async () => {
+  const { runtime, session, confirm } = draftSession();
+  const adapters = vi.spyOn(evidenceAdapterModule, "createReviewedEvidenceAdapters");
   ProfileShell({ locale: "en", classes: [], runtime });
   const navigate = adapters.mock.lastCall?.[1];
   if (navigate === undefined) throw new Error("missing navigator");
@@ -121,17 +143,8 @@ it("binds evidence navigation to the mounted session and the localized dirty-dra
 });
 
 it("binds educational navigation to the session and localized discard confirmation", async () => {
-  const runtime = { ...sessionPorts, fetch: vi.fn() };
-  const session = new SessionsController(runtime.sessions, runtime.notices, vi.fn());
-  session.state = { ...session.state, classId: "class:a", connection: "current" };
-  vi.spyOn(session, "hasUnsavedDrafts", "get").mockReturnValue(true);
-  const confirm = vi.fn().mockReturnValue(false);
-  vi.stubGlobal("window", { confirm });
+  const { runtime, session, confirm } = draftSession();
   const adapters = vi.spyOn(educationalAdapterModule, "createEducationalAdapters");
-  hooks.controller = null;
-  hooks.index = 0;
-  hooks.memoIndex = 0;
-  hooks.session = session;
   ProfileShell({ locale: "es", classes: [], runtime });
   const navigate = adapters.mock.lastCall?.[1];
   if (!navigate) throw new Error("missing navigator");
@@ -139,4 +152,37 @@ it("binds educational navigation to the session and localized discard confirmati
   expect(confirm).toHaveBeenCalledWith(profileMessages("es").confirm);
   session.dispose();
   vi.unstubAllGlobals();
+});
+
+it("disables class selection until the profile has initialized and while it is loading", () => {
+  for (const ready of [false, true]) {
+    const controller = new Controller(clientFixture(), release, vi.fn());
+    controller.busy = !ready;
+    hooks.controller = controller;
+    hooks.index = 0;
+    hooks.memoIndex = 0;
+    const tree = ProfileShell({
+      locale: "en",
+      classes: [],
+      runtime: { ...sessionPorts, fetch: vi.fn() },
+    });
+    const select = nodes(tree).find((node) => isValidElement(node) && node.type === "select");
+    expect(isValidElement<{ disabled: boolean }>(select) && select.props.disabled).toBe(!ready);
+  }
+});
+
+it("retains the telemetry preview in advanced settings with the selected class", () => {
+  hooks.controller = new Controller(clientFixture(), release, vi.fn());
+  hooks.section = "settings";
+  hooks.classId = "class:a";
+  hooks.index = 0;
+  hooks.memoIndex = 0;
+  const fetch = vi.fn();
+  const tree = ProfileShell({ locale: "en", classes: [], runtime: { ...sessionPorts, fetch } });
+  const preview = nodes(tree).find((node) => isValidElement(node) && node.type === PreviewPanel);
+  expect(isValidElement(preview) && preview.props).toEqual({
+    classId: "class:a",
+    locale: "en",
+    fetchRequest: fetch,
+  });
 });

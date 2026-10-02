@@ -11,6 +11,8 @@ import { usageMessages } from "./modules/usage/usage-messages.js";
 import { healthMessages } from "./modules/health/health-messages.js";
 import { reviewedEvidenceMessages } from "./modules/reviewed-evidence/messages.js";
 import { profileMessages } from "./profiles/profile-messages.js";
+import { serverSettingsMessages } from "./modules/server-settings/messages.js";
+import { workspaceMessages } from "./profiles/workspace-navigation.js";
 
 const catalogs = {
   insights: insightsMessages,
@@ -58,6 +60,8 @@ const catalogs = {
   health: healthMessages,
   profile: profileMessages,
   "reviewed-evidence": reviewedEvidenceMessages,
+  "server-settings": serverSettingsMessages,
+  workspace: workspaceMessages,
 };
 
 describe.each(Object.entries(catalogs))("%s localization catalog", (name, messages) => {

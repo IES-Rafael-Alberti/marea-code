@@ -2,6 +2,7 @@ import { AnalysisBudget } from "./budget-view.js";
 import type { ReactNode } from "react";
 import { mapSchema } from "./schemas.js";
 import type { useInsightModel, InsightViewProps } from "./model.js";
+import { UnconfiguredNotice } from "./unconfigured.js";
 interface Props {
   model: ReturnType<typeof useInsightModel>;
   props: InsightViewProps & { classId: string };
@@ -19,7 +20,13 @@ export function MapView({ model, props, shared }: Props) {
         <>
           <AnalysisBudget budget={value.data.budget} locale={props.locale} />
           {!value.data.enabled && <p>{m.disabled}</p>}
-          {!value.data.configured && <p>{m.unconfigured}</p>}
+          {!value.data.configured && (
+            <UnconfiguredNotice
+              text={m.unconfigured}
+              action={m.configureConnection}
+              configure={props.configure}
+            />
+          )}
           {value.data.entries.length === 0 && <p>{m.empty}</p>}
           {value.data.entries.map((entry) => (
             <article key={entry.runId} data-attention={entry.state}>

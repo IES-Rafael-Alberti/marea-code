@@ -9,7 +9,12 @@ import { teachingMessages } from "./teaching-messages.js";
 
 import type { TeachingModuleProperties } from "./teaching-contracts.js";
 
-export function TeachingModule({ locale, state, controller }: TeachingModuleProperties) {
+export function TeachingModule({
+  locale,
+  state,
+  controller,
+  classSelection = true,
+}: TeachingModuleProperties) {
   const m = teachingMessages(locale);
   return (
     <section
@@ -19,7 +24,9 @@ export function TeachingModule({ locale, state, controller }: TeachingModuleProp
     >
       <h2 id="teaching-heading">{m.heading}</h2>
       {state.busy && <p role="status">{m.busy}</p>}
-      <TeachingClassesPanel state={state} controller={controller} messages={m} />
+      {classSelection && (
+        <TeachingClassesPanel state={state} controller={controller} messages={m} />
+      )}
       {state.problem !== null && state.problem !== "load" && (
         <p role="alert">{m.problems[state.problem]}</p>
       )}
