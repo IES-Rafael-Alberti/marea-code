@@ -406,3 +406,33 @@ it("evaluates canonical project evidence without feeding model diagnostics or st
     test.database.close();
   }
 });
+
+it("uses the separately frozen evaluation model while retaining the evaluation budget", async () => {
+  const test = setup(response());
+  try {
+    test.queue();
+    const claim = requireClaim(test.repository.claim("worker:separate-model", NOW));
+    const content = claim.input.content;
+    if (content === null) throw new Error("Missing frozen input");
+    await test.generator.generate(
+      {
+        ...claim,
+        input: {
+          ...claim.input,
+          content: {
+            ...content,
+            providerRoute: {
+              ...content.providerRoute,
+              evaluation: { providerId: "synthetic.evaluator", model: "evaluation-model" },
+            },
+          },
+        },
+      },
+      new AbortController().signal,
+    );
+    expect(test.requests[0]?.upstreamModel).toBe("evaluation-model");
+    expect(content.providerRoute.model).not.toBe("evaluation-model");
+  } finally {
+    test.database.close();
+  }
+});

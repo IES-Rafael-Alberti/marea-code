@@ -41,7 +41,8 @@ export class EvaluationDraftGenerator {
     if (content === null) throw new EvaluationGenerationError("input-too-large");
     const route = content.providerRoute;
     const budget = route.budget;
-    const provider = this.options.providers.resolve(route.providerId);
+    const selection = route.evaluation ?? route;
+    const provider = this.options.providers.resolve(selection.providerId);
     if (budget === undefined || provider === undefined)
       throw new EvaluationGenerationError("unconfigured");
     const material = JSON.stringify({
@@ -73,7 +74,7 @@ export class EvaluationDraftGenerator {
     for await (const event of budgeted.stream(
       {
         requestId: claim.evaluationId,
-        upstreamModel: route.model,
+        upstreamModel: selection.model,
         tools: [],
         messages: [
           { role: "system", content: system },
