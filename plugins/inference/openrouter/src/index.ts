@@ -9,6 +9,29 @@ import { createOpenRouterProviderWith } from "./provider.js";
 
 const openRouterProviderPlugin: InferenceProviderCatalogEntry = defineInferenceProviderCatalogEntry(
   {
+    settings: {
+      version: 1,
+      name: { es: "OpenRouter", en: "OpenRouter", eu: "OpenRouter" },
+      fields: [
+        {
+          key: "apiKey",
+          kind: "secret",
+          required: true,
+          label: { es: "Clave API", en: "API key", eu: "API gakoa" },
+        },
+        {
+          key: "endpoint",
+          kind: "url",
+          required: false,
+          defaultValue: "https://openrouter.ai/api/v1/chat/completions",
+          label: {
+            es: "Dirección del servicio",
+            en: "Service address",
+            eu: "Zerbitzuaren helbidea",
+          },
+        },
+      ],
+    },
     create(configuration) {
       return createOpenRouterProviderWith(
         parseOpenRouterConfiguration(configuration),

@@ -8,3 +8,5 @@ export * from "./telemetry-contracts.js";
 export * from "./telemetry-factory.js";
 export * from "./telemetry-configuration.boundary.js";
 export * from "./telemetry-failure.boundary.js";
+
+export * from "./provider-settings.js";

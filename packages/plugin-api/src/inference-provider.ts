@@ -1,3 +1,4 @@
+import type { ProviderSettingsDescriptor } from "./provider-settings.js";
 import * as z from "zod";
 
 import {
@@ -45,6 +46,7 @@ export type InferenceProviderManifest = z.infer<
 >;
 
 export interface InferenceProviderCatalogEntry {
+  readonly settings?: ProviderSettingsDescriptor;
   readonly manifest: InferenceProviderManifest;
   readonly create: InferenceProviderFactory;
 }
@@ -110,6 +112,7 @@ export interface InferenceCancellation {
 }
 
 export interface InferenceProviderConfiguration {
+  readonly settings?: Readonly<Record<string, string>>;
   readonly apiKey: string;
   readonly endpoint?: string;
 }
