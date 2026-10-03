@@ -1,9 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`renders closed and unfinished code fences while escaping model HTML > escaped text and fences 1`] = `
-"<article class="conversation-event event-assistant-message"><header><strong>Marea</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>&lt;script&gt;bad()&lt;/script&gt;</p><pre><code>print(1)
-</code></pre><p>Then:</p><pre><code>print(2)</code></pre><p></p></div></article>"
-`;
+exports[`renders closed and unfinished code fences while escaping model HTML > escaped text and fences 1`] = `"<article class="conversation-event event-assistant-message"><header><strong>Marea</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>&lt;script&gt;bad()&lt;/script&gt;</p><pre><code>print(1)</code></pre><p>Then:</p><pre><code>print(2)</code></pre></div></article>"`;
 
 exports[`renders each durable event as readable en evidence with optional raw detail > approval-requested Authorization requested 1`] = `
 "<article class="conversation-event event-approval-requested"><header><strong>Authorization requested</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>write_file

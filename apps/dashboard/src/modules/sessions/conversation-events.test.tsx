@@ -79,6 +79,40 @@ it("renders closed and unfinished code fences while escaping model HTML", () => 
   expect(html).toMatchSnapshot("escaped text and fences");
   expect(html).toContain("&lt;script&gt;bad()&lt;/script&gt;");
   expect(html).not.toContain("<script>");
-  expect(html).toContain("<code>print(1)\n</code>");
+  expect(html).toContain("<code>print(1)</code>");
   expect(html).toContain("<code>print(2)</code>");
+});
+it("formats conversation turns as Markdown but keeps tool targets and summaries literal", () => {
+  const render = (payload: object) =>
+    renderToStaticMarkup(
+      <ConversationEvent
+        event={CanonicalRunEventSchema.parse({
+          eventId: "event:one",
+          sequence: 1,
+          occurredAt: "2026-09-19T08:01:02.000Z",
+          ...payload,
+        })}
+        messages={sessionsMessages("en")}
+      />,
+    );
+  for (const eventType of ["student-message", "assistant-message", "assistant-progress"])
+    expect(
+      render({
+        eventType,
+        content: "**Check** `x`",
+        messageId: "message:one",
+        ...(eventType === "assistant-progress" ? { truncated: false } : {}),
+      }),
+    ).toContain("<p><strong>Check</strong> <code>x</code></p>");
+  expect(
+    render({
+      eventType: "tool-started",
+      callId: "call",
+      messageId: "message:one",
+      name: "marea_read_project",
+      target: "/src/__init__.py",
+      arguments: "{}",
+      truncated: false,
+    }),
+  ).toContain("<p>/src/__init__.py</p>");
 });

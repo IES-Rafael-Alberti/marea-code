@@ -1,4 +1,5 @@
 import { ActivityDetails } from "./conversation-activity.js";
+import { Markdown } from "./markdown.js";
 import type { CanonicalRunEvent } from "@marea/protocol";
 import type { SessionsMessages } from "./sessions-messages.js";
 /** Model text remains React text, never HTML or executable links. */
@@ -57,7 +58,13 @@ export function ConversationEvent({
   }
   return (
     <article className={`conversation-event event-${event.eventType}`}>
-      <EventHeading heading={heading} date={event.occurredAt} content={content} />
+      <EventHeading
+        heading={heading}
+        date={event.occurredAt}
+        content={content}
+        // Only conversation turns are Markdown; paths, commands and summaries stay literal.
+        rich={event.eventType.endsWith("-message") || event.eventType === "assistant-progress"}
+      />
       <ActivityDetails event={event} messages={m} />
     </article>
   );
@@ -125,23 +132,6 @@ function EvidenceEvent({
     </article>
   );
 }
-function MessageText({ text }: { readonly text: string }) {
-  // Fences are display-only. Unclosed fences remain readable and no HTML is interpreted.
-  return (
-    <div className="message-text">
-      {text.split(/(```[^\n]*\n[\s\S]*?(?:```|$))/u).map((part, index) =>
-        part.startsWith("```") ? (
-          <pre key={index}>
-            <code>{part.replace(/```[^\n]*\n/u, "").replace(/```/u, "")}</code>
-          </pre>
-        ) : (
-          <p key={index}>{part.trim()}</p>
-        ),
-      )}
-    </div>
-  );
-}
-
 function isEvidenceEvent(
   event: CanonicalRunEvent,
 ): event is Extract<
@@ -160,10 +150,12 @@ function EventHeading({
   heading,
   date,
   content,
+  rich = false,
 }: {
   readonly heading: string;
   readonly date: string;
   readonly content: string;
+  readonly rich?: boolean;
 }) {
   return (
     <>
@@ -171,7 +163,13 @@ function EventHeading({
         <strong>{heading}</strong>
         <time dateTime={date}>{date.slice(11, 19)}</time>
       </header>
-      <MessageText text={content} />
+      {rich ? (
+        <Markdown text={content} />
+      ) : (
+        <div className="message-text">
+          <p>{content}</p>
+        </div>
+      )}
     </>
   );
 }
