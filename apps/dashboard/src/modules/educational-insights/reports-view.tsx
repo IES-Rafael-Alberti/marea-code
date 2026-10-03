@@ -2,6 +2,7 @@ import { AnalysisBudget } from "./budget-view.js";
 import type { ReactNode } from "react";
 import * as z from "zod";
 import { insightsMessages } from "./messages.js";
+import { localTime } from "./local-time.js";
 import { reportsSchema } from "./schemas.js";
 import type { useInsightModel, InsightViewProps } from "./model.js";
 import { UnconfiguredNotice } from "./unconfigured.js";
@@ -233,11 +234,7 @@ export function ReportsView({ model, props, shared }: Props) {
   );
 }
 function statusLabel(state: string, m: ReturnType<typeof insightsMessages>): string {
-  return state in m ? m[state as keyof typeof m] : state;
-}
-function localTime(time: number): string {
-  const date = new Date(time);
-  return new Date(time - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  return Object.hasOwn(m, state) ? m[state as keyof typeof m] : state;
 }
 
 /** Server timestamps are ISO dates; anything else is shown unchanged rather than hidden. */
