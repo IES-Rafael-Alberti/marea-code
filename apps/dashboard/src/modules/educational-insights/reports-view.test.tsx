@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import type * as z from "zod";
 import { ReportsView } from "./reports-view.js";
+import { ReportList } from "./report-list.js";
 import { button, elements, model, props, report } from "./interactions.fixture.js";
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -17,23 +18,23 @@ const text = (state: ReturnType<typeof model>) =>
 const view = (state: ReturnType<typeof model>) =>
   ReportsView({ model: state, props, shared: null });
 
-it("offers paging only when it exists and names known report states", () => {
+it("hands the list its page and opens a chosen report from the start", () => {
   const state = model();
-  state.data = {
-    configured: true,
-    entries: ["running", "toString", "future"].map((value) => ({
-      id: value,
-      state: value,
-      createdAt: "now",
-    })),
-  };
-  expect(() => button(view(state), state.m.back)).toThrow();
-  expect(() => button(view(state), state.m.more)).toThrow();
-  const html = text(state);
-  expect(html).not.toContain(state.m.unconfigured);
-  // Inherited object keys are not message names.
-  for (const label of [state.m.running, "toString", "future"])
-    expect(html).toContain(`<time dateTime="now">now</time> · ${label}</button>`);
+  state.page = "previous";
+  const entries = [
+    { id: "r", state: "complete", createdAt: "now", from: "", to: "", completed: 1, total: 1 },
+  ];
+  state.data = { configured: true, entries };
+  const list = elements(view(state)).find((e) => e.type === ReportList);
+  expect(list?.props).toMatchObject({ entries, page: "previous", locale: "es" });
+  expect(list?.props.setPage).toBe(state.setPage);
+  expect(list?.props.m).toBe(state.m);
+  list?.props.select?.("r");
+  expect(state.setSelectedReport).toHaveBeenCalledWith("r");
+  expect(state.setReport).toHaveBeenCalledWith(null);
+  expect(text(state)).not.toContain(state.m.unconfigured);
+  state.data = { configured: false, entries };
+  expect(text(state)).toContain(state.m.unconfigured);
 });
 
 it("fills the period from the chosen preset and keeps custom dates untouched", () => {

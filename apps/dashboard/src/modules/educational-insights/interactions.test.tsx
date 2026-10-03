@@ -79,33 +79,13 @@ it("lists every student of the page, opening only the first, and pages forward a
   expect(button(view(), state.m.back).disabled).toBe(true);
   expect(button(view(), state.m.more).disabled).toBe(true);
 });
-it("paginates reports, selects a period and generates with explicit dates", () => {
+it("selects a period and generates with explicit dates", () => {
   const state = model();
   const view = () => ReportsView({ model: state, props, shared: null });
   expect(button(view(), state.m.generate).disabled).toBe(true);
   state.data = { configured: false, entries: [] };
   expect(renderToStaticMarkup(view())).toContain(state.m.unconfigured);
-  state.data = {
-    configured: true,
-    entries: Array.from({ length: 51 }, (_, i) => ({
-      id: `r${String(i)}`,
-      state: i === 0 ? "future-status" : "queued",
-      createdAt: i === 1 ? "2026-10-02T08:00:00.000Z" : "now",
-    })),
-  };
-  // Server dates are formatted; anything else is shown unchanged.
-  const created = new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(
-    new Date("2026-10-02T08:00:00.000Z"),
-  );
-  expect(renderToStaticMarkup(view())).toContain(
-    `<time dateTime="2026-10-02T08:00:00.000Z">${created}</time> · `,
-  );
-  expect(renderToStaticMarkup(view())).toContain('<time dateTime="now">now</time>');
-  state.page = "previous";
-  button(view(), state.m.more).onClick?.();
-  expect(state.setPage).toHaveBeenLastCalledWith("r50");
-  button(view(), state.m.back).onClick?.();
-  expect(state.setPage).toHaveBeenLastCalledWith(null);
+  state.data = { configured: true, entries: [] };
   const period = elements(view()).find((e) => e.type === "select");
   period?.props.onChange?.({ currentTarget: { value: "custom", checked: false } });
   expect(state.setFrom).not.toHaveBeenCalled();
@@ -123,12 +103,6 @@ it("paginates reports, selects a period and generates with explicit dates", () =
     to: new Date(state.to).toISOString(),
     locale: "es",
   });
-  elements(view())
-    .filter((e) => e.type === "button")
-    .at(-1)
-    ?.props.onClick?.();
-  expect(state.setSelectedReport).toHaveBeenCalledWith("r50");
-  expect(state.setReport).toHaveBeenCalledWith(null);
   state.from = state.to;
   expect(button(view(), state.m.generate).disabled).toBe(true);
   state.busy = true;

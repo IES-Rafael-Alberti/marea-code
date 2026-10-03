@@ -14,6 +14,12 @@ interface Props {
   student?: { displayName: string };
   model?: object;
   props?: object;
+  entries?: object[];
+  page?: string | null;
+  locale?: string;
+  m?: object;
+  setPage?: (page: string | null) => void;
+  select?: (id: string) => void;
 }
 export function elements(node: ReactNode): ReactElement<Props>[] {
   return Children.toArray(node).flatMap((child) => {

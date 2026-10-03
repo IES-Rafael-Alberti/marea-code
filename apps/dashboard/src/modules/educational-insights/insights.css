@@ -351,3 +351,98 @@
 .progress-criterion button {
   justify-self: start;
 }
+/* Report history: one full-width row per report, its state as a coloured stripe and label. */
+.report-history {
+  display: grid;
+  gap: 0.6rem;
+}
+.report-history > h3 {
+  margin: 0.6rem 0 0;
+  font-size: 1rem;
+}
+.report-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--color-border);
+}
+.report-list > li {
+  border-bottom: 1px solid var(--color-border);
+}
+.educational-insight .report-row {
+  --report-state: var(--color-muted);
+  display: grid;
+  grid-template-columns: 12rem minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.3rem 1.2rem;
+  width: 100%;
+  padding: 0.75rem 0.9rem;
+  border: 0;
+  border-left: 3px solid var(--report-state);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.educational-insight .report-row:hover,
+.educational-insight .report-row:focus-visible {
+  background: var(--color-surface);
+}
+.report-row[data-state="complete"] {
+  --report-state: var(--color-status);
+}
+.report-row:is([data-state="queued"], [data-state="running"]) {
+  --report-state: var(--color-accent);
+}
+.report-row:is(
+  [data-state="failed"],
+  [data-state="interrupted"],
+  [data-state="cancelled"],
+  [data-state="invalidated"]
+) {
+  --report-state: #a8324a;
+}
+@media (prefers-color-scheme: dark) {
+  .report-row:is(
+    [data-state="failed"],
+    [data-state="interrupted"],
+    [data-state="cancelled"],
+    [data-state="invalidated"]
+  ) {
+    --report-state: #d26b80;
+  }
+}
+.report-row .report-when {
+  font-weight: 600;
+}
+.report-row .report-period {
+  color: var(--color-muted);
+  font-size: 0.9rem;
+}
+.report-row .report-state {
+  color: var(--report-state);
+  font:
+    0.72rem ui-monospace,
+    Menlo,
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.report-pages {
+  display: flex;
+  gap: 0.6rem;
+}
+.report-pages:empty {
+  display: none;
+}
+@media (max-width: 40rem) {
+  .educational-insight .report-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .report-row .report-period {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

@@ -190,11 +190,28 @@ export class ClassReports {
         row.result_json === null ? null : ResultSchema.parse(JSON.parse(String(row.result_json))),
     };
   }
+  /** Newest first; a page continues after the given report, whose identifier is random. */
   list(classId: string, after: string | null) {
-    return this.progress.database.readAll(
-      "SELECT id,state,created_at AS createdAt,error FROM marea_class_reports WHERE class_id = ?1 AND (?2 IS NULL OR id > ?2) ORDER BY id LIMIT 51",
-      [classId, after],
-    );
+    return this.progress.database
+      .readAll(
+        `SELECT id, state, created_at AS createdAt, completed,
+          COALESCE(json_extract(input_json, '$.from'), '') AS "from",
+          COALESCE(json_extract(input_json, '$.to'), '') AS "to",
+          COALESCE(json_array_length(input_json, '$.sources'), 0) AS total
+        FROM marea_class_reports WHERE class_id = ?1 AND (?2 IS NULL OR (created_at, id) <
+          (SELECT created_at, id FROM marea_class_reports WHERE id = ?2 AND class_id = ?1))
+        ORDER BY created_at DESC, id DESC LIMIT 51`,
+        [classId, after],
+      )
+      .map((row) => ({
+        id: String(row.id),
+        state: String(row.state),
+        createdAt: String(row.createdAt),
+        from: String(row.from),
+        to: String(row.to),
+        completed: Number(row.completed),
+        total: Number(row.total),
+      }));
   }
   cancel(id: string, classId: string): void {
     this.get(id, classId);

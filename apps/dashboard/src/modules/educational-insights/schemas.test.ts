@@ -78,7 +78,15 @@ it("keeps every field of the dashboard's responses", async () => {
       },
     ],
     [reportSchema, report],
-    [reportsSchema, { configured: true, entries: [{ id: "r", state: "s", createdAt: "now" }] }],
+    [
+      reportsSchema,
+      {
+        configured: true,
+        entries: [
+          { id: "r", state: "s", createdAt: "now", from: "a", to: "b", completed: 1, total: 2 },
+        ],
+      },
+    ],
     [historySchema, { entries: [history] }],
   ] as const;
   for (const [schema, value] of cases) expect(schema.parse(value)).toStrictEqual(value);

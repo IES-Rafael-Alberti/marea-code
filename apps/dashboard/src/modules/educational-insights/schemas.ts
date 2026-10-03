@@ -70,7 +70,17 @@ export const reportSchema = z.object({
 });
 export const reportsSchema = z.object({
   configured: z.boolean(),
-  entries: z.array(z.object({ id: z.string(), state: z.string(), createdAt: z.string() })),
+  entries: z.array(
+    z.object({
+      id: z.string(),
+      state: z.string(),
+      createdAt: z.string(),
+      from: z.string(),
+      to: z.string(),
+      completed: z.number(),
+      total: z.number(),
+    }),
+  ),
 });
 export const historySchema = z.object({
   entries: z.array(

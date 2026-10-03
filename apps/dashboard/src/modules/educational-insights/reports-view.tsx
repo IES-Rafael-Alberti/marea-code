@@ -1,11 +1,11 @@
 import { AnalysisBudget } from "./budget-view.js";
 import type { ReactNode } from "react";
 import * as z from "zod";
-import { insightsMessages } from "./messages.js";
 import { localTime } from "./local-time.js";
 import { reportsSchema } from "./schemas.js";
 import type { useInsightModel, InsightViewProps } from "./model.js";
 import { UnconfiguredNotice } from "./unconfigured.js";
+import { ReportList, statusLabel } from "./report-list.js";
 interface Props {
   model: ReturnType<typeof useInsightModel>;
   props: InsightViewProps & { classId: string };
@@ -117,27 +117,6 @@ export function ReportsView({ model, props, shared }: Props) {
               {m.generate}
             </button>
           </div>
-          {page !== null && (
-            <button
-              onClick={() => {
-                setPage(null);
-              }}
-            >
-              {m.back}
-            </button>
-          )}
-          {list.success &&
-            list.data.entries.length === 51 &&
-            list.data.entries.slice(-1).map((last) => (
-              <button
-                key={last.id}
-                onClick={() => {
-                  setPage(last.id);
-                }}
-              >
-                {m.more}
-              </button>
-            ))}
           {list.success && !list.data.configured && (
             <UnconfiguredNotice
               text={m.unconfigured}
@@ -145,20 +124,19 @@ export function ReportsView({ model, props, shared }: Props) {
               configure={props.configure}
             />
           )}
-          {list.success &&
-            list.data.entries.map((r) => (
-              <p key={r.id}>
-                <button
-                  onClick={() => {
-                    setSelectedReport(r.id);
-                    setReport(null);
-                  }}
-                >
-                  <time dateTime={r.createdAt}>{reportTime(r.createdAt, props.locale)}</time> ·{" "}
-                  {statusLabel(r.state, m)}
-                </button>
-              </p>
-            ))}
+          {list.success && (
+            <ReportList
+              entries={list.data.entries}
+              page={page}
+              setPage={setPage}
+              select={(id) => {
+                setSelectedReport(id);
+                setReport(null);
+              }}
+              m={m}
+              locale={props.locale}
+            />
+          )}
         </>
       ) : (
         <>
@@ -232,15 +210,4 @@ export function ReportsView({ model, props, shared }: Props) {
       )}
     </>
   );
-}
-function statusLabel(state: string, m: ReturnType<typeof insightsMessages>): string {
-  return Object.hasOwn(m, state) ? m[state as keyof typeof m] : state;
-}
-
-/** Server timestamps are ISO dates; anything else is shown unchanged rather than hidden. */
-function reportTime(timestamp: string, locale: string) {
-  const date = new Date(timestamp);
-  return Number.isNaN(date.getTime())
-    ? timestamp
-    : new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(date);
 }

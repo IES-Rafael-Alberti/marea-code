@@ -536,7 +536,8 @@ body {
     .workspace-navigation button,
     .settings-navigation button,
     .session-list li button,
-    .skill-authoring-catalog-entry button
+    .skill-authoring-catalog-entry button,
+    .report-list button
   ) {
   padding: 0.45em 0.9em;
   border: 1px solid var(--color-accent);
@@ -553,7 +554,8 @@ body {
     .workspace-navigation button,
     .settings-navigation button,
     .session-list li button,
-    .skill-authoring-catalog-entry button
+    .skill-authoring-catalog-entry button,
+    .report-list button
   ):hover:not(:disabled) {
   background: var(--color-accent);
   color: var(--color-surface);
