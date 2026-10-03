@@ -16,7 +16,8 @@ export class EducationalInsightsService {
   readonly map: LiveAttentionMap;
   readonly reports: ClassReports;
   private timer: ReturnType<typeof setInterval> | undefined;
-  private readonly pending = new Set<Promise<void>>();
+  /** Ticks still running, which stop() waits for before the database closes. */
+  readonly pending = new Set<Promise<void>>();
   constructor(
     readonly database: SqliteApplicationDatabase,
     readonly clock: Clock,
@@ -59,7 +60,9 @@ export class EducationalInsightsService {
       case "map":
         return this.map.read(identity, q.classId, q.viewerId, q.visible);
       case "progress":
-        return this.progress.read(q.classId, q.studentId, q.after);
+        return this.progress.read(q.classId, q.studentId);
+      case "overview":
+        return this.progress.overview(q.classId, q.after);
       case "adjust":
         this.progress.adjust(
           q.classId,
@@ -74,7 +77,7 @@ export class EducationalInsightsService {
             this.progress.require(identity, q.classId);
           },
         );
-        return this.progress.read(q.classId, q.studentId, null);
+        return this.progress.read(q.classId, q.studentId);
       case "history":
         return {
           entries: this.database

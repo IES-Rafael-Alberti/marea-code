@@ -43,14 +43,8 @@ export const InsightsRequestSchema = z.discriminatedUnion("kind", [
     })
     .strict(),
   z.object({ ...scope, kind: z.literal("map"), viewerId: id, visible: z.boolean() }).strict(),
-  z
-    .object({
-      ...scope,
-      kind: z.literal("progress"),
-      studentId: id.nullable(),
-      after: id.nullable().default(null),
-    })
-    .strict(),
+  z.object({ ...scope, kind: z.literal("progress"), studentId: id }).strict(),
+  z.object({ ...scope, kind: z.literal("overview"), after: id.nullable().default(null) }).strict(),
   z
     .object({
       ...scope,

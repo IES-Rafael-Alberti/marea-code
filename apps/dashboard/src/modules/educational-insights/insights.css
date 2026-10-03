@@ -244,11 +244,77 @@
 .workspace-content .educational-insight .progress-criterion {
   background: transparent;
 }
-.progress-criterion > h3 {
+.progress-criterion > .progress-statement {
   grid-column: 1;
   margin: 0;
   font-size: 0.95rem;
+  color: var(--color-text);
+}
+.progress-criterion > .progress-next {
+  margin: 0;
+  font:
+    0.72rem ui-monospace,
+    Menlo,
+    monospace;
+  color: var(--color-muted);
+}
+.progress-criterion > .progress-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 0.5rem;
+}
+.progress-actions > section {
+  display: contents;
+}
+.progress-actions ol {
+  flex-basis: 100%;
+}
+/* One disclosure per student, as Marejada lists the whole class at once. */
+.educational-insight .progress-student {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.progress-student > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.6rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+}
+/* A flex summary drops the native marker, so it is drawn again. */
+.progress-student > summary::before {
+  content: "▸";
+  color: var(--color-text);
+}
+.progress-student[open] > summary::before {
+  content: "▾";
+}
+.progress-student > summary .progress-summary {
+  margin-left: auto;
+}
+.progress-student > summary .progress-summary {
+  font:
+    0.75rem ui-monospace,
+    Menlo,
+    monospace;
+  color: var(--color-muted);
+}
+.progress-student > :not(summary) {
+  margin: 0 1rem 1rem;
+}
+.progress-skill > h3 {
+  margin: 0.8rem 0 0.2rem;
+  font-size: 0.95rem;
   color: var(--color-status);
+}
+.progress-skill > button {
+  margin-top: 0.4rem;
+}
+.educational-insight .progress-pages {
+  display: flex;
+  gap: 0.6rem;
 }
 .progress-criterion > .progress-level {
   grid-column: 2;
@@ -260,7 +326,7 @@
     monospace;
   color: var(--color-accent);
 }
-.progress-criterion > :not(h3, .progress-level) {
+.progress-criterion > :not(.progress-statement, .progress-level) {
   grid-column: 1 / -1;
 }
 .progress-criterion ol {

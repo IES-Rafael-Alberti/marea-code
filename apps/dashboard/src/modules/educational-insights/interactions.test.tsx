@@ -1,9 +1,9 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MapView } from "./map-view.js";
-import { ProgressView } from "./progress-view.js";
+import { ProgressView, StudentProgress } from "./progress-view.js";
 import { ReportsView } from "./reports-view.js";
-import { button, elements, model, props, criterion, report } from "./interactions.fixture.js";
+import { button, elements, model, props, report } from "./interactions.fixture.js";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -47,56 +47,37 @@ it("shows loading, empty and disabled maps and reports failed navigation", async
   expect(navigate).toHaveBeenCalledWith("run");
   expect(state.setError).toHaveBeenCalledExactlyOnceWith(true);
 });
-it("changes students, pages and adjustment inputs, and confirms whole-skill resets", () => {
+it("lists every student of the page, opening only the first, and pages forward and back", () => {
   const state = model();
-  const view = () => ProgressView({ model: state, props, shared: null });
-  expect(elements(view()).some((e) => e.type === "article")).toBe(false);
-  state.page = "previous";
-  state.students = Array.from({ length: 101 }, (_, i) => ({
-    id: `s${String(i)}`,
-    displayName: `Student ${String(i)}`,
-  }));
+  const view = () => ProgressView({ model: state, props, shared: <hr /> });
+  expect(renderToStaticMarkup(view())).toBe(
+    `<hr/><p class="insight-note">${state.m.adaptationNote}</p><p>${state.m.loading}</p>`,
+  );
+  state.data = { students: [], next: null };
+  expect(renderToStaticMarkup(view())).toContain(`<p>${state.m.noStudents}</p>`);
+  expect(renderToStaticMarkup(view())).not.toContain("progress-pages");
+  const student = { id: "s1", displayName: "Ana", revision: "v1", entries: [] };
+  state.data = { students: [student, { ...student, id: "s2", displayName: "Bea" }], next: "s2" };
+  const listed = elements(view()).filter((e) => e.type === StudentProgress);
+  expect(listed.map((e) => [e.key, e.props.open, e.props.student?.displayName])).toEqual([
+    [expect.stringMatching(/\$s1$/u), true, "Ana"],
+    [expect.stringMatching(/\$s2$/u), false, "Bea"],
+  ]);
+  expect(listed[0]?.props.props).toBe(props);
+  expect(listed[0]?.props.model).toBe(state);
+  expect(() => button(view(), state.m.back)).toThrow();
   button(view(), state.m.more).onClick?.();
-  expect(state.setPage).toHaveBeenLastCalledWith("s100");
+  expect(state.setPage).toHaveBeenLastCalledWith("s2");
+  state.page = "s2";
+  state.data = { students: [student], next: null };
+  expect(() => button(view(), state.m.more)).toThrow();
   button(view(), state.m.back).onClick?.();
   expect(state.setPage).toHaveBeenLastCalledWith(null);
-  state.data = { revision: "v1", entries: [] };
-  expect(renderToStaticMarkup(view())).toContain(state.m.noProgress);
-  state.data = {
-    revision: "v1",
-    entries: [criterion, { ...criterion, key: "other", skillId: "other" }],
-  };
-  const selects = elements(view()).filter((e) => e.type === "select");
-  selects[0]?.props.onChange?.({ currentTarget: { value: "s2", checked: false } });
-  selects[1]?.props.onChange?.({ currentTarget: { value: "4", checked: false } });
-  elements(view())
-    .find((e) => e.type === "input")
-    ?.props.onChange?.({ currentTarget: { value: "Evidence", checked: false } });
-  expect(state.setStudent).toHaveBeenLastCalledWith("s2");
-  expect(state.setData).toHaveBeenLastCalledWith(null);
-  expect(state.setLevel).toHaveBeenCalledWith(4);
-  expect(state.setReason).toHaveBeenCalledWith("Evidence");
-  button(view(), state.m.setLevel).onClick?.();
-  expect(state.action).toHaveBeenLastCalledWith({
-    kind: "adjust",
-    studentId: "student",
-    keys: ["key"],
-    level: 2,
-    reason: "Reviewed",
-    expectedRevision: "v1",
-  });
-  const confirm = vi.fn().mockReturnValue(false);
-  vi.stubGlobal("window", { confirm });
-  button(view(), state.m.resetSkill).onClick?.();
-  expect(state.action).toHaveBeenCalledTimes(1);
-  confirm.mockReturnValue(true);
-  button(view(), state.m.resetSkill).onClick?.();
-  expect(state.action).toHaveBeenLastCalledWith(
-    expect.objectContaining({ keys: ["key"], level: 0 }),
-  );
+  expect(button(view(), state.m.back).disabled).toBe(false);
   state.busy = true;
-  expect(button(view(), state.m.setLevel).disabled).toBe(true);
-  expect(button(view(), state.m.resetSkill).disabled).toBe(true);
+  state.data = { students: [student], next: "s3" };
+  expect(button(view(), state.m.back).disabled).toBe(true);
+  expect(button(view(), state.m.more).disabled).toBe(true);
 });
 it("paginates reports, selects a period and generates with explicit dates", () => {
   const state = model();

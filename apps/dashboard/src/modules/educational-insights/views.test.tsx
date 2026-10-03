@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MapView } from "./map-view.js";
-import { ProgressView } from "./progress-view.js";
+import { StudentProgress } from "./progress-view.js";
 import { ReportsView } from "./reports-view.js";
 import { InsightView } from "./view.js";
 import { AnalysisBudget } from "./budget-view.js";
-import { model, props } from "./interactions.fixture.js";
+import { criterion, model, props } from "./interactions.fixture.js";
 describe("educational dashboard views", () => {
   it("asks for a class and labels attention without relying on color", () => {
     expect(renderToStaticMarkup(<InsightView {...props} classId={null} />)).toContain(
@@ -47,27 +47,40 @@ describe("educational dashboard views", () => {
   });
   it("shows the four criteria levels and requires a reason before adjusting", () => {
     const state = model();
-    state.reason = "";
-    state.data = {
-      revision: "revision:1",
-      entries: [
-        {
-          key: "key",
-          skillId: "skill",
-          code: "C1",
-          statement: "Test an empty input",
-          level: 2,
-          levels: ["One", "Two", "Three", "Four"],
-          epoch: 0,
-        },
-      ],
-    };
     const html = renderToStaticMarkup(
-      <ProgressView model={state} props={{ ...props, kind: "progress" }} shared={null} />,
+      <StudentProgress
+        student={{
+          id: "student",
+          displayName: "Ana",
+          revision: "revision:1",
+          entries: [
+            criterion,
+            { ...criterion, key: "done", code: "C2", level: 4 },
+            // A malformed definition without level texts still names the next level.
+            { ...criterion, key: "bare", code: "C3", levels: [] },
+            { ...criterion, key: "loops", code: "C4", skillId: "teacher/class:a/loops" },
+          ],
+        }}
+        open
+        model={state}
+        props={{ ...props, kind: "progress" }}
+      />,
     );
-    expect(html).toContain("2/4");
-    expect(html).toContain("Test an empty input");
-    expect(html).toContain('<button disabled="">Fijar nivel</button>');
+    expect(html).toContain(
+      '<details class="progress-student" open=""><summary><strong>Ana</strong><span class="progress-summary">4 criterios · 1 consolidados</span></summary>',
+    );
+    expect(html).toContain('<section class="progress-skill"><h3 title="skill">skill</h3>');
+    expect(html).toContain('<h3 title="teacher/class:a/loops">loops</h3>');
+    // The adjustment form comes first: a reason is chosen before any criterion is set.
+    expect(html.indexOf("progress-adjust")).toBeLessThan(html.indexOf("progress-skill"));
+    expect(html).toContain(
+      '<p class="progress-statement"><strong>C1</strong> · Test boundaries</p><p class="progress-level">2/4</p><p class="progress-next">Próximo nivel 3/4 · Three</p>',
+    );
+    expect(html).toContain(
+      '<p class="progress-next">Consolidado: deja de ser foco de los ejercicios</p>',
+    );
+    expect(html).toContain('<button type="button" disabled="">Fijar nivel</button>');
+    expect(html).toContain('<p class="progress-next">Próximo nivel 3/4 · </p>');
     expect(html).toContain("Historial");
   });
   it("shows provisional sources and authorized student names in reports", () => {

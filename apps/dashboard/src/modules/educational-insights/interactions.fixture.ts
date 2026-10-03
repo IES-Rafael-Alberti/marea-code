@@ -10,6 +10,10 @@ interface Props {
   onClick?: () => void;
   onChange?: (event: { currentTarget: { value: string; checked: boolean } }) => void;
   onSubmit?: (event: { preventDefault: () => void }) => void;
+  open?: boolean;
+  student?: { displayName: string };
+  model?: object;
+  props?: object;
 }
 export function elements(node: ReactNode): ReactElement<Props>[] {
   return Children.toArray(node).flatMap((child) => {
@@ -39,15 +43,8 @@ export function model(): ReturnType<typeof useInsightModel> {
     busy: false,
     data: null,
     setData: vi.fn(),
-    student: "student",
-    setStudent: vi.fn(),
-    students: [{ id: "student", displayName: "Ana" }],
     page: null,
     setPage: vi.fn(),
-    reason: "Reviewed",
-    setReason: vi.fn(),
-    level: 2,
-    setLevel: vi.fn(),
     selectedReport: null,
     setSelectedReport: vi.fn(),
     report: null,

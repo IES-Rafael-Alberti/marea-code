@@ -6,70 +6,22 @@ import {
   createEducationalMigrationCatalog,
   createProfileMigrationCatalog,
 } from "@marea/sqlite-storage/catalogs";
-import { EvaluationDraftSchema, SnapshotIdSchema, StudentRunSnapshotSchema } from "@marea/protocol";
+import { EvaluationDraftSchema, StudentRunSnapshotSchema } from "@marea/protocol";
 import { EVALUATION_DRAFT, NOW, teacher } from "../../test-support/evaluation-fixture.js";
 import { student } from "../../test-support/teaching-integration.fixture.js";
-import { teachingConfiguration } from "../../test-support/teaching-fixture.js";
 import { renderReport } from "./service.js";
 import { validateFindings } from "./reports.js";
 import { captureEvaluationInput } from "../platform/persistence/sqlite-evaluation-input.js";
 
 import { fixture } from "./insights.fixture.js";
-function capture(f: ReturnType<typeof fixture>, statement = "Validate boundaries") {
-  const configuration = teachingConfiguration();
-  const skill = configuration.content.didacticSkills[0];
-  if (skill === undefined) throw new Error("skill");
-  const teaching = {
-    ...configuration.content,
-    didacticSkills: [{ ...skill, criteria: [{ code: "C1", statement, levels: null }] }],
-  };
-  const snapshot = StudentRunSnapshotSchema.parse({
-    ...configuration.publicTemplate,
-    id: SnapshotIdSchema.parse("snapshot:adaptive"),
-  });
-  return f.progress.capture(
-    { snapshot, providerRoute: configuration.providerRoute, teaching },
-    student,
-  );
-}
-function targetOf(captured: ReturnType<typeof capture>) {
-  const target = captured.teaching?.adaptive?.targets[0];
-  if (target === undefined) throw new Error("target");
-  return target;
-}
-function enabled(f: ReturnType<typeof fixture>) {
-  f.progress.configure("class:one", { map: true, adaptive: true }, "initial");
-}
-function approve(
-  f: ReturnType<typeof fixture>,
-  captured: ReturnType<typeof capture>,
-  passed = true,
-) {
-  const input = captureEvaluationInput(f.database, "run:b");
-  const target = targetOf(captured);
-  if (input.content === null || captured.teaching === undefined) throw new Error("input");
-  const draft = EvaluationDraftSchema.parse({
-    ...EVALUATION_DRAFT,
-    criteria: [
-      {
-        skillId: target.skillId,
-        code: target.code,
-        result: passed ? "passed" : "not-passed",
-        confidence: "high",
-        evidence: "Observed boundary test",
-        levelAttempted: target.target,
-        learningNote: "Practice an empty collection next.",
-      },
-    ],
-  });
-  f.progress.apply(
-    { ...input, mode: "tutoring", content: { ...input.content, teaching: captured.teaching } },
-    draft,
-    teacher.userId,
-    NOW,
-  );
-}
-
+import {
+  adaptiveInput,
+  approve,
+  capture,
+  enabled,
+  passedAssessment,
+  targetOf,
+} from "./progress.fixture.js";
 describe("educational persistence and authorization", () => {
   it("preserves the schema-10 migration and appends a single migration", () => {
     expect(createEducationalMigrationCatalog().slice(0, 10)).toEqual(
@@ -124,8 +76,7 @@ describe("educational persistence and authorization", () => {
     const f = fixture();
     enabled(f);
     const old = capture(f);
-    const state = f.progress.read("class:one", "s1", null);
-    if (state.revision === undefined) throw new Error("revision");
+    const state = f.progress.read("class:one", "s1");
     f.progress.adjust(
       "class:one",
       "s1",
@@ -351,7 +302,7 @@ it("dispatches audited adjustments and returns their typed history", () => {
   const f = fixture();
   enabled(f);
   const target = targetOf(capture(f));
-  const revision = f.progress.read("class:one", "s1", null).revision;
+  const revision = f.progress.read("class:one", "s1").revision;
   const result = f.service.read(
     teacher,
     f.query({
@@ -380,7 +331,7 @@ it("dispatches audited adjustments and returns their typed history", () => {
       ["missing"],
       0,
       "Reset",
-      f.progress.read("class:one", "s1", null).revision ?? "",
+      f.progress.read("class:one", "s1").revision,
       teacher.userId,
       NOW,
     );
@@ -432,25 +383,12 @@ it("rejects missing adaptive assessments and retains a level already achieved", 
   enabled(f);
   const captured = capture(f),
     target = targetOf(captured);
-  const input = captureEvaluationInput(f.database, "run:b");
-  if (input.content === null || captured.teaching === undefined) throw new Error("input");
-  const adaptive = {
-    ...input,
-    mode: "tutoring" as const,
-    content: { ...input.content, teaching: captured.teaching },
-  };
+  const adaptive = adaptiveInput(f, captured);
   expect(() => {
     f.progress.apply(adaptive, EVALUATION_DRAFT, teacher.userId, NOW);
   }).toThrow("request.conflict");
   f.database.execute("UPDATE marea_learning_progress SET level = 1");
-  const assessment = {
-    skillId: target.skillId,
-    code: target.code,
-    result: "passed" as const,
-    confidence: "high" as const,
-    evidence: "Observed",
-    levelAttempted: target.target,
-  };
+  const assessment = passedAssessment(target);
   f.progress.apply(
     adaptive,
     { ...EVALUATION_DRAFT, criteria: [{ ...assessment, code: "other" }, assessment] },

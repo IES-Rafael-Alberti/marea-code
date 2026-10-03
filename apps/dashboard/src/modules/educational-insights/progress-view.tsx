@@ -1,170 +1,202 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import type * as z from "zod";
 import { CriterionHistory } from "./history-view.js";
-import { progressSchema } from "./schemas.js";
+import { overviewSchema } from "./schemas.js";
 import type { useInsightModel, InsightViewProps } from "./model.js";
+
+type Model = ReturnType<typeof useInsightModel>;
+type Student = z.infer<typeof overviewSchema>["students"][number];
+type Entry = Student["entries"][number];
 interface Props {
-  model: ReturnType<typeof useInsightModel>;
+  model: Model;
   props: InsightViewProps & { classId: string };
   shared: ReactNode;
 }
-export function ProgressView({ model, props, shared }: Props) {
-  const {
-    m,
-    client,
-    busy,
-    data,
-    page,
-    setPage,
-    setData,
-    student,
-    setStudent,
-    students,
-    reason,
-    setReason,
-    level,
-    setLevel,
-    action,
-  } = model;
 
-  const value = progressSchema.safeParse(data);
+/** Every student of the page at once, as in Marejada: one disclosure per student. */
+export function ProgressView({ model, props, shared }: Props) {
+  const { m, busy, data, page, setPage } = model;
+  const value = overviewSchema.safeParse(data);
   return (
     <>
       {shared}
       <p className="insight-note">{m.adaptationNote}</p>
-      <div className="insight-controls">
-        <label>
-          {m.selectStudent}
-          <select
-            disabled={busy}
-            value={student}
-            onChange={(e) => {
-              setStudent(e.currentTarget.value);
-              setData(null);
-            }}
-          >
-            <option value="">{m.selectStudent}</option>
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
-        {page !== null && (
-          <button
-            disabled={busy}
-            onClick={() => {
-              setStudent("");
-              setPage(null);
-              setData(null);
-            }}
-          >
-            {m.back}
-          </button>
-        )}
-        {students.length === 101 &&
-          students.slice(-1).map((last) => (
+      {!value.success ? (
+        <p>{m.loading}</p>
+      ) : value.data.students.length === 0 ? (
+        <p>{m.noStudents}</p>
+      ) : (
+        value.data.students.map((student, index) => (
+          <StudentProgress
+            key={student.id}
+            student={student}
+            open={index === 0}
+            model={model}
+            props={props}
+          />
+        ))
+      )}
+      {value.success && (page !== null || value.data.next !== null) && (
+        <div className="progress-pages">
+          {page !== null && (
             <button
-              key={last.id}
+              type="button"
               disabled={busy}
               onClick={() => {
-                setPage(last.id);
-                setStudent("");
-                setData(null);
+                setPage(null);
+              }}
+            >
+              {m.back}
+            </button>
+          )}
+          {value.data.next !== null && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setPage(value.data.next);
               }}
             >
               {m.more}
             </button>
-          ))}
-      </div>
-      {value.success && (
-        <>
-          <div className="insight-controls progress-adjust">
-            <label>
-              {m.reason}
-              <input
-                maxLength={1000}
-                value={reason}
-                onChange={(e) => {
-                  setReason(e.currentTarget.value);
-                }}
-              />
-            </label>
-            <label>
-              {m.level}
-              <select
-                value={level}
-                onChange={(e) => {
-                  setLevel(Number(e.currentTarget.value));
-                }}
-              >
-                {[0, 1, 2, 3, 4].map((n) => (
-                  <option key={n}>{n}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          <p className="insight-note">{m.oldDefinition}</p>
-          {value.data.entries.length === 0 && <p>{m.noProgress}</p>}
-          {value.data.entries.map((entry) => (
-            <article key={entry.key} className="progress-criterion">
-              <h3>
-                {entry.skillId} · {entry.code}
-              </h3>
-              <p className="progress-statement">{entry.statement}</p>
-              <p className="progress-level">
-                {m.level}: {entry.level}/4
-              </p>
-              <ol>
-                {entry.levels.map((text, i) => (
-                  <li key={i}>{text}</li>
-                ))}
-              </ol>
-              <button
-                disabled={busy || reason.trim() === ""}
-                onClick={() =>
-                  void action({
-                    kind: "adjust",
-                    studentId: student,
-                    keys: [entry.key],
-                    level,
-                    reason,
-                    expectedRevision: value.data.revision,
-                  })
-                }
-              >
-                {m.setLevel}
-              </button>
-              <button
-                disabled={busy || reason.trim() === ""}
-                onClick={() => {
-                  if (window.confirm(m.confirmReset))
-                    void action({
-                      kind: "adjust",
-                      studentId: student,
-                      keys: value.data.entries
-                        .filter((e) => e.skillId === entry.skillId)
-                        .map((e) => e.key),
-                      level: 0,
-                      reason,
-                      expectedRevision: value.data.revision,
-                    });
-                }}
-              >
-                {m.resetSkill}
-              </button>
-              <CriterionHistory
-                key={`${student}:${entry.key}`}
-                client={client}
-                classId={props.classId}
-                studentId={student}
-                criterionKey={entry.key}
-                locale={props.locale}
-              />
-            </article>
-          ))}
-        </>
+          )}
+        </div>
       )}
     </>
+  );
+}
+
+/** Criteria grouped by skill, with an adjustment form that belongs to this student only. */
+export function StudentProgress({
+  student,
+  open,
+  model,
+  props,
+}: {
+  student: Student;
+  open: boolean;
+  model: Model;
+  props: InsightViewProps & { classId: string };
+}) {
+  const { m, busy, client, action } = model;
+  const [reason, setReason] = useState("");
+  const [level, setLevel] = useState(0);
+  const blocked = busy || reason.trim() === "";
+  const adjust = (keys: string[], target: number) =>
+    action({
+      kind: "adjust",
+      studentId: student.id,
+      keys,
+      level: target,
+      reason,
+      expectedRevision: student.revision,
+    });
+  const skills = Map.groupBy(student.entries, (entry) => entry.skillId);
+  const consolidated = student.entries.filter((entry) => entry.level === 4).length;
+  return (
+    <details className="progress-student" open={open}>
+      <summary>
+        <strong>{student.displayName}</strong>
+        <span className="progress-summary">
+          {student.entries.length === 0
+            ? m.noProgress
+            : `${String(student.entries.length)} ${m.criteria} · ${String(consolidated)} ${m.consolidatedCount}`}
+        </span>
+      </summary>
+      {student.entries.length > 0 && (
+        <div className="insight-controls progress-adjust">
+          <strong>{m.adjust}</strong>
+          <label>
+            {m.reason}
+            <input
+              maxLength={1000}
+              value={reason}
+              onChange={(event) => {
+                setReason(event.currentTarget.value);
+              }}
+            />
+          </label>
+          <label>
+            {m.level}
+            <select
+              value={level}
+              onChange={(event) => {
+                setLevel(Number(event.currentTarget.value));
+              }}
+            >
+              {[0, 1, 2, 3, 4].map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="insight-note">{m.oldDefinition}</p>
+        </div>
+      )}
+      {[...skills].map(([skillId, entries]) => (
+        <section className="progress-skill" key={skillId}>
+          {/* The namespace is in the tooltip; the label keeps Marejada's short skill name. */}
+          <h3 title={skillId}>{skillId.slice(skillId.lastIndexOf("/") + 1)}</h3>
+          {entries.map((entry) =>
+            criterion(
+              entry,
+              m,
+              blocked,
+              () => void adjust([entry.key], level),
+              <CriterionHistory
+                client={client}
+                classId={props.classId}
+                studentId={student.id}
+                criterionKey={entry.key}
+                locale={props.locale}
+              />,
+            ),
+          )}
+          <button
+            type="button"
+            disabled={blocked}
+            onClick={() => {
+              if (window.confirm(m.confirmReset))
+                void adjust(
+                  entries.map((entry) => entry.key),
+                  0,
+                );
+            }}
+          >
+            {m.resetSkill}
+          </button>
+        </section>
+      ))}
+    </details>
+  );
+}
+
+/** A plain render helper, not a component, so the student's buttons stay in one tree. */
+function criterion(
+  entry: Entry,
+  m: Model["m"],
+  blocked: boolean,
+  setLevel: () => void,
+  history: ReactNode,
+) {
+  return (
+    <article className="progress-criterion" key={entry.key}>
+      <p className="progress-statement">
+        <strong>{entry.code}</strong> · {entry.statement}
+      </p>
+      <p className="progress-level">{entry.level}/4</p>
+      <p className="progress-next">
+        {entry.level >= 4
+          ? m.consolidated
+          : `${m.nextLevel} ${String(entry.level + 1)}/4 · ${entry.levels[entry.level] ?? ""}`}
+      </p>
+      <div className="progress-actions">
+        <button type="button" disabled={blocked} onClick={setLevel}>
+          {m.setLevel}
+        </button>
+        {history}
+      </div>
+    </article>
   );
 }

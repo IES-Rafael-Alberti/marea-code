@@ -15,6 +15,15 @@ import type { RunSnapshotCapture } from "../sessions/contracts.js";
 import type { EvaluationInput } from "../evaluation/evaluation-input.js";
 import { SqliteTeachingConfigurationRepository } from "../platform/persistence/sqlite-teaching-configuration-repository.js";
 
+const OVERVIEW_PAGE = 25;
+interface Projection {
+  readonly revision: string;
+  readonly entries: (Omit<LearningTarget, "achieved" | "target" | "epoch"> & {
+    readonly level: number;
+    readonly epoch: number;
+    readonly revision: string;
+  })[];
+}
 const digest = (value: string): string =>
   `sha256:${createHash("sha256").update(value).digest("hex")}`;
 const DEFAULT_LEVELS = [
@@ -63,6 +72,7 @@ export class LearningProgress {
   capture(captured: RunSnapshotCapture, identity: AuthenticatedIdentity): RunSnapshotCapture {
     const classId = identity.classId;
     if (
+      // Stryker disable next-line ConditionalExpression: a null class has no settings row, so adaptation stays off.
       classId === null ||
       captured.snapshot.agentMode !== "tutoring" ||
       !this.settings(classId).settings.adaptive ||
@@ -104,6 +114,7 @@ export class LearningProgress {
       .filter((item) => item.achieved < 4)
       .map(
         (item) =>
+          // Stryker disable next-line StringLiteral: the slice holds a single level, so no separator appears.
           `${item.skillId}/${item.code}: ${item.levels.slice(item.target - 1, item.target).join("")}`,
       )
       .join("\n");
@@ -176,20 +187,41 @@ export class LearningProgress {
       );
     }
   }
-  read(classId: string, studentId: string | null, after: string | null) {
-    if (studentId === null)
-      return {
-        students: this.database
-          .readAll(
-            "SELECT id, display_name AS displayName FROM marea_users WHERE class_id = ?1 AND role = 'student' AND (?2 IS NULL OR id > ?2) ORDER BY id LIMIT 101",
-            [classId, after],
-          )
-          .map((r) => ({ id: String(r.id), displayName: String(r.displayName) })),
-      };
-    const rows = this.database.readAll(
-      "SELECT * FROM marea_learning_progress WHERE class_id = ?1 AND student_id = ?2 ORDER BY criterion_key",
-      [classId, studentId],
+  read(classId: string, studentId: string): Projection {
+    return this.project(
+      this.database.readAll(
+        "SELECT * FROM marea_learning_progress WHERE class_id = ?1 AND student_id = ?2 ORDER BY criterion_key",
+        [classId, studentId],
+      ),
     );
+  }
+  /** One page of students with their criteria, read in two bounded queries. */
+  overview(classId: string, after: string | null) {
+    const listed = this.database.readAll(
+      "SELECT id, display_name AS displayName FROM marea_users WHERE class_id = ?1 AND role = 'student' AND (?2 IS NULL OR id > ?2) ORDER BY id LIMIT ?3",
+      [classId, after, OVERVIEW_PAGE + 1],
+    );
+    const students = listed
+      .slice(0, OVERVIEW_PAGE)
+      .map((r) => ({ id: String(r.id), displayName: String(r.displayName) }));
+    // Only a longer listing has a next page, which starts after this page's last student.
+    const last = listed.length > OVERVIEW_PAGE ? students.at(-1) : undefined;
+    // SQLite accepts an empty IN list, so an empty page needs no special case.
+    const rows = this.database.readAll(
+      `SELECT * FROM marea_learning_progress WHERE class_id = ?1 AND student_id IN (${students
+        .map((_, index) => `?${String(index + 2)}`)
+        .join(",")}) ORDER BY student_id, criterion_key`,
+      [classId, ...students.map((student) => student.id)],
+    );
+    return {
+      students: students.map((student) => ({
+        ...student,
+        ...this.project(rows.filter((row) => String(row.student_id) === student.id)),
+      })),
+      next: last?.id ?? null,
+    };
+  }
+  private project(rows: ReturnType<SqliteApplicationDatabase["readAll"]>): Projection {
     return {
       revision: digest(JSON.stringify(rows.map((row) => String(row.revision)))),
       entries: rows.map((r) => ({
@@ -215,8 +247,7 @@ export class LearningProgress {
   ): void {
     this.database.transaction(() => {
       authorize();
-      const current = this.read(classId, studentId, null);
-      if (!("revision" in current) || current.revision !== revision)
+      if (this.read(classId, studentId).revision !== revision)
         throw new TeacherDomainError("request.conflict");
       for (const key of new Set(keys)) {
         const row = this.database.readOne(

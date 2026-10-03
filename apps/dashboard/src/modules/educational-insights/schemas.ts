@@ -34,13 +34,14 @@ export const progressSchema = z.object({
       code: z.string(),
       statement: z.string(),
       level: z.number(),
-      levels: z.array(z.string()),
+      levels: z.array(z.string()).length(4),
       epoch: z.number(),
     }),
   ),
 });
-export const studentsSchema = z.object({
-  students: z.array(z.object({ id: z.string(), displayName: z.string() })),
+export const overviewSchema = z.object({
+  students: z.array(progressSchema.extend({ id: z.string(), displayName: z.string() })),
+  next: z.string().nullable(),
 });
 export const reportSchema = z.object({
   budget: budgetSchema.nullable().optional(),

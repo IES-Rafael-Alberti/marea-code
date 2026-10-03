@@ -3,7 +3,7 @@ import * as z from "zod";
 import {
   mapSchema,
   progressSchema,
-  studentsSchema,
+  overviewSchema,
   reportSchema,
   reportsSchema,
 } from "./schemas.js";
@@ -11,6 +11,7 @@ import type { DashboardLocale } from "../../messages.js";
 import type { DashboardFetch } from "../active-runs/active-runs-client.boundary.js";
 import { insightsClient } from "./client.js";
 import { insightsMessages } from "./messages.js";
+import { localTime } from "./local-time.js";
 
 export interface InsightViewProps {
   readonly configure?: (() => void) | undefined;
@@ -30,16 +31,12 @@ export function useInsightModel(props: InsightViewProps & { readonly classId: st
   const [busy, setBusy] = useState(false);
   const [data, setData] = useState<
     | z.infer<typeof mapSchema>
-    | z.infer<typeof progressSchema>
+    | z.infer<typeof overviewSchema>
     | z.infer<typeof reportsSchema>
     | null
   >(null);
   const viewer = useRef(crypto.randomUUID());
-  const [student, setStudent] = useState("");
-  const [students, setStudents] = useState<z.infer<typeof studentsSchema>["students"]>([]);
   const [page, setPage] = useState<string | null>(null);
-  const [reason, setReason] = useState("");
-  const [level, setLevel] = useState(0);
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [report, setReport] = useState<z.infer<typeof reportSchema> | null>(null);
   const [from, setFrom] = useState(localTime(Date.now() - 86400000));
@@ -58,23 +55,13 @@ export function useInsightModel(props: InsightViewProps & { readonly classId: st
         );
         if (valid()) setData(value);
       } else if (props.kind === "progress") {
-        if (student === "") {
-          const v = await client(
-            props.classId,
-            { kind: "progress", studentId: null, after: page },
-            studentsSchema,
-            abort.current.signal,
-          );
-          if (valid()) setStudents(v.students);
-        } else {
-          const v = await client(
-            props.classId,
-            { kind: "progress", studentId: student },
-            progressSchema,
-            abort.current.signal,
-          );
-          if (valid()) setData(v);
-        }
+        const v = await client(
+          props.classId,
+          { kind: "overview", after: page },
+          overviewSchema,
+          abort.current.signal,
+        );
+        if (valid()) setData(v);
       } else if (selectedReport === null) {
         const v = await client(
           props.classId,
@@ -96,7 +83,7 @@ export function useInsightModel(props: InsightViewProps & { readonly classId: st
     } catch {
       setError((previous) => (valid() ? true : previous));
     }
-  }, [props.kind, props.classId, props.visible, client, student, selectedReport, page]);
+  }, [props.kind, props.classId, props.visible, client, selectedReport, page]);
   useEffect(() => {
     void load();
     const timer = setInterval(() => {
@@ -156,15 +143,8 @@ export function useInsightModel(props: InsightViewProps & { readonly classId: st
     busy,
     data,
     setData,
-    student,
-    setStudent,
-    students,
     page,
     setPage,
-    reason,
-    setReason,
-    level,
-    setLevel,
     selectedReport,
     setSelectedReport,
     report,
@@ -176,8 +156,4 @@ export function useInsightModel(props: InsightViewProps & { readonly classId: st
     load,
     action,
   };
-}
-function localTime(time: number): string {
-  const date = new Date(time);
-  return new Date(time - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }

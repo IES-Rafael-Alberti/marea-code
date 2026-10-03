@@ -1,17 +1,25 @@
 import { afterEach, beforeEach, it, expect, vi } from "vitest";
 import { InsightsRequestSchema } from "@marea/protocol";
 import { useInsightModel, type InsightViewProps } from "./model.js";
+type Dependency = object | string | number | boolean | null | undefined;
 const hooks = vi.hoisted(() => ({
   values: [] as (object | string | number | boolean | null)[],
   index: 0,
   refs: [] as object[],
   refIndex: 0,
   effects: [] as (() => undefined | (() => void))[],
+  dependencies: [] as Dependency[][],
 }));
 vi.mock("react", async (original) => ({
   ...(await original<typeof import("react")>()),
-  useCallback: <T>(callback: T) => callback,
-  useMemo: <T>(create: () => T) => create(),
+  useCallback: <T>(callback: T, dependencies: Dependency[]) => {
+    hooks.dependencies.push(dependencies);
+    return callback;
+  },
+  useMemo: <T>(create: () => T, dependencies: Dependency[]) => {
+    hooks.dependencies.push(dependencies);
+    return create();
+  },
   useState: <T extends object | string | number | boolean | null>(initial: T) => {
     const index = hooks.index++;
     const current = index in hooks.values ? (hooks.values[index] as T) : initial;
@@ -29,12 +37,18 @@ vi.mock("react", async (original) => ({
     hooks.refs[index] ??= { current: initial };
     return hooks.refs[index];
   },
-  useEffect: (effect: () => undefined | (() => void)) => {
+  useEffect: (effect: () => undefined | (() => void), dependencies: Dependency[]) => {
+    hooks.dependencies.push(dependencies);
     hooks.effects.push(effect);
   },
 }));
 const map = { enabled: true, configured: true, entries: [] };
+const mapData = map;
 const progress = { revision: "revision:one", entries: [] };
+const overview = {
+  students: [{ id: "student", displayName: "Ana", ...progress }],
+  next: null,
+};
 const report = {
   id: "report:one",
   state: "queued",
@@ -55,13 +69,13 @@ const fetchRequest: InsightViewProps["fetchRequest"] = (_url, init) => {
       ? map
       : q.kind === "reports"
         ? { configured: true, entries: [] }
-        : q.kind === "progress"
-          ? q.studentId === null
-            ? { students: [{ id: "student", displayName: "Ana" }] }
-            : progress
+        : q.kind === "overview"
+          ? overview
           : q.kind === "adjust"
             ? progress
-            : report;
+            : q.kind === "report"
+              ? { ...report, state: "running" }
+              : report;
   return Promise.resolve(
     Response.json({ requestId: q.requestId, classId: q.classId, kind: q.kind, data }),
   );
@@ -73,6 +87,7 @@ function render(
   hooks.index = 0;
   hooks.refIndex = 0;
   hooks.effects = [];
+  hooks.dependencies = [];
   return useInsightModel({
     kind,
     classId: "class:one",
@@ -106,20 +121,16 @@ it("loads the map only as visible and unregisters its viewer on disposal", async
   expect(requests.at(-1)).toMatchObject({ visible: false });
   expect(state.abort.current.signal.aborted).toBe(true);
 });
-it("loads students, paginates and refreshes progress after a teacher adjustment", async () => {
+it("loads every student's progress, paginates and refreshes after a teacher adjustment", async () => {
   let state = render("progress");
   await state.load();
+  expect(requests.at(-1)).toMatchObject({ kind: "overview", after: null });
   state = render("progress");
-  expect(state.students[0]?.displayName).toBe("Ana");
+  expect(state.data).toEqual(overview);
   state.setPage("student:previous");
   state = render("progress");
   await state.load();
-  expect(requests.at(-1)).toMatchObject({ after: "student:previous" });
-  state.setStudent("student");
-  state = render("progress");
-  await state.load();
-  state = render("progress");
-  expect(state.data).toEqual(progress);
+  expect(requests.at(-1)).toMatchObject({ kind: "overview", after: "student:previous" });
   await state.action({
     kind: "adjust",
     studentId: "student",
@@ -129,6 +140,7 @@ it("loads students, paginates and refreshes progress after a teacher adjustment"
     expectedRevision: "revision:one",
   });
   expect(requests.at(-2)?.kind).toBe("adjust");
+  expect(requests.at(-1)?.kind).toBe("overview");
   expect(render("progress").busy).toBe(false);
 });
 it("selects the generated report and reads its persistent state", async () => {
@@ -138,9 +150,10 @@ it("selects the generated report and reads its persistent state", async () => {
   await state.action({ kind: "generate", from: report.from, to: report.to, locale: "es" });
   state = render("reports");
   expect(state.selectedReport).toBe(report.id);
+  expect(state.report).toEqual(report);
   await state.load();
   expect(requests.at(-1)).toMatchObject({ kind: "report", reportId: report.id });
-  expect(render("reports").report).toEqual(report);
+  expect(render("reports").report).toEqual({ ...report, state: "running" });
 });
 it("rejects foreign responses and clears busy after failed mutations", async () => {
   const bad: InsightViewProps["fetchRequest"] = () =>
@@ -184,7 +197,6 @@ it.each(["map", "progress", "reports"] as const)(
     await first;
     expect(render(kind).error).toBe(true);
     expect(render(kind).data).toBeNull();
-    expect(render(kind).students).toEqual([]);
   },
 );
 it.each([false, true])("ignores disposed mutations (failure: %s)", async (failure) => {
@@ -204,12 +216,13 @@ it.each([false, true])("ignores disposed mutations (failure: %s)", async (failur
   await action;
   expect(render("reports").report).toBeNull();
   expect(render("reports").error).toBe(false);
+  // A disposed view is gone, so it is not told that the mutation finished.
+  expect(render("reports").busy).toBe(true);
 });
 it.each(["progress", "reports"] as const)(
   "ignores disposed selected %s responses",
   async (kind) => {
     let state = render(kind);
-    state.setStudent("student");
     state.setSelectedReport(report.id);
     state = render(kind);
     state.abort.current.abort();
@@ -246,4 +259,77 @@ it("rejects a response with the wrong operation", async () => {
   });
   await state.load();
   expect(render("map").error).toBe(true);
+});
+it("starts idle with the last day selected and declares what each hook depends on", () => {
+  vi.setSystemTime(Date.parse("2026-01-02T12:00:00.000Z"));
+  vi.spyOn(Date.prototype, "getTimezoneOffset").mockReturnValue(0);
+  const state = render("reports");
+  expect([state.busy, state.error, state.from, state.to]).toEqual([
+    false,
+    false,
+    "2026-01-01T12:00",
+    "2026-01-02T12:00",
+  ]);
+  expect(hooks.dependencies).toEqual([
+    [fetchRequest],
+    ["reports", "class:one", undefined, state.client, null, null],
+    [state.load, "reports"],
+    [state.client, "class:one", "reports"],
+  ]);
+  vi.restoreAllMocks();
+});
+it("polls the map every 15 seconds until disposed, but never the progress overview", async () => {
+  render("map");
+  const cleanup = hooks.effects.map((effect) => effect());
+  await vi.advanceTimersByTimeAsync(0);
+  const initial = requests.length;
+  await vi.advanceTimersByTimeAsync(15000);
+  expect(requests.length).toBe(initial + 1);
+  cleanup[0]?.();
+  await vi.advanceTimersByTimeAsync(15000);
+  expect(requests.length).toBe(initial + 1);
+  expect(render("map").data).toEqual(mapData);
+  render("progress");
+  hooks.effects[0]?.();
+  await vi.advanceTimersByTimeAsync(0);
+  const progressRequests = requests.length;
+  await vi.advanceTimersByTimeAsync(30000);
+  expect(requests.length).toBe(progressRequests);
+});
+it("ignores a load that a disposed effect started, even after a newer load begins", async () => {
+  const pending: PromiseWithResolvers<Response>[] = [];
+  const responses: Response[] = [];
+  const delayed: InsightViewProps["fetchRequest"] = async (url, init) => {
+    responses.push(await fetchRequest(url, init));
+    const next = Promise.withResolvers<Response>();
+    pending.push(next);
+    return next.promise;
+  };
+  render("map", { fetchRequest: delayed });
+  const dispose = hooks.effects[0]?.();
+  await vi.advanceTimersByTimeAsync(0);
+  dispose?.();
+  render("map", { fetchRequest: delayed });
+  hooks.effects[0]?.();
+  await vi.advanceTimersByTimeAsync(0);
+  pending[0]?.resolve(responses[0] ?? new Response());
+  await vi.advanceTimersByTimeAsync(0);
+  expect(render("map").data).toBeNull();
+  pending[1]?.resolve(responses[1] ?? new Response());
+  await vi.advanceTimersByTimeAsync(0);
+  expect(render("map").data).toEqual(mapData);
+});
+it("clears an earlier error once a load succeeds and stays busy while a mutation runs", async () => {
+  let state = render("map", { fetchRequest: () => Promise.reject(new Error("offline")) });
+  await state.load();
+  expect(render("map").error).toBe(true);
+  await render("map").load();
+  expect(render("map").error).toBe(false);
+  const pending = Promise.withResolvers<Response>();
+  state = render("reports", { fetchRequest: () => pending.promise });
+  const action = state.action({ kind: "cancel", reportId: report.id });
+  expect(render("reports").busy).toBe(true);
+  pending.reject(new Error("offline"));
+  await action;
+  expect(render("reports").busy).toBe(false);
 });
