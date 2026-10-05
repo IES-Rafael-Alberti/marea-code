@@ -22,6 +22,7 @@ import { acquireInstallation } from "../operator-cli/installation-lock.js";
 import { installationFixture } from "../operator-cli/installation.fixture.js";
 import { TargetRefSchema } from "../operations/schemas.js";
 import { parseStorageConfiguration } from "../operations/storage/configuration.js";
+import * as deletionIndex from "../operations/storage/sqlite-deletion-index.js";
 import { createSqliteDeletionIndex } from "../operations/storage/sqlite-deletion-index.js";
 import { createOperationsApplication } from "./operations-application.js";
 import { readOperationsConfig } from "./operations-config.js";
@@ -202,4 +203,21 @@ describe("operator CLI after OPERATIONS activation", () => {
     expect(nativeOpens.every((record) => record.closed)).toBe(true);
     owned.release();
   });
+});
+
+it("closes the deletion database when creation-gate composition fails", () => {
+  const f = activatedInstallation();
+  const owned = acquireInstallation(f.root);
+  const guard = vi.spyOn(deletionIndex, "createSqliteCreationGate").mockImplementationOnce(() => {
+    throw new Error("synthetic creation-gate failure");
+  });
+  try {
+    expect(() => createOperatorCliApplication(owned.capability, f.config)).toThrow(
+      "synthetic creation-gate failure",
+    );
+    expect(nativeOpens.every((record) => record.closed)).toBe(true);
+  } finally {
+    guard.mockRestore();
+    owned.release();
+  }
 });

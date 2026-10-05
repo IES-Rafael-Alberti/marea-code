@@ -58,22 +58,26 @@ export function openDeletionAuthority(root: string, databasePath: string): Delet
     }),
   );
   const file = openSqliteDatabaseFile({ databasePath: config.indexPath });
-  // A quiesced or retired authority has been handed to another installation by a transfer, so
-  // its database takes no further changes that the transferred copy would silently lose.
-  if (handedOver(() => readConsistentInspection(file.database, configuration).state)) {
+  try {
+    // A quiesced or retired authority has been handed to another installation by a transfer, so
+    // its database takes no further changes that the transferred copy would silently lose.
+    if (handedOver(() => readConsistentInspection(file.database, configuration).state)) {
+      throw unavailable();
+    }
+    return {
+      guard: createAccountCreationGuard(createSqliteCreationGate(file.database, configuration)),
+      reserved: [
+        config.indexPath,
+        `${config.indexPath}-wal`,
+        `${config.indexPath}-shm`,
+        `${config.indexPath}-journal`,
+      ],
+      close: () => {
+        file.close();
+      },
+    };
+  } catch (error) {
     file.close();
-    throw unavailable();
+    throw error;
   }
-  return {
-    guard: createAccountCreationGuard(createSqliteCreationGate(file.database, configuration)),
-    reserved: [
-      config.indexPath,
-      `${config.indexPath}-wal`,
-      `${config.indexPath}-shm`,
-      `${config.indexPath}-journal`,
-    ],
-    close: () => {
-      file.close();
-    },
-  };
 }

@@ -93,5 +93,5 @@ export function canonicalizeStorageConfiguration(
   const databasePath = canonicalPath(parsed.databasePath);
   const indexPath = canonicalPath(parsed.indexPath);
   if (databasePath === indexPath) throw new Error("database and index paths must differ");
-  return Object.freeze({ ...parsed, databasePath, indexPath });
+  return Object.freeze({ ...parsed, installationRoot: canonicalRoot, databasePath, indexPath });
 }
