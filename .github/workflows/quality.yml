@@ -47,7 +47,7 @@ jobs:
         run: bun run release:audit
 
   mutation:
-    name: Mutation (${{ matrix.workspace }})
+    name: Mutation (${{ matrix.workspace }}, ${{ matrix.partition || 'all' }})
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     strategy:
@@ -57,7 +57,6 @@ jobs:
           - .
           - apps/dashboard
           - apps/student
-          - apps/teacher-server
           - packages/deepagents-adapter
           - packages/i18n
           - packages/plugin-api
@@ -72,6 +71,19 @@ jobs:
           - plugins/inference/openrouter
           - plugins/telemetry/langfuse
           - plugins/telemetry/otlp
+        include:
+          - workspace: apps/teacher-server
+            partition: host
+            mutate: src/platform/teacher-host/**/*.ts,!src/**/*.{spec,test}.ts,!src/**/*.fixture.ts
+          - workspace: apps/teacher-server
+            partition: operations
+            mutate: src/platform/operations*/**/*.ts,!src/**/*.{spec,test}.ts,!src/**/*.fixture.ts
+          - workspace: apps/teacher-server
+            partition: platform
+            mutate: src/platform/**/*.ts,!src/platform/teacher-host/**,!src/platform/operations*/**,!src/**/*.{spec,test}.ts,!src/**/*.fixture.ts
+          - workspace: apps/teacher-server
+            partition: domain
+            mutate: src/**/*.ts,!src/platform/**,!src/**/*.{spec,test}.ts,!src/**/*.fixture.ts
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -84,9 +96,12 @@ jobs:
         working-directory: ${{ matrix.workspace }}
         env:
           WORKSPACE: ${{ matrix.workspace }}
+          MUTATE: ${{ matrix.mutate }}
         run: |
           if [ "$WORKSPACE" = '.' ]; then
             bun run mutation:root
+          elif [ -n "$MUTATE" ]; then
+            bun run mutation --mutate "$MUTATE"
           else
             bun run mutation
           fi
