@@ -2,8 +2,9 @@ import process from "node:process";
 import console from "node:console";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { buildCommand } from "./build-command.ts";
 import { sha256 } from "./manifest.ts";
 import { withBuildWorkspace } from "./workspace.boundary.ts";
 
@@ -18,47 +19,16 @@ const files = listed.stdout
   }));
 withBuildWorkspace(process.cwd(), files, (workspace) => {
   const locked = readFileSync(join(workspace, "bun.lock"));
-  const install = spawnSync(
-    process.execPath,
-    ["install", "--frozen-lockfile", "--ignore-scripts", "--backend", "copyfile"],
-    { cwd: workspace, encoding: "utf8" },
-  );
-  if (install.status !== 0) {
-    console.error(install.stderr);
-    if (process.platform === "win32") {
-      const shell = spawnSync(
-        "powershell.exe",
-        [
-          "-NoProfile",
-          "-NonInteractive",
-          "-Command",
-          "& $env:MAREA_BUILD_BUN install --frozen-lockfile --ignore-scripts --backend copyfile; exit $LASTEXITCODE",
-        ],
-        {
-          cwd: workspace,
-          encoding: "utf8",
-          env: { ...process.env, MAREA_BUILD_BUN: process.execPath },
-        },
-      );
-      console.error("PowerShell-hosted frozen install:", shell.status, shell.stderr);
-    }
-    // Diagnose only inside this disposable copy; never use a changed lockfile to build a release.
-    const diagnostic = spawnSync(
-      process.execPath,
-      ["install", "--lockfile-only", "--ignore-scripts"],
-      {
-        cwd: workspace,
-        encoding: "utf8",
-      },
-    );
-    console.error(diagnostic.stderr);
-    writeFileSync(join(workspace, "bun.lock.before"), locked);
-    const diff = spawnSync("git", ["diff", "--no-index", "--", "bun.lock.before", "bun.lock"], {
-      cwd: workspace,
-      encoding: "utf8",
-    });
-    console.error(diff.stdout);
-  }
+  const [binary, args] = buildCommand([
+    "bun",
+    "install",
+    "--frozen-lockfile",
+    "--ignore-scripts",
+    "--backend",
+    "copyfile",
+  ]);
+  const install = spawnSync(binary, args, { cwd: workspace, encoding: "utf8" });
+  if (install.status !== 0) console.error(install.stderr);
   assert.equal(
     install.status,
     0,

@@ -1,4 +1,4 @@
-name: Windows filesystem acceptance
+name: Windows acceptance
 on:
   workflow_dispatch:
 permissions:
@@ -6,7 +6,7 @@ permissions:
 jobs:
   privacy:
     runs-on: windows-2025
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -18,3 +18,32 @@ jobs:
       - run: bun scripts/release/workspace-install-smoke.mjs
       - run: bun packages/private-filesystem/smoke/native-permissions.ts
         if: ${{ !cancelled() }}
+
+      - name: Compile disposable native acceptance programs
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force reports/windows-smoke | Out-Null
+          bun run --cwd apps/dashboard build
+          if ($LASTEXITCODE -ne 0) { throw 'Dashboard build failed' }
+          Copy-Item apps/dashboard/dist reports/windows-smoke/dashboard -Recurse
+          $entries = @{
+            'marea-admin' = 'apps/teacher-server/cli-entry.ts'
+            'marea-teacher' = 'apps/teacher-server/teacher-host-entry.ts'
+            'marea-operations' = 'apps/teacher-server/operations-entry.ts'
+            'marea-install' = 'scripts/release/install.mjs'
+            'marea' = 'apps/student/src/marea-entry.boundary.ts'
+            'tui-smoke' = 'packages/student-tui/scripts/entry.ts'
+          }
+          foreach ($entry in $entries.GetEnumerator()) {
+            bun build $entry.Value --compile --outfile "reports/windows-smoke/$($entry.Key).exe"
+            if ($LASTEXITCODE -ne 0) { throw "Native compile failed: $($entry.Key)" }
+          }
+          '{"component":"server","version":"0.1.0-preview.1"}' | Set-Content reports/windows-smoke/manifest.json
+      - name: Exercise native terminal and managed launcher
+        shell: pwsh
+        run: |
+          ./scripts/release/conpty-smoke.ps1 -Executable (Resolve-Path reports/windows-smoke/marea.exe) -TuiExecutable (Resolve-Path reports/windows-smoke/tui-smoke.exe)
+          bun scripts/release/preview-launcher-smoke.mjs reports/windows-smoke
+          if ($LASTEXITCODE -ne 0) { throw 'Managed launcher failed' }
+      - name: Exercise fresh server setup and recovery
+        run: bun scripts/release/preview-setup-smoke.mjs reports/windows-smoke

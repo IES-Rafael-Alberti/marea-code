@@ -64,8 +64,8 @@ it("handles native Windows student, defaults, CI provenance and license metadata
   const root = buildCandidate(["1.2.3", "student"]);
   expect(root).toContain("student-1.2.3-win32-x64");
   expect(mocks.spawnSync).toHaveBeenCalledWith(
-    "bun",
-    expect.arrayContaining([`${root}/marea.exe`]),
+    "powershell.exe",
+    expect.arrayContaining([expect.stringContaining(`${root}/marea.exe`)]),
     expect.any(Object),
   );
   expect(mocks.cpSync).toHaveBeenCalledWith(
@@ -374,13 +374,12 @@ it("records dirty and clean source distinctly, normalizes git whitespace and ret
       ],
     });
     expect(mocks.spawnSync).toHaveBeenCalledWith(
-      "bun",
+      "powershell.exe",
       [
-        "build",
-        "apps/student/src/marea-entry.boundary.ts",
-        "--compile",
-        "--outfile",
-        `${root}/marea.exe`,
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        `& 'bun' 'build' 'apps/student/src/marea-entry.boundary.ts' '--compile' '--outfile' '${root}/marea.exe'; exit $LASTEXITCODE`,
       ],
       { cwd: "/isolated", encoding: "utf8" },
     );

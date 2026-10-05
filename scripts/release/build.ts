@@ -1,3 +1,4 @@
+import { buildCommand } from "./build-command.js";
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { z } from "zod";
@@ -26,7 +27,8 @@ export function buildCandidate(argv: readonly string[]): string {
     cwd = process.cwd(),
     environment?: NodeJS.ProcessEnv,
   ): string => {
-    const result = spawnSync(args[0], args.slice(1), {
+    const [binary, arguments_] = buildCommand(args);
+    const result = spawnSync(binary, arguments_, {
       cwd,
       encoding: "utf8",
       env: environment,
