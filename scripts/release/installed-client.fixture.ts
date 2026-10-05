@@ -14,7 +14,7 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import { securePrivatePath } from "@marea/private-filesystem";
 
 import {
@@ -87,6 +87,22 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   expect(binaryHash).toBe(digest(await readFile(executableSource)));
   harness = await createAcceptanceHarness();
   const value = harness;
+  const requests: { path: string; status: number }[] = [];
+  const fetch = value.application.fetch.bind(value.application);
+  vi.spyOn(value.application, "fetch").mockImplementation(async (request, ...options) => {
+    const response = await fetch(request, ...options);
+    requests.push({ path: new URL(request.url).pathname, status: response.status });
+    return response;
+  });
+  const providerEvents: string[] = [];
+  const stream = value.provider.stream.bind(value.provider);
+  vi.spyOn(value.provider, "stream").mockImplementation(async function* (request, cancellation) {
+    for await (const event of stream(request, cancellation)) {
+      providerEvents.push(event.type);
+      yield event;
+    }
+    providerEvents.push("stream-closed");
+  });
   await enrollAcceptanceStudent(value, "ada");
   const launch = () => {
     const terminal = launchInstalledClient(executable, project, value.http.baseUrl, state);
@@ -113,6 +129,8 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   } catch (error) {
     console.error("Synthetic installed-client progress:", {
       providerRequests: value.provider.requests.length,
+      providerEvents,
+      requests,
       events: coreEvents(value).map((event) => event.event_type),
     });
     throw error;

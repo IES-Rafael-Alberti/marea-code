@@ -1,6 +1,11 @@
 name: Windows acceptance
 on:
   workflow_dispatch:
+    inputs:
+      student_only:
+        description: Skip teacher setup when diagnosing the installed student
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -73,5 +78,5 @@ jobs:
         if: ${{ !cancelled() && steps.programs.outcome == 'success' }}
         run: bun scripts/release/preview-launcher-smoke.mjs reports/windows-smoke
       - name: Exercise fresh server setup and recovery
-        if: ${{ !cancelled() && steps.programs.outcome == 'success' && matrix.runner == 'windows-2025' }}
+        if: ${{ !cancelled() && steps.programs.outcome == 'success' && matrix.runner == 'windows-2025' && !inputs.student_only }}
         run: bun scripts/release/preview-setup-smoke.mjs reports/windows-smoke
