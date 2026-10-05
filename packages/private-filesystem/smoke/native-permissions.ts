@@ -5,6 +5,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { inspectPrivatePath, securePrivatePath } from "../src/index.js";
+import { WINDOWS_ACL_SCRIPT } from "../src/windows-acl-script.js";
 
 const root = mkdtempSync(join(tmpdir(), "marea-native-privacy-"));
 const checks: string[] = [];
@@ -117,7 +118,42 @@ try {
   console.log(
     JSON.stringify({ platform: process.platform, arch: process.arch, checks, status: "passed" }),
   );
+} catch (error) {
+  console.error("Completed native privacy checks:", checks);
+  if (process.platform === "win32") {
+    // Diagnostics are restricted to this synthetic, disposable fixture.
+    const diagnostic = WINDOWS_ACL_SCRIPT.replace(
+      "catch { [Console]::Out.Write('unsafe'); exit 1 }",
+      "catch { [Console]::Error.WriteLine($_.Exception.Message); [Console]::Error.WriteLine($_.ScriptStackTrace); exit 1 }",
+    );
+    const result = spawnSync(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-EncodedCommand",
+        Buffer.from(diagnostic, "utf16le").toString("base64"),
+      ],
+      {
+        input: JSON.stringify({ path: root, action: "secure" }),
+        encoding: "utf8",
+        timeout: 30000,
+        maxBuffer: 65536,
+      },
+    );
+    console.error("Synthetic ACL diagnostic:", {
+      status: result.status,
+      error: result.error?.message,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    });
+  }
+  throw error;
 } finally {
-  securePrivatePath(root, 0o700);
-  rmSync(root, { recursive: true, force: true });
+  try {
+    securePrivatePath(root, 0o700);
+    rmSync(root, { recursive: true, force: true });
+  } catch {
+    // Preserve the original acceptance failure; the CI runner is disposable.
+  }
 }
