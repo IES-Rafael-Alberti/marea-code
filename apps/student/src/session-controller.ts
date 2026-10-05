@@ -97,9 +97,10 @@ export class StudentSessionController {
       const active = await this.startInternal(projectDisplayName);
       await this.options.evidence?.start();
       await this.flushOutbox();
+      const heartbeat = this.options.server.heartbeat?.bind(this.options.server);
       if (
         !this.closeAbort.signal.aborted &&
-        this.options.server.heartbeat !== undefined &&
+        heartbeat !== undefined &&
         this.presenceTimer === undefined
       ) {
         const send = async () => {
@@ -107,7 +108,7 @@ export class StudentSessionController {
           this.presenceBusy = true;
           try {
             const token = await this.modelRunToken();
-            if (!this.closeAbort.signal.aborted) await this.options.server.heartbeat?.(token);
+            if (!this.closeAbort.signal.aborted) await heartbeat(token);
           } catch {
             /* Presence never interrupts a student session. */
           } finally {
