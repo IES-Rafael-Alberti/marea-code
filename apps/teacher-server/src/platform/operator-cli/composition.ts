@@ -10,6 +10,7 @@ import {
   createAuditMigrationCatalog,
   createProfileMigrationCatalog,
   createEducationalMigrationCatalog,
+  createStudentIdentityMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
   type SqliteStorage,
@@ -103,7 +104,8 @@ export function createOperatorCliApplication(
 ): ComposedInstallation {
   capability.assertOwned();
   const version = inspectSqliteSchemaVersion({ databasePath: config.databasePath });
-  const educational = version === createEducationalMigrationCatalog().length;
+  const identities = version === createStudentIdentityMigrationCatalog().length;
+  const educational = identities || version === createEducationalMigrationCatalog().length;
   const profiles = educational || version === createProfileMigrationCatalog().length;
   const activated = version === createAuditMigrationCatalog().length || profiles;
   if (!activated && version !== createMigrationCatalog().length) throw unavailable();
@@ -117,11 +119,13 @@ export function createOperatorCliApplication(
       activated
         ? {
             databasePath: config.databasePath,
-            schema: educational
-              ? "educational-insights"
-              : profiles
-                ? "dashboard-profiles"
-                : "retention-audit",
+            schema: identities
+              ? "student-identities"
+              : educational
+                ? "educational-insights"
+                : profiles
+                  ? "dashboard-profiles"
+                  : "retention-audit",
           }
         : { databasePath: config.databasePath },
     );

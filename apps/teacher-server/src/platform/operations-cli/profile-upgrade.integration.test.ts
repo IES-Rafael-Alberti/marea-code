@@ -1,6 +1,6 @@
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { inspectSqliteSchemaVersion } from "@marea/sqlite-storage";
+import { initializeSqliteStorage, inspectSqliteSchemaVersion } from "@marea/sqlite-storage";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { nativeOpens } from "../operator-cli/bun-sqlite.fixture.js";
 import { acquireInstallation } from "../operator-cli/installation-lock.js";
@@ -52,11 +52,11 @@ describe("explicit offline profile upgrade", () => {
           command: "installation upgrade-profiles --input <private-json-with-new-backup-name>",
           release: { ready: true },
           rollback: expect.stringContaining("current deletion index") as unknown,
-          recovery: expect.stringContaining("schema 11 is committed") as unknown,
+          recovery: expect.stringContaining("schema 12 is committed") as unknown,
         },
       });
       expect(await owned.app.upgradeProfiles("before-profiles")).toEqual({
-        schemaVersion: 11,
+        schemaVersion: 12,
         backupPath: join(f.root, "backups", "before-profiles"),
       });
       expect(
@@ -76,12 +76,40 @@ describe("explicit offline profile upgrade", () => {
     }
     const restarted = open(f);
     try {
-      expect(restarted.app.activate()).toEqual({ schemaVersion: 11 });
+      expect(restarted.app.activate()).toEqual({ schemaVersion: 12 });
       expect(await readInstallationStatus(f.root)).toMatchObject({
         profileUpgrade: { state: "active" },
       });
     } finally {
       restarted.close();
+    }
+  });
+
+  it("upgrades an educational schema 11 installation to student identities", async () => {
+    const f = profileUpgradeInstallation();
+    const owned = open(f);
+    try {
+      expect(owned.app.activate()).toEqual({ schemaVersion: 9 });
+    } finally {
+      owned.close();
+    }
+    initializeSqliteStorage({
+      databasePath: f.databasePath,
+      schema: "educational-insights",
+    }).close();
+    const educational = open(f);
+    try {
+      expect(educational.app.activate()).toEqual({ schemaVersion: 11 });
+      expect(await educational.app.upgradeProfiles("before-identities")).toMatchObject({
+        schemaVersion: 12,
+      });
+      expect(
+        inspectSqliteSchemaVersion({
+          databasePath: join(f.root, "backups", "before-identities", "database.sqlite"),
+        }),
+      ).toBe(11);
+    } finally {
+      educational.close();
     }
   });
 
@@ -96,7 +124,7 @@ describe("explicit offline profile upgrade", () => {
         owned.close();
       }
       expect(inspectSqliteSchemaVersion({ databasePath: f.databasePath })).toBe(
-        step === "backed-up" ? 9 : 11,
+        step === "backed-up" ? 9 : 12,
       );
       expect(
         inspectSqliteSchemaVersion({
@@ -107,7 +135,7 @@ describe("explicit offline profile upgrade", () => {
       try {
         await expect(restarted.app.upgradeProfiles("interrupted")).rejects.toThrow();
         if (step === "backed-up")
-          expect(await restarted.app.upgradeProfiles("retry")).toMatchObject({ schemaVersion: 11 });
+          expect(await restarted.app.upgradeProfiles("retry")).toMatchObject({ schemaVersion: 12 });
       } finally {
         restarted.close();
       }

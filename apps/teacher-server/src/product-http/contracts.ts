@@ -9,8 +9,8 @@ import type {
   ActiveRunDashboardResponse,
   AppendRunEventsRequest,
   AppendRunEventsResponse,
+  ClassBootstrapOutcome,
   ClassBootstrapRequest,
-  ClassBootstrapResponse,
   CloseRunRequest,
   CloseRunResponse,
   CredentialLoginRequest,
@@ -39,16 +39,24 @@ import type { ProductSkillAuthoringService } from "../teaching/authoring/dashboa
 import type { Clock, SecretDigest } from "../identity/contracts.js";
 import type { GovernanceService } from "../governance/contracts.js";
 import type { GovernanceSessionResolver } from "../governance/authority.js";
+import type { ExternalAccessService } from "../external-identity/access-service.js";
+import type { ExternalIdentityService } from "../external-identity/service.js";
+
+export interface ExternalIdentityServices {
+  readonly signIn: Pick<ExternalIdentityService, "begin" | "complete" | "enabled" | "providers">;
+  readonly access: Pick<ExternalAccessService, "execute">;
+}
 
 export interface ProductIdentityService {
   authenticate(token: string): AuthenticatedSession;
   enroll(request: EnrollStudentRequest): Promise<EnrollStudentResponse>;
   login(request: CredentialLoginRequest): Promise<CredentialLoginResponse>;
   logout(token: string, requestId: string): CredentialLogoutResponse;
+  selectClass(token: string, classId: string): AuthenticatedIdentity;
 }
 
 export interface ProductClassroomService {
-  load(identity: AuthenticatedIdentity, request: ClassBootstrapRequest): ClassBootstrapResponse;
+  load(identity: AuthenticatedIdentity, request: ClassBootstrapRequest): ClassBootstrapOutcome;
 }
 
 export interface ProductRunService {
@@ -69,6 +77,7 @@ export interface InferenceProviderResolver {
 }
 
 export interface TeacherProductServices {
+  readonly externalIdentity?: ExternalIdentityServices;
   readonly usageHealth?: UsageHealthService;
   readonly serverSettings?: ServerSettingsEndpoint;
   readonly educationalInsights?: EducationalInsightsService;

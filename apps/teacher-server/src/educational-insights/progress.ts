@@ -1,4 +1,5 @@
 import { rowText } from "../platform/persistence/row-parser.boundary.js";
+import { studentClassMember } from "../platform/persistence/governance-access-sql.js";
 import { createHash, randomUUID } from "node:crypto";
 import {
   StudentRunSnapshotSchema,
@@ -198,7 +199,9 @@ export class LearningProgress {
   /** One page of students with their criteria, read in two bounded queries. */
   overview(classId: string, after: string | null) {
     const listed = this.database.readAll(
-      "SELECT id, display_name AS displayName FROM marea_users WHERE class_id = ?1 AND role = 'student' AND (?2 IS NULL OR id > ?2) ORDER BY id LIMIT ?3",
+      `SELECT id, display_name AS displayName FROM marea_users
+        WHERE role = 'student' AND ${studentClassMember("marea_users.id", "?1")}
+          AND (?2 IS NULL OR id > ?2) ORDER BY id LIMIT ?3`,
       [classId, after, OVERVIEW_PAGE + 1],
     );
     const students = listed

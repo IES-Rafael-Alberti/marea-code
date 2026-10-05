@@ -1,4 +1,4 @@
-import type { AuthenticatedIdentity } from "../identity/contracts.js";
+import type { AuthenticatedIdentity, StudentClassChoice } from "../identity/contracts.js";
 
 export interface StudentClassBootstrap {
   readonly activeRun: {
@@ -10,4 +10,5 @@ export interface StudentClassBootstrap {
 
 export interface ClassroomRepository {
   loadStudentBootstrap(identity: AuthenticatedIdentity): StudentClassBootstrap | undefined;
+  studentClasses(userId: string): readonly StudentClassChoice[];
 }

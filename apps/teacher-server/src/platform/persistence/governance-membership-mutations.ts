@@ -3,6 +3,7 @@ import type { GovernanceCommitContext, Id } from "../../governance/authority.js"
 import type { GovernanceRepository, PreparedChangeMembership } from "../../governance/contracts.js";
 import { GovernanceStore, governanceConflict } from "./governance-store.js";
 import { rowText } from "./row-parser.boundary.js";
+import { SINGLE_STUDENT_CLASS } from "./governance-access-sql.js";
 
 export class GovernanceMembershipMutations implements Pick<
   GovernanceRepository,
@@ -73,10 +74,12 @@ export class GovernanceMembershipMutations implements Pick<
     if (
       this.store.database.readOne(
         `SELECT user_id FROM marea_governance_memberships WHERE user_id = ?1 AND role = 'student'
-        AND state = 'active' AND class_id <> ?2
+        AND state = 'active' AND class_id <> ?2 AND ${SINGLE_STUDENT_CLASS}
         UNION ALL SELECT student_id FROM marea_runs WHERE student_id = ?1 AND state = 'active' AND ?4 = 1
+          AND (class_id = ?2 OR ${SINGLE_STUDENT_CLASS})
         UNION ALL SELECT user_id FROM marea_governance_accounts WHERE user_id = ?1 AND owner_center_id <> ?3
-        UNION ALL SELECT id FROM marea_users WHERE id = ?1 AND class_id IS NOT NULL AND class_id <> ?2 LIMIT 1`,
+        UNION ALL SELECT id FROM marea_users WHERE id = ?1 AND class_id IS NOT NULL AND class_id <> ?2
+          AND ${SINGLE_STUDENT_CLASS} LIMIT 1`,
         [userId, classId, centerId, reassigning],
       ) !== undefined
     )
@@ -91,11 +94,14 @@ export class GovernanceMembershipMutations implements Pick<
     state: "active" | "revoked",
   ): void {
     if (role === "student") {
+      // The legacy hint names the latest activated class, or another active one after revocation.
       this.store.database.execute(
-        "UPDATE marea_users SET class_id = ?2 WHERE id = ?1 AND (?2 IS NOT NULL OR class_id = ?3)",
+        `UPDATE marea_users SET class_id = COALESCE(?2, (SELECT class_id FROM marea_governance_memberships
+            WHERE user_id = ?1 AND role = 'student' AND state = 'active' ORDER BY class_id LIMIT 1))
+          WHERE id = ?1 AND (?2 IS NOT NULL OR class_id = ?3)`,
         [userId, state === "active" ? classId : null, classId],
       );
-      if (state === "revoked") this.store.revoke(userId, context.now);
+      if (state === "revoked") this.store.revokeStudentClass(userId, classId, context.now);
       return;
     }
     if (state === "active") {

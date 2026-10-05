@@ -26,6 +26,10 @@ import type {
 } from "../../identity/contracts.js";
 import { TeacherDomainError } from "../../identity/errors.js";
 import { IdentityService } from "../../identity/identity-service.js";
+import type { ConfiguredIdentityProvider } from "../../external-identity/contracts.js";
+import { ExternalAccessService } from "../../external-identity/access-service.js";
+import { ExternalIdentityService } from "../../external-identity/service.js";
+import { SqliteExternalIdentityRepository } from "../persistence/sqlite-external-identity-repository.js";
 import type { ModelGatewayRetryScheduler } from "../../model-gateway/contracts.js";
 import { RunInferenceService } from "../../model-gateway/run-inference-service.js";
 import type {
@@ -90,6 +94,8 @@ export interface TeacherHostServiceDependencies {
   readonly providers: InferenceProviderResolver;
   readonly retry: ModelGatewayRetryScheduler;
   readonly identities: IdentityCreationGuard;
+  /** Installed and configured identity provider plugins; none disables external sign-in. */
+  readonly identityProviders?: readonly ConfiguredIdentityProvider[];
   readonly evaluationIntervalMs: number;
   readonly onInferenceDiagnostic?: InferenceDiagnosticSink | undefined;
   readonly onEvaluationError: () => void;
@@ -225,7 +231,40 @@ export async function composeTeacherServices(
                 insights.configureRoutes(settings.education);
               },
         );
+  const identity = new IdentityService({
+    clock,
+    digest,
+    dummyPasswordHash: dependencies.dummyPasswordHash,
+    ids,
+    passwords: dependencies.passwords,
+    repository: new SqliteIdentityRepository(database),
+    secrets,
+  });
+  const identityProviders = dependencies.identityProviders ?? [];
+  const externalRepository = new SqliteExternalIdentityRepository(
+    database,
+    dependencies.identities,
+  );
   const services: TeacherProductServices = {
+    ...(identityProviders.length === 0
+      ? {}
+      : {
+          externalIdentity: {
+            signIn: new ExternalIdentityService({
+              providers: identityProviders,
+              repository: externalRepository,
+              sessions: identity,
+              clock,
+              ids,
+              secrets,
+            }),
+            access: new ExternalAccessService({
+              providers: identityProviders,
+              repository: externalRepository,
+              clock,
+            }),
+          },
+        }),
     ...(serverSettings === undefined ? {} : { serverSettings }),
     ...(insights === undefined ? {} : { educationalInsights: insights }),
     usageHealth: new UsageHealthService(new SqliteUsageHealthRepository(database), clock),
@@ -265,15 +304,7 @@ export async function composeTeacherServices(
     skills: new RunSkillService(new SqliteRunSkillRepository(database), runs),
     classroom: new ClassBootstrapService(new SqliteClassroomRepository(database)),
     dashboard: new ActiveRunsService(new SqliteDashboardRepository(database), clock),
-    identity: new IdentityService({
-      clock,
-      digest,
-      dummyPasswordHash: dependencies.dummyPasswordHash,
-      ids,
-      passwords: dependencies.passwords,
-      repository: new SqliteIdentityRepository(database),
-      secrets,
-    }),
+    identity,
     modelClock: clock,
     providers: dependencies.providers,
     retry: dependencies.retry,

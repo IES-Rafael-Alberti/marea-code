@@ -18,7 +18,7 @@ import type {
   RenewStoredLeaseResult,
 } from "../../sessions/contracts.js";
 import { rowInteger, rowJson, rowText } from "./row-parser.boundary.js";
-import { activeGovernanceMembership } from "./governance-access-sql.js";
+import { activeGovernanceMembership, activeStudentClass } from "./governance-access-sql.js";
 import { loadRunStartup, validateStartupEvent } from "./sqlite-run-startup.js";
 import { PrivateProviderRouteSchema as StoredProviderRouteSchema } from "../../model-gateway/route-policy.js";
 
@@ -61,8 +61,8 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
     return this.#database.transaction(() => {
       const denied = this.#database.readAll(
         `SELECT 1 AS denied WHERE NOT EXISTS (SELECT 1 FROM marea_users users
-          WHERE users.id = ?1 AND users.role = 'student' AND users.class_id IS ?2 AND users.class_id IS NOT NULL
-            AND ${activeGovernanceMembership("users.id", "users.class_id", "'student'")})`,
+          WHERE users.id = ?1 AND users.role = 'student' AND ?2 IS NOT NULL
+            AND ${activeStudentClass("users.id", "?2")})`,
         [input.student.userId, input.student.classId],
       );
       if (denied.length !== 0) unavailable();
@@ -170,9 +170,9 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
     return this.#database.transaction(() => {
       const run = this.#database.readOne(
         `SELECT id AS run_id, state FROM marea_runs
-          WHERE id = ?1 AND student_id = ?2
+          WHERE id = ?1 AND student_id = ?2 AND class_id = ?3
             AND ${activeGovernanceMembership("student_id", "marea_runs.class_id", "'student'")}`,
-        [input.runId, input.studentId],
+        [input.runId, input.studentId, input.classId],
       );
       if (run === undefined) unavailable();
       const runId = rowText(run, "run_id");
@@ -185,9 +185,9 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
     return this.#database.transaction(() => {
       const run = this.#database.readOne(
         `SELECT id, state FROM marea_runs
-          WHERE id = ?1 AND student_id = ?2
+          WHERE id = ?1 AND student_id = ?2 AND class_id = ?3
             AND ${activeGovernanceMembership("student_id", "marea_runs.class_id", "'student'")}`,
-        [input.runId, input.studentId],
+        [input.runId, input.studentId, input.classId],
       );
       if (run === undefined || rowText(run, "state") !== "active") unavailable();
       this.#database.execute(
@@ -221,13 +221,18 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
         input.resumeRunId === undefined
           ? this.#database.readOne(
               `SELECT id FROM marea_runs WHERE student_id = ?1 AND project_display_name = ?2
-                AND state = 'active' ORDER BY opened_at DESC, id DESC LIMIT 1`,
-              [input.student.userId, input.projectDisplayName],
+                AND class_id = ?3 AND state = 'active' ORDER BY opened_at DESC, id DESC LIMIT 1`,
+              [input.student.userId, input.projectDisplayName, input.student.classId],
             )
           : this.#database.readOne(
               `SELECT id FROM marea_runs WHERE id = ?1 AND student_id = ?2
-                AND project_display_name = ?3 AND state = 'active'`,
-              [input.resumeRunId, input.student.userId, input.projectDisplayName],
+                AND project_display_name = ?3 AND class_id = ?4 AND state = 'active'`,
+              [
+                input.resumeRunId,
+                input.student.userId,
+                input.projectDisplayName,
+                input.student.classId,
+              ],
             );
       if (resumable === undefined) {
         unavailable();

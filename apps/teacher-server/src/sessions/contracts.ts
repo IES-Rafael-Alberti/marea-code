@@ -73,6 +73,8 @@ export interface CloseStoredRunInput {
 }
 
 export interface CloseAuthenticatedRunInput {
+  /** The class of the authenticated student session; a run of another class is unavailable. */
+  readonly classId: string;
   readonly closedAt: string;
   readonly closingEventId: string;
   readonly reason: CloseRunRequest["reason"];
@@ -81,6 +83,8 @@ export interface CloseAuthenticatedRunInput {
 }
 
 export interface RenewStoredLeaseInput {
+  /** The class of the authenticated student session; a run of another class is unavailable. */
+  readonly classId: string;
   readonly expiresAt: string;
   readonly issuedAt: string;
   readonly leaseId: string;

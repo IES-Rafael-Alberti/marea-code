@@ -19,3 +19,24 @@ export function activeGovernanceMembership(user: string, classroom: string, role
         AND governed_membership.role = ${role} AND governed_membership.state = 'active'
         AND governed_account.state = 'active' AND governed_center.state = 'active'))) `;
 }
+
+/** An adopted class admits a student through an active membership; an unadopted one through
+ * the legacy `class_id`. Account and center state are checked separately. */
+export function studentClassMember(user: string, classroom: string): string {
+  return `(CASE WHEN EXISTS (SELECT 1 FROM marea_governance_classes member_class
+      WHERE member_class.class_id = ${classroom})
+    THEN EXISTS (SELECT 1 FROM marea_governance_memberships member
+      WHERE member.user_id = ${user} AND member.class_id = ${classroom}
+        AND member.role = 'student' AND member.state = 'active')
+    ELSE EXISTS (SELECT 1 FROM marea_users legacy_member
+      WHERE legacy_member.id = ${user} AND legacy_member.class_id = ${classroom}) END)`;
+}
+
+/** A student who may act for this class now: a member with an active account and center. */
+export function activeStudentClass(user: string, classroom: string): string {
+  return `(${studentClassMember(user, classroom)} AND ${activeGovernanceMembership(user, classroom, "'student'")})`;
+}
+
+/** Schemas before 12 enforce one active class per student with this unique index. */
+export const SINGLE_STUDENT_CLASS = `EXISTS (SELECT 1 FROM sqlite_schema
+  WHERE type = 'index' AND name = 'marea_governance_one_student_class')`;

@@ -19,6 +19,7 @@ import {
   createAuditMigrationCatalog,
   createProfileMigrationCatalog,
   createEducationalMigrationCatalog,
+  createStudentIdentityMigrationCatalog,
   createMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
@@ -97,8 +98,9 @@ export function createOperationsApplication(
   const schemaVersion = existsSync(config.databasePath)
     ? inspectSqliteSchemaVersion({ databasePath: config.databasePath })
     : null;
-  let educational = schemaVersion === createEducationalMigrationCatalog().length;
-  let profiles = educational || schemaVersion === profileVersion;
+  let identities = schemaVersion === createStudentIdentityMigrationCatalog().length;
+  const educational = identities || schemaVersion === createEducationalMigrationCatalog().length;
+  const profiles = educational || schemaVersion === profileVersion;
   const activated = schemaVersion === auditVersion || profiles;
   const storageConfiguration = parseStorageConfiguration({
     installationRoot: capability.installationRoot,
@@ -115,11 +117,13 @@ export function createOperationsApplication(
     if (!activated) throw unavailable();
     storage ??= initializeSqliteStorage({
       databasePath: config.databasePath,
-      schema: educational
-        ? "educational-insights"
-        : profiles
-          ? "dashboard-profiles"
-          : "retention-audit",
+      schema: identities
+        ? "student-identities"
+        : educational
+          ? "educational-insights"
+          : profiles
+            ? "dashboard-profiles"
+            : "retention-audit",
     });
     indexFile ??= openSqliteDatabaseFile({ databasePath: config.indexPath });
     return { storage, indexDatabase: indexFile.database };
@@ -274,11 +278,13 @@ export function createOperationsApplication(
       }
       const upgraded = initializeSqliteStorage({
         databasePath: config.databasePath,
-        schema: educational
-          ? "educational-insights"
-          : profiles
-            ? "dashboard-profiles"
-            : "retention-audit",
+        schema: identities
+          ? "student-identities"
+          : educational
+            ? "educational-insights"
+            : profiles
+              ? "dashboard-profiles"
+              : "retention-audit",
       });
       try {
         return { schemaVersion: upgraded.schema.version };
@@ -298,8 +304,8 @@ export function createOperationsApplication(
         },
         installations.profileUpgradeDurable,
       );
-      profiles = true;
-      educational = true;
+      // The newest schema selects its own catalog regardless of the older flags.
+      identities = true;
       return result;
     },
     async preview(input: PreviewInput) {
@@ -402,6 +408,7 @@ export function createOperationsApplication(
         [auditVersion, "retention-audit" as const],
         [profileVersion, "dashboard-profiles" as const],
         [createEducationalMigrationCatalog().length, "educational-insights" as const],
+        [createStudentIdentityMigrationCatalog().length, "student-identities" as const],
       ]).get(release.schemaVersion);
       if (catalog === undefined) throw unavailable();
       const blocked = (reasonCode: RestoreResult["reasonCode"], checked = 0, tombstoned = 0) => ({

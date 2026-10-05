@@ -1,5 +1,6 @@
 import {
   createAuditMigrationCatalog,
+  createEducationalMigrationCatalog,
   createProfileMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
@@ -19,9 +20,11 @@ export async function upgradeProfilesOffline(
 ) {
   capability.assertOwned();
   if (
-    ![createAuditMigrationCatalog().length, createProfileMigrationCatalog().length].includes(
-      inspectSqliteSchemaVersion({ databasePath: config.databasePath }),
-    )
+    ![
+      createAuditMigrationCatalog().length,
+      createProfileMigrationCatalog().length,
+      createEducationalMigrationCatalog().length,
+    ].includes(inspectSqliteSchemaVersion({ databasePath: config.databasePath }))
   )
     throw new TeacherDomainError("request.conflict");
   if (!profileReleaseReadiness(capability.installationRoot, config.releaseId).ready)
@@ -31,7 +34,7 @@ export async function upgradeProfilesOffline(
   capability.assertOwned();
   const upgraded = initializeSqliteStorage({
     databasePath: config.databasePath,
-    schema: "educational-insights",
+    schema: "student-identities",
   });
   try {
     durable?.("migrated");

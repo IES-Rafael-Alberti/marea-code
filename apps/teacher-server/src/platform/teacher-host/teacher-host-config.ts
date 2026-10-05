@@ -41,6 +41,11 @@ function hostSchema() {
           })
           .strict(),
       ),
+      /** Private settings files of installed identity provider plugins, such as OAuth clients. */
+      identityProviders: z
+        .array(z.object({ pluginId: z.string().min(1), settingsPath: z.string() }).strict())
+        .max(8)
+        .exactOptional(),
       retry: z.object({ delayMs: positive, maxDelayMs: positive }).strict(),
       evaluationIntervalMs: positive,
       shutdownDrainMs: positive,
@@ -79,13 +84,19 @@ export function readTeacherHostConfig(root: string, uid = currentUid()): Teacher
       ),
     ),
   );
-  const files = [config.digestKeyPath, ...config.providers.map((entry) => entry.credentialPath)];
+  const identityProviders = config.identityProviders ?? [];
+  const files = [
+    config.digestKeyPath,
+    ...config.providers.map((entry) => entry.credentialPath),
+    ...identityProviders.map((entry) => entry.settingsPath),
+  ];
   if (
     files.some((path) => privateDescendantKind(root, path, uid) !== "file") ||
     realpathSync(config.dashboardDistPath) !== config.dashboardDistPath ||
     privateKind(config.dashboardDistPath, uid) !== "directory" ||
     !absentOrFile(root, config.statusPath, uid) ||
-    new Set(config.providers.map((entry) => entry.pluginId)).size !== config.providers.length
+    new Set(config.providers.map((entry) => entry.pluginId)).size !== config.providers.length ||
+    new Set(identityProviders.map((entry) => entry.pluginId)).size !== identityProviders.length
   )
     throw unavailable();
   return config;

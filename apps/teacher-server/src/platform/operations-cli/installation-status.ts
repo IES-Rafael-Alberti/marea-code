@@ -5,6 +5,7 @@ import {
   createAuditMigrationCatalog,
   createProfileMigrationCatalog,
   createEducationalMigrationCatalog,
+  createStudentIdentityMigrationCatalog,
   inspectSqliteSchemaVersion,
 } from "@marea/sqlite-storage";
 
@@ -31,12 +32,13 @@ export async function readInstallationStatus(root: string): Promise<Summary> {
   const schemaVersion = existsSync(config.databasePath)
     ? inspectSqliteSchemaVersion({ databasePath: config.databasePath })
     : null;
+  // Each activated schema is a supported running mode; anything else upgrades from schema 9.
   const supported =
-    schemaVersion === createEducationalMigrationCatalog().length
-      ? createEducationalMigrationCatalog().length
-      : schemaVersion === createProfileMigrationCatalog().length
-        ? createProfileMigrationCatalog().length
-        : createAuditMigrationCatalog().length;
+    [
+      createStudentIdentityMigrationCatalog().length,
+      createEducationalMigrationCatalog().length,
+      createProfileMigrationCatalog().length,
+    ].find((version) => version === schemaVersion) ?? createAuditMigrationCatalog().length;
   // Older schemas are activated forward; a newer one belongs to a later release.
   const upgrade =
     schemaVersion === null
@@ -58,15 +60,15 @@ export async function readInstallationStatus(root: string): Promise<Summary> {
           statusPath: hostConfig.statusPath,
         });
   return {
-    ...(schemaVersion === 9 || schemaVersion === 10 || schemaVersion === 11
+    ...(schemaVersion === 9 || schemaVersion === 10 || schemaVersion === 11 || schemaVersion === 12
       ? {
           profileUpgrade: {
-            targetSchemaVersion: 11,
-            state: schemaVersion === 11 ? "active" : "available-offline",
+            targetSchemaVersion: 12,
+            state: schemaVersion === 12 ? "active" : "available-offline",
             release: profileReleaseReadiness(root, config.releaseId),
             command: "installation upgrade-profiles --input <private-json-with-new-backup-name>",
             recovery:
-              "After interruption inspect status: schema 9 or 10 requires a new backup name and retry; schema 11 is committed. Recover abandoned ownership through the existing lock workflow.",
+              "After interruption inspect status: schema 9, 10 or 11 requires a new backup name and retry; schema 12 is committed. Recover abandoned ownership through the existing lock workflow.",
             rollback:
               "Stop the host. Use backup restore into an isolated destination; reconcile against the current deletion index. Switch the restored database, matching previous binaries/assets/config together under installation ownership; retain the current deletion index. Never downgrade the live database or copy an old deletion index.",
           },

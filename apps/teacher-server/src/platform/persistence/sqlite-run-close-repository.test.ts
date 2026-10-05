@@ -97,14 +97,15 @@ describe("SQLite run close repository", () => {
       reason: "student-exit" as const,
       runId: "run:1",
       studentId: "user:alice",
+      classId: "class:physics",
     };
 
     expect(new SqliteRunSessionRepository(database).closeRunAuthenticated(input)).toEqual({
       alreadyClosed: false,
       runId: "run:1",
     });
-    expect(database.reads[0]?.parameters).toEqual(["run:1", "user:alice"]);
-    expect(database.reads[0]?.sql).toContain("student_id = ?2");
+    expect(database.reads[0]?.parameters).toEqual(["run:1", "user:alice", "class:physics"]);
+    expect(database.reads[0]?.sql).toContain("student_id = ?2 AND class_id = ?3");
     expect(database.reads.every(({ sql }) => !sql.includes("JOIN marea_run_leases"))).toBe(true);
     expect(database.executions.at(-1)?.parameters).toEqual(["run:1", "2026-09-03T10:20:00.000Z"]);
   });
@@ -116,6 +117,7 @@ describe("SQLite run close repository", () => {
       reason: "student-exit" as const,
       runId: "run:1",
       studentId: "user:alice",
+      classId: "class:physics",
     };
     const missing = new DatabaseFake();
     missing.oneRows.push(undefined);

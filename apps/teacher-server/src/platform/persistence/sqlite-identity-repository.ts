@@ -7,19 +7,26 @@ import type {
   IdentityRepository,
   PreparedIdentityBootstrap,
   StoredCredential,
+  StudentClassChoice,
 } from "../../identity/contracts.js";
 import { rowNullableText, rowText } from "./row-parser.boundary.js";
-import { activeGovernanceAccount } from "./governance-access-sql.js";
+import { activeGovernanceAccount, activeStudentClass } from "./governance-access-sql.js";
 import { TeacherDomainError } from "../../identity/errors.js";
 import { projectNewGovernedIdentity } from "./governance-identity-projection.js";
+import { hasClassScopedSessions, readStudentClasses } from "./student-classes.js";
 
 const READ_CREDENTIAL = `SELECT id, password_hash, role, display_name, class_id
   FROM marea_users WHERE login = ?1 AND ${activeGovernanceAccount("marea_users.id")}`;
-const READ_SESSION = `SELECT users.id, users.role, users.display_name, users.class_id
-  FROM marea_auth_sessions sessions
+const LIVE_SESSION = `FROM marea_auth_sessions sessions
   JOIN marea_users users ON users.id = sessions.user_id
   WHERE sessions.token_hash = ?1 AND sessions.revoked_at IS NULL AND sessions.expires_at > ?2
     AND ${activeGovernanceAccount("users.id")}`;
+const READ_SESSION = `SELECT users.id, users.role, users.display_name, users.class_id ${LIVE_SESSION}`;
+/** A student session acts only for its own class, and only while the student may act for it. */
+const READ_CLASS_SCOPED_SESSION = `SELECT users.id, users.role, users.display_name,
+    CASE WHEN users.role = 'student' THEN sessions.class_id ELSE users.class_id END AS class_id
+  ${LIVE_SESSION}
+    AND (sessions.class_id IS NULL OR ${activeStudentClass("users.id", "sessions.class_id")})`;
 
 function role(row: SqliteRow): PrincipalRole {
   const value = rowText(row, "role");
@@ -40,9 +47,16 @@ function identity(row: SqliteRow): AuthenticatedIdentity {
 
 export class SqliteIdentityRepository implements IdentityRepository {
   readonly #database: SqliteApplicationDatabase;
+  #classScoped: boolean | undefined;
 
   public constructor(database: SqliteApplicationDatabase) {
     this.#database = database;
+  }
+
+  /** Before schema 12 a student has one class, which its account row names. */
+  private classScoped(): boolean {
+    this.#classScoped ??= hasClassScopedSessions(this.#database);
+    return this.#classScoped;
   }
 
   public applyBootstrap(seed: PreparedIdentityBootstrap, createdAt: string): boolean {
@@ -146,6 +160,7 @@ export class SqliteIdentityRepository implements IdentityRepository {
   }
 
   public createSession(input: {
+    readonly classId?: string | null;
     readonly expectedPasswordHash?: string;
     readonly expiresAt: string;
     readonly issuedAt: string;
@@ -160,11 +175,25 @@ export class SqliteIdentityRepository implements IdentityRepository {
         [input.userId, input.expectedPasswordHash ?? null],
       );
       if (denied !== undefined) throw new TeacherDomainError("auth.invalid");
-      this.#database.execute(
-        `INSERT INTO marea_auth_sessions
-        (id, user_id, token_hash, issued_at, expires_at) VALUES (?1, ?2, ?3, ?4, ?5)`,
-        [input.sessionId, input.userId, input.tokenHash, input.issuedAt, input.expiresAt],
-      );
+      const values = [
+        input.sessionId,
+        input.userId,
+        input.tokenHash,
+        input.issuedAt,
+        input.expiresAt,
+      ];
+      if (this.classScoped())
+        this.#database.execute(
+          `INSERT INTO marea_auth_sessions
+          (id, user_id, token_hash, issued_at, expires_at, class_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
+          [...values, input.classId ?? null],
+        );
+      else
+        this.#database.execute(
+          `INSERT INTO marea_auth_sessions
+          (id, user_id, token_hash, issued_at, expires_at) VALUES (?1, ?2, ?3, ?4, ?5)`,
+          values,
+        );
     });
   }
 
@@ -176,8 +205,35 @@ export class SqliteIdentityRepository implements IdentityRepository {
   }
 
   public resolveSession(tokenHash: string, now: string): AuthenticatedIdentity | undefined {
-    const row = this.#database.readOne(READ_SESSION, [tokenHash, now]);
+    const row = this.#database.readOne(
+      this.classScoped() ? READ_CLASS_SCOPED_SESSION : READ_SESSION,
+      [tokenHash, now],
+    );
     return row === undefined ? undefined : identity(row);
+  }
+
+  public selectSessionClass(
+    tokenHash: string,
+    classId: string,
+    now: string,
+  ): AuthenticatedIdentity | undefined {
+    if (!this.classScoped()) return undefined;
+    return this.#database.transaction(() => {
+      const bound = this.#database.readAll(
+        `UPDATE marea_auth_sessions SET class_id = ?3
+          WHERE token_hash = ?1 AND class_id IS NULL AND revoked_at IS NULL AND expires_at > ?2
+            AND EXISTS (SELECT 1 FROM marea_users users
+              WHERE users.id = marea_auth_sessions.user_id AND users.role = 'student'
+                AND ${activeStudentClass("users.id", "?3")})
+          RETURNING id`,
+        [tokenHash, now, classId],
+      );
+      return bound.length === 0 ? undefined : this.resolveSession(tokenHash, now);
+    });
+  }
+
+  public studentClasses(userId: string): readonly StudentClassChoice[] {
+    return readStudentClasses(this.#database, userId);
   }
 
   public revokeSession(tokenHash: string, revokedAt: string): boolean {

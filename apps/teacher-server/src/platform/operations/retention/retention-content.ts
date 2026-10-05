@@ -1,5 +1,6 @@
 import { hasEducationalStorage } from "./educational-retention.js";
 import { hasProfileStorage } from "./profile-retention.js";
+import { hasExternalIdentityStorage } from "./external-identity-retention.js";
 import type { SqliteApplicationDatabase } from "@marea/sqlite-storage";
 
 import type { RetentionPlan } from "./retention-graph.js";
@@ -60,6 +61,8 @@ function removeRows(database: SqliteApplicationDatabase, plan: RowPlan): number 
   run(SNAPSHOT_DELETIONS, plan.snapshotIds);
   if (hasProfileStorage(database))
     run(["DELETE FROM marea_dashboard_profiles WHERE owner_id = ?1"], plan.accountIds);
+  if (hasExternalIdentityStorage(database))
+    run(["DELETE FROM marea_external_identities WHERE user_id = ?1"], plan.accountIds);
   run(ACCOUNT_DELETIONS, plan.accountIds);
   return removed;
 }

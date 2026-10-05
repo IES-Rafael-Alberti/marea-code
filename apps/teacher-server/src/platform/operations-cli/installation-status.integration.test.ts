@@ -44,8 +44,21 @@ describe("lock-free installation status", () => {
     rmSync(join(f.root, ".marea-installation.lock"));
     expect(await f.run("deletion", "activate")).toMatchObject({ code: 0 });
     expect(await status()).toMatchObject({ schemaVersion: 9, upgrade: "none" });
-    setVersion(f.config.databasePath, 12);
-    expect(await status()).toMatchObject({ schemaVersion: 12, upgrade: "unsupported" });
+    for (const version of [10, 11, 12]) {
+      setVersion(f.config.databasePath, version);
+      expect(await status()).toMatchObject({
+        schemaVersion: version,
+        supportedSchemaVersion: version,
+        upgrade: "none",
+        profileUpgrade: {
+          targetSchemaVersion: 12,
+          state: version === 12 ? "active" : "available-offline",
+        },
+      });
+    }
+    setVersion(f.config.databasePath, 13);
+    expect(await status()).toMatchObject({ schemaVersion: 13, upgrade: "unsupported" });
+    expect(await status()).not.toHaveProperty("profileUpgrade");
     setVersion(f.config.databasePath, 0);
     expect(await status()).toMatchObject({ schemaVersion: 0, upgrade: "activate" });
     rmSync(f.config.databasePath);

@@ -11,7 +11,7 @@ import type {
   TeachingConfigurationRepository,
 } from "../../teaching/configuration/contracts.js";
 import { rowJson } from "./row-parser.boundary.js";
-import { activeGovernanceMembership } from "./governance-access-sql.js";
+import { activeGovernanceMembership, activeStudentClass } from "./governance-access-sql.js";
 import { commitTeachingRevision } from "./teaching-revision-commit.js";
 
 export class SqliteTeachingConfigurationRepository implements TeachingConfigurationRepository {
@@ -50,10 +50,10 @@ export class SqliteTeachingConfigurationRepository implements TeachingConfigurat
       throw new TeacherDomainError("run.unavailable");
     const row = this.#database.readOne(
       `SELECT revisions.configuration_json FROM marea_users users
-        JOIN marea_current_class_teaching current ON current.class_id = users.class_id
+        JOIN marea_current_class_teaching current ON current.class_id = ?2
         JOIN marea_class_teaching_revisions revisions ON revisions.id = current.revision_id
-        WHERE users.id = ?1 AND users.class_id = ?2 AND users.role = 'student'
-          AND ${activeGovernanceMembership("users.id", "users.class_id", "'student'")}`,
+        WHERE users.id = ?1 AND users.role = 'student'
+          AND ${activeStudentClass("users.id", "?2")}`,
       [identity.userId, identity.classId],
     );
     return row === undefined

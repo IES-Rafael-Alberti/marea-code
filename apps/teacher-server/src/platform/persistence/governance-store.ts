@@ -17,6 +17,7 @@ import type { AuthenticatedIdentity } from "../../identity/contracts.js";
 import { TeacherDomainError } from "../../identity/errors.js";
 import type { IdentityCreationGuard } from "./identity-creation-guard.js";
 import { rowNullableText, rowText } from "./row-parser.boundary.js";
+import { hasClassScopedSessions, revokeStudentClassAccess } from "./student-classes.js";
 
 export function governanceConflict(): never {
   throw new TeacherDomainError("request.conflict");
@@ -184,6 +185,13 @@ export class GovernanceStore {
       "UPDATE marea_run_leases SET revoked_at = ?2 WHERE student_id = ?1 AND revoked_at IS NULL",
       [userId, now],
     );
+  }
+
+  /** Revoking one class leaves a student's sessions and runs of other classes untouched. */
+  revokeStudentClass(userId: Id, classId: Id, now: Time): void {
+    if (hasClassScopedSessions(this.database))
+      revokeStudentClassAccess(this.database, userId, classId, now);
+    else this.revoke(userId, now);
   }
 
   audit(

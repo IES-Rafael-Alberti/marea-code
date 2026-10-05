@@ -244,6 +244,7 @@ describe("run session service", () => {
       requestId: "request:renew",
     });
     expect(repository.renewInput).toEqual({
+      classId: "class:physics",
       expiresAt: "2026-09-03T10:10:00.000Z",
       issuedAt: "2026-09-03T10:00:00.000Z",
       leaseId: "lease:1",
@@ -260,6 +261,7 @@ describe("run session service", () => {
     });
     expect(service.closeAuthenticated(STUDENT, close).alreadyClosed).toBe(false);
     expect(repository.closeAuthenticatedInput).toEqual({
+      classId: "class:physics",
       closedAt: "2026-09-03T10:00:00.000Z",
       closingEventId: "event:2",
       reason: "student-exit",

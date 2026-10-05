@@ -176,6 +176,7 @@ describe("teacher product HTTP boundary", () => {
       "/v1/auth/enroll",
       "/v1/auth/login",
       "/v1/classes/bootstrap",
+      "/v1/classes/select",
       "/v1/runs/open",
       "/v1/runs/lease-renew",
       "/v1/runs/events",
@@ -327,5 +328,25 @@ describe("teacher product HTTP boundary", () => {
 
     expect(result.response.status).toBe(500);
     expect(result.text).not.toContain("private body failure");
+  });
+  it("binds an unscoped student session to one of its classes and bootstraps it", async () => {
+    const app = createApplication(createServices(new RecordingProvider()));
+    const select = (classId: string, token?: string) =>
+      request(
+        "/v1/classes/select",
+        { kind: "class-select", protocolVersion: "0.1", requestId: "request:select", classId },
+        token,
+      );
+    const selected = await app.fetch(select("class:physics", SESSION_TOKEN));
+    expect(selected.status).toBe(200);
+    expect(await selected.json()).toMatchObject({
+      kind: "class-bootstrapped",
+      requestId: "request:select",
+      classroom: { displayName: "Physics" },
+    });
+    const conflict = await app.fetch(select("class:other", SESSION_TOKEN));
+    expect(conflict.status).toBe(409);
+    expect(await conflict.json()).toMatchObject({ requestId: "request:select" });
+    expect((await app.fetch(select("class:physics"))).status).toBe(401);
   });
 });

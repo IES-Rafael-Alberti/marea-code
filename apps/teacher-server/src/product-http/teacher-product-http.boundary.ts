@@ -18,7 +18,6 @@ import {
   MAX_RUN_EVENTS_REQUEST_BYTES,
   CapabilitiesRequestSchema,
   CapabilitiesResponseSchema,
-  ClassBootstrapRequestSchema,
   CloseRunRequestSchema,
   CredentialLoginRequestSchema,
   CURRENT_PROTOCOL_VERSION,
@@ -44,6 +43,8 @@ import { registerTeachingRoutes } from "./teaching-http.boundary.js";
 import { registerSkillAuthoringRoutes } from "./skill-authoring-http.boundary.js";
 import { registerGovernanceRoutes } from "./governance-http.boundary.js";
 import { registerDashboardSessionRoutes } from "./dashboard-session-http.boundary.js";
+import { registerExternalIdentityRoutes } from "./external-identity-http.boundary.js";
+import { registerClassroomRoutes } from "./classroom-http.boundary.js";
 const JSON_REQUEST_LIMIT = 64 * 1_024;
 const MODEL_REQUEST_LIMIT = 2 * 1_024 * 1_024;
 const DEFAULT_COOKIE_NAME = "marea_teacher_session";
@@ -51,6 +52,7 @@ const DASHBOARD_QUERY_KEYS = new Set(["cursor", "kind", "limit", "protocolVersio
 const CAPABILITIES = [
   "marea.auth.student",
   "marea.class.bootstrap",
+  "marea.class.selection",
   "marea.runs.events",
   "marea.runs.lifecycle",
   "marea.runs.exact-resume",
@@ -180,6 +182,15 @@ export function createTeacherProductHttp(
     cookieToken: (request) => parseCookie(request.headers.get("cookie"), cookieName),
     sessionCookie: (token) => dashboardCookie(cookieName, token, secureCookie),
     clearedCookie: dashboardCookie(cookieName, "", secureCookie, " Max-Age=0;"),
+  });
+  registerExternalIdentityRoutes({
+    app,
+    policy: productPolicy,
+    mutationPolicy: policyMiddleware(policy, false, true),
+    parseJson: parseJsonRequest,
+    safeOperation,
+    teacher: teacherIdentity,
+    services: options.services.externalIdentity,
   });
   registerTeachingRoutes({
     app,
@@ -337,7 +348,10 @@ export function createTeacherProductHttp(
     if (!parsed.ok) return parsed.response;
     return jsonResponse(
       CapabilitiesResponseSchema.parse({
-        capabilities: CAPABILITIES,
+        capabilities:
+          options.services.externalIdentity?.signIn.enabled() === true
+            ? [...CAPABILITIES, "marea.auth.external"]
+            : CAPABILITIES,
         requestId: parsed.value.requestId,
         serverVersion,
         supportedProtocolVersions: [CURRENT_PROTOCOL_VERSION],
@@ -366,13 +380,13 @@ export function createTeacherProductHttp(
     });
   });
 
-  app.post("/v1/classes/bootstrap", productPolicy, async (context) => {
-    const parsed = await parseJsonRequest(context.req.raw, ClassBootstrapRequestSchema);
-    if (!parsed.ok) return parsed.response;
-    return safeOperation(parsed.value.requestId, () => {
-      const session = options.services.identity.authenticate(bearer(context.req.raw));
-      return jsonResponse(options.services.classroom.load(session.identity, parsed.value));
-    });
+  registerClassroomRoutes({
+    app,
+    policy: productPolicy,
+    parseJson: parseJsonRequest,
+    safeOperation,
+    bearer,
+    services: options.services,
   });
 
   app.post("/v1/runs/open", productPolicy, async (context) => {

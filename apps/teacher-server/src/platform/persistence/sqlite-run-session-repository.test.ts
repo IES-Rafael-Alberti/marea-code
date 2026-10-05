@@ -204,7 +204,7 @@ describe("SQLite run session repository opening", () => {
     expect(database.executions.some(({ sql }) => sql.includes("marea_run_open_requests"))).toBe(
       true,
     );
-    expect(database.reads[2]?.parameters).toEqual(["user:alice", "Wave lab"]);
+    expect(database.reads[2]?.parameters).toEqual(["user:alice", "Wave lab", "class:physics"]);
     expect(database.reads[2]?.sql).toContain("state = 'active'");
     expect(database.executions[0]?.parameters).toEqual([
       "user:alice",
@@ -227,7 +227,8 @@ describe("SQLite run session repository opening", () => {
     );
 
     expect(result.runId).toBe("run:1");
-    expect(database.reads[2]?.parameters).toEqual(["run:1", "user:alice", "Wave lab"]);
+    const resume = ["run:1", "user:alice", "Wave lab", "class:physics"];
+    expect(database.reads[2]?.parameters).toEqual(resume);
     expect(database.reads[2]?.sql).toContain("project_display_name = ?3");
 
     for (const change of [

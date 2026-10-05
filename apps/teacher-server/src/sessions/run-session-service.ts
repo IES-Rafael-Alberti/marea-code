@@ -39,10 +39,12 @@ export interface RunSessionServiceDependencies {
   readonly snapshots: RunSnapshotSource;
 }
 
-function requireStudent(identity: AuthenticatedIdentity): void {
+/** The class the authenticated student session acts for. */
+function requireStudent(identity: AuthenticatedIdentity): string {
   if (identity.role !== "student" || identity.classId === null) {
     throw new TeacherDomainError("run.unavailable");
   }
+  return identity.classId;
 }
 
 function leaseExpiry(issuedAt: string): string {
@@ -133,10 +135,11 @@ export class RunSessionService {
     request: RenewRunLeaseRequest,
   ): RenewRunLeaseResponse {
     RenewRunLeaseRequestSchema.parse(request);
-    requireStudent(identity);
+    const classId = requireStudent(identity);
     const issuedAt = this.#dependencies.clock.now();
     const token = this.#dependencies.secrets.issue();
     const stored = this.#dependencies.repository.renewLease({
+      classId,
       expiresAt: leaseExpiry(issuedAt),
       issuedAt,
       leaseId: this.#dependencies.ids.createId("lease"),
@@ -163,9 +166,10 @@ export class RunSessionService {
     request: CloseRunRequest,
   ): CloseRunResponse {
     CloseRunRequestSchema.parse(request);
-    requireStudent(identity);
+    const classId = requireStudent(identity);
     if (request.runId === undefined) throw new TeacherDomainError("run.unavailable");
     const stored = this.#dependencies.repository.closeRunAuthenticated({
+      classId,
       closedAt: this.#dependencies.clock.now(),
       closingEventId: this.#dependencies.ids.createId("event"),
       reason: request.reason,

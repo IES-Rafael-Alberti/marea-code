@@ -236,6 +236,10 @@ export function createServices(provider: InferenceProvider): TeacherProductServi
       login(request) {
         return Promise.resolve(loginResponse(request));
       },
+      selectClass(token, classId) {
+        if (token === SESSION_TOKEN && classId === student.classId) return student;
+        throw new TeacherDomainError("request.conflict");
+      },
       logout(token, requestId) {
         loggedOut.push(token);
         return CredentialLogoutResponseSchema.parse({

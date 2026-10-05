@@ -1,8 +1,9 @@
 import {
   ClassBootstrapResponseSchema,
+  ClassSelectionRequiredResponseSchema,
   CURRENT_PROTOCOL_VERSION,
+  type ClassBootstrapOutcome,
   type ClassBootstrapRequest,
-  type ClassBootstrapResponse,
 } from "@marea/protocol";
 
 import type { AuthenticatedIdentity } from "../identity/contracts.js";
@@ -19,9 +20,18 @@ export class ClassBootstrapService {
   public load(
     identity: AuthenticatedIdentity,
     request: ClassBootstrapRequest,
-  ): ClassBootstrapResponse {
-    if (identity.role !== "student" || identity.classId === null) {
-      throw new TeacherDomainError("auth.invalid");
+  ): ClassBootstrapOutcome {
+    if (identity.role !== "student") throw new TeacherDomainError("auth.invalid");
+    if (identity.classId === null) {
+      const classes = this.#repository.studentClasses(identity.userId);
+      if (classes.length === 0) throw new TeacherDomainError("auth.invalid");
+      return ClassSelectionRequiredResponseSchema.parse({
+        classes,
+        kind: "class-selection-required",
+        principal: { displayName: identity.displayName, role: "student" },
+        protocolVersion: CURRENT_PROTOCOL_VERSION,
+        requestId: request.requestId,
+      });
     }
     const bootstrap = this.#repository.loadStudentBootstrap(identity);
     if (bootstrap === undefined) {

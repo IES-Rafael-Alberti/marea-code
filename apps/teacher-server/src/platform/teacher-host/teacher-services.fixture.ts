@@ -1,3 +1,4 @@
+import type { ConfiguredIdentityProvider } from "../../external-identity/contracts.js";
 import type { ServerSettingsStore } from "../../server-settings/contracts.js";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -50,10 +51,12 @@ export async function composedHost(
   centers: ReadonlyMap<string, string> = new Map(),
   teacherRoot = mkdtempSync(join(tmpdir(), "marea-host-teacher-")),
   settings?: ServerSettingsStore,
+  identityProviders?: readonly ConfiguredIdentityProvider[],
 ) {
   const provider = new RecordingProvider();
   const composed = await composeTeacherServices({
     ...(settings === undefined ? {} : { serverSettings: { store: settings, catalog: [] } }),
+    ...(identityProviders === undefined ? {} : { identityProviders }),
     educationalInsights: {},
     database,
     clock: { now: () => NOW },

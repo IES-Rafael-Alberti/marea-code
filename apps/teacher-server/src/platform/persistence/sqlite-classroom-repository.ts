@@ -1,9 +1,10 @@
 import type { SqliteApplicationDatabase } from "@marea/sqlite-storage";
 
 import type { ClassroomRepository, StudentClassBootstrap } from "../../classes/contracts.js";
-import type { AuthenticatedIdentity } from "../../identity/contracts.js";
+import type { AuthenticatedIdentity, StudentClassChoice } from "../../identity/contracts.js";
 import { rowText } from "./row-parser.boundary.js";
-import { activeGovernanceMembership } from "./governance-access-sql.js";
+import { activeStudentClass } from "./governance-access-sql.js";
+import { readStudentClasses } from "./student-classes.js";
 
 export class SqliteClassroomRepository implements ClassroomRepository {
   readonly #database: SqliteApplicationDatabase;
@@ -18,7 +19,7 @@ export class SqliteClassroomRepository implements ClassroomRepository {
     }
     const classroom = this.#database.readOne(
       `SELECT display_name FROM marea_classes WHERE id = ?1
-        AND ${activeGovernanceMembership("?2", "marea_classes.id", "'student'")}`,
+        AND ${activeStudentClass("?2", "marea_classes.id")}`,
       [identity.classId, identity.userId],
     );
     if (classroom === undefined) {
@@ -26,9 +27,9 @@ export class SqliteClassroomRepository implements ClassroomRepository {
     }
     const run = this.#database.readOne(
       `SELECT id, project_display_name FROM marea_runs
-        WHERE student_id = ?1 AND state = 'active'
+        WHERE student_id = ?1 AND class_id = ?2 AND state = 'active'
         ORDER BY opened_at DESC, id DESC LIMIT 1`,
-      [identity.userId],
+      [identity.userId, identity.classId],
     );
     return {
       activeRun:
@@ -40,5 +41,9 @@ export class SqliteClassroomRepository implements ClassroomRepository {
             },
       classDisplayName: rowText(classroom, "display_name"),
     };
+  }
+
+  public studentClasses(userId: string): readonly StudentClassChoice[] {
+    return readStudentClasses(this.#database, userId);
   }
 }

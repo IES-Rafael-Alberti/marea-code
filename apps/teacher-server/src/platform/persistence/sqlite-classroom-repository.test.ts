@@ -24,8 +24,9 @@ describe("SQLite classroom repository", () => {
     });
     expect(database.reads.map(({ parameters }) => parameters)).toEqual([
       ["class:physics", "user:alice"],
-      ["user:alice"],
+      ["user:alice", "class:physics"],
     ]);
+    expect(database.reads[1]?.sql).toContain("student_id = ?1 AND class_id = ?2");
     expect(database.reads[0]?.sql).toContain("marea_classes");
     expect(database.reads[1]?.sql).toContain("marea_runs");
   });

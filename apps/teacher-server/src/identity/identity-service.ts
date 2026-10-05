@@ -101,7 +101,7 @@ export class IdentityService {
     if (!result.enrolled) {
       throw new TeacherDomainError("invitation.unavailable");
     }
-    const session = this.createSession(result.identity, passwordHash);
+    const session = this.createSession(result.identity, result.identity.classId, passwordHash);
     return EnrollStudentResponseSchema.parse({
       kind: "student-invitation-enrolled",
       principal: safePrincipal(result.identity),
@@ -131,8 +131,40 @@ export class IdentityService {
       principal: safePrincipal(credential),
       protocolVersion: CURRENT_PROTOCOL_VERSION,
       requestId: request.requestId,
-      session: this.createSession(credential, credential.passwordHash),
+      session: this.createSession(
+        credential,
+        this.initialClass(credential),
+        credential.passwordHash,
+      ),
     });
+  }
+
+  /** A student with exactly one class acts for it; with several, the student chooses later. */
+  private initialClass(identity: AuthenticatedIdentity): string | null {
+    if (identity.role !== "student") return null;
+    const [only, ...others] = this.#dependencies.repository.studentClasses(identity.userId);
+    return only !== undefined && others.length === 0 ? only.classId : null;
+  }
+
+  /** A session for a student an external provider has just verified; it needs a class. */
+  public openExternalSession(identity: AuthenticatedIdentity) {
+    const [only, ...others] = this.#dependencies.repository.studentClasses(identity.userId);
+    if (only === undefined) throw new TeacherDomainError("auth.invalid");
+    return {
+      principal: safePrincipal(identity),
+      session: this.createSession(identity, others.length === 0 ? only.classId : null),
+    };
+  }
+
+  /** Binds the caller's unscoped student session to one of its classes, once. */
+  public selectClass(token: string, classId: string): AuthenticatedIdentity {
+    const identity = this.#dependencies.repository.selectSessionClass(
+      this.#dependencies.digest.digest(token),
+      classId,
+      this.#dependencies.clock.now(),
+    );
+    if (identity === undefined) throw new TeacherDomainError("request.conflict");
+    return identity;
   }
 
   public authenticate(token: string): AuthenticatedSession {
@@ -163,7 +195,8 @@ export class IdentityService {
 
   private createSession(
     identity: AuthenticatedIdentity,
-    expectedPasswordHash: string,
+    classId: string | null,
+    expectedPasswordHash?: string,
   ): {
     readonly expiresAt: string;
     readonly issuedAt: string;
@@ -174,10 +207,11 @@ export class IdentityService {
     const session = { expiresAt: expiresAt(issuedAt), issuedAt, token };
     this.#dependencies.repository.createSession({
       ...session,
+      classId,
       sessionId: this.#dependencies.ids.createId("session"),
       tokenHash: this.#dependencies.digest.digest(token),
       userId: identity.userId,
-      expectedPasswordHash,
+      ...(expectedPasswordHash === undefined ? {} : { expectedPasswordHash }),
     });
     return session;
   }

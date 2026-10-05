@@ -29,6 +29,7 @@ afterEach(cleanupTeacherHostInstallations);
 it.each([
   ["dashboard-profiles", 10],
   ["educational-insights", 11],
+  ["student-identities", 12],
 ] as const)(
   "starts the production host on %s, authenticates, persists, reopens and restores profiles",
   async (schema, version) => {
@@ -125,6 +126,7 @@ it.each([
 it.each([
   ["dashboard-profiles", 10],
   ["educational-insights", 11],
+  ["student-identities", 12],
 ] as const)(
   "includes %s in the authorized operations backup and restore workflow",
   async (schema, version) => {

@@ -187,7 +187,10 @@ async function main(): Promise<void> {
         requestId: "request:bootstrap",
       }),
     );
-    assert(bootstrap.classroom.displayName === "Physics", "Bootstrap crossed class authority.");
+    assert(
+      bootstrap.kind === "class-bootstrapped" && bootstrap.classroom.displayName === "Physics",
+      "Bootstrap crossed class authority.",
+    );
 
     let promptVersion = "prompt-v1";
     const snapshots: RunSnapshotSource = {

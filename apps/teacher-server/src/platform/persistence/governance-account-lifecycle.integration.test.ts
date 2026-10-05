@@ -88,6 +88,7 @@ describe("governance account and execution lifecycle", () => {
     ).toThrow();
     expect(() =>
       runs.renewLease({
+        classId: "class:a",
         runId: "run:student",
         studentId: "user:student",
         issuedAt: GOVERNANCE_NOW,

@@ -18,13 +18,23 @@ import {
   createAuditMigrationCatalog,
   createProfileMigrationCatalog,
   createEducationalMigrationCatalog,
+  createStudentIdentityMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
   openSqliteDatabaseFile,
   type SqliteApplicationDatabase,
   type SqliteDatabaseFile,
 } from "@marea/sqlite-storage";
-import { inferenceProviderCatalog, telemetryExporterCatalog } from "@marea/plugin-runtime";
+import {
+  identityProviderCatalog,
+  inferenceProviderCatalog,
+  telemetryExporterCatalog,
+} from "@marea/plugin-runtime";
+import {
+  configureIdentityProviders,
+  readIdentityProviderSettings,
+  systemIdentityRuntime,
+} from "./identity-provider-composition.js";
 
 import {
   createDashboardAssetHandler,
@@ -159,21 +169,20 @@ function hostPorts(root: string, profiles: boolean) {
         operations,
         storage: storageConfigurationOf(root, operations),
       };
-      const educational =
-        inspectSqliteSchemaVersion({ databasePath: operator.databasePath }) ===
-        createEducationalMigrationCatalog().length;
+      const version = inspectSqliteSchemaVersion({ databasePath: operator.databasePath });
+      const identities = version === createStudentIdentityMigrationCatalog().length;
+      const educational = identities || version === createEducationalMigrationCatalog().length;
       state.profiles =
-        educational ||
-        profiles ||
-        inspectSqliteSchemaVersion({ databasePath: operator.databasePath }) ===
-          createProfileMigrationCatalog().length;
+        educational || profiles || version === createProfileMigrationCatalog().length;
       return Promise.resolve<HostInstallationConfig>({
         releaseId: host.releaseId,
-        schemaVersion: educational
-          ? createEducationalMigrationCatalog().length
-          : state.profiles
-            ? createProfileMigrationCatalog().length
-            : createAuditMigrationCatalog().length,
+        schemaVersion: identities
+          ? createStudentIdentityMigrationCatalog().length
+          : educational
+            ? createEducationalMigrationCatalog().length
+            : state.profiles
+              ? createProfileMigrationCatalog().length
+              : createAuditMigrationCatalog().length,
         databasePath: operator.databasePath,
         indexPath: operations.indexPath,
         statusPath: host.statusPath,
@@ -213,15 +222,19 @@ function hostPorts(root: string, profiles: boolean) {
           readonly config: HostInstallationConfig;
           readonly mode: HostDatabaseHandle["mode"];
         }) => {
+          const version = inspectSqliteSchemaVersion({
+            databasePath: loaded().operator.databasePath,
+          });
           const storage = initializeSqliteStorage({
             databasePath: config.databasePath,
             schema:
-              inspectSqliteSchemaVersion({ databasePath: loaded().operator.databasePath }) ===
-              createEducationalMigrationCatalog().length
-                ? "educational-insights"
-                : state.profiles
-                  ? "dashboard-profiles"
-                  : "retention-audit",
+              version === createStudentIdentityMigrationCatalog().length
+                ? "student-identities"
+                : version === createEducationalMigrationCatalog().length
+                  ? "educational-insights"
+                  : state.profiles
+                    ? "dashboard-profiles"
+                    : "retention-audit",
           });
           state.handle = {
             mode,
@@ -281,6 +294,12 @@ async function composeHostServices(
     retry: createRetryScheduler(host.retry),
     identities: createAccountCreationGuard(
       createSqliteCreationGate(ports.indexDatabase(), ports.loaded().storage),
+    ),
+    identityProviders: configureIdentityProviders(
+      identityProviderCatalog,
+      host.identityProviders,
+      readIdentityProviderSettings,
+      systemIdentityRuntime,
     ),
     evaluationIntervalMs: host.evaluationIntervalMs,
     educationalInsights: host.educationalInsights,

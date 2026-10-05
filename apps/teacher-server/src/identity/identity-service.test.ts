@@ -11,6 +11,7 @@ import type {
   IdentityRepository,
   PreparedIdentityBootstrap,
   StoredCredential,
+  StudentClassChoice,
 } from "./contracts.js";
 import { IdentityService, type IdentityServiceDependencies } from "./identity-service.js";
 
@@ -33,6 +34,10 @@ class IdentityRepositoryFake implements IdentityRepository {
   public readonly sessions: object[] = [];
   public seed: PreparedIdentityBootstrap | undefined;
   public enrollmentInput: Parameters<IdentityRepository["consumeInvitation"]>[0] | undefined;
+  public classes: readonly StudentClassChoice[] = [{ classId: "class:1", displayName: "One" }];
+  public readonly classQueries: string[] = [];
+  public selected: AuthenticatedIdentity | undefined = STUDENT;
+  public readonly selections: (readonly string[])[] = [];
 
   public applyBootstrap(seed: PreparedIdentityBootstrap): boolean {
     this.seed = seed;
@@ -60,6 +65,20 @@ class IdentityRepositoryFake implements IdentityRepository {
 
   public revokeSession(): boolean {
     return this.revoked;
+  }
+
+  public selectSessionClass(
+    tokenHash: string,
+    classId: string,
+    now: string,
+  ): AuthenticatedIdentity | undefined {
+    this.selections.push([tokenHash, classId, now]);
+    return this.selected;
+  }
+
+  public studentClasses(userId: string): readonly StudentClassChoice[] {
+    this.classQueries.push(userId);
+    return this.classes;
   }
 }
 
@@ -154,7 +173,8 @@ describe("identity service", () => {
     expect(response.principal).toEqual({ displayName: "Student Alice", role: "student" });
     expect(response.session.token).toBe("s".repeat(40));
     expect(response.session.expiresAt).toBe("2026-09-03T10:30:00.000Z");
-    expect(repository.sessions).toHaveLength(1);
+    expect(repository.sessions).toEqual([expect.objectContaining({ classId: "class:1" })]);
+    expect(repository.classQueries).toEqual([]);
     expect(repository.enrollmentInput).toEqual({
       codeHash: "digest:invitation_12345",
       displayName: "Student Alice",
@@ -193,11 +213,13 @@ describe("identity service", () => {
     expect(response.principal).toEqual({ displayName: "Student Alice", role: "student" });
     expect(repository.sessions[0]).toEqual(
       expect.objectContaining({
+        classId: "class:1",
         sessionId: "session:1",
         tokenHash: `digest:${"s".repeat(40)}`,
         userId: "user:1",
       }),
     );
+    expect(repository.classQueries).toEqual(["user:1"]);
     expect(service.authenticate(response.session.token)).toEqual({
       identity: STUDENT,
       principal: { displayName: "Student Alice", role: "student" },
@@ -209,5 +231,72 @@ describe("identity service", () => {
     expect(() => service.authenticate(response.session.token)).toThrow(
       expect.objectContaining({ code: "auth.invalid", name: "TeacherDomainError" }),
     );
+  });
+
+  it("leaves a teacher or a student with several or no classes without a session class", async () => {
+    const service = new IdentityService(dependencies);
+    repository.classes = [
+      { classId: "class:1", displayName: "One" },
+      { classId: "class:2", displayName: "Two" },
+    ];
+    await service.login(request());
+    repository.classes = [];
+    await service.login(request());
+    repository.credential = {
+      ...STUDENT,
+      role: "teacher",
+      classId: "class:taught",
+      passwordHash: "hash:correct-password",
+    };
+    await service.login(request());
+    expect(
+      repository.sessions.map((session) => (session as { classId: string | null }).classId),
+    ).toEqual([null, null, null]);
+    expect(repository.classQueries).toEqual(["user:1", "user:1"]);
+  });
+
+  it("binds a session to a chosen class or rejects an unavailable choice", () => {
+    const service = new IdentityService(dependencies);
+    expect(service.selectClass("token", "class:1")).toBe(STUDENT);
+    expect(repository.selections).toEqual([
+      ["digest:token", "class:1", "2026-09-03T10:00:00.000Z"],
+    ]);
+    repository.selected = undefined;
+    expect(() => service.selectClass("token", "class:2")).toThrow(
+      expect.objectContaining({ code: "request.conflict" }),
+    );
+  });
+
+  it("opens an external session for a student with classes, binding a single one", () => {
+    const service = new IdentityService(dependencies);
+    expect(service.openExternalSession(STUDENT)).toEqual({
+      principal: { displayName: "Student Alice", role: "student" },
+      session: {
+        expiresAt: "2026-09-03T10:30:00.000Z",
+        issuedAt: "2026-09-03T10:00:00.000Z",
+        token: "s".repeat(40),
+      },
+    });
+    expect(repository.sessions[0]).toEqual({
+      classId: "class:1",
+      expiresAt: "2026-09-03T10:30:00.000Z",
+      issuedAt: "2026-09-03T10:00:00.000Z",
+      sessionId: "session:1",
+      token: "s".repeat(40),
+      tokenHash: `digest:${"s".repeat(40)}`,
+      userId: "user:1",
+    });
+    expect(repository.sessions[0]).not.toHaveProperty("expectedPasswordHash");
+    repository.classes = [
+      { classId: "class:1", displayName: "One" },
+      { classId: "class:2", displayName: "Two" },
+    ];
+    service.openExternalSession(STUDENT);
+    expect(repository.sessions[1]).toMatchObject({ classId: null });
+    repository.classes = [];
+    expect(() => service.openExternalSession(STUDENT)).toThrow(
+      expect.objectContaining({ code: "auth.invalid" }),
+    );
+    expect(repository.sessions).toHaveLength(2);
   });
 });

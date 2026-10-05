@@ -91,6 +91,8 @@ export interface IdentityRepository {
     readonly enrolledAt: string;
   }): EnrollmentResult;
   createSession(input: {
+    /** The class a student session acts for; omitted or null for teachers and undecided students. */
+    readonly classId?: string | null;
     readonly expectedPasswordHash?: string;
     readonly expiresAt: string;
     readonly issuedAt: string;
@@ -101,6 +103,18 @@ export interface IdentityRepository {
   findCredential(login: string): StoredCredential | undefined;
   resolveSession(tokenHash: string, now: string): AuthenticatedIdentity | undefined;
   revokeSession(tokenHash: string, revokedAt: string): boolean;
+  /** Binds a live student session that names no class yet to one of its active classes. */
+  selectSessionClass(
+    tokenHash: string,
+    classId: string,
+    now: string,
+  ): AuthenticatedIdentity | undefined;
+  studentClasses(userId: string): readonly StudentClassChoice[];
+}
+
+export interface StudentClassChoice {
+  readonly classId: string;
+  readonly displayName: string;
 }
 
 export interface AuthenticatedSession {

@@ -1,4 +1,5 @@
 import { educationalAccountRows } from "./educational-retention.js";
+import { externalIdentityAccountRows } from "./external-identity-retention.js";
 import { profileRetentionRows } from "./profile-retention.js";
 import { canonicalJsonBytes, protocolDigest } from "../canonical-encoder.js";
 import type { ReadOnlySqliteApplicationDatabase } from "../contracts.js";
@@ -141,7 +142,12 @@ export function inspectAccount(
     blockers: blockersOf(database, accountBlockers(), node, userId, now),
     ...measure(
       database,
-      [...accountRows(), ...profileRetentionRows(database), ...educationalAccountRows(database)],
+      [
+        ...accountRows(),
+        ...profileRetentionRows(database),
+        ...educationalAccountRows(database),
+        ...externalIdentityAccountRows(database),
+      ],
       userId,
     ),
   };

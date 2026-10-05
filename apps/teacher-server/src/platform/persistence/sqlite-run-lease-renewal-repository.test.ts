@@ -4,6 +4,7 @@ import { DatabaseFake } from "../../../test-support/database-fake.js";
 import { SqliteRunSessionRepository } from "./sqlite-run-session-repository.js";
 
 const RENEWAL = {
+  classId: "class:physics",
   expiresAt: "2026-09-03T10:15:00.000Z",
   issuedAt: "2026-09-03T10:05:00.000Z",
   leaseId: "lease:renewed",
@@ -22,8 +23,8 @@ describe("SQLite run session repository lease recovery", () => {
       issuedAt: RENEWAL.issuedAt,
       runId: "run:1",
     });
-    expect(database.reads[0]?.parameters).toEqual(["run:1", "user:alice"]);
-    expect(database.reads[0]?.sql).toContain("student_id = ?2");
+    expect(database.reads[0]?.parameters).toEqual(["run:1", "user:alice", "class:physics"]);
+    expect(database.reads[0]?.sql).toContain("student_id = ?2 AND class_id = ?3");
     expect(database.executions.map(({ parameters }) => parameters)).toEqual([
       ["run:1", RENEWAL.issuedAt],
       [

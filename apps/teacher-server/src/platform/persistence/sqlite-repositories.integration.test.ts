@@ -371,6 +371,7 @@ describe("SQLite teacher repository integration", () => {
 
     expect(
       repository.renewLease({
+        classId: "class:physics",
         expiresAt: "2026-09-03T10:15:00.000Z",
         issuedAt: LATER,
         leaseId: "lease:renewed",
@@ -391,6 +392,7 @@ describe("SQLite teacher repository integration", () => {
     ).toThrow(expect.objectContaining({ code: "run.unavailable" }));
     expect(() =>
       repository.renewLease({
+        classId: "class:physics",
         expiresAt: "2026-09-03T10:15:00.000Z",
         issuedAt: LATER,
         leaseId: "lease:foreign",
@@ -406,6 +408,7 @@ describe("SQLite teacher repository integration", () => {
       reason: "student-exit" as const,
       runId: "run:alice",
       studentId: ALICE.userId,
+      classId: "class:physics",
     };
     expect(() => repository.closeRunAuthenticated({ ...close, studentId: BOB.userId })).toThrow(
       expect.objectContaining({ code: "run.unavailable" }),
@@ -446,6 +449,7 @@ describe("SQLite teacher repository integration", () => {
     ).toThrow(expect.objectContaining({ code: "run.unavailable" }));
 
     repository.renewLease({
+      classId: "class:physics",
       expiresAt: "2026-09-03T10:21:00.000Z",
       issuedAt: afterExpiry,
       leaseId: "lease:recovered",
@@ -464,6 +468,7 @@ describe("SQLite teacher repository integration", () => {
     ).toBe("run:expired");
 
     repository.closeRunAuthenticated({
+      classId: "class:physics",
       closedAt: "2026-09-03T10:12:00.000Z",
       closingEventId: "event:closed:expired",
       reason: "student-exit",
@@ -472,6 +477,7 @@ describe("SQLite teacher repository integration", () => {
     });
     expect(() =>
       repository.renewLease({
+        classId: "class:physics",
         expiresAt: "2026-09-03T10:30:00.000Z",
         issuedAt: "2026-09-03T10:20:00.000Z",
         leaseId: "lease:closed",

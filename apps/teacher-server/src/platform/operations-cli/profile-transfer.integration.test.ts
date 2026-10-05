@@ -7,7 +7,7 @@ import {
   cleanupTransferInstallations,
 } from "./operations-transfer.fixture.js";
 afterEach(cleanupTransferInstallations);
-it.each(["dashboard-profiles", "educational-insights"] as const)(
+it.each(["dashboard-profiles", "educational-insights", "student-identities"] as const)(
   "transfers %s with profile reset revisions and installation authority",
   async (schema) => {
     const source = await activatedSource();

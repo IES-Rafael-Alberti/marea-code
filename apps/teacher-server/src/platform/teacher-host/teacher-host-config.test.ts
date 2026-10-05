@@ -109,6 +109,27 @@ describe("teacher host configuration", () => {
     expect(() => readTeacherHostConfig(f.root)).toThrow();
   });
 
+  it("reads private identity provider settings files and refuses duplicates or public files", () => {
+    const f = teacherHostInstallation({ activate: false });
+    const settingsPath = join(f.root, "state", "google.json");
+    writeFileSync(settingsPath, "{}", { mode: 0o600 });
+    const identityProviders = [{ pluginId: "org.marea.google-workspace", settingsPath }];
+    const both = [...identityProviders, { pluginId: "org.example.other", settingsPath }];
+    f.writeHost({ ...f.host, identityProviders: both });
+    expect(readTeacherHostConfig(f.root)).toEqual({ ...f.host, identityProviders: both });
+    for (const invalid of [
+      [...identityProviders, ...identityProviders],
+      [{ pluginId: "org.marea.google-workspace", settingsPath: join(f.root, "state") }],
+      Array.from({ length: 9 }, (_, index) => ({
+        pluginId: `org.example.p${String(index)}`,
+        settingsPath,
+      })),
+    ]) {
+      f.writeHost({ ...f.host, identityProviders: invalid });
+      expect(() => readTeacherHostConfig(f.root)).toThrow();
+    }
+  });
+
   it("reports host state read before it was captured", () => {
     expect(captured(1)).toBe(1);
     expect(() => {
