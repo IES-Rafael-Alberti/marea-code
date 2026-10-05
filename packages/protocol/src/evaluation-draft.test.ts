@@ -81,6 +81,26 @@ describe("private evaluation draft protocol", () => {
       );
   });
 
+  it("bounds adaptive guidance and accepts every attempted learning level", () => {
+    for (const levelAttempted of [1, 2, 3, 4]) {
+      const value = { ...assessment, levelAttempted, learningNote: "Practice independently" };
+      expect(CriterionAssessmentSchema.parse(value)).toEqual(value);
+    }
+    expect(
+      CriterionAssessmentSchema.parse({ ...assessment, learningNote: "n".repeat(1000) })
+        .learningNote,
+    ).toHaveLength(1000);
+    for (const invalid of [
+      { learningNote: "n".repeat(1001) },
+      { levelAttempted: 0 },
+      { levelAttempted: 5 },
+      { levelAttempted: 1.5 },
+    ])
+      expect(CriterionAssessmentSchema.safeParse({ ...assessment, ...invalid }).success).toBe(
+        false,
+      );
+  });
+
   it("keeps public feedback separate from bounded private notes and difficulties", () => {
     expect(EvaluationDraftSchema.parse(draft)).toEqual(draft);
     const parsed = EvaluationDraftSchema.parse({

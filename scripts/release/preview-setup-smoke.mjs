@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import process from "node:process";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -44,7 +51,18 @@ const run = (binary, args, input) => {
   );
   return result.stdout;
 };
+// The installer makes dashboard files private. This direct binary smoke starts
+// from the CI build tree, so reproduce those permissions before provisioning.
+function privateDashboard(directory) {
+  securePrivatePath(directory, 0o700);
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) privateDashboard(path);
+    else securePrivatePath(path, 0o600);
+  }
+}
 try {
+  privateDashboard(join(release, "dashboard"));
   scaffoldServer(root, release, "0.1.0-preview.1", answers);
   provisionServer(root, release, answers, password, run);
   assert.ok(

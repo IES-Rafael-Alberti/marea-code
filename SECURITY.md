@@ -52,3 +52,30 @@ GitHub Actions run dependency review for high-or-higher introduced advisories,
 Repository administrators must enable the dependency graph, Dependabot alerts,
 secret scanning, and private vulnerability reporting in repository settings
 where available.
+
+## Preview baseline CodeQL review
+
+The CodeQL report for commit `622226e` was reviewed on 2026-10-05. Its three
+results do not establish an exploitable vulnerability in that revision:
+
+- `js/polynomial-redos`, `packages/i18n/src/locale.ts`: the suffix expression
+  consumes disjoint delimiter and payload character sets and has no trailing
+  constraint that would force backtracking through successful repetitions.
+  Failed starting positions are constant work. Adversarial checks with repeated
+  hyphens and alternating delimiters up to one million repetitions showed linear
+  scaling. Reassess this finding if the expression gains overlapping alternatives
+  or a trailing constraint.
+- `js/bad-code-sanitization`, `apps/teacher-server/src/platform/operations/host/host.test.ts`:
+  this test encodes generated temporary paths as JavaScript string literals with
+  `JSON.stringify`, then passes the source directly to Bun as an argument, without
+  shell interpolation. It does not concatenate raw path text into executable code.
+- `js/shell-command-injection-from-environment`,
+  `apps/teacher-server/smoke/compiled-host-process.ts`: the shell program is a fixed
+  literal. Executable paths and arguments travel through quoted positional
+  parameters (`"$@"`), never through interpolated shell source. This is a local
+  acceptance harness, not a server request handler.
+
+These are revision-specific assessments, not suppressed queries. CI retains the
+SARIF report as a review artifact, including while the repository is private;
+public repositories also upload the results to GitHub code scanning. Review new
+results and changed call paths independently.

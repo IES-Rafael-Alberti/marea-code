@@ -99,6 +99,8 @@ contains no classroom data. The installer never silently deletes existing state.
    and workflows. Create and push an immutable tag such as `v0.1.0-preview.1`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
+   `native_only` avoids duplicating an already-running quality check during a
+   rehearsal. Enabling publication always runs every quality gate.
 4. The workflow runs quality and audit, builds and tests every supported native
    target, signs manifests using the exact workflow/tag identity, and tests
    installation, update and recovery. Publication requires the complete matrix.

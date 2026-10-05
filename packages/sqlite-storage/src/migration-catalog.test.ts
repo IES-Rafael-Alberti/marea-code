@@ -65,6 +65,7 @@ describe("migration catalog", () => {
     const educational = createEducationalMigrationCatalog();
     expect(parseMigrationCatalog(educational)).toEqual(educational);
     for (const statement of [
+      "SELECT 1; CREATE TRIGGER example BEFORE DELETE ON example BEGIN UPDATE example SET id = 1; END",
       "CREATE TRIGGER example BEFORE DELETE ON example BEGIN UPDATE example SET id = 1; COMMIT; END",
       "CREATE TRIGGER example BEFORE DELETE ON example BEGIN UPDATE example SET id = 1; END; DELETE FROM example",
       "CREATE TRIGGER example BEFORE DELETE ON example BEGIN UPDATE example SET id = 1; UPDATE example SET id = 2; END",
