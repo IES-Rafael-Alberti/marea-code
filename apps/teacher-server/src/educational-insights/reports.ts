@@ -101,9 +101,10 @@ export class ClassReports {
           teaching,
           events: events.map((e) => z.json().parse(JSON.parse(String(e.payload_json)))),
         });
-        for (const identifier of [person?.display_name, person?.login])
-          if (typeof identifier === "string" && identifier.length > 1)
-            material = material.replaceAll(identifier, alias);
+        const identifiers = [person?.display_name, person?.login].filter(
+          (value): value is string => typeof value === "string" && value.length > 1,
+        );
+        for (const identifier of identifiers) material = material.replaceAll(identifier, alias);
         return {
           runId,
           studentId,
@@ -117,7 +118,7 @@ export class ClassReports {
               ? null
               : anonymizeDraft(
                   EvaluationDraftSchema.parse(JSON.parse(String(approved.draft_json))),
-                  [String(person?.display_name ?? ""), String(person?.login ?? "")],
+                  identifiers,
                   alias,
                 ),
         };
@@ -293,14 +294,14 @@ export class ClassReports {
       const input = InputSchema.parse(JSON.parse(String(row.input_json)));
       const evidence: Evidence[] = [];
       for (const source of input.sources) {
-        if (controller.signal.aborted || !accessible()) return;
+        if (!accessible()) return;
         evidence.push(await this.evaluateSource(source, input, id, controller.signal));
         this.progress.database.execute(
           "UPDATE marea_class_reports SET completed = ?2 WHERE id = ?1 AND state = 'running'",
           [id, evidence.length],
         );
       }
-      if (controller.signal.aborted || !accessible()) return;
+      if (!accessible()) return;
       const usable = evidence.filter((e) => e.status !== "unavailable");
       const synthesis: ReportSynthesis =
         usable.length === 0
@@ -356,7 +357,7 @@ export class ClassReports {
     if (evaluation === null) {
       try {
         if (source.material === "" || source.teaching.evaluationSkills.length === 0)
-          throw new Error("missing-evidence");
+          throw new Error();
         evaluation = await this.inference.generate(
           input.route,
           `report:${id}`,
@@ -391,9 +392,7 @@ export class ClassReports {
 export function validateFindings(synthesis: ReportSynthesis, evidence: readonly Evidence[]): void {
   for (const finding of synthesis.findings) {
     const eligible = evidence.filter(
-      (e) =>
-        e.mode === finding.mode &&
-        (finding.skillIds.length === 0 || finding.skillIds.every((s) => e.skills.includes(s))),
+      (e) => e.mode === finding.mode && finding.skillIds.every((s) => e.skills.includes(s)),
     );
     const aliases = new Set(eligible.map((e) => e.alias));
     const ids = new Set(eligible.map((e) => e.runId));
@@ -427,12 +426,11 @@ export function computedDenominators(
               (e) =>
                 e.mode === finding.mode &&
                 e.status !== "unavailable" &&
-                (finding.skillIds.length === 0 ||
-                  finding.skillIds.every((skill) =>
-                    e.evaluation?.criteria.some(
-                      (c) => c.skillId === skill && c.result !== "no-evidence",
-                    ),
-                  )),
+                finding.skillIds.every((skill) =>
+                  e.evaluation?.criteria.some(
+                    (c) => c.skillId === skill && c.result !== "no-evidence",
+                  ),
+                ),
             )
             .map((e) => e.alias),
         ),

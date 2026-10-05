@@ -78,6 +78,7 @@ describe("composed teacher host services", () => {
       const lease = opened.body.lease as { token: string; runId: string };
       const presence = await host.call("/v1/runs/presence", { requestId: "presence" }, lease.token);
       expect(presence.status).toBe(200);
+      expect(presence.body).toEqual({ requestId: "presence" });
       expect((await host.call("/v1/runs/presence", {}, lease.token)).status).toBe(400);
       if (educational)
         expect(host.composed.services.educationalInsights?.map.presence.has(lease.runId)).toBe(

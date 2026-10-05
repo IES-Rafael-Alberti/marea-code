@@ -23,7 +23,8 @@ export function validateEvaluationDraft(
       throw new TeacherDomainError("request.conflict");
   }
   if (targets.size !== 0) throw new TeacherDomainError("request.conflict");
-  for (const target of adaptiveTargets ?? []) {
+  if (adaptiveTargets === undefined) return draft;
+  for (const target of adaptiveTargets) {
     const assessment = draft.criteria.find(
       (c) => c.skillId === target.skillId && c.code === target.code,
     );

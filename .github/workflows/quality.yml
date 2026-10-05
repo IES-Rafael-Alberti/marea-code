@@ -99,7 +99,13 @@ jobs:
             mutate: src/platform/persistence/**/*.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
           - workspace: apps/teacher-server
             partition: platform
-            mutate: src/platform/**/*.ts,!src/platform/teacher-host/**,!src/platform/operations*/**,!src/platform/persistence/**,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
+            mutate: src/platform/**/*.ts,!src/platform/teacher-host/**,!src/platform/operations*/**,!src/platform/persistence/**,!src/platform/operator*/**,!src/platform/recovery/**,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
+          - workspace: apps/teacher-server
+            partition: operator
+            mutate: src/platform/operator*/**/*.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
+          - workspace: apps/teacher-server
+            partition: recovery
+            mutate: src/platform/recovery/**/*.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
           - workspace: apps/teacher-server
             partition: teaching
             mutate: src/teaching/**/*.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts

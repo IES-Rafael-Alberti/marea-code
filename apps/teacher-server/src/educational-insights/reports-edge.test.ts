@@ -3,35 +3,8 @@ import { expect, it, vi } from "vitest";
 import { fixture } from "./insights.fixture.js";
 import { teacher, NOW, EVALUATION_DRAFT } from "../../test-support/evaluation-fixture.js";
 import { ClassReports, validateFindings, computedDenominators } from "./reports.js";
-import { InputSchema } from "./reports-model.js";
+import { query, input, save, pendingReportModel } from "./reports.fixture.js";
 import { renderReport } from "./report-html.js";
-function query(f: ReturnType<typeof fixture>, extra: object = {}) {
-  const q = f.query({
-    kind: "generate",
-    from: "2026-01-01T00:00:00.000Z",
-    to: NOW,
-    locale: "en",
-    ...extra,
-  });
-  if (q.kind !== "generate") throw new Error("query");
-  return q;
-}
-function input(f: ReturnType<typeof fixture>, id: string) {
-  return InputSchema.parse(
-    JSON.parse(
-      String(
-        f.database.readOne("SELECT input_json FROM marea_class_reports WHERE id = ?1", [id])
-          ?.input_json,
-      ),
-    ),
-  );
-}
-function save(f: ReturnType<typeof fixture>, id: string, value: ReturnType<typeof input>) {
-  f.database.execute("UPDATE marea_class_reports SET input_json = ?2 WHERE id = ?1", [
-    id,
-    JSON.stringify(value),
-  ]);
-}
 it("validates report periods, deduplicates requests and rejects competing work", () => {
   const f = fixture(),
     reports = f.service.reports;
@@ -41,14 +14,14 @@ it("validates report periods, deduplicates requests and rejects competing work",
     f.service.clock,
     undefined,
   );
-  expect(() => unconfigured.generate(teacher, query(f))).toThrow();
+  expect(() => unconfigured.generate(teacher, query(f))).toThrow("request.conflict");
   for (const range of [
     { from: NOW },
     { to: "2027-01-01T00:00:00.000Z" },
     { from: "2020-01-01T00:00:00.000Z" },
   ])
-    expect(() => reports.generate(teacher, query(f, range))).toThrow();
-  expect(() => reports.read("missing", "class:one")).toThrow();
+    expect(() => reports.generate(teacher, query(f, range))).toThrow("request.conflict");
+  expect(() => reports.read("missing", "class:one")).toThrow("request.conflict");
   const report = reports.generate(teacher, query(f));
   expect(reports.generate(teacher, query(f)).id).toBe(report.id);
   for (const change of [
@@ -56,11 +29,11 @@ it("validates report periods, deduplicates requests and rejects competing work",
     { to: "2026-09-06T00:00:00.000Z" },
     { requestId: "other" },
   ])
-    expect(() => reports.generate(teacher, query(f, change))).toThrow();
-  expect(() => reports.retry(teacher, report.id, "class:one")).toThrow();
+    expect(() => reports.generate(teacher, query(f, change))).toThrow("request.conflict");
+  expect(() => reports.retry(teacher, report.id, "class:one")).toThrow("request.conflict");
   f.database.execute("UPDATE marea_class_reports SET state = 'complete'");
-  expect(() => reports.retry(teacher, report.id, "class:one")).toThrow();
-  expect(() => renderReport(reports.read(report.id, "class:one"))).toThrow();
+  expect(() => reports.retry(teacher, report.id, "class:one")).toThrow("request.conflict");
+  expect(() => renderReport(reports.read(report.id, "class:one"))).toThrow("request.conflict");
 });
 it.each(["es", "eu", "en"])("completes an unavailable-evidence report in %s", async (locale) => {
   const f = fixture(),
@@ -108,6 +81,8 @@ it.each(["cancel", "stop", "revoke", "invalidate"] as const)(
     }
     pending.reject(new Error("aborted"));
     await tick;
+    expect(generate).toHaveBeenCalledOnce();
+    if (operation !== "invalidate") expect(generate.mock.calls[0]?.[5].aborted).toBe(true);
     expect(reports.read(report.id, "class:one").state).not.toBe("complete");
     if (operation === "revoke")
       expect(reports.read(report.id, "class:one").error).toBe("access-revoked");
@@ -192,7 +167,7 @@ it("validates supported findings and computes assessed skill denominators", () =
   const synthesis = { summary: "", recommendation: "", findings: [finding] };
   expect(() => {
     validateFindings(synthesis, evidence);
-  }).not.toThrow();
+  }).not.toThrow("request.conflict");
   const criterion = {
     skillId: SkillIdSchema.parse("marea/testing"),
     code: "C1",
@@ -241,7 +216,7 @@ it("escapes report findings and renders zero denominators and missing names", ()
   );
   const html = renderReport(reports.read(report.id, "class:one"));
   expect(html).toContain("50%");
-  expect(html).toContain("0%");
+  expect(html).toContain("0/0 (0%)");
   expect(html).toContain("&lt;script&gt;");
   expect(html).not.toContain("<script>");
 });
@@ -330,13 +305,9 @@ it.each(["evaluation", "synthesis"] as const)(
         .slice(0, 1)
         .map((s) => ({ ...s, approved: stage === "synthesis" ? EVALUATION_DRAFT : null })),
     });
-    const pending = Promise.withResolvers<never>();
-    const generate = vi.spyOn(f.service.inference, "generate").mockReturnValue(pending.promise);
-    const tick = f.service.reports.tick();
-    await vi.waitFor(() => {
-      expect(generate).toHaveBeenCalledOnce();
-    });
+    const { pending, generate, tick } = await pendingReportModel(f);
     f.service.reports.cancel(report.id, "class:one");
+    expect(generate.mock.calls[0]?.[5].aborted).toBe(true);
     pending.reject(new Error("cancelled"));
     await tick;
     expect(f.service.reports.read(report.id, "class:one")).toMatchObject({

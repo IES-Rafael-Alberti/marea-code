@@ -17,7 +17,8 @@ const defaultEndpoint = "https://openrouter.ai/api/v1/chat/completions";
 const base = inferenceProviderCatalog[0];
 if (base?.manifest.id !== openrouter) throw new Error("missing OpenRouter fixture");
 const encode = (input: object) => new TextEncoder().encode(JSON.stringify(input));
-const status = (code: number) => expect.objectContaining({ status: code }) as object;
+const status = (code: number) =>
+  expect.objectContaining({ status: code, message: "Server settings request failed" }) as object;
 
 function setup(
   initial: Partial<ServerSettings> = {},

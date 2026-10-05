@@ -1,7 +1,8 @@
-import { it, expect } from "vitest";
+import { it, expect, vi } from "vitest";
 import { Hono } from "hono";
 import { EDUCATIONAL_INSIGHTS_PATH } from "@marea/protocol";
 import { registerEducationalInsightsRoutes } from "../product-http/educational-insights-http.boundary.js";
+import { TeacherDomainError } from "../identity/errors.js";
 import { fixture } from "./insights.fixture.js";
 import { teacher } from "../../test-support/evaluation-fixture.js";
 it("authorizes every request and serializes SQL-backed reports without exposing stored inputs", async () => {
@@ -48,14 +49,31 @@ it("authorizes every request and serializes SQL-backed reports without exposing 
 });
 it("returns unavailable when educational insights are not configured", async () => {
   const app = new Hono();
+  const authenticate = vi.fn(() => teacher);
   registerEducationalInsightsRoutes({
     app,
     service: undefined,
-    authenticate: () => teacher,
+    authenticate,
     policy: async (_context, next) => {
       await next();
     },
   });
   const response = await app.request(EDUCATIONAL_INSIGHTS_PATH, { method: "POST" });
   expect(response.status).toBe(503);
+  expect(await response.json()).toEqual({
+    protocolVersion: "0.1",
+    error: { code: "server.error", retryable: false },
+  });
+  authenticate.mockImplementation(() => {
+    throw new TeacherDomainError("auth.invalid");
+  });
+  const unauthorized = await app.request(EDUCATIONAL_INSIGHTS_PATH, {
+    method: "POST",
+    body: "not-json",
+  });
+  expect(unauthorized.status).toBe(401);
+  expect(await unauthorized.json()).toEqual({
+    protocolVersion: "0.1",
+    error: { code: "auth.invalid", retryable: false },
+  });
 });

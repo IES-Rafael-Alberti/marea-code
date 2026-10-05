@@ -1,4 +1,4 @@
-import { EvaluationDraftSchema, SkillBundleSchema } from "@marea/protocol";
+import { EvaluationDraftSchema, SkillBundleSchema, LearningTargetSchema } from "@marea/protocol";
 import { describe, expect, it } from "vitest";
 
 import { validateEvaluationDraft } from "./validate-draft.js";
@@ -95,4 +95,42 @@ describe("evaluation evidence validation", () => {
       expect.objectContaining({ code: "request.conflict" }),
     );
   });
+});
+
+it("matches each adaptive target by both skill and criterion and requires its attempted level", () => {
+  const other = SkillBundleSchema.parse({ ...skill, id: "marea/other", name: "other" });
+  const target = LearningTargetSchema.parse({
+    key: "target:c2",
+    skillId: skill.id,
+    code: "C2",
+    statement: "Verify a failure",
+    levels: ["L1", "L2", "L3", "L4"],
+    achieved: 1,
+    target: 2,
+    epoch: 0,
+  });
+  const first = draft.criteria[0];
+  const second = draft.criteria[1];
+  if (first === undefined || second === undefined) throw new Error("criteria");
+  const valid = {
+    ...draft,
+    criteria: [
+      { ...second, skillId: other.id, levelAttempted: 3 as const },
+      { ...first, skillId: other.id, levelAttempted: 4 as const },
+      { ...first, levelAttempted: 1 as const },
+      { ...second, levelAttempted: 2 as const },
+    ],
+  };
+  expect(validateEvaluationDraft(valid, "tutoring", [skill, other], [target])).toEqual(valid);
+  for (const changed of [
+    { ...target, target: 3 as const },
+    { ...target, code: "missing" },
+    {
+      ...target,
+      skillId: SkillBundleSchema.parse({ ...skill, id: "marea/missing", name: "missing" }).id,
+    },
+  ])
+    expect(() => validateEvaluationDraft(valid, "tutoring", [skill, other], [changed])).toThrow(
+      "request.conflict",
+    );
 });
