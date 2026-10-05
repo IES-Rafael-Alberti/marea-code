@@ -1,0 +1,13 @@
+{
+  "id": "org.marea.google-workspace",
+  "displayNameKey": "plugins.google-workspace.name",
+  "descriptionKey": "plugins.google-workspace.description",
+  "implementationVersion": "0.1.0",
+  "entrypoint": "./src/index.ts",
+  "configurationVersion": 1,
+  "kind": "identity-provider",
+  "apiVersion": "1.0",
+  "capabilities": ["authorization-code", "group-admission"],
+  "runtimeTargets": ["teacher-server"],
+  "dataClassifications": ["student-identifier"]
+}

@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "marea-code",
@@ -271,6 +270,17 @@
         "@marea/plugin-api": "workspace:*",
       },
     },
+    "plugins/identity/google-workspace": {
+      "name": "@marea/google-workspace-identity",
+      "version": "0.0.0",
+      "dependencies": {
+        "@marea/plugin-api": "workspace:*",
+        "zod": "4.4.3",
+      },
+      "devDependencies": {
+        "@marea/test-config": "workspace:*",
+      },
+    },
     "plugins/inference/openrouter": {
       "name": "@marea/openrouter-provider",
       "version": "0.0.0",
@@ -523,6 +533,8 @@
     "@marea/dashboard-themes-marea": ["@marea/dashboard-themes-marea@workspace:plugins/dashboard-themes/marea"],
 
     "@marea/deepagents-adapter": ["@marea/deepagents-adapter@workspace:packages/deepagents-adapter"],
+
+    "@marea/google-workspace-identity": ["@marea/google-workspace-identity@workspace:plugins/identity/google-workspace"],
 
     "@marea/i18n": ["@marea/i18n@workspace:packages/i18n"],
 

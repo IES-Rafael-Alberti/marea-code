@@ -2,10 +2,12 @@
 import type {
   DashboardModuleCatalogEntry,
   DashboardThemeCatalogEntry,
+  IdentityProviderCatalogEntry,
   InferenceProviderCatalogEntry,
   TelemetryExporterCatalogEntry,
 } from "@marea/plugin-api";
 
+import identityProviderPlugin0 from "../../../../plugins/identity/google-workspace/src/index.js";
 import inferenceProviderPlugin0 from "../../../../plugins/inference/openrouter/src/index.js";
 import telemetryExporterPlugin0 from "../../../../plugins/telemetry/langfuse/src/index.js";
 import telemetryExporterPlugin1 from "../../../../plugins/telemetry/otlp/src/index.js";
@@ -18,6 +20,11 @@ import dashboardModulePlugin5 from "../../../../plugins/dashboard-modules/sessio
 import dashboardModulePlugin6 from "../../../../plugins/dashboard-modules/usage/src/index.js";
 import dashboardThemePlugin0 from "../../../../plugins/dashboard-themes/high-contrast/src/index.js";
 import dashboardThemePlugin1 from "../../../../plugins/dashboard-themes/marea/src/index.js";
+
+export const identityProviderCatalog: readonly IdentityProviderCatalogEntry[] = Object.freeze([
+  // prettier-ignore
+  { ...identityProviderPlugin0, manifest: {"id":"org.marea.google-workspace","displayNameKey":"plugins.google-workspace.name","descriptionKey":"plugins.google-workspace.description","implementationVersion":"0.1.0","entrypoint":"./src/index.ts","configurationVersion":1,"requiredDependencies":[],"optionalDependencies":[],"conflicts":[],"kind":"identity-provider","apiVersion":"1.0","capabilities":["authorization-code","group-admission"],"runtimeTargets":["teacher-server"],"dataClassifications":["student-identifier"]} },
+]);
 
 export const inferenceProviderCatalog: readonly InferenceProviderCatalogEntry[] = Object.freeze([
   // prettier-ignore

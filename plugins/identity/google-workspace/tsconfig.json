@@ -1,0 +1,7 @@
+{
+  "extends": "../../../tsconfig.bun.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../../node_modules/.cache/typescript/google-workspace-identity.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"]
+}

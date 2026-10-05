@@ -17,6 +17,7 @@ const workspaces = [
   "packages/telemetry-pipeline",
   "packages/transport-server",
   "packages/workspace-backend",
+  "plugins/identity/google-workspace",
   "plugins/inference/openrouter",
   "plugins/telemetry/langfuse",
   "plugins/telemetry/otlp",
