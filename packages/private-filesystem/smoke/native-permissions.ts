@@ -9,7 +9,12 @@ import { WINDOWS_ACL_SCRIPT } from "../src/windows-acl-script.js";
 
 const root = mkdtempSync(join(tmpdir(), "marea-native-privacy-"));
 const checks: string[] = [];
+let diagnosticPath = root;
 let failed = false;
+function cleanup(): void {
+  securePrivatePath(root, 0o700);
+  rmSync(root, { recursive: true, force: true });
+}
 function powershell(source: string, path: string): void {
   const script = `$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; $env:PSModulePath=[IO.Path]::Combine($PSHOME,'Modules'); $path=[Console]::In.ReadToEnd(); ${source}`;
   const result = spawnSync(
@@ -46,6 +51,7 @@ try {
   assert.equal(inspectPrivatePath(root), "directory");
   const child = join(root, "child");
   mkdirSync(child, { mode: 0o700 });
+  diagnosticPath = child;
   assert.equal(inspectPrivatePath(child), "directory");
   for (const name of ["database.sqlite", "database.sqlite-wal", "database.sqlite-shm", "lock"]) {
     const path = join(child, name);
@@ -125,6 +131,9 @@ try {
   if (process.platform === "win32") {
     // Diagnostics are restricted to this synthetic, disposable fixture.
     const diagnostic = WINDOWS_ACL_SCRIPT.replace(
+      "$acl = Get-Acl -LiteralPath $path",
+      "$acl = Get-Acl -LiteralPath $path; [Console]::Error.WriteLine($acl.Sddl); [Console]::Error.WriteLine($sid.Value)",
+    ).replace(
       "catch { [Console]::Out.Write('unsafe'); exit 1 }",
       "catch { [Console]::Error.WriteLine($_.Exception.Message); [Console]::Error.WriteLine($_.ScriptStackTrace); exit 1 }",
     );
@@ -137,7 +146,7 @@ try {
         Buffer.from(diagnostic, "utf16le").toString("base64"),
       ],
       {
-        input: JSON.stringify({ path: root, action: "secure" }),
+        input: JSON.stringify({ path: diagnosticPath, action: "inspect" }),
         encoding: "utf8",
         timeout: 30000,
         maxBuffer: 65536,
@@ -150,13 +159,12 @@ try {
       stderr: result.stderr,
     });
   }
+  try {
+    cleanup();
+  } catch {
+    // Preserve the original acceptance failure; the CI runner is disposable.
+  }
   throw error;
 } finally {
-  try {
-    securePrivatePath(root, 0o700);
-    rmSync(root, { recursive: true, force: true });
-  } catch (error) {
-    // Preserve the original acceptance failure; the CI runner is disposable.
-    if (!failed) throw error;
-  }
+  if (!failed) cleanup();
 }
