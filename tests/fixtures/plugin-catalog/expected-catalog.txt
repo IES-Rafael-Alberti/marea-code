@@ -2,14 +2,21 @@
 import type {
   DashboardModuleCatalogEntry,
   DashboardThemeCatalogEntry,
+  IdentityProviderCatalogEntry,
   InferenceProviderCatalogEntry,
   TelemetryExporterCatalogEntry,
 } from "@marea/plugin-api";
 
+import identityProviderPlugin0 from "./plugins/identity/synthetic-identity/src/index.js";
 import inferenceProviderPlugin0 from "./plugins/inference/synthetic-provider/src/index.js";
 import telemetryExporterPlugin0 from "./plugins/telemetry/synthetic-exporter/src/index.js";
 import dashboardModulePlugin0 from "./plugins/dashboard-modules/synthetic-module/src/index.js";
 import dashboardThemePlugin0 from "./plugins/dashboard-themes/synthetic-theme/src/index.js";
+
+export const identityProviderCatalog: readonly IdentityProviderCatalogEntry[] = Object.freeze([
+  // prettier-ignore
+  { ...identityProviderPlugin0, manifest: {"id":"org.marea.fixture-identity","displayNameKey":"plugins.fixture-identity.name","descriptionKey":"plugins.fixture-identity.description","implementationVersion":"1.0.0","entrypoint":"./src/index.ts","configurationVersion":1,"requiredDependencies":[],"optionalDependencies":[],"conflicts":[],"kind":"identity-provider","apiVersion":"1.0","capabilities":["authorization-code"],"runtimeTargets":["teacher-server"],"dataClassifications":["student-identifier"]} },
+]);
 
 export const inferenceProviderCatalog: readonly InferenceProviderCatalogEntry[] = Object.freeze([
   // prettier-ignore

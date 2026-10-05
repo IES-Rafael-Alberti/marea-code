@@ -5,10 +5,12 @@ import { isAbsolute, relative, resolve, sep } from "node:path";
 import {
   createDashboardModuleManifestSchema,
   createDashboardThemeManifestSchema,
+  createIdentityProviderManifestSchema,
   createInferenceProviderManifestSchema,
   createTelemetryExporterManifestSchema,
   type DashboardModuleManifest,
   type DashboardThemeManifest,
+  type IdentityProviderManifest,
   type InferenceProviderManifest,
   type TelemetryExporterManifest,
 } from "../../packages/plugin-api/src/index.js";
@@ -33,6 +35,7 @@ export interface ManifestSource<
 }
 
 export interface DiscoveredCatalog {
+  readonly identityProviders: readonly ManifestSource<IdentityProviderManifest>[];
   readonly inferenceProviders: readonly ManifestSource<InferenceProviderManifest>[];
   readonly telemetryExporters: readonly ManifestSource<TelemetryExporterManifest>[];
   readonly dashboardModules: readonly ManifestSource<DashboardModuleManifest>[];
@@ -41,6 +44,11 @@ export interface DiscoveredCatalog {
 
 export async function discoverCatalog(pluginsDirectory: string): Promise<DiscoveredCatalog> {
   await validatePluginRoot(pluginsDirectory);
+  const identityProviders = await discoverKind(
+    pluginsDirectory,
+    "identity",
+    createIdentityProviderManifestSchema(),
+  );
   const inferenceProviders = await discoverKind(
     pluginsDirectory,
     "inference",
@@ -61,7 +69,7 @@ export async function discoverCatalog(pluginsDirectory: string): Promise<Discove
     "dashboard-themes",
     createDashboardThemeManifestSchema(),
   );
-  if (dashboardModules.length > 64 || dashboardThemes.length > 16) {
+  if (dashboardModules.length > 64 || dashboardThemes.length > 16 || identityProviders.length > 8) {
     throw new PluginCatalogError(
       "INVALID_MANIFEST",
       pluginsDirectory,
@@ -69,12 +77,19 @@ export async function discoverCatalog(pluginsDirectory: string): Promise<Discove
     );
   }
   rejectDuplicateIds([
+    ...identityProviders,
     ...inferenceProviders,
     ...telemetryExporters,
     ...dashboardModules,
     ...dashboardThemes,
   ]);
-  return { inferenceProviders, telemetryExporters, dashboardModules, dashboardThemes };
+  return {
+    identityProviders,
+    inferenceProviders,
+    telemetryExporters,
+    dashboardModules,
+    dashboardThemes,
+  };
 }
 
 async function validatePluginRoot(pluginsDirectory: string): Promise<void> {
@@ -117,6 +132,7 @@ async function discoverKind<
   Manifest extends
     | DashboardModuleManifest
     | DashboardThemeManifest
+    | IdentityProviderManifest
     | InferenceProviderManifest
     | TelemetryExporterManifest,
 >(
@@ -186,7 +202,9 @@ function assertPluginDirectory(entry: Dirent, kindDirectoryName: string): void {
 }
 
 function isPluginKindDirectory(name: string): boolean {
-  return ["dashboard-modules", "dashboard-themes", "inference", "telemetry"].includes(name);
+  return ["dashboard-modules", "dashboard-themes", "identity", "inference", "telemetry"].includes(
+    name,
+  );
 }
 
 function isPluginDirectoryName(name: string): boolean {
@@ -293,6 +311,7 @@ function rejectDuplicateIds(
   sources: readonly ManifestSource<
     | DashboardModuleManifest
     | DashboardThemeManifest
+    | IdentityProviderManifest
     | InferenceProviderManifest
     | TelemetryExporterManifest
   >[],

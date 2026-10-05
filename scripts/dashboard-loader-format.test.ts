@@ -9,6 +9,7 @@ it.each([99, 100, 101])("keeps generated lazy imports formatted at %i columns", 
   const path = `/release/${name}.ts`;
   const source = renderBrowserCatalog(
     {
+      identityProviders: [],
       inferenceProviders: [],
       telemetryExporters: [],
       dashboardThemes: [],

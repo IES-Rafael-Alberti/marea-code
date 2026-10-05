@@ -16,6 +16,7 @@ it("pins canonical public metadata hashing independently of fixture source instr
     artifactRevision: "a".repeat(64),
   };
   const catalog = {
+    identityProviders: [],
     inferenceProviders: [],
     telemetryExporters: [],
     dashboardModules: [source],

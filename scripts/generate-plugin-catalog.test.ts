@@ -147,9 +147,12 @@ describe("plugin catalog generation", () => {
         "import type {",
         "  DashboardModuleCatalogEntry,",
         "  DashboardThemeCatalogEntry,",
+        "  IdentityProviderCatalogEntry,",
         "  InferenceProviderCatalogEntry,",
         "  TelemetryExporterCatalogEntry,",
         '} from "@marea/plugin-api";',
+        "",
+        "export const identityProviderCatalog: readonly IdentityProviderCatalogEntry[] = Object.freeze([]);",
         "",
         "export const inferenceProviderCatalog: readonly InferenceProviderCatalogEntry[] = Object.freeze([]);",
         "",
@@ -163,6 +166,58 @@ describe("plugin catalog generation", () => {
         '  "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945";',
         "",
       ].join("\n"),
+    );
+  });
+
+  it("keeps identity providers out of the dashboard revision and bounds their number", async () => {
+    const fixture = await copiedPluginFixture();
+    const revision = async () =>
+      /"([a-f0-9]{64})"/u.exec(
+        await generatePluginCatalog({
+          pluginsDirectory: fixture.plugins,
+          outputFile: join(fixture.root, "catalog.ts"),
+          mode: "write",
+        }),
+      )?.[1];
+    const withIdentity = await revision();
+    const identity = join(fixture.plugins, "identity", "synthetic-identity");
+    await rm(identity, { recursive: true });
+    expect(await revision()).toBe(withIdentity);
+    for (let index = 0; index < 8; index += 1) {
+      const copy = join(fixture.plugins, "identity", `copy-${String(index)}`);
+      await cp(
+        resolve(
+          import.meta.dirname,
+          "../tests/fixtures/plugin-catalog/plugins/identity/synthetic-identity",
+        ),
+        copy,
+        { recursive: true },
+      );
+      await replaceFixtureText(
+        join(copy, "plugin.json"),
+        "org.marea.fixture-identity",
+        `org.marea.fixture-identity-${String(index)}`,
+      );
+    }
+    const eight = await generatePluginCatalog({
+      pluginsDirectory: fixture.plugins,
+      outputFile: join(fixture.root, "catalog.ts"),
+      mode: "write",
+    });
+    expect(eight.match(/import identityProviderPlugin/gu)).toHaveLength(8);
+    await cp(identity.replace("synthetic-identity", "copy-0"), identity, { recursive: true });
+    await replaceFixtureText(
+      join(identity, "plugin.json"),
+      "org.marea.fixture-identity-0",
+      "org.marea.fixture-identity-8",
+    );
+    await expectCatalogError(
+      generatePluginCatalog({
+        pluginsDirectory: fixture.plugins,
+        outputFile: join(fixture.root, "catalog.ts"),
+        mode: "write",
+      }),
+      "INVALID_MANIFEST",
     );
   });
 

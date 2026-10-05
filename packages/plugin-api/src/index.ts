@@ -10,3 +10,5 @@ export * from "./telemetry-configuration.boundary.js";
 export * from "./telemetry-failure.boundary.js";
 
 export * from "./provider-settings.js";
+
+export * from "./identity-provider.js";

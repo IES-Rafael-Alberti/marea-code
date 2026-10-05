@@ -5,6 +5,7 @@ import type { DiscoveredCatalog, ManifestSource } from "./discovery.js";
 
 export function renderCatalog(catalog: DiscoveredCatalog, outputFile: string): string {
   const imports = [
+    ...renderImports(catalog.identityProviders, "identityProviderPlugin", outputFile),
     ...renderImports(catalog.inferenceProviders, "inferenceProviderPlugin", outputFile),
     ...renderImports(catalog.telemetryExporters, "telemetryExporterPlugin", outputFile),
     ...renderImports(catalog.dashboardModules, "dashboardModulePlugin", outputFile),
@@ -15,6 +16,7 @@ export function renderCatalog(catalog: DiscoveredCatalog, outputFile: string): s
     "import type {",
     "  DashboardModuleCatalogEntry,",
     "  DashboardThemeCatalogEntry,",
+    "  IdentityProviderCatalogEntry,",
     "  InferenceProviderCatalogEntry,",
     "  TelemetryExporterCatalogEntry,",
     '} from "@marea/plugin-api";',
@@ -23,6 +25,13 @@ export function renderCatalog(catalog: DiscoveredCatalog, outputFile: string): s
     lines.push("", ...imports);
   }
   lines.push(
+    "",
+    ...renderRegistry(
+      "identityProviderCatalog",
+      "IdentityProviderCatalogEntry",
+      "identityProviderPlugin",
+      catalog.identityProviders,
+    ),
     "",
     ...renderRegistry(
       "inferenceProviderCatalog",
@@ -98,6 +107,7 @@ function moduleSpecifier(outputFile: string, entrypointFile: string): string {
   return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
 }
 
+/** The dashboard bundle never loads identity providers, so they do not change its revision. */
 export function catalogRevision(catalog: DiscoveredCatalog): string {
   const manifests = [
     ...catalog.inferenceProviders,
