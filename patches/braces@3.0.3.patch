@@ -1,0 +1,15 @@
+diff --git a/lib/parse.js b/lib/parse.js
+index 3a6988e629f52aee6609dc5ec290a5e9ff47cecb..a70576e45fa396cdbb62a54b3a20689a04339c3d 100644
+--- a/lib/parse.js	
++++ b/lib/parse.js
+@@ -74,6 +74,10 @@ const parse = (input, options = {}) => {
+   push({ type: 'bos' });
+ 
+   while (index < length) {
++    // Marea: bound the AST before recursive compile/expand/stringify walkers.
++    if (stack.length > 64) {
++      throw new SyntaxError('Brace pattern nesting exceeds 64 levels');
++    }
+     block = stack[stack.length - 1];
+     value = advance();
+ 

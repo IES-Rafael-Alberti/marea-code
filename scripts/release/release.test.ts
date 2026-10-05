@@ -67,6 +67,41 @@ async function serverUpdateFixture() {
   writeFileSync(join(f.source, "manifest.json"), JSON.stringify(f.manifest));
   return { f, request };
 }
+it("reactivates only explicitly requested, completely reverified student programs", async () => {
+  const f = fixture();
+  await installRelease(f.request, f.ports);
+  const previousManifest = JSON.stringify(f.manifest);
+  f.manifest.version = "1.2.4";
+  writeFileSync(join(f.source, "manifest.json"), JSON.stringify(f.manifest));
+  await installRelease({ ...f.request, version: "1.2.4" }, f.ports);
+  writeFileSync(join(f.source, "manifest.json"), previousManifest);
+  await installRelease({ ...f.request, reuseVerifiedStudent: true }, f.ports);
+  expect(readActivation(f.request.root)).toEqual({
+    current: "student-1.2.3",
+    previous: "student-1.2.4",
+  });
+  const retainedProgram = join(f.request.root, "student-1.2.3", "marea");
+  chmodSync(retainedProgram, 0o700);
+  writeFileSync(retainedProgram, "tampered");
+  await expect(
+    installRelease({ ...f.request, reuseVerifiedStudent: true }, f.ports),
+  ).rejects.toThrow("checksum mismatch");
+  writeFileSync(retainedProgram, "binary");
+  const retained = join(f.request.root, "student-1.2.3", "manifest.json");
+  chmodSync(retained, 0o600);
+  writeFileSync(retained, `${previousManifest}\n`);
+  await expect(
+    installRelease({ ...f.request, reuseVerifiedStudent: true }, f.ports),
+  ).rejects.toThrow("Retained release manifest mismatch");
+  const server = await serverUpdateFixture();
+  writeFileSync(
+    join(server.f.source, "manifest.json"),
+    JSON.stringify({ ...server.f.manifest, version: "1.2.3" }),
+  );
+  await expect(
+    installRelease({ ...server.request, reuseVerifiedStudent: true }, server.f.ports),
+  ).rejects.toThrow("Immutable release already exists");
+});
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });

@@ -17,5 +17,5 @@
     },
     "packages/test-config": {}
   },
-  "ignoreBinaries": ["cosign", "mkfifo", "pwsh"]
+  "ignoreBinaries": ["mkfifo", "pwsh"]
 }

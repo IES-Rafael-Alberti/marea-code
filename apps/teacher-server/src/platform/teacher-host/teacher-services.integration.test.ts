@@ -1,6 +1,7 @@
 import { fixture as insightsFixture } from "../../educational-insights/insights.fixture.js";
 import {
   EVALUATION_DRAFT,
+  evaluationFixture,
   reviewRequest,
   teacher as evaluationTeacher,
 } from "../../../test-support/evaluation-fixture.js";
@@ -42,6 +43,9 @@ describe("composed teacher host services", () => {
         for (const migration of createEducationalMigrationCatalog().slice(8))
           for (const sql of migration.statements) database.executeScript(sql);
       const host = await composedHost(database);
+      expect(host.composed.services).not.toHaveProperty("serverSettings");
+      const progress = host.composed.services.educationalInsights?.progress;
+      const capture = progress === undefined ? undefined : vi.spyOn(progress, "capture");
       const student = await host.call("/v1/auth/login", login("student", "student-password"));
       expect(student.status).toBe(200);
       const token = (student.body.session as { token: string }).token;
@@ -65,6 +69,12 @@ describe("composed teacher host services", () => {
         token,
       );
       expect(opened.status).toBe(201);
+      if (educational)
+        expect(capture).toHaveBeenCalledWith(
+          expect.any(Object),
+          expect.objectContaining({ userId: "s1" }),
+        );
+      else expect(host.composed.services).not.toHaveProperty("educationalInsights");
       const lease = opened.body.lease as { token: string; runId: string };
       const presence = await host.call("/v1/runs/presence", { requestId: "presence" }, lease.token);
       expect(presence.status).toBe(200);
@@ -311,18 +321,22 @@ describe("composed teacher host services", () => {
   });
 });
 
-it("composes reviewed progress with the approval transaction", async () => {
-  const f = insightsFixture();
-  const host = await composedHost(f.database);
-  const insights = host.composed.services.educationalInsights;
-  if (!insights) throw new Error("missing insights");
-  const apply = vi.spyOn(insights.progress, "apply");
-  f.queue();
-  const claim = f.repository.claim("worker", NOW);
-  if (!claim) throw new Error("missing claim");
-  f.repository.finish(claim, EVALUATION_DRAFT, NOW);
-  const result = host.composed.services.evaluations.approve(evaluationTeacher, reviewRequest());
-  expect(result.evaluation?.state).toBe("approved");
-  expect(apply).toHaveBeenCalledOnce();
-  await host.composed.evaluations.stop();
-});
+it.each([false, true])(
+  "composes approval with optional reviewed progress: %s",
+  async (educational) => {
+    const f = educational ? insightsFixture() : evaluationFixture();
+    const host = await composedHost(f.database);
+    const insights = host.composed.services.educationalInsights;
+    const apply = insights === undefined ? undefined : vi.spyOn(insights.progress, "apply");
+    f.queue();
+    const claim = f.repository.claim("worker", NOW);
+    if (!claim) throw new Error("missing claim");
+    f.repository.finish(claim, EVALUATION_DRAFT, NOW);
+    const result = host.composed.services.evaluations.approve(evaluationTeacher, reviewRequest());
+    expect(result.evaluation?.state).toBe("approved");
+    if (educational) expect(apply).toHaveBeenCalledOnce();
+    else expect(host.composed.services).not.toHaveProperty("educationalInsights");
+    await host.composed.evaluations.stop();
+    if (!educational) f.database.close();
+  },
+);

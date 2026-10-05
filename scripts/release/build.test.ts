@@ -2,10 +2,16 @@ import assert from "node:assert/strict";
 import { expect, it, vi } from "vitest";
 import { buildMocks, expectStudentSmoke } from "./build.fixture.js";
 import { buildCandidate } from "./build.js";
+import { collectDependencyNotices } from "./notices.boundary.js";
 const mocks = buildMocks();
 it("builds selected server programs, matching assets, real inventory command and manifest", () => {
   const result = buildCandidate(["1.2.3", "server", "/candidate"]);
   expect(result).toBe("/candidate/server-1.2.3-darwin-arm64");
+  expect(mocks.cpSync).toHaveBeenCalledWith("/isolated/LICENSE", `${result}/LICENSE`);
+  expect(collectDependencyNotices).toHaveBeenCalledWith(
+    "/isolated",
+    `${result}/licenses/dependencies`,
+  );
   expect(mocks.cpSync).toHaveBeenCalledWith(
     "/isolated/apps/dashboard/dist",
     `${result}/dashboard`,
@@ -62,7 +68,7 @@ it("handles native Windows student, defaults, CI provenance and license metadata
     expect.arrayContaining([`${root}/marea.exe`]),
     expect.any(Object),
   );
-  expect(mocks.cpSync).toHaveBeenCalledExactlyOnceWith(
+  expect(mocks.cpSync).toHaveBeenCalledWith(
     "/isolated/scripts/release/licenses",
     `${root}/licenses`,
     { recursive: true },
@@ -73,6 +79,15 @@ it("handles native Windows student, defaults, CI provenance and license metadata
     expect.stringContaining("@opentui/core-win32-x64"),
   );
 });
+it("does not package a teacher dashboard into student distributions", () => {
+  buildCandidate(["1.2.3", "student", "/candidate"]);
+  expect(mocks.cpSync).not.toHaveBeenCalledWith(
+    "/isolated/apps/dashboard/dist",
+    expect.anything(),
+    expect.anything(),
+  );
+});
+
 it("rejects changed runtime, OpenTUI, invalid selection and failed native build", () => {
   vi.stubGlobal("Bun", { version: "other" });
   expect(() => buildCandidate(["1.2.3", "student"])).toThrow("Bun");
@@ -179,7 +194,19 @@ it("binds reproducible output metadata to actual commands, source bytes and nati
       ["build", "scripts/release/install.mjs", "--compile", "--outfile", `${root}/marea-install`],
       buildOptions,
     ],
-    ["bun", ["run", "build"], { cwd: "/isolated/apps/dashboard", encoding: "utf8" }],
+    [
+      "bun",
+      ["run", "build"],
+      {
+        cwd: "/isolated/apps/dashboard",
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          VITE_MAREA_PREVIEW_REPOSITORY: "",
+          VITE_MAREA_PREVIEW_VERSION: "1.2.3",
+        },
+      },
+    ],
     [
       "syft",
       [

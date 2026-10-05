@@ -19,6 +19,12 @@ it("requires successful exact-identity cosign verification with bounded executio
     ],
     { encoding: "utf8", timeout: 120000 },
   );
+  verifySignature("manifest", "bundle", "trusted-workflow", "/private/cosign");
+  expect(mocks.spawnSync).toHaveBeenLastCalledWith(
+    "/private/cosign",
+    expect.any(Array),
+    expect.any(Object),
+  );
   for (const status of [1, null]) {
     mocks.spawnSync.mockReturnValue({ status });
     expect(() => {

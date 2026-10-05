@@ -90,6 +90,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 it("loads the editable projection and keeps only configured connections", async () => {
@@ -291,4 +292,15 @@ it("enables saving only for an idle, unsaved draft without problems, and marks i
   client.saveSettings.mockReturnValue(new Promise(() => undefined));
   submit();
   expect(hooks.values).toMatchObject({ 3: true, 5: false });
+});
+
+it("offers matching preview installation commands only to the server administrator", async () => {
+  vi.stubGlobal("window", { ...window, location: { origin: "https://school.test" } });
+  vi.stubEnv("VITE_MAREA_PREVIEW_REPOSITORY", "school/marea");
+  vi.stubEnv("VITE_MAREA_PREVIEW_VERSION", "0.1.0-preview.1");
+  await load(Promise.resolve(settings));
+  expect(page()).toContain("Install Marea for students");
+  hooks.values = [];
+  await load(Promise.resolve({ administrator: false, initialized: true }));
+  expect(page()).not.toContain("Install Marea for students");
 });

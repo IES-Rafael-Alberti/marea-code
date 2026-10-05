@@ -1,0 +1,103 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`collects validated setup answers, with optional Google: false > setup guidance and secret prompts 1`] = `
+[
+  [
+    "Para otros equipos, usa una dirección HTTPS con un proxy hacia este puerto local.
+",
+  ],
+  [
+    "Contraseña del profesor: ",
+  ],
+  [
+    "Repite la contraseña: ",
+  ],
+]
+`;
+
+exports[`collects validated setup answers, with optional Google: false > setup questions 1`] = `
+[
+  [
+    "Nombre del centro: ",
+  ],
+  [
+    "Primera clase [Clase de prueba]: ",
+  ],
+  [
+    "Nombre del profesor: ",
+  ],
+  [
+    "Usuario del profesor [profe]: ",
+  ],
+  [
+    "Puerto local [18787]: ",
+  ],
+  [
+    "Dirección pública del servidor [http://127.0.0.1:18787]: ",
+  ],
+  [
+    "¿Configurar Google Workspace? (s/n) [n]: ",
+  ],
+]
+`;
+
+exports[`collects validated setup answers, with optional Google: true > setup guidance and secret prompts 1`] = `
+[
+  [
+    "Para otros equipos, usa una dirección HTTPS con un proxy hacia este puerto local.
+",
+  ],
+  [
+    "Contraseña del profesor: ",
+  ],
+  [
+    "Repite la contraseña: ",
+  ],
+  [
+    "Secreto del cliente OAuth: ",
+  ],
+]
+`;
+
+exports[`collects validated setup answers, with optional Google: true > setup questions 1`] = `
+[
+  [
+    "Nombre del centro: ",
+  ],
+  [
+    "Primera clase [Clase de prueba]: ",
+  ],
+  [
+    "Nombre del profesor: ",
+  ],
+  [
+    "Usuario del profesor [profe]: ",
+  ],
+  [
+    "Puerto local [18787]: ",
+  ],
+  [
+    "Dirección pública del servidor [http://127.0.0.1:18787]: ",
+  ],
+  [
+    "¿Configurar Google Workspace? (s/n) [n]: ",
+  ],
+  [
+    "Dominio del centro: ",
+  ],
+  [
+    "ID del cliente OAuth de escritorio: ",
+  ],
+]
+`;
+
+exports[`never accepts an update without an interactive affirmative answer > update consent prompts 1`] = `
+[
+  [
+    "Hay una nueva versión de pruebas (0.1.0-preview.2). ¿Actualizar ahora? (s/n) [n]: ",
+  ],
+  [
+    "Hay una nueva versión de pruebas (0.1.0-preview.2). ¿Actualizar ahora? (s/n) [n]: ",
+  ],
+]
+`;

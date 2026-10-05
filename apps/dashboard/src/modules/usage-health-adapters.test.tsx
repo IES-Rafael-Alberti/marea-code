@@ -239,6 +239,7 @@ it.each(["map", "progress", "reports"])(
     );
     const context = mocks.contexts.at(-1);
     if (!context) throw new Error("missing context");
+    expect(context.capabilities).toEqual({ evaluationRead: true });
     const dispose = (await context.data.read(context.signal))(element);
     const root = mocks.roots.at(-1);
     const view = root?.render.mock.lastCall?.[0] as ReactElement<Parameters<typeof InsightView>[0]>;

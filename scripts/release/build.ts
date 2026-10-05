@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 import { withBuildWorkspace, type SourceFile } from "./workspace.boundary.js";
 import { ordinaryFiles } from "./files.boundary.js";
 import { component, manifestSchema, releaseVersion, sha256, target } from "./manifest.js";
+import { collectDependencyNotices } from "./notices.boundary.js";
 
 /** Native-only candidate builder. Never uploads or publishes a release. */
 export function buildCandidate(argv: readonly string[]): string {
@@ -75,7 +76,11 @@ export function buildCandidate(argv: readonly string[]): string {
       workspace,
     );
     if (selected === "server") {
-      run(["bun", "run", "build"], join(workspace, "apps/dashboard"));
+      run(["bun", "run", "build"], join(workspace, "apps/dashboard"), {
+        ...process.env,
+        VITE_MAREA_PREVIEW_REPOSITORY: process.env.GITHUB_REPOSITORY ?? "",
+        VITE_MAREA_PREVIEW_VERSION: version,
+      });
       cpSync(join(workspace, "apps/dashboard/dist"), join(root, "dashboard"), { recursive: true });
     }
     // Syft scans the resolved native dependency installation, including license expressions.
@@ -118,6 +123,8 @@ export function buildCandidate(argv: readonly string[]): string {
     cpSync(join(workspace, "scripts/release/licenses"), join(root, "licenses"), {
       recursive: true,
     });
+    cpSync(join(workspace, "LICENSE"), join(root, "LICENSE"));
+    collectDependencyNotices(workspace, join(root, "licenses", "dependencies"));
     sbom.components.push({
       type: "application",
       name: "bun",

@@ -1,0 +1,135 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`packages the native verifier, license and extra inventory before signing > packaged verifier linux-x64 1`] = `
+{
+  "bun": "1.4.0",
+  "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "component": "student",
+  "files": [
+    {
+      "executable": false,
+      "path": "LICENSE",
+      "sha256": "c693279643b8cd5d248172d9c22cb7cf4ed163a3c98c8a3f69c2717edd3eacb7",
+    },
+    {
+      "executable": true,
+      "path": "cosign",
+      "sha256": "88c9eae68eb300b2971a2bec9e5a26ff4179fd661d6b7d861e4c6557b9aaee14",
+    },
+    {
+      "executable": false,
+      "path": "cosign.sbom.cdx.json",
+      "sha256": "b11a85b296a90afc460430434a504e7acb04b064575b7277724688af0e59d189",
+    },
+    {
+      "executable": false,
+      "path": "licenses/cosign-LICENSE",
+      "sha256": "62d28665bf7f79a2d9832cbafc659cd9b63fba151b0d11c97ae6035017d91289",
+    },
+    {
+      "executable": true,
+      "path": "marea-install",
+      "sha256": "d0ec0ae07e967106ce195fce6ee45b26a22a5351acd137bf8cda9e81677b8d4b",
+    },
+  ],
+  "format": 1,
+  "opentui": "0.5.10",
+  "target": "linux-x64",
+  "version": "0.1.0-preview.1",
+}
+`;
+
+exports[`packages the native verifier, license and extra inventory before signing > packaged verifier win32-x64 1`] = `
+{
+  "bun": "1.4.0",
+  "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "component": "student",
+  "files": [
+    {
+      "executable": false,
+      "path": "LICENSE",
+      "sha256": "c693279643b8cd5d248172d9c22cb7cf4ed163a3c98c8a3f69c2717edd3eacb7",
+    },
+    {
+      "executable": true,
+      "path": "cosign.exe",
+      "sha256": "88c9eae68eb300b2971a2bec9e5a26ff4179fd661d6b7d861e4c6557b9aaee14",
+    },
+    {
+      "executable": false,
+      "path": "cosign.sbom.cdx.json",
+      "sha256": "b11a85b296a90afc460430434a504e7acb04b064575b7277724688af0e59d189",
+    },
+    {
+      "executable": false,
+      "path": "licenses/cosign-LICENSE",
+      "sha256": "62d28665bf7f79a2d9832cbafc659cd9b63fba151b0d11c97ae6035017d91289",
+    },
+    {
+      "executable": true,
+      "path": "marea-install.exe",
+      "sha256": "30c119fdb17093b44170d8be55ac09337bed6a5e3a43610ce45e1e976a5cceb7",
+    },
+  ],
+  "format": 1,
+  "opentui": "0.5.10",
+  "target": "win32-x64",
+  "version": "0.1.0-preview.1",
+}
+`;
+
+exports[`requires a complete matching matrix and produces content-addressed files and both bootstrap scripts > install.ps1 1`] = `
+"param([ValidateSet('student','server')][string]$Component='student', [string]$Server='')
+$ErrorActionPreference='Stop'
+$architecture=[System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
+switch ("$Component-win32-$architecture") {
+  'student-win32-x64' { $installerHash='30c119fdb17093b44170d8be55ac09337bed6a5e3a43610ce45e1e976a5cceb7'; $cosignHash='5b196f9195af1a1dfcac587d3140c31a6b4293627de5adcafc6900add37b6f91' }
+  'server-win32-x64' { $installerHash='30c119fdb17093b44170d8be55ac09337bed6a5e3a43610ce45e1e976a5cceb7'; $cosignHash='5b196f9195af1a1dfcac587d3140c31a6b4293627de5adcafc6900add37b6f91' }
+  'student-win32-arm64' { $installerHash='30c119fdb17093b44170d8be55ac09337bed6a5e3a43610ce45e1e976a5cceb7'; $cosignHash='5b196f9195af1a1dfcac587d3140c31a6b4293627de5adcafc6900add37b6f91' }
+  default { throw 'Unsupported native platform' }
+}
+$temp=Join-Path ([System.IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
+New-Item -ItemType Directory -Path $temp | Out-Null
+try {
+  foreach ($entry in @(@('marea-install.exe',$installerHash),@('cosign.exe',$cosignHash))) {
+    $path=Join-Path $temp $entry[0]
+    Invoke-WebRequest -Uri ('https://github.com/school/marea/releases/download/v0.1.0-preview.1/'+'sha256-'+$entry[1]) -OutFile $path
+    if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry[1]) { throw 'Bootstrap checksum mismatch' }
+  }
+  $arguments=@('preview','install',$Component,'--repository','school/marea','--version','0.1.0-preview.1','--cosign',(Join-Path $temp 'cosign.exe'))
+  if ($Server) { $arguments+=@('--server',$Server) }
+  & (Join-Path $temp 'marea-install.exe') @arguments
+  if ($LASTEXITCODE -ne 0) { throw 'Marea installation failed' }
+} finally { Remove-Item -LiteralPath $temp -Recurse -Force }
+"
+`;
+
+exports[`requires a complete matching matrix and produces content-addressed files and both bootstrap scripts > install.sh 1`] = `
+"#!/bin/sh
+set -eu
+umask 077
+component=\${1:-student}
+if [ "$#" -gt 0 ]; then shift; fi
+case "$(uname -s)" in Darwin) os=darwin ;; Linux) os=linux ;; *) echo 'Unsupported OS' >&2; exit 1 ;; esac
+case "$(uname -m)" in arm64|aarch64) arch=arm64 ;; x86_64|amd64) arch=x64 ;; *) echo 'Unsupported architecture' >&2; exit 1 ;; esac
+case "$component-$os-$arch" in
+  student-darwin-arm64) installerHash='d0ec0ae07e967106ce195fce6ee45b26a22a5351acd137bf8cda9e81677b8d4b'; cosignHash='5d55da39858da0af660e60d0ced267a9a870c95bb928e2979ec677baefe88f96' ;;
+  server-darwin-arm64) installerHash='d0ec0ae07e967106ce195fce6ee45b26a22a5351acd137bf8cda9e81677b8d4b'; cosignHash='5d55da39858da0af660e60d0ced267a9a870c95bb928e2979ec677baefe88f96' ;;
+  student-linux-x64) installerHash='d0ec0ae07e967106ce195fce6ee45b26a22a5351acd137bf8cda9e81677b8d4b'; cosignHash='5d55da39858da0af660e60d0ced267a9a870c95bb928e2979ec677baefe88f96' ;;
+  server-linux-x64) installerHash='d0ec0ae07e967106ce195fce6ee45b26a22a5351acd137bf8cda9e81677b8d4b'; cosignHash='5d55da39858da0af660e60d0ced267a9a870c95bb928e2979ec677baefe88f96' ;;
+  student-linux-arm64) installerHash='d0ec0ae07e967106ce195fce6ee45b26a22a5351acd137bf8cda9e81677b8d4b'; cosignHash='5d55da39858da0af660e60d0ced267a9a870c95bb928e2979ec677baefe88f96' ;;
+  *) echo 'Unsupported native platform' >&2; exit 1 ;;
+esac
+temp=$(mktemp -d)
+trap 'rm -rf "$temp"' EXIT HUP INT TERM
+download() {
+  curl --fail --location --proto '=https' --tlsv1.2 --retry 2 'https://github.com/school/marea/releases/download/v0.1.0-preview.1/'"sha256-$2" -o "$temp/$1"
+  if command -v sha256sum >/dev/null 2>&1; then actual=$(sha256sum "$temp/$1" | cut -d ' ' -f 1); else actual=$(shasum -a 256 "$temp/$1" | cut -d ' ' -f 1); fi
+  [ "$actual" = "$2" ] || { echo 'Bootstrap checksum mismatch' >&2; exit 1; }
+  chmod 700 "$temp/$1"
+}
+download marea-install "$installerHash"
+download cosign "$cosignHash"
+"$temp/marea-install" preview install "$component" --repository 'school/marea' --version '0.1.0-preview.1' --cosign "$temp/cosign" "$@" < /dev/tty
+"
+`;

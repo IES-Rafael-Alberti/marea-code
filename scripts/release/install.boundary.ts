@@ -29,15 +29,22 @@ export interface InstallRequest {
   readonly repository: string;
   readonly ref: string;
   readonly update?: boolean;
+  /** Managed students may return to the school's retained, fully reverified version. */
+  readonly reuseVerifiedStudent?: boolean;
 }
 export interface InstallPorts {
   verifySignature(manifest: string, bundle: string, identity: string): void;
   privateDirectory(path: string): void;
   withOfflineBackup<T>(operation: () => Promise<T>): Promise<T>;
 }
-export function verifySignature(manifest: string, bundle: string, identity: string): void {
+export function verifySignature(
+  manifest: string,
+  bundle: string,
+  identity: string,
+  executable = "cosign",
+): void {
   const result = spawnSync(
-    "cosign",
+    executable,
     [
       "verify-blob",
       "--bundle",
@@ -118,7 +125,17 @@ export async function installRelease(
     const previous = readActivation(root);
     const name = `${manifest.component}-${manifest.version}`;
     const destination = join(root, name);
-    if (existsSync(destination)) throw new Error("Immutable release already exists");
+    const reuse = existsSync(destination);
+    if (reuse) {
+      if (manifest.component !== "student" || request.reuseVerifiedStudent !== true)
+        throw new Error("Immutable release already exists");
+      verifyFiles(destination, manifest);
+      if (
+        readFileSync(join(destination, "manifest.json"), "utf8") !==
+        readFileSync(join(staging, "manifest.json"), "utf8")
+      )
+        throw new Error("Retained release manifest mismatch");
+    }
     for (const file of manifest.files) {
       const output = join(staging, file.path);
       mkdirSync(dirname(output), { recursive: true, mode: 0o700 });
@@ -128,7 +145,7 @@ export async function installRelease(
     verifyFiles(staging, manifest);
     const prepared = staging;
     const activate = (): Promise<void> => {
-      renameSync(prepared, destination);
+      if (!reuse) renameSync(prepared, destination);
       const pointer = join(root, `.active-${randomUUID()}.json`);
       writeFileSync(
         pointer,

@@ -1,0 +1,309 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`creates private configuration with optional Google: false > config/operations.json 1`] = `"{"version":1,"databasePath":"<installation>/marea.sqlite","indexPath":"<installation>/state/deletion-index.sqlite","backupRoot":"<installation>/backups","releaseId":"release:preview","limits":{"fileCount":10000,"fileBytes":256000000,"totalBytes":1000000000},"stateFiles":[]}"`;
+
+exports[`creates private configuration with optional Google: false > config/operator-cli.json 1`] = `"{"version":1,"databasePath":"<installation>/marea.sqlite","operatorPolicyPath":"<installation>/policy.json","coreSourcePath":"<installation>/core","centers":[{"id":"center:main","root":"<installation>/centers/main"}],"teachers":[{"id":"user:teacher","root":"<installation>/teachers/main"}],"personalOwners":[{"classId":"class:main","teacherId":"user:teacher"}]}"`;
+
+exports[`creates private configuration with optional Google: false > config/teacher-host.json 1`] = `"{"version":1,"releaseId":"release:preview","listen":{"hostname":"127.0.0.1","port":18787},"allowedHosts":["school.test"],"allowedOrigins":["https://school.test"],"secureDashboardCookie":true,"serverVersion":"0.1.0-preview.1","statusPath":"<installation>/state/host-status.json","digestKeyPath":"<installation>/state/digest.key","dashboardDistPath":"/programs/server/dashboard","providers":[],"identityProviders":[],"retry":{"delayMs":1000,"maxDelayMs":30000},"evaluationIntervalMs":60000,"shutdownDrainMs":15000}"`;
+
+exports[`creates private configuration with optional Google: false > policy.json 1`] = `"{"version":1,"classes":[]}"`;
+
+exports[`creates private configuration with optional Google: true > config/operations.json 1`] = `"{"version":1,"databasePath":"<installation>/marea.sqlite","indexPath":"<installation>/state/deletion-index.sqlite","backupRoot":"<installation>/backups","releaseId":"release:preview","limits":{"fileCount":10000,"fileBytes":256000000,"totalBytes":1000000000},"stateFiles":[]}"`;
+
+exports[`creates private configuration with optional Google: true > config/operator-cli.json 1`] = `"{"version":1,"databasePath":"<installation>/marea.sqlite","operatorPolicyPath":"<installation>/policy.json","coreSourcePath":"<installation>/core","centers":[{"id":"center:main","root":"<installation>/centers/main"}],"teachers":[{"id":"user:teacher","root":"<installation>/teachers/main"}],"personalOwners":[{"classId":"class:main","teacherId":"user:teacher"}]}"`;
+
+exports[`creates private configuration with optional Google: true > config/teacher-host.json 1`] = `"{"version":1,"releaseId":"release:preview","listen":{"hostname":"127.0.0.1","port":18787},"allowedHosts":["school.test"],"allowedOrigins":["https://school.test"],"secureDashboardCookie":true,"serverVersion":"0.1.0-preview.1","statusPath":"<installation>/state/host-status.json","digestKeyPath":"<installation>/state/digest.key","dashboardDistPath":"/programs/server/dashboard","providers":[],"identityProviders":[{"pluginId":"org.marea.google-workspace","settingsPath":"<installation>/state/google-workspace.json"}],"retry":{"delayMs":1000,"maxDelayMs":30000},"evaluationIntervalMs":60000,"shutdownDrainMs":15000}"`;
+
+exports[`creates private configuration with optional Google: true > policy.json 1`] = `"{"version":1,"classes":[]}"`;
+
+exports[`provisions through offline CLIs without putting a password into arguments or files: darwin > offline provisioning protocol 1`] = `
+[
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "installation",
+      "initialize",
+    ],
+    "binary": "/release/marea-operations",
+    "payload": undefined,
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "installation",
+      "upgrade-profiles",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-operations",
+    "payload": {
+      "name": "before-preview-setup",
+    },
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "center",
+      "create",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-admin",
+    "payload": {
+      "centerId": "center:main",
+      "displayName": "School",
+      "expectedVersion": null,
+    },
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "account",
+      "create",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-admin",
+    "payload": {
+      "centerId": "center:main",
+      "classId": null,
+      "displayName": "Teacher",
+      "expectedVersion": null,
+      "login": "teacher",
+      "role": "teacher",
+      "userId": "user:teacher",
+    },
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "credential",
+      "provision",
+      "--user",
+      "user:teacher",
+      "--expected-version",
+      "revision:created",
+      "--password-stdin",
+    ],
+    "binary": "/release/marea-admin",
+    "payload": undefined,
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "administrator",
+      "grant",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-admin",
+    "payload": {
+      "centerId": "center:main",
+      "expectedVersion": "revision:created",
+      "userId": "user:teacher",
+    },
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "class",
+      "create",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-admin",
+    "payload": {
+      "centerId": "center:main",
+      "classId": "class:main",
+      "displayName": "Class",
+      "expectedVersion": null,
+    },
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "membership",
+      "change",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-admin",
+    "payload": {
+      "centerId": "center:main",
+      "classId": "class:main",
+      "expectedVersion": null,
+      "state": "active",
+      "userId": "user:teacher",
+    },
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "server-settings",
+      "initialize",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-operations",
+    "payload": {
+      "name": "before-server-settings",
+      "userId": "user:teacher",
+    },
+  },
+]
+`;
+
+exports[`provisions through offline CLIs without putting a password into arguments or files: win32 > offline provisioning protocol 1`] = `
+[
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "installation",
+      "initialize",
+    ],
+    "binary": "/release/marea-operations.exe",
+    "payload": undefined,
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "installation",
+      "upgrade-profiles",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-operations.exe",
+    "payload": {
+      "name": "before-preview-setup",
+    },
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "center",
+      "create",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-admin.exe",
+    "payload": {
+      "centerId": "center:main",
+      "displayName": "School",
+      "expectedVersion": null,
+    },
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "account",
+      "create",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-admin.exe",
+    "payload": {
+      "centerId": "center:main",
+      "classId": null,
+      "displayName": "Teacher",
+      "expectedVersion": null,
+      "login": "teacher",
+      "role": "teacher",
+      "userId": "user:teacher",
+    },
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "credential",
+      "provision",
+      "--user",
+      "user:teacher",
+      "--expected-version",
+      "revision:created",
+      "--password-stdin",
+    ],
+    "binary": "/release/marea-admin.exe",
+    "payload": undefined,
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "administrator",
+      "grant",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-admin.exe",
+    "payload": {
+      "centerId": "center:main",
+      "expectedVersion": "revision:created",
+      "userId": "user:teacher",
+    },
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "class",
+      "create",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-admin.exe",
+    "payload": {
+      "centerId": "center:main",
+      "classId": "class:main",
+      "displayName": "Class",
+      "expectedVersion": null,
+    },
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "membership",
+      "change",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-admin.exe",
+    "payload": {
+      "centerId": "center:main",
+      "classId": "class:main",
+      "expectedVersion": null,
+      "state": "active",
+      "userId": "user:teacher",
+    },
+  },
+  {
+    "args": [
+      "--installation",
+      "<installation>",
+      "server-settings",
+      "initialize",
+      "--input",
+      "<input>",
+    ],
+    "binary": "/release/marea-operations.exe",
+    "payload": {
+      "name": "before-server-settings",
+      "userId": "user:teacher",
+    },
+  },
+]
+`;

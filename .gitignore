@@ -5,3 +5,18 @@
 dist/
 node_modules/
 *.tsbuildinfo
+
+# Generated verification and release artifacts.
+coverage/
+reports/
+.stryker-tmp/
+*.bun-build
+
+# Shared distribution and review contracts override old local-only exclusions.
+!CONTRIBUTING.md
+!SECURITY.md
+!.github/
+.github/*
+!.github/workflows/
+!.github/codeql-config.yml
+!.github/dependabot.yml

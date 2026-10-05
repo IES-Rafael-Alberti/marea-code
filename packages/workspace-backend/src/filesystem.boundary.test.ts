@@ -182,23 +182,26 @@ describe("filesystem boundary", () => {
 
     await expect(writeExclusiveFile("temporary", "write", content, 0o640)).resolves.toBeUndefined();
     expect(handle.writeFile).toHaveBeenCalledWith(content);
+    expect(handle.chmod).toHaveBeenCalledWith(0o640);
     expect(handle.sync).toHaveBeenCalledOnce();
     expect(handle.close).toHaveBeenCalledOnce();
   });
 
-  it("closes a temporary file when its write fails", async () => {
-    const handle = writeHandle();
-    vi.mocked(handle.writeFile).mockRejectedValue(errno("EACCES"));
-    openMock.mockResolvedValue(handle as never);
-    unlinkMock.mockResolvedValue(undefined);
-
-    await expect(writeExclusiveFile("temporary", "write", Uint8Array.of(1), 0o600)).rejects.toEqual(
-      new WorkspaceError("filesystem-failure", "write"),
-    );
-    expect(handle.sync).not.toHaveBeenCalled();
-    expect(handle.close).toHaveBeenCalledOnce();
-    expect(unlinkMock).toHaveBeenCalledWith("temporary");
-  });
+  it.each(["writeFile", "chmod"] as const)(
+    "closes and removes its temporary file when %s fails",
+    async (operation) => {
+      const handle = writeHandle();
+      handle[operation].mockRejectedValue(errno("EACCES"));
+      openMock.mockResolvedValue(handle as never);
+      unlinkMock.mockResolvedValue(undefined);
+      await expect(
+        writeExclusiveFile("temporary", "write", Uint8Array.of(1), 0o744),
+      ).rejects.toEqual(new WorkspaceError("filesystem-failure", "write"));
+      expect(handle.sync).not.toHaveBeenCalled();
+      expect(handle.close).toHaveBeenCalledOnce();
+      expect(unlinkMock).toHaveBeenCalledWith("temporary");
+    },
+  );
 
   it("never removes a colliding path that it did not create", async () => {
     openMock.mockRejectedValue(errno("EEXIST"));
@@ -261,6 +264,7 @@ function* iterateChunks<Chunk>(chunks: readonly Chunk[]): Generator<Chunk> {
 function writeHandle() {
   return {
     writeFile: vi.fn().mockResolvedValue(undefined),
+    chmod: vi.fn().mockResolvedValue(undefined),
     sync: vi.fn().mockResolvedValue(undefined),
     close: vi.fn().mockResolvedValue(undefined),
   };

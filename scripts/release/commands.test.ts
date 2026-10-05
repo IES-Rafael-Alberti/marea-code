@@ -2,6 +2,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi, type MockInstance } from "vitest";
 const mocked = vi.hoisted(() => ({
+  previewMain: vi.fn(),
   installRelease: vi.fn(),
   prepareState: vi.fn(),
   privateDirectory: vi.fn(),
@@ -12,7 +13,12 @@ const mocked = vi.hoisted(() => ({
 }));
 vi.mock("./install.boundary.js", () => mocked);
 vi.mock("./offline-backup.boundary.js", () => mocked);
+vi.mock("./preview-manager.boundary.js", () => mocked);
 import { installerMain } from "./installer-entry.js";
+it("routes managed preview commands without changing the offline installer contract", async () => {
+  await installerMain(["preview", "status", "student"]);
+  expect(mocked.previewMain).toHaveBeenCalledWith(["status", "student"]);
+});
 let stdout: MockInstance<typeof process.stdout.write>;
 beforeEach(() => {
   vi.clearAllMocks();

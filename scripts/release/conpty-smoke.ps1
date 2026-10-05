@@ -1,4 +1,4 @@
-param([string]$Executable, [string]$TuiExecutable, [string]$ServerExecutable, [string]$Installation)
+param([string]$Executable, [string]$TuiExecutable, [string]$ServerExecutable, [string]$Installation, [ValidatePattern('^[A-Za-z0-9._:-]+$')][string]$ReleaseId = 'release:host')
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'ConPTY smoke requires native Windows PowerShell 7' }
 if ($Executable) { $Executable = (Resolve-Path -LiteralPath $Executable).Path }
@@ -101,5 +101,5 @@ Write-Output 'ConPTY native CLI/resize and requested OpenTUI quit/Ctrl+C-copy/re
 if ($ServerExecutable) {
   $ServerExecutable = (Resolve-Path -LiteralPath $ServerExecutable).Path
   $Installation = (Resolve-Path -LiteralPath $Installation).Path
-  [MareaConPty]::Run($ServerExecutable, "server", "--installation `"$Installation`" --release release:host")
+  [MareaConPty]::Run($ServerExecutable, "server", "--installation `"$Installation`" --release $ReleaseId")
 }

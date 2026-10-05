@@ -1,0 +1,124 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`installs a student, verifies through the supplied bootstrap tool and writes launchers only after activation > student installation instructions 1`] = `
+[
+  [
+    "La ruta de Marea se ha añadido a tu perfil. Abre una terminal nueva para usar el nombre corto.
+",
+  ],
+  [
+    "Para usar el nombre corto en esta terminal: export PATH='/private/bin':"$PATH"
+",
+  ],
+  [
+    "Instalado: /private/bin/marea.
+",
+  ],
+]
+`;
+
+exports[`installs per-user Windows launchers and PATH without a shell profile > Windows launcher files 1`] = `
+[
+  [
+    "/private/bin/marea.ps1",
+    "$ErrorActionPreference = 'Stop'
+$root = '/private'
+$active = (Get-Content -LiteralPath (Join-Path $root 'programs/active.json') -Raw | ConvertFrom-Json).current
+if ($active -cnotmatch '^student-[a-zA-Z0-9.-]+$') { throw 'Invalid activation' }
+& (Join-Path $root "programs/$active/marea-install.exe") preview run student --root $root -- @args
+exit $LASTEXITCODE
+",
+    {
+      "flag": "wx",
+      "mode": 384,
+    },
+  ],
+  [
+    "/private/bin/marea.cmd",
+    "@echo off
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0marea.ps1" %*
+",
+    {
+      "flag": "wx",
+      "mode": 384,
+    },
+  ],
+  [
+    "/private/preview.json",
+    "{"format":1,"repository":"school/marea","component":"student","channel":"preview","serverUrl":"https://school.test"}",
+    {
+      "flag": "wx",
+      "mode": 384,
+    },
+  ],
+]
+`;
+
+exports[`installs per-user Windows launchers and PATH without a shell profile > Windows per-user PATH command 1`] = `
+[
+  [
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-Command",
+      "$p=[Environment]::GetEnvironmentVariable('Path','User'); [Environment]::SetEnvironmentVariable('Path',('/private/bin'+';'+$p),'User')",
+    ],
+    {
+      "encoding": "utf8",
+      "input": undefined,
+      "timeout": 120000,
+    },
+  ],
+]
+`;
+
+exports[`keeps offline diagnostics useful and checks server recovery after a failed update > offline and failed update diagnostics 1`] = `
+[
+  [
+    "No se ha podido comprobar la actualización; se conserva la versión instalada.
+",
+  ],
+  [
+    "No se ha podido actualizar; se conserva la instalación verificada.
+",
+  ],
+]
+`;
+
+exports[`provisions a new teacher installation and binds the offline update callback to its data directory > server installation instructions 1`] = `
+[
+  [
+    "Abre https://school.test/dashboard/ y entra como teacher. Configura el proveedor y modelo en Ajustes → Servidor y guarda la configuración docente de la clase.
+",
+  ],
+  [
+    "Para usar el nombre corto en esta terminal: export PATH='/private/bin':"$PATH"
+",
+  ],
+  [
+    "Instalado: /private/bin/marea-teacher.
+",
+  ],
+]
+`;
+
+exports[`returns help, actual version and status without network discovery > managed help and status 1`] = `
+[
+  [
+    "Marea preview: --version, --status, --update. Run without these options to start.
+",
+  ],
+  [
+    "Marea preview: --version, --status, --update. Run without these options to start.
+",
+  ],
+  [
+    "0.1.0-preview.1
+",
+  ],
+  [
+    "{"version":"0.1.0-preview.1","format":1,"repository":"school/marea","component":"student","channel":"preview","serverUrl":"https://school.test"}
+",
+  ],
+]
+`;

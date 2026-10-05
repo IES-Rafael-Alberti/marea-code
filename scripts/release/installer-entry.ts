@@ -12,6 +12,10 @@ import {
 import { withOfflineBackup } from "./offline-backup.boundary.js";
 
 export async function installerMain(argv: readonly string[]): Promise<void> {
+  if (argv[0] === "preview") {
+    const { previewMain } = await import("./preview-manager.boundary.js");
+    return previewMain(argv.slice(1));
+  }
   const [action, rawComponent, ...rest] = argv;
   const selected = component.parse(rawComponent);
   const flags = new Map<string, string>();

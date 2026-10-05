@@ -1,0 +1,5 @@
+name: Marea CodeQL configuration
+
+paths-ignore:
+  - references/**
+  - docs/**

@@ -49,7 +49,9 @@ describe("guarded workspace operations", () => {
 
   it("replaces a regular file atomically and preserves its permission bits", async () => {
     const filePath = join(rootPath, "script.sh");
-    await writeFile(filePath, "old\n", { mode: 0o744 });
+    await writeFile(filePath, "old\n");
+    // Establish the fixture independently of the process umask.
+    await chmod(filePath, 0o744);
 
     await workspace.writeText("/script.sh", "new\n");
 

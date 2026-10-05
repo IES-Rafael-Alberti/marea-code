@@ -97,6 +97,8 @@ export async function writeExclusiveFile(
     await callFilesystem(operation, async () => {
       try {
         await handle.writeFile(content);
+        // Creation applies umask; replacement must preserve the requested permission bits.
+        await handle.chmod(mode);
         await handle.sync();
       } finally {
         await handle.close();

@@ -14,6 +14,7 @@ vi.mock("./workspace.boundary.js", () => mocks);
 vi.mock("node:fs", () => mocks);
 vi.mock("node:child_process", () => mocks);
 vi.mock("./files.boundary.js", () => mocks);
+vi.mock("./notices.boundary.js", () => ({ collectDependencyNotices: vi.fn() }));
 const platform = Object.getOwnPropertyDescriptor(process, "platform");
 const arch = Object.getOwnPropertyDescriptor(process, "arch");
 assert.ok(platform && arch);

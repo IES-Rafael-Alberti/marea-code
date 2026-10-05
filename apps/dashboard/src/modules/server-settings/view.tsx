@@ -10,6 +10,7 @@ import {
 import { ProviderConnections } from "./provider-connections.js";
 import { ModelSettings } from "./model-settings.js";
 import { serverSettingsMessages } from "./messages.js";
+import { PreviewInstall } from "./preview-install.js";
 import "./settings.css";
 
 export function ServerSettingsView({
@@ -157,6 +158,7 @@ export function ServerSettingsView({
           />
         </form>
       )}
+      {state?.administrator === true && <PreviewInstall locale={locale} />}
     </section>
   );
 }

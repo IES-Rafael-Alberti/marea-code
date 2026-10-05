@@ -290,6 +290,16 @@ it.each([undefined, "Previous guidance"])("edits adaptive learning notes (%s)", 
       edit={edit}
     />,
   );
+  expect(
+    renderToStaticMarkup(
+      <EvaluationEditor
+        draft={draft}
+        disabled={false}
+        messages={evaluationMessages("en")}
+        edit={edit}
+      />,
+    ),
+  ).toContain(" · 2/4");
   const notes = elements.filter((element) => element.type === "textarea")[3];
   expect(notes?.props.value).toBe(learningNote ?? "");
   notes?.props.onChange?.({ currentTarget: { value: "Practice independently" } });
