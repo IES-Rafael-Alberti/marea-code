@@ -105,6 +105,11 @@ jobs:
           if ((bun -e 'console.log(process.arch)') -ne $env:EXPECTED_ARCH) { throw 'Emulated runtime is not native validation' }
           bun install --frozen-lockfile --ignore-scripts
           if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed' }
+      - name: Set up pinned native Go toolchain
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+          cache: false
       - name: Build pinned inventory and signature tools through Go checksum database
         run: |
           go install github.com/anchore/syft/cmd/syft@v1.33.0

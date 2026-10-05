@@ -15,7 +15,9 @@ permissions:
 jobs:
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request'
+    # GitHub dependency review requires Code Security for private repositories.
+    # The Bun audit below runs for both private and public repositories.
+    if: github.event_name == 'pull_request' && github.event.repository.private == false
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -75,3 +77,15 @@ jobs:
         uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
         with:
           category: /language:${{ matrix.language }}
+          output: reports/codeql
+          upload: ${{ github.event.repository.private && 'never' || 'always' }}
+          upload-database: ${{ !github.event.repository.private }}
+
+      - name: Retain analysis for review, including private repositories
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: codeql-${{ matrix.language }}
+          path: reports/codeql/*.sarif
+          retention-days: 7
+          if-no-files-found: warn
