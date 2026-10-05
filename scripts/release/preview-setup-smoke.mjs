@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import console from "node:console";
 import { spawnSync } from "node:child_process";
 import {
   mkdtempSync,
@@ -12,7 +13,15 @@ import process from "node:process";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { securePrivatePath } from "@marea/private-filesystem";
+import { securePrivatePath, inspectPrivatePath } from "@marea/private-filesystem";
+import {
+  readOperatorCliConfig,
+  createOperatorCliApplication,
+} from "../../apps/teacher-server/src/platform/operator-cli/composition.ts";
+import {
+  currentUid,
+  privateDescendantKind,
+} from "../../apps/teacher-server/src/platform/operator-cli/private-path.ts";
 import { scaffoldServer, provisionServer } from "./preview-setup.boundary.ts";
 import {
   activatePreviewServer,
@@ -61,10 +70,49 @@ function privateDashboard(directory) {
     else securePrivatePath(path, 0o600);
   }
 }
+function diagnoseSyntheticSetup() {
+  // Only this disposable fixture's paths and failures are printed, never a user's installation.
+  const config = JSON.parse(readFileSync(join(root, "config/operator-cli.json"), "utf8"));
+  for (const path of [
+    join(root, "config/operator-cli.json"),
+    config.databasePath,
+    config.operatorPolicyPath,
+    config.coreSourcePath,
+    ...config.centers.map((owner) => owner.root),
+    ...config.teachers.map((owner) => owner.root),
+  ]) {
+    try {
+      console.error("Synthetic setup path:", {
+        path,
+        canonical: realpathSync(path),
+        kind: inspectPrivatePath(path),
+        descendant: privateDescendantKind(root, path, currentUid()),
+      });
+    } catch (error) {
+      console.error("Synthetic path inspection:", error);
+    }
+  }
+  const owned = acquireInstallation(root);
+  try {
+    const checked = readOperatorCliConfig(root);
+    console.error("Synthetic operator configuration accepted.");
+    createOperatorCliApplication(owned.capability, checked).close();
+    console.error("Synthetic operator composition accepted.");
+  } catch (error) {
+    console.error("Synthetic operator composition:", error);
+  } finally {
+    owned.release();
+  }
+}
 try {
   privateDashboard(join(release, "dashboard"));
   scaffoldServer(root, release, "0.1.0-preview.1", answers);
-  provisionServer(root, release, answers, password, run);
+  try {
+    provisionServer(root, release, answers, password, run);
+  } catch (error) {
+    diagnoseSyntheticSetup();
+    throw error;
+  }
   assert.ok(
     readFileSync(join(root, "config/server-settings.json"), "utf8").includes("user:teacher"),
   );
