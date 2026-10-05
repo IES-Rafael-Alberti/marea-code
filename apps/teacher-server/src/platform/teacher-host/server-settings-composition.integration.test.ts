@@ -90,6 +90,13 @@ it.each([false, true])(
     if (educational)
       for (const migration of createEducationalMigrationCatalog().slice(8))
         for (const sql of migration.statements) database.executeScript(sql);
+    const map = {
+      providerId: "synthetic-provider",
+      model: "synthetic-map-model",
+      budget: USAGE_POLICY,
+      inputTokenCeiling: USAGE_POLICY.maxInputTokens,
+    };
+    const initialMap = { ...map, model: "saved-map-model" };
     let settings: ServerSettings = {
       version: 1,
       revision: 0,
@@ -97,7 +104,7 @@ it.each([false, true])(
       connections: { "synthetic-provider": { apiKey: "synthetic-managed-key" } },
       legacyRoutes: [],
       route: null,
-      education: {},
+      education: { map: initialMap },
       useCommonRoute: false,
     };
     const host = await composedHost(database, new Map(), undefined, {
@@ -107,12 +114,9 @@ it.each([false, true])(
       },
     });
     try {
-      const map = {
-        providerId: "synthetic-provider",
-        model: "synthetic-map-model",
-        budget: USAGE_POLICY,
-        inputTokenCeiling: USAGE_POLICY.maxInputTokens,
-      };
+      expect(host.composed.services.educationalInsights?.map.route).toEqual(
+        educational ? initialMap : undefined,
+      );
       const save = {
         operation: "save",
         expectedRevision: 0,

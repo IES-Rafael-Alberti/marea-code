@@ -340,3 +340,21 @@ it.each([false, true])(
     if (!educational) f.database.close();
   },
 );
+
+it("stops every composed background worker before releasing its database", async () => {
+  vi.useFakeTimers();
+  const database = seededDatabase();
+  for (const migration of createEducationalMigrationCatalog().slice(8))
+    for (const sql of migration.statements) database.executeScript(sql);
+  const host = await composedHost(database);
+  try {
+    host.composed.evaluations.start();
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    await host.composed.evaluations.stop();
+    expect(vi.getTimerCount()).toBe(0);
+  } finally {
+    await host.composed.evaluations.stop();
+    database.close();
+    vi.useRealTimers();
+  }
+});

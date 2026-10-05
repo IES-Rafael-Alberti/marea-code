@@ -120,13 +120,19 @@ it("binds the actual generated release, strict settings and only implemented per
     ).toBe(false);
 });
 
-it.each([false, true])(
-  "composes production profiles only on upgraded storage (%s), retaining preview and legacy access",
-  async (upgraded) => {
+it.each([9, 10, 11] as const)(
+  "composes production profiles on schema %s, retaining preview and legacy access",
+  async (version) => {
+    const upgraded = version >= 10;
     const f = teacherHostInstallation();
     const storage = initializeSqliteStorage({
       databasePath: f.databasePath,
-      schema: upgraded ? "dashboard-profiles" : "retention-audit",
+      schema:
+        version === 11
+          ? "educational-insights"
+          : upgraded
+            ? "dashboard-profiles"
+            : "retention-audit",
     });
     storage.database.execute(
       "INSERT INTO marea_classes (id, seed_key, display_name) VALUES ('class:ready', 'ready', 'Class Ready')",
@@ -170,7 +176,7 @@ it.each([false, true])(
         cookie,
       );
       expect(read.status).toBe(upgraded ? 200 : 503);
-      expect(inspectSqliteSchemaVersion({ databasePath: f.databasePath })).toBe(upgraded ? 10 : 9);
+      expect(inspectSqliteSchemaVersion({ databasePath: f.databasePath })).toBe(version);
       if (upgraded) {
         const release = validateDashboardProfileRelease(bundledDashboardProfileRelease());
         const state = release.schemas.state.parse(await read.json());
@@ -179,11 +185,12 @@ it.each([false, true])(
           modules: release.defaults.modules.filter(
             (module) =>
               module.enabled &&
-              ![
-                "org.marea.module.map",
-                "org.marea.module.progress",
-                "org.marea.module.reports",
-              ].includes(module.moduleId),
+              (version === 11 ||
+                ![
+                  "org.marea.module.map",
+                  "org.marea.module.progress",
+                  "org.marea.module.reports",
+                ].includes(module.moduleId)),
           ),
         });
         const value = { themeId: "org.marea.theme.high-contrast", modules: [] };
@@ -210,7 +217,9 @@ it.each([false, true])(
         );
         expect(release.catalogSchema.parse(await catalog.json()).modules).toEqual(
           release.modules.filter(
-            (module) => !module.requiredServerCapabilities.includes("educational-insights/v1"),
+            (module) =>
+              version === 11 ||
+              !module.requiredServerCapabilities.includes("educational-insights/v1"),
           ),
         );
       } else {
