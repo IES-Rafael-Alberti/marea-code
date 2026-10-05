@@ -78,7 +78,7 @@ New-Item -ItemType Directory -Path $temp | Out-Null
 try {
   foreach ($entry in @(@('marea-install.exe',$installerHash),@('cosign.exe',$cosignHash))) {
     $path=Join-Path $temp $entry[0]
-    Invoke-WebRequest -Uri (${powershellLiteral(base)}+'sha256-'+$entry[1]) -OutFile $path
+    Invoke-WebRequest -UseBasicParsing -Uri (${powershellLiteral(base)}+'sha256-'+$entry[1]) -OutFile $path
     if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry[1]) { throw 'Bootstrap checksum mismatch' }
   }
   $arguments=@('preview','install',$Component,'--repository',${powershellLiteral(repository)},'--version',${powershellLiteral(version)},'--cosign',(Join-Path $temp 'cosign.exe'))

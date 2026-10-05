@@ -15,6 +15,7 @@ exec "$root/programs/$active/marea-install" preview run ${selected} --root "$roo
 
 export function windowsLauncher(root: string, selected: string): string {
   return `$ErrorActionPreference = 'Stop'
+$env:PSModulePath = [IO.Path]::Combine($PSHOME, 'Modules')
 $root = ${powershellLiteral(root)}
 $active = (Get-Content -LiteralPath (Join-Path $root 'programs/active.json') -Raw | ConvertFrom-Json).current
 if ($active -cnotmatch '^${selected}-[a-zA-Z0-9.-]+$') { throw 'Invalid activation' }

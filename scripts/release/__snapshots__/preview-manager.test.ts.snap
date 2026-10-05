@@ -22,6 +22,7 @@ exports[`installs per-user Windows launchers and PATH without a shell profile > 
   [
     "/private/bin/marea.ps1",
     "$ErrorActionPreference = 'Stop'
+$env:PSModulePath = [IO.Path]::Combine($PSHOME, 'Modules')
 $root = '/private'
 $active = (Get-Content -LiteralPath (Join-Path $root 'programs/active.json') -Raw | ConvertFrom-Json).current
 if ($active -cnotmatch '^student-[a-zA-Z0-9.-]+$') { throw 'Invalid activation' }

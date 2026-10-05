@@ -9,8 +9,9 @@ import { WINDOWS_ACL_SCRIPT } from "../src/windows-acl-script.js";
 
 const root = mkdtempSync(join(tmpdir(), "marea-native-privacy-"));
 const checks: string[] = [];
+let failed = false;
 function powershell(source: string, path: string): void {
-  const script = `$ErrorActionPreference='Stop'; $path=[Console]::In.ReadToEnd(); ${source}`;
+  const script = `$ErrorActionPreference='Stop'; $ProgressPreference='SilentlyContinue'; $env:PSModulePath=[IO.Path]::Combine($PSHOME,'Modules'); $path=[Console]::In.ReadToEnd(); ${source}`;
   const result = spawnSync(
     join(
       process.env.SystemRoot ?? "C:\\Windows",
@@ -119,6 +120,7 @@ try {
     JSON.stringify({ platform: process.platform, arch: process.arch, checks, status: "passed" }),
   );
 } catch (error) {
+  failed = true;
   console.error("Completed native privacy checks:", checks);
   if (process.platform === "win32") {
     // Diagnostics are restricted to this synthetic, disposable fixture.
@@ -153,7 +155,8 @@ try {
   try {
     securePrivatePath(root, 0o700);
     rmSync(root, { recursive: true, force: true });
-  } catch {
+  } catch (error) {
     // Preserve the original acceptance failure; the CI runner is disposable.
+    if (!failed) throw error;
   }
 }

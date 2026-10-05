@@ -1,6 +1,9 @@
 /** Paths arrive as JSON on stdin, never as PowerShell source. No sensitive output. */
 export const WINDOWS_ACL_SCRIPT = String.raw`
 $ErrorActionPreference = 'Stop'
+$ProgressPreference = 'SilentlyContinue'
+# A Bun child of PowerShell 7 can inherit module paths incompatible with Windows PowerShell.
+$env:PSModulePath = [IO.Path]::Combine($PSHOME, 'Modules')
 try {
   $request = [Console]::In.ReadToEnd() | ConvertFrom-Json
   $path = [string]$request.path
