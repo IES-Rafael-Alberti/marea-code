@@ -41,6 +41,8 @@ public static class MareaInstalledConPty {
    list=Marshal.AllocHGlobal(size); Check(InitializeProcThreadAttributeList(list,1,0,ref size));
    Check(UpdateProcThreadAttribute(list,0,(IntPtr)0x20016,pc,(IntPtr)IntPtr.Size,IntPtr.Zero,IntPtr.Zero));
    Extended startup=new Extended(); startup.startup.cb=Marshal.SizeOf(typeof(Extended)); startup.attributes=list;
+   // The parent redirects stdout; null standard handles let ConPTY supply the console.
+   startup.startup.flags=0x100; // STARTF_USESTDHANDLES
    Check(CreateProcess(exe,new StringBuilder("\""+exe+"\" --lang en"),IntPtr.Zero,IntPtr.Zero,false,0x80000,IntPtr.Zero,Environment.CurrentDirectory,ref startup,out process));
    Console.Error.WriteLine("MAREA_CONPTY_PID="+process.pid); Console.Error.Flush();
    CloseHandle(ir); ir=IntPtr.Zero; CloseHandle(ow); ow=IntPtr.Zero;
