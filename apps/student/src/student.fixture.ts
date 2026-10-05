@@ -13,7 +13,6 @@ import {
   EnrollStudentRequestSchema,
   EventIdSchema,
   IdempotencyKeySchema,
-  InvitationCodeSchema,
   OpenRunRequestSchema,
   ProtocolVersionSchema,
   RequestIdSchema,
@@ -27,8 +26,9 @@ import {
   type CapabilitiesRequest,
   type CapabilitiesResponse,
   type CanonicalRunEvent,
+  type ClassBootstrapOutcome,
   type ClassBootstrapRequest,
-  type ClassBootstrapResponse,
+  type ClassSelectRequest,
   type CloseRunRequest,
   type CloseRunResponse,
   type CredentialLoginRequest,
@@ -47,18 +47,16 @@ import type {
   AgentApprovalTurn,
   AgentMessageTurn,
   AgentRuntime,
-  ApprovalDecision,
-  ApprovalPrompt,
-  AuthenticationReason,
+  AuthenticationResult,
+  ClassPreferenceStore,
   Clock,
   CredentialStore,
+  ExternalAuthorization,
   GuardedWorkspaceWriter,
   IdSource,
-  StudentInterface,
   StudentServer,
   StudentState,
   StudentStateStore,
-  StudentViewEvent,
   WorkspaceWrite,
 } from "./contracts.js";
 import { CURRENT_STUDENT_STATE_VERSION } from "./contracts.js";
@@ -70,7 +68,6 @@ export { DIGEST } from "./student-snapshot.fixture.js";
 
 export const SESSION_TOKEN = SessionTokenSchema.parse("s".repeat(32));
 export const RUN_TOKEN = RunTokenSchema.parse("r".repeat(32));
-const INVITATION = InvitationCodeSchema.parse("invite-code-1234");
 export const APPROVAL_ID = ApprovalIdSchema.parse("approval:1");
 
 export class MemoryCredentialStore implements CredentialStore {
@@ -135,47 +132,9 @@ export class FixtureIds implements IdSource {
 
 export const FIXTURE_CLOCK: Clock = Object.freeze({ now: () => "2026-09-03T10:00:00.000Z" });
 
-export class FixtureInterface implements StudentInterface {
-  readonly authenticationReasons: AuthenticationReason[] = [];
-  readonly events: StudentViewEvent[] = [];
-  readonly prompts: {
-    readonly approvalId: string;
-    readonly attemptId: string;
-    readonly messageId: string;
-    readonly path: string;
-    readonly summary: string;
-  }[] = [];
-  approvals = 0;
-  authKind: "enroll" | "login" = "enroll";
-  decision: ApprovalDecision = "approved";
+import { FixtureInterface } from "./student-interface.fixture.js";
 
-  async authenticate(reason: AuthenticationReason) {
-    this.authenticationReasons.push(reason);
-    return this.authKind === "enroll"
-      ? {
-          kind: "enroll" as const,
-          invitationCode: INVITATION,
-          displayName: "Student One",
-          login: "student.one",
-          password: "strong-password",
-        }
-      : {
-          kind: "login" as const,
-          login: "student.one",
-          password: "strong-password",
-        };
-  }
-
-  async confirmWrite(prompt: ApprovalPrompt): Promise<import("./contracts.js").ApprovalReply> {
-    this.approvals += 1;
-    this.prompts.push(prompt);
-    return this.decision;
-  }
-
-  present(event: StudentViewEvent): void {
-    this.events.push(event);
-  }
-}
+export { FixtureInterface };
 
 export class FixtureServer implements StudentServer {
   readSkill(): ReturnType<StudentServer["readSkill"]> {
@@ -220,13 +179,19 @@ export class FixtureServer implements StudentServer {
     };
   }
 
+  extraCapabilities: string[] = [];
+
+  selectClass(
+    _token: SessionToken,
+    _request: ClassSelectRequest,
+  ): ReturnType<StudentServer["selectClass"]> {
+    return Promise.reject(new Error("No class selection in this fixture."));
+  }
+
   async bootstrap(
     _token: SessionToken,
     request: ClassBootstrapRequest,
-  ): Promise<
-    | { readonly authenticated: true; readonly value: ClassBootstrapResponse }
-    | { readonly authenticated: false }
-  > {
+  ): Promise<AuthenticationResult<ClassBootstrapOutcome>> {
     ClassBootstrapRequestSchema.parse(request);
     this.bootstrapCalls += 1;
     if (this.rejectStored) {
@@ -269,6 +234,7 @@ export class FixtureServer implements StudentServer {
         "marea.runs.exact-resume",
         "marea.runs.authenticated-close",
         "marea.runs.lease-renewal",
+        ...this.extraCapabilities,
       ].map((value) => ServerCapabilitySchema.parse(value)),
     };
   }
@@ -455,6 +421,8 @@ export class FixtureWorkspace implements GuardedWorkspaceWriter {
 export function createFixtureController(
   options: {
     readonly agent?: FixtureAgent;
+    readonly classPreference?: ClassPreferenceStore;
+    readonly externalAuthorization?: ExternalAuthorization;
     readonly operations?: OperationExecutor;
     readonly evidence?: ProjectEvidence;
     readonly liveProgress?: boolean;
@@ -479,6 +447,12 @@ export function createFixtureController(
       ...(options.operations === undefined ? {} : { operations: options.operations }),
       ...(options.evidence === undefined ? {} : { evidence: options.evidence }),
       ...(options.liveProgress === undefined ? {} : { liveProgress: options.liveProgress }),
+      ...(options.classPreference === undefined
+        ? {}
+        : { classPreference: options.classPreference }),
+      ...(options.externalAuthorization === undefined
+        ? {}
+        : { externalAuthorization: options.externalAuthorization }),
       agent,
       clientVersion: "1.0.0",
       clock: FIXTURE_CLOCK,

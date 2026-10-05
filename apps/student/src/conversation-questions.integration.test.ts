@@ -24,7 +24,7 @@ function conversation() {
 it("passes questions through both adapters and rejects unsupported or unbound sessions", async () => {
   const controller = conversation();
   const port = createBindableConversationPort();
-  const authentication = { authenticate: vi.fn() };
+  const authentication = { authenticate: vi.fn(), chooseClass: vi.fn() };
   expect(() => port.requestQuestions?.(request)).toThrow("not ready");
   const adapted = adaptConversationTuiSession(controller);
   port.bind(adapted);

@@ -183,6 +183,7 @@ describe("student composition", () => {
           serverUrl: "https://teacher.example",
           stateDirectory: join(root, "observed-state"),
           studentInterface: new FixtureInterface(),
+          externalAuthorization: { authorize: () => Promise.reject(new Error("unused")) },
         },
         (checkpoint) => {
           closures.push(checkpoint.kind);

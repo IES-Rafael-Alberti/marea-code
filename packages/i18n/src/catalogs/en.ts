@@ -13,7 +13,13 @@ const englishCatalog = {
   "errors.request.invalid": "The request could not be understood.",
   "errors.run.unavailable": "The session is no longer available.",
   "errors.server.error": "The teacher server could not complete the request.",
+  "student.auth.class": "Which class are you working in?",
   "student.auth.display-name-label": "Name shown to your teacher",
+  "student.auth.external": "Sign in with {{provider}}",
+  "student.auth.external-complete": "You can close this window and return to Marea.",
+  "student.auth.external-failed":
+    "Sign-in could not be completed. Close this window and try again from Marea.",
+  "student.auth.external-open": "Open this address in your browser to continue: {{url}}",
   "student.auth.enroll": "Create my account with an invitation",
   "student.auth.invitation-label": "Invitation code",
   "student.auth.login": "Sign in",

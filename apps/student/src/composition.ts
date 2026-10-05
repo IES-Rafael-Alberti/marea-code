@@ -15,11 +15,13 @@ import { openGuardedWorkspace } from "@marea/workspace-backend";
 
 import type {
   AgentRuntime,
+  ExternalAuthorization,
   GuardedWorkspaceWriter,
   StudentInterface,
   StudentServer,
 } from "./contracts.js";
 import { createFileStudentStores } from "./filesystem.boundary.js";
+import { createFileClassPreferenceStore } from "./class-preference.boundary.js";
 import { createFileEffectLedger } from "./effect-ledger.boundary.js";
 import { createDeepAgentsStudentRuntime } from "./deepagents-runtime.boundary.js";
 import { createHttpModelGateway, createHttpStudentServer } from "./http-client.boundary.js";
@@ -42,6 +44,7 @@ export interface StudentCompositionOptions {
 
 export interface ProductionStudentCompositionOptions {
   readonly clientVersion: string;
+  readonly externalAuthorization?: ExternalAuthorization;
   readonly projectRoot: string;
   readonly serverUrl: string;
   readonly stateDirectory: string;
@@ -80,6 +83,7 @@ export async function createStudentApplication(
   const ids = createSystemIdSource();
   return new StudentSessionController({
     agent: options.agent,
+    classPreference: createFileClassPreferenceStore(options.stateDirectory),
     clientVersion,
     clock,
     credentials: stores.credentials,
@@ -150,7 +154,9 @@ export async function createProductionStudentApplication(
   const controller = new StudentSessionController({
     liveProgress: true,
     agent,
+    classPreference: createFileClassPreferenceStore(stateDirectory),
     clientVersion,
+    externalAuthorization: options.externalAuthorization,
     clock,
     credentials: stores.credentials,
     ids,

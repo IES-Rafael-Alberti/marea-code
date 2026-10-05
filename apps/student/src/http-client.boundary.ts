@@ -2,11 +2,17 @@ import { StudentHttpError } from "./http-error.js";
 export { StudentHttpError } from "./http-error.js";
 import { boundedEventDelivery } from "./event-delivery.js";
 import {
+  SIGN_IN_HTTP_PATHS,
+  authenticatedJson,
+  signInMethods,
+  type SignInHttpPaths,
+} from "./http-sign-in.boundary.js";
+import {
   RequestIdSchema,
   AppendRunEventsResponseSchema,
   MAX_RUN_EVENTS_REQUEST_BYTES,
   CapabilitiesResponseSchema,
-  ClassBootstrapResponseSchema,
+  ClassBootstrapOutcomeSchema,
   CloseRunResponseSchema,
   CredentialLoginResponseSchema,
   EnrollStudentResponseSchema,
@@ -21,8 +27,8 @@ import {
   type AppendRunEventsRequest,
   type CapabilitiesRequest,
   type CapabilitiesResponse,
+  type ClassBootstrapOutcome,
   type ClassBootstrapRequest,
-  type ClassBootstrapResponse,
   type CloseRunRequest,
   type CloseRunResponse,
   type CredentialLoginRequest,
@@ -53,6 +59,7 @@ const encoder = new TextEncoder();
 
 export const STUDENT_HTTP_PATHS = Object.freeze({
   appendEvents: "/v1/runs/events",
+  ...SIGN_IN_HTTP_PATHS,
   bootstrap: "/v1/classes/bootstrap",
   capabilities: "/v1/capabilities",
   closeRun: "/v1/runs/close",
@@ -64,7 +71,7 @@ export const STUDENT_HTTP_PATHS = Object.freeze({
   readSkill: "/v1/runs/skills/read",
 });
 
-export interface StudentHttpPaths {
+export interface StudentHttpPaths extends SignInHttpPaths {
   readonly appendEvents: string;
   readonly bootstrap: string;
   readonly capabilities: string;
@@ -425,28 +432,20 @@ export function createHttpStudentServer(options: StudentHttpOptions): StudentSer
         MAX_JSON_RESPONSE_BYTES,
         MAX_RUN_EVENTS_REQUEST_BYTES,
       ),
-    async bootstrap(
+    bootstrap: (
       token: SessionToken,
       request: ClassBootstrapRequest,
-    ): Promise<AuthenticationResult<ClassBootstrapResponse>> {
-      try {
-        return {
-          authenticated: true,
-          value: await client.json(
-            paths.bootstrap,
-            request.requestId,
-            request,
-            ClassBootstrapResponseSchema,
-            token,
-          ),
-        };
-      } catch (error: unknown) {
-        if (error instanceof StudentHttpError && error.code === "auth.invalid") {
-          return { authenticated: false };
-        }
-        throw error;
-      }
-    },
+    ): Promise<AuthenticationResult<ClassBootstrapOutcome>> =>
+      authenticatedJson(() =>
+        client.json(
+          paths.bootstrap,
+          request.requestId,
+          request,
+          ClassBootstrapOutcomeSchema,
+          token,
+        ),
+      ),
+    ...signInMethods(client, paths),
     capabilities: (request: CapabilitiesRequest): Promise<CapabilitiesResponse> =>
       client.json(paths.capabilities, request.requestId, request, CapabilitiesResponseSchema),
     closeRun: (token: RunToken, request: CloseRunRequest): Promise<CloseRunResponse> =>

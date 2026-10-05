@@ -21,6 +21,7 @@ import {
   type ConversationTuiSession,
 } from "@marea/student-tui";
 
+import { createLoopbackAuthorization } from "./external-authorization.boundary.js";
 import {
   createAuthenticationPrompt,
   createInquirerAuthenticationQuestions,
@@ -236,6 +237,7 @@ async function runStudent(
   );
   const application = await runtime.createApplication({
     clientVersion: MAREA_CLIENT_VERSION,
+    externalAuthorization: createLoopbackAuthorization({ translator, output: options.output }),
     projectRoot,
     serverUrl,
     stateDirectory,

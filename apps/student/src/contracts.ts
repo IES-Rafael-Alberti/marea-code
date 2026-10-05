@@ -13,8 +13,18 @@ import type {
   CapabilitiesResponse,
   CanonicalRunEvent,
   ClientSessionId,
+  ClassBootstrapOutcome,
   ClassBootstrapRequest,
   ClassBootstrapResponse,
+  ClassSelectRequest,
+  ExternalAuthBeginRequest,
+  ExternalAuthBeginResponse,
+  ExternalAuthCompleteRequest,
+  ExternalAuthCompleteResponse,
+  ExternalAuthProvider,
+  ExternalAuthProvidersRequest,
+  ExternalAuthProvidersResponse,
+  IdentityProviderId,
   CloseRunRequest,
   CloseRunResponse,
   CredentialLoginRequest,
@@ -70,9 +80,45 @@ export type AuthenticationInput =
       readonly kind: "login";
       readonly login: string;
       readonly password: string;
+    }
+  | {
+      readonly kind: "external";
+      readonly providerId: IdentityProviderId;
     };
 
 export type AuthenticationReason = "missing" | "rejected";
+
+/** Sign-in methods the teacher server offers besides its own accounts. */
+export interface AuthenticationOptions {
+  readonly providers: readonly ExternalAuthProvider[];
+}
+
+export interface SelectableClass {
+  readonly classId: string;
+  readonly displayName: string;
+}
+
+/** The authorization response a provider sends back to the student's own machine. */
+export interface ExternalAuthorizationCallback {
+  readonly code: string;
+  readonly state: string;
+}
+
+/**
+ * Receives a provider's authorization response on a loopback address of this machine.
+ * `start` receives the loopback redirect and returns the provider page the student opens.
+ */
+export interface ExternalAuthorization {
+  authorize(
+    start: (redirectUri: string) => Promise<string>,
+  ): Promise<ExternalAuthorizationCallback>;
+}
+
+/** Remembers which class this project folder last chose, so a new session need not ask. */
+export interface ClassPreferenceStore {
+  load(): Promise<string | null>;
+  save(classId: string): Promise<void>;
+}
 export type ApprovalDecision = "approved" | "rejected";
 export type ApprovalReply =
   ApprovalDecision | { readonly decision: "rejected"; readonly reason: string };
@@ -116,7 +162,11 @@ export type StudentViewEvent =
   | (TurnAttemptIdentity & { readonly type: "turn-completed" });
 
 export interface StudentInterface {
-  authenticate(reason: AuthenticationReason): Promise<AuthenticationInput>;
+  authenticate(
+    reason: AuthenticationReason,
+    options: AuthenticationOptions,
+  ): Promise<AuthenticationInput>;
+  chooseClass(classes: readonly SelectableClass[]): Promise<string>;
   confirmWrite(prompt: ApprovalPrompt): Promise<ApprovalReply>;
   askQuestions?(request: QuestionRequest & TurnAttemptIdentity): Promise<QuestionReply>;
   present(event: StudentViewEvent): void;
@@ -161,7 +211,14 @@ export interface StudentServer {
   bootstrap(
     token: SessionToken,
     request: ClassBootstrapRequest,
+  ): Promise<AuthenticationResult<ClassBootstrapOutcome>>;
+  selectClass(
+    token: SessionToken,
+    request: ClassSelectRequest,
   ): Promise<AuthenticationResult<ClassBootstrapResponse>>;
+  externalProviders?(request: ExternalAuthProvidersRequest): Promise<ExternalAuthProvidersResponse>;
+  beginExternal?(request: ExternalAuthBeginRequest): Promise<ExternalAuthBeginResponse>;
+  completeExternal?(request: ExternalAuthCompleteRequest): Promise<ExternalAuthCompleteResponse>;
   capabilities(request: CapabilitiesRequest): Promise<CapabilitiesResponse>;
   closeRun(token: RunToken, request: CloseRunRequest): Promise<CloseRunResponse>;
   closeRunAuthenticated(token: SessionToken, request: CloseRunRequest): Promise<CloseRunResponse>;

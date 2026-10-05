@@ -47,6 +47,11 @@ export class AcceptanceInterface implements StudentInterface {
     private readonly decision: ApprovalDecision = "approved",
   ) {}
 
+  /** Acceptance students belong to a single class, so they are never asked to choose. */
+  public chooseClass(): Promise<string> {
+    return Promise.reject(new Error("Acceptance students never choose a class."));
+  }
+
   public authenticate(reason: AuthenticationReason) {
     this.authenticationReasons.push(reason);
     const credentials = ACCEPTANCE_SESSION[this.account];

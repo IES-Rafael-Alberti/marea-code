@@ -98,7 +98,7 @@ describe("locale selection", () => {
 
 describe("translation catalogs", () => {
   it("exposes immutable complete catalogs", () => {
-    expect(MESSAGE_KEYS).toHaveLength(143);
+    expect(MESSAGE_KEYS).toHaveLength(148);
     expect(new Set(MESSAGE_KEYS).size).toBe(MESSAGE_KEYS.length);
     expect(Object.keys(SPANISH_CATALOG).toSorted()).toEqual([...MESSAGE_KEYS].toSorted());
     expect(Object.keys(ENGLISH_CATALOG).toSorted()).toEqual([...MESSAGE_KEYS].toSorted());

@@ -13,8 +13,10 @@ import {
 import type {
   AgentRuntime,
   AuthenticationInput,
+  ClassPreferenceStore,
   Clock,
   CredentialStore,
+  ExternalAuthorization,
   GuardedWorkspaceWriter,
   IdSource,
   PendingStudentTurn,
@@ -27,6 +29,7 @@ import { NoActiveRunError } from "./contracts.js";
 import { LocalSession } from "./local-session.js";
 import { SerialOperationQueue } from "./serial-operation-queue.js";
 import { negotiateSessionCapabilities } from "./session-capabilities.js";
+import { bootstrapClass, discoverProviders, exchangeExternal } from "./session-sign-in.js";
 import {
   SessionTurnExecutor,
   type ActiveRun,
@@ -39,9 +42,11 @@ export interface SessionControllerOptions {
   readonly evidence?: ProjectEvidence;
   readonly operations?: OperationExecutor;
   readonly agent: AgentRuntime;
+  readonly classPreference?: ClassPreferenceStore;
   readonly clientVersion: string;
   readonly clock: Clock;
   readonly credentials: CredentialStore;
+  readonly externalAuthorization?: ExternalAuthorization | undefined;
   readonly ids: IdSource;
   readonly localSession: LocalSession;
   readonly server: StudentServer;
@@ -66,6 +71,8 @@ export class StudentSessionController {
   private closeRequested: StoredCloseReason | null = null;
   private leaseCheck: Promise<StoredRun> | null = null;
   private sessionToken: SessionToken | null = null;
+  /** Set from the negotiated capabilities before any interactive sign-in. */
+  private externalSignIn!: boolean;
   private readonly turns: SessionTurnExecutor;
 
   constructor(private readonly options: SessionControllerOptions) {
@@ -177,11 +184,12 @@ export class StudentSessionController {
   }
 
   private async startInternal(projectDisplayName: string): Promise<ActiveStudentSession> {
-    await negotiateSessionCapabilities({
+    const capabilities = await negotiateSessionCapabilities({
       clientVersion: this.options.clientVersion,
       ids: this.options.ids,
       server: this.options.server,
     });
+    this.externalSignIn = capabilities.includes("marea.auth.external");
     const authenticated = await this.authenticate();
     this.sessionToken = authenticated.token;
     let bootstrap = authenticated.bootstrap;
@@ -233,11 +241,7 @@ export class StudentSessionController {
   }> {
     const storedToken = await this.options.credentials.load();
     if (storedToken !== null) {
-      const result = await this.options.server.bootstrap(storedToken, {
-        kind: "class-bootstrap",
-        protocolVersion: CURRENT_PROTOCOL_VERSION,
-        requestId: this.options.ids.request(),
-      });
+      const result = await bootstrapClass(this.options, storedToken);
       if (result.authenticated) return { bootstrap: result.value, token: storedToken };
       await this.options.credentials.clear();
       return this.authenticateInteractively("rejected");
@@ -249,13 +253,16 @@ export class StudentSessionController {
     readonly bootstrap: Awaited<ReturnType<StudentSessionController["bootstrap"]>>;
     readonly token: SessionToken;
   }> {
-    const input = await this.options.studentInterface.authenticate(reason);
+    const input = await this.options.studentInterface.authenticate(reason, {
+      providers: await discoverProviders(this.options, this.externalSignIn),
+    });
     const token = await this.exchangeAuthentication(input);
     await this.options.credentials.save(token);
     return { bootstrap: await this.bootstrap(token), token };
   }
 
   private async exchangeAuthentication(input: AuthenticationInput): Promise<SessionToken> {
+    if (input.kind === "external") return exchangeExternal(this.options, input.providerId);
     if (input.kind === "enroll") {
       const response = await this.options.server.enroll({
         kind: "student-invitation-enrollment",
@@ -280,11 +287,7 @@ export class StudentSessionController {
   }
 
   private async bootstrap(token: SessionToken) {
-    const response = await this.options.server.bootstrap(token, {
-      kind: "class-bootstrap",
-      protocolVersion: CURRENT_PROTOCOL_VERSION,
-      requestId: this.options.ids.request(),
-    });
+    const response = await bootstrapClass(this.options, token);
     if (!response.authenticated) throw new Error("The new student session was rejected.");
     return response.value;
   }
@@ -342,11 +345,7 @@ export class StudentSessionController {
     if (candidate === null) {
       return this.refreshAuthenticationForRenewal("missing");
     } else {
-      const response = await this.options.server.bootstrap(candidate, {
-        kind: "class-bootstrap",
-        protocolVersion: CURRENT_PROTOCOL_VERSION,
-        requestId: this.options.ids.request(),
-      });
+      const response = await bootstrapClass(this.options, candidate);
       if (response.authenticated) {
         this.sessionToken = candidate;
         return candidate;

@@ -13,7 +13,13 @@ const spanishCatalog = {
   "errors.request.invalid": "No se ha podido entender la solicitud.",
   "errors.run.unavailable": "La sesión ya no está disponible.",
   "errors.server.error": "El servidor del profesor no ha podido completar la solicitud.",
+  "student.auth.class": "¿En qué clase vas a trabajar?",
   "student.auth.display-name-label": "Nombre que verá tu profesor",
+  "student.auth.external": "Entrar con {{provider}}",
+  "student.auth.external-complete": "Ya puedes cerrar esta ventana y volver a Marea.",
+  "student.auth.external-failed":
+    "No se ha podido completar el acceso. Cierra esta ventana e inténtalo de nuevo desde Marea.",
+  "student.auth.external-open": "Abre esta dirección en tu navegador para continuar: {{url}}",
   "student.auth.enroll": "Crear mi cuenta con una invitación",
   "student.auth.invitation-label": "Código de invitación",
   "student.auth.login": "Iniciar sesión",

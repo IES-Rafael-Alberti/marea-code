@@ -10,8 +10,13 @@ export const MESSAGE_KEYS = Object.freeze([
   "errors.request.invalid",
   "errors.run.unavailable",
   "errors.server.error",
+  "student.auth.class",
   "student.auth.display-name-label",
   "student.auth.enroll",
+  "student.auth.external",
+  "student.auth.external-complete",
+  "student.auth.external-failed",
+  "student.auth.external-open",
   "student.auth.invitation-label",
   "student.auth.login",
   "student.auth.login-label",
@@ -149,6 +154,8 @@ export type MessageKey = (typeof MESSAGE_KEYS)[number];
 /** Parameters accepted by each message. Missing keys are intentionally not accepted. */
 export interface MessageParameterMap {
   readonly "student.cli.invalid-language": { readonly option: string };
+  readonly "student.auth.external": { readonly provider: string };
+  readonly "student.auth.external-open": { readonly url: string };
   readonly "student.tui.notice.language-changed": { readonly language: string };
   readonly "student.feedback.ack-hint": { readonly command: string };
   readonly "student.tui.approval.lines": { readonly count: number };

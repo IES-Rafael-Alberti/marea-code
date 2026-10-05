@@ -12,7 +12,13 @@ const basqueCatalog = {
   "errors.request.invalid": "Ezin izan da eskaera ulertu.",
   "errors.run.unavailable": "Saioa ez dago erabilgarri.",
   "errors.server.error": "Irakaslearen zerbitzariak ezin izan du eskaera osatu.",
+  "student.auth.class": "Zein ikasgelatan ari zara lanean?",
   "student.auth.display-name-label": "Irakasleak ikusiko duen izena",
+  "student.auth.external": "Hasi saioa {{provider}} bidez",
+  "student.auth.external-complete": "Leiho hau itxi eta Marea-ra itzul zaitezke.",
+  "student.auth.external-failed":
+    "Ezin izan da saioa hasi. Itxi leiho hau eta saiatu berriro Marea-tik.",
+  "student.auth.external-open": "Ireki helbide hau nabigatzailean jarraitzeko: {{url}}",
   "student.auth.enroll": "Sortu nire kontua gonbidapen batekin",
   "student.auth.invitation-label": "Gonbidapen-kodea",
   "student.auth.login": "Hasi saioa",

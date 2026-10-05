@@ -5,20 +5,20 @@ import type { Translator } from "@marea/i18n";
 import { InvitationCodeSchema } from "@marea/protocol";
 
 import type { AuthenticationPrompt } from "./conversation-interface.js";
-import type { AuthenticationInput, AuthenticationReason } from "./contracts.js";
-
-type AuthenticationMethod = AuthenticationInput["kind"];
+import type {
+  AuthenticationInput,
+  AuthenticationOptions,
+  AuthenticationReason,
+  SelectableClass,
+} from "./contracts.js";
 
 export interface AuthenticationMethodChoice {
   readonly name: string;
-  readonly value: AuthenticationMethod;
+  readonly value: string;
 }
 
 export interface AuthenticationQuestions {
-  choose(
-    message: string,
-    choices: readonly AuthenticationMethodChoice[],
-  ): Promise<AuthenticationMethod>;
+  choose(message: string, choices: readonly AuthenticationMethodChoice[]): Promise<string>;
   secret(message: string): Promise<string>;
   text(message: string): Promise<string>;
 }
@@ -39,20 +39,35 @@ export function createInquirerAuthenticationQuestions(
   });
 }
 
+const EXTERNAL = "external:";
+
 export function createAuthenticationPrompt(
   questions: AuthenticationQuestions,
   translator: Translator,
 ): AuthenticationPrompt {
   const text = (key: Parameters<Translator["t"]>[0]) => translator.t(key);
   return Object.freeze({
-    async authenticate(reason: AuthenticationReason): Promise<AuthenticationInput> {
+    async authenticate(
+      reason: AuthenticationReason,
+      options: AuthenticationOptions,
+    ): Promise<AuthenticationInput> {
       const method = await questions.choose(
         text(reason === "rejected" ? "student.auth.method-rejected" : "student.auth.method"),
         [
           { name: text("student.auth.login"), value: "login" },
           { name: text("student.auth.enroll"), value: "enroll" },
+          ...options.providers.map((provider) => ({
+            name: translator.t("student.auth.external", {
+              provider: provider.displayName[translator.locale],
+            }),
+            value: `${EXTERNAL}${provider.providerId}`,
+          })),
         ],
       );
+      const provider = options.providers.find(
+        (candidate) => `${EXTERNAL}${candidate.providerId}` === method,
+      );
+      if (provider !== undefined) return { kind: "external", providerId: provider.providerId };
       if (method === "login") {
         return {
           kind: "login",
@@ -70,5 +85,10 @@ export function createAuthenticationPrompt(
         password: await questions.secret(text("student.auth.password-label")),
       };
     },
+    chooseClass: (classes: readonly SelectableClass[]) =>
+      questions.choose(
+        text("student.auth.class"),
+        classes.map((entry) => ({ name: entry.displayName, value: entry.classId })),
+      ),
   });
 }

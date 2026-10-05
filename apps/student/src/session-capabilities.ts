@@ -25,9 +25,10 @@ export interface SessionCapabilityOptions {
   readonly server: StudentServer;
 }
 
+/** Resolves to every capability the server offers once the required ones are present. */
 export async function negotiateSessionCapabilities(
   options: SessionCapabilityOptions,
-): Promise<void> {
+): Promise<readonly string[]> {
   const request = {
     requestId: options.ids.request(),
     clientVersion: options.clientVersion,
@@ -46,6 +47,6 @@ export async function negotiateSessionCapabilities(
     ServerCapabilitySchema.parse(capability),
   );
   const missing = missingCapabilities(response.capabilities, required);
-  if (missing.length === 0) return;
+  if (missing.length === 0) return response.capabilities;
   throw new Error(`The teacher server is missing required capabilities: ${missing.join(", ")}.`);
 }

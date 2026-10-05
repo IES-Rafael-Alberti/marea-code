@@ -97,6 +97,10 @@ class ApprovingStudentInterface implements StudentInterface {
   readonly presented: StudentViewEvent[] = [];
   readonly prompts: ApprovalPrompt[] = [];
 
+  chooseClass(): Promise<string> {
+    return Promise.reject(new Error("This student belongs to a single class."));
+  }
+
   authenticate(reason: AuthenticationReason) {
     this.authenticationReasons.push(reason);
     return Promise.resolve({

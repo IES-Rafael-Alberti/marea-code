@@ -3,6 +3,20 @@ import { ApprovalIdSchema, STARTUP_MESSAGE_ID } from "@marea/protocol";
 import type { ConversationTuiOptions } from "@marea/student-tui";
 import { describe, expect, it, vi } from "vitest";
 
+const loopback = vi.hoisted(() => ({ created: [] as object[] }));
+vi.mock("./external-authorization.boundary.js", async (original) => {
+  const actual = await original<typeof import("./external-authorization.boundary.js")>();
+  return {
+    ...actual,
+    createLoopbackAuthorization: (
+      options: Parameters<typeof actual.createLoopbackAuthorization>[0],
+    ) => {
+      loopback.created.push(options);
+      return actual.createLoopbackAuthorization(options);
+    },
+  };
+});
+
 import type { ProductionStudentCompositionOptions } from "./composition.js";
 import type { ApprovalPrompt, StudentViewEvent } from "./contracts.js";
 import {
@@ -128,6 +142,11 @@ describe("marea command", () => {
       }
 
       expect(conversationOptions.copy.mouse).toBe(!arguments_.includes("--no-mouse"));
+      expect(loopback.created.at(-1)).toEqual({
+        translator: options.translator,
+        output: options.output,
+      });
+      expect(composition.externalAuthorization).toBeDefined();
       const studentInterface = composition.studentInterface;
       const identity = { attemptId: "attempt:one", messageId: "message:retry" } as const;
       const assistantEvent = {

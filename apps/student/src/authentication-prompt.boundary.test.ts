@@ -12,14 +12,14 @@ interface PasswordOptions {
 }
 
 interface SelectOptions {
-  readonly choices: readonly { readonly name: string; readonly value: "enroll" | "login" }[];
+  readonly choices: readonly { readonly name: string; readonly value: string }[];
   readonly message: string;
 }
 
 const vendor = vi.hoisted(() => ({
   input: vi.fn<(options: InputOptions) => Promise<string>>(),
   password: vi.fn<(options: PasswordOptions) => Promise<string>>(),
-  select: vi.fn<(options: SelectOptions) => Promise<"enroll" | "login">>(),
+  select: vi.fn<(options: SelectOptions) => Promise<string>>(),
 }));
 
 vi.mock("@inquirer/input", () => ({ default: vendor.input }));
@@ -27,6 +27,7 @@ vi.mock("@inquirer/password", () => ({ default: vendor.password }));
 vi.mock("@inquirer/select", () => ({ default: vendor.select }));
 
 import { createTranslator } from "@marea/i18n";
+import { IdentityProviderIdSchema } from "@marea/protocol";
 
 import {
   createAuthenticationPrompt,
@@ -35,13 +36,19 @@ import {
   type AuthenticationQuestions,
 } from "./authentication-prompt.boundary.js";
 
+const NO_PROVIDERS = { providers: [] };
+const GOOGLE = {
+  providerId: IdentityProviderIdSchema.parse("org.marea.google-workspace"),
+  displayName: { es: "Google del centro", en: "School Google", eu: "Ikastetxeko Google" },
+};
+
 class ScriptedQuestions implements AuthenticationQuestions {
   readonly choices: {
     readonly message: string;
     readonly values: readonly AuthenticationMethodChoice[];
   }[] = [];
   readonly prompts: string[] = [];
-  method: "enroll" | "login" = "login";
+  method = "login";
   secrets: string[] = ["password"];
   texts: string[] = ["student"];
 
@@ -71,7 +78,7 @@ describe("student authentication prompt", () => {
     const translator = createTranslator("en");
 
     await expect(
-      createAuthenticationPrompt(questions, translator).authenticate("missing"),
+      createAuthenticationPrompt(questions, translator).authenticate("missing", NO_PROVIDERS),
     ).resolves.toEqual({
       kind: "login",
       login: "student",
@@ -95,7 +102,7 @@ describe("student authentication prompt", () => {
     questions.texts = ["Student Ada", "physics_invite_2026", "ada.student"];
     const prompt = createAuthenticationPrompt(questions, createTranslator("en"));
 
-    await expect(prompt.authenticate("rejected")).resolves.toEqual({
+    await expect(prompt.authenticate("rejected", NO_PROVIDERS)).resolves.toEqual({
       displayName: "Student Ada",
       invitationCode: "physics_invite_2026",
       kind: "enroll",
@@ -111,13 +118,59 @@ describe("student authentication prompt", () => {
     ]);
   });
 
+  it("offers each external provider in the interface language and returns its choice", async () => {
+    const questions = new ScriptedQuestions();
+    questions.method = "external:org.marea.google-workspace";
+    const prompt = createAuthenticationPrompt(questions, createTranslator("es"));
+
+    await expect(prompt.authenticate("missing", { providers: [GOOGLE] })).resolves.toEqual({
+      kind: "external",
+      providerId: "org.marea.google-workspace",
+    });
+    expect(questions.choices[0]?.values).toEqual([
+      { name: "Iniciar sesión", value: "login" },
+      { name: "Crear mi cuenta con una invitación", value: "enroll" },
+      { name: "Entrar con Google del centro", value: "external:org.marea.google-workspace" },
+    ]);
+    expect(questions.prompts).toEqual([]);
+    questions.method = "external:org.other";
+    questions.texts = ["Student Ada", "physics_invite_2026", "ada.student"];
+    await expect(prompt.authenticate("missing", { providers: [GOOGLE] })).resolves.toMatchObject({
+      kind: "enroll",
+    });
+  });
+
+  it("asks which class to work in by its display name", async () => {
+    const questions = new ScriptedQuestions();
+    questions.method = "class:two";
+    const prompt = createAuthenticationPrompt(questions, createTranslator("en"));
+    await expect(
+      prompt.chooseClass([
+        { classId: "class:one", displayName: "Databases" },
+        { classId: "class:two", displayName: "Programming" },
+      ]),
+    ).resolves.toBe("class:two");
+    expect(questions.choices).toEqual([
+      {
+        message: "Which class are you working in?",
+        values: [
+          { name: "Databases", value: "class:one" },
+          { name: "Programming", value: "class:two" },
+        ],
+      },
+    ]);
+  });
+
   it("rejects an invalid invitation at the input boundary", async () => {
     const questions = new ScriptedQuestions();
     questions.method = "enroll";
     questions.texts = ["Student Ada", "invalid code"];
 
     await expect(
-      createAuthenticationPrompt(questions, createTranslator("es")).authenticate("missing"),
+      createAuthenticationPrompt(questions, createTranslator("es")).authenticate(
+        "missing",
+        NO_PROVIDERS,
+      ),
     ).rejects.toThrow();
   });
 
@@ -126,7 +179,7 @@ describe("student authentication prompt", () => {
     vendor.input.mockResolvedValue("student");
     vendor.password.mockResolvedValue("password");
     const questions = createInquirerAuthenticationQuestions(createTranslator("en"));
-    const choices = [{ name: "Sign in", value: "login" as const }];
+    const choices = [{ name: "Sign in", value: "login" }];
 
     await expect(questions.choose("Method", choices)).resolves.toBe("login");
     await expect(questions.text("Username")).resolves.toBe("student");

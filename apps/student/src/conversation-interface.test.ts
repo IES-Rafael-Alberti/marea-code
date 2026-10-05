@@ -51,6 +51,7 @@ describe("conversation student interface", () => {
             password: "long-password",
           }) as const,
       ),
+      chooseClass: vi.fn(async () => "class:two"),
     };
     const controller = conversation();
     const studentInterface = createConversationStudentInterface({
@@ -58,9 +59,18 @@ describe("conversation student interface", () => {
       conversation: controller,
     });
 
-    await expect(studentInterface.authenticate("missing")).resolves.toMatchObject({
+    await expect(
+      studentInterface.authenticate("missing", { providers: [] }),
+    ).resolves.toMatchObject({
       kind: "login",
     });
+    expect(authentication.authenticate).toHaveBeenCalledWith("missing", { providers: [] });
+    const classes = [
+      { classId: "class:one", displayName: "One" },
+      { classId: "class:two", displayName: "Two" },
+    ];
+    await expect(studentInterface.chooseClass(classes)).resolves.toBe("class:two");
+    expect(authentication.chooseClass).toHaveBeenCalledWith(classes);
     const approvalPrompt: ApprovalPrompt = {
       approvalId: ApprovalIdSchema.parse("approval:1"),
       content: "Exact proposed contents\nSecond line",
@@ -133,7 +143,6 @@ describe("conversation student interface", () => {
     } satisfies StudentViewEvent;
     studentInterface.present(cancelledEvent);
 
-    expect(authentication.authenticate).toHaveBeenCalledWith("missing");
     expect(controller.requestApproval).toHaveBeenCalledWith(
       {
         approvalId: approvalPrompt.approvalId,
@@ -241,7 +250,7 @@ it.each(["execute", "edit_file"])(
   async (toolName) => {
     const controller = conversation();
     const studentInterface = createConversationStudentInterface({
-      authentication: { authenticate: vi.fn() },
+      authentication: { authenticate: vi.fn(), chooseClass: vi.fn() },
       conversation: controller,
     });
     const args = { command: "printf synthetic", path: "main.ts" };

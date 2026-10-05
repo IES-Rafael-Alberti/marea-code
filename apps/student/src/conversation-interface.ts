@@ -3,13 +3,19 @@ import type { ConversationTuiSession } from "@marea/student-tui";
 import type {
   ApprovalPrompt,
   AuthenticationInput,
+  AuthenticationOptions,
   AuthenticationReason,
+  SelectableClass,
   StudentInterface,
   StudentViewEvent,
 } from "./contracts.js";
 
 export interface AuthenticationPrompt {
-  authenticate(reason: AuthenticationReason): Promise<AuthenticationInput>;
+  authenticate(
+    reason: AuthenticationReason,
+    options: AuthenticationOptions,
+  ): Promise<AuthenticationInput>;
+  chooseClass(classes: readonly SelectableClass[]): Promise<string>;
 }
 
 export type StudentConversationPort = Pick<
@@ -57,7 +63,10 @@ export function createConversationStudentInterface(
   options: ConversationStudentInterfaceOptions,
 ): StudentInterface {
   return Object.freeze({
-    authenticate: (reason: AuthenticationReason) => options.authentication.authenticate(reason),
+    authenticate: (reason: AuthenticationReason, authentication: AuthenticationOptions) =>
+      options.authentication.authenticate(reason, authentication),
+    chooseClass: (classes: readonly SelectableClass[]) =>
+      options.authentication.chooseClass(classes),
     askQuestions: async (
       request: import("@marea/deepagents-adapter").QuestionRequest &
         import("./contracts.js").TurnAttemptIdentity,
