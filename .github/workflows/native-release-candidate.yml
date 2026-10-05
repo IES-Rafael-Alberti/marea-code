@@ -19,7 +19,6 @@ jobs:
   quality:
     uses: ./.github/workflows/quality.yml
   native:
-    needs: quality
     if: startsWith(github.ref, 'refs/tags/v')
     strategy:
       fail-fast: false
