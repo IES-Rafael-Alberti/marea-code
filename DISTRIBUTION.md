@@ -121,3 +121,9 @@ The workflow signature is not macOS notarization or Windows Authenticode signing
 Operating-system protection and school application-control policies may still
 require administrators to approve these preview binaries. Do not disable those
 protections globally.
+
+On Windows, student checkpoints flush the temporary file, atomically replace the
+checkpoint, and flush the resulting file. This supports recovery after the client
+exits or crashes. Windows does not support POSIX directory synchronization, so
+checkpoint directory-entry durability across a sudden power loss is not guaranteed.
+File synchronization errors remain fatal; they are never silently ignored.

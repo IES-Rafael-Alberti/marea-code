@@ -286,12 +286,7 @@ function persistCheckpointState(
     operations.close(descriptor);
     descriptor = null;
     operations.replace(temporaryPath, statePath);
-    const directoryDescriptor = operations.open(dirname(statePath), constants.O_RDONLY);
-    try {
-      operations.flush(directoryDescriptor);
-    } finally {
-      operations.close(directoryDescriptor);
-    }
+    flushCheckpointReplacement(statePath, operations);
   } catch (error: unknown) {
     if (descriptor !== null) {
       try {
@@ -306,6 +301,26 @@ function persistCheckpointState(
       // The replacement may already have consumed the temporary path.
     }
     throw error;
+  }
+}
+
+// Windows does not support fsync on a directory handle. Flush the replaced file
+// through a writable handle instead. The rename is atomic for process recovery;
+// unlike POSIX directory fsync, this does not promise directory-entry durability
+// across a machine power failure. Never suppress a file-flush failure.
+export function flushCheckpointReplacement(
+  statePath: string,
+  operations: CheckpointFileOperations,
+  platform: NodeJS.Platform = process.platform,
+): void {
+  const descriptor =
+    platform === "win32"
+      ? operations.open(statePath, constants.O_RDWR)
+      : operations.open(dirname(statePath), constants.O_RDONLY);
+  try {
+    operations.flush(descriptor);
+  } finally {
+    operations.close(descriptor);
   }
 }
 

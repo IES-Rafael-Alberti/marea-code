@@ -22,7 +22,15 @@ try {
     resolveCheckpoint(reopened).findTurn("synthetic-session", "synthetic-turn"),
     record,
   );
+  const completed = { state: "completed", events: [{ type: "turn-completed" }] };
+  await resolveCheckpoint(reopened).recordTurn("synthetic-session", "synthetic-turn", completed);
   closeAgentCheckpoint(reopened);
+  const replaced = createLocalCheckpoint({ projectDirectory, storageDirectory });
+  assert.deepEqual(
+    resolveCheckpoint(replaced).findTurn("synthetic-session", "synthetic-turn"),
+    completed,
+  );
+  closeAgentCheckpoint(replaced);
 } finally {
   rmSync(scratch, { recursive: true, force: true });
 }
