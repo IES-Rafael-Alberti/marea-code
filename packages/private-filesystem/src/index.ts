@@ -7,7 +7,7 @@ export function currentOwnerId(): number {
   return (process.getuid as () => number)();
 }
 
-/** Rejects links, foreign ownership and permissions that expose private state. */
+/** Rejects links, untrusted ownership and permissions that expose private state. */
 export function inspectPrivatePath(
   path: string,
   uid = currentOwnerId(),

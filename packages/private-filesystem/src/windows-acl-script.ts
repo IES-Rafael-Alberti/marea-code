@@ -34,7 +34,8 @@ try {
     Set-Acl -LiteralPath $path -AclObject $acl
   }
   $acl = Get-Acl -LiteralPath $path
-  if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne $sid.Value) { throw 'unsafe' }
+  # Elevated Windows processes create children owned by Administrators, already a trusted ACL principal.
+  if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin @($sid.Value, 'S-1-5-32-544')) { throw 'unsafe' }
   $rules = $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])
   if ($rules.Count -eq 0) { throw 'unsafe' }
   $userAccess = $false
