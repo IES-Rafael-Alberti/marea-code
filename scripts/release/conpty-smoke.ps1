@@ -42,6 +42,8 @@ public static class MareaConPty {
    list=Marshal.AllocHGlobal(size); Check(InitializeProcThreadAttributeList(list,1,0,ref size));
    Check(UpdateProcThreadAttribute(list,0,(IntPtr)0x20016,pc,(IntPtr)IntPtr.Size,IntPtr.Zero,IntPtr.Zero));
    Extended startup=new Extended(); startup.startup.cb=Marshal.SizeOf(typeof(Extended)); startup.attributes=list;
+   // Prevent redirected CI standard handles from bypassing the pseudoconsole.
+   startup.startup.flags=0x100; // STARTF_USESTDHANDLES with null handles lets ConPTY supply them.
    Check(CreateProcess(exe,new StringBuilder("\""+exe+"\""+(mode=="help"?" --lang en --help":(" "+arguments))),IntPtr.Zero,IntPtr.Zero,false,0x80000,IntPtr.Zero,null,ref startup,out process));
    CloseHandle(ir); ir=IntPtr.Zero; CloseHandle(ow); ow=IntPtr.Zero;
    reader=new StreamReader(new FileStream(new SafeFileHandle(or,true),FileAccess.Read)); or=IntPtr.Zero;

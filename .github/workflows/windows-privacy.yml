@@ -20,6 +20,7 @@ jobs:
         if: ${{ !cancelled() }}
 
       - name: Compile disposable native acceptance programs
+        id: programs
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force reports/windows-smoke | Out-Null
@@ -39,11 +40,13 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Native compile failed: $($entry.Key)" }
           }
           '{"component":"server","version":"0.1.0-preview.1"}' | Set-Content reports/windows-smoke/manifest.json
-      - name: Exercise native terminal and managed launcher
+      - name: Exercise native terminal
+        if: ${{ !cancelled() && steps.programs.outcome == 'success' }}
         shell: pwsh
-        run: |
-          ./scripts/release/conpty-smoke.ps1 -Executable (Resolve-Path reports/windows-smoke/marea.exe) -TuiExecutable (Resolve-Path reports/windows-smoke/tui-smoke.exe)
-          bun scripts/release/preview-launcher-smoke.mjs reports/windows-smoke
-          if ($LASTEXITCODE -ne 0) { throw 'Managed launcher failed' }
+        run: ./scripts/release/conpty-smoke.ps1 -Executable (Resolve-Path reports/windows-smoke/marea.exe) -TuiExecutable (Resolve-Path reports/windows-smoke/tui-smoke.exe)
+      - name: Exercise managed launcher
+        if: ${{ !cancelled() && steps.programs.outcome == 'success' }}
+        run: bun scripts/release/preview-launcher-smoke.mjs reports/windows-smoke
       - name: Exercise fresh server setup and recovery
+        if: ${{ !cancelled() && steps.programs.outcome == 'success' }}
         run: bun scripts/release/preview-setup-smoke.mjs reports/windows-smoke
