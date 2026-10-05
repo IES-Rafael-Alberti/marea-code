@@ -200,6 +200,7 @@ export async function createAcceptanceHarness(
     readonly provider?: DeterministicInferenceProvider;
     readonly evaluationIntervalMs?: number;
     readonly dashboardAssets?: (request: Request) => Response;
+    readonly observeHttpResponse?: (path: string, status: number) => void;
   } = {},
 ): Promise<AcceptanceHarness> {
   const database = new NodeSqliteTestDatabase();
@@ -300,13 +301,15 @@ export async function createAcceptanceHarness(
   };
   let application = createTeacherProductHttp(productOptions);
   const http = await createLoopbackHttpServer({
-    fetch(request) {
+    async fetch(request) {
       if (
         options.dashboardAssets !== undefined &&
         new URL(request.url).pathname.startsWith("/dashboard")
       )
         return options.dashboardAssets(request);
-      return application.fetch(request);
+      const response = await application.fetch(request);
+      options.observeHttpResponse?.(new URL(request.url).pathname, response.status);
+      return response;
     },
   });
   application = createTeacherProductHttp({

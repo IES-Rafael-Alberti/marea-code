@@ -46,6 +46,10 @@ jobs:
       - run: bun packages/private-filesystem/smoke/native-permissions.ts
         if: ${{ !cancelled() }}
 
+      - name: Check native durable checkpoint storage
+        if: ${{ !cancelled() }}
+        run: bun scripts/release/checkpoint-smoke.mjs
+
       - name: Compile disposable native acceptance programs
         id: programs
         shell: pwsh

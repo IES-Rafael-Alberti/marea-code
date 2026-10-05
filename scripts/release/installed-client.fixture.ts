@@ -85,15 +85,13 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   await copyFile(executableSource, executable);
   const binaryHash = digest(await readFile(executable));
   expect(binaryHash).toBe(digest(await readFile(executableSource)));
-  harness = await createAcceptanceHarness();
-  const value = harness;
   const requests: { path: string; status: number }[] = [];
-  const fetch = value.application.fetch.bind(value.application);
-  vi.spyOn(value.application, "fetch").mockImplementation(async (request, ...options) => {
-    const response = await fetch(request, ...options);
-    requests.push({ path: new URL(request.url).pathname, status: response.status });
-    return response;
+  harness = await createAcceptanceHarness({
+    observeHttpResponse: (path, status) => {
+      requests.push({ path, status });
+    },
   });
+  const value = harness;
   const providerEvents: string[] = [];
   const stream = value.provider.stream.bind(value.provider);
   vi.spyOn(value.provider, "stream").mockImplementation(async function* (request, cancellation) {
