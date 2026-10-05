@@ -2,6 +2,7 @@ import type { DashboardLocale } from "../messages.js";
 import { ProfileShell, type ProfileRuntime } from "./profile-shell.js";
 import { workspaceMessages } from "./workspace-navigation.js";
 import { ServerSettingsView } from "../modules/server-settings/view.js";
+import { ExternalAccessView } from "../modules/external-access/view.js";
 import { TeachingModule } from "../modules/teaching/teaching-module.js";
 import type { TeachingModuleProperties } from "../modules/teaching/teaching-contracts.js";
 import { SkillAuthoringModule } from "../modules/skill-authoring/skill-authoring-module.js";
@@ -43,6 +44,11 @@ export function TeacherWorkspace({
             {teaching !== undefined && (
               <TeachingModule locale={locale} {...teaching} classSelection={false} />
             )}
+            <ExternalAccessView
+              locale={locale}
+              fetchRequest={profiles.fetch}
+              classId={teaching?.state.classId ?? null}
+            />
             {authoring !== undefined && (
               <details className="workspace-advanced">
                 <summary>{w.skills}</summary>

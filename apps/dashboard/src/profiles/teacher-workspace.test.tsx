@@ -2,6 +2,7 @@ import { Children, isValidElement, type ReactElement, type ReactNode } from "rea
 import { expect, it, vi } from "vitest";
 import { sessionPorts } from "../../browser/typed-host-data.fixture.js";
 import { ServerSettingsView } from "../modules/server-settings/view.js";
+import { ExternalAccessView } from "../modules/external-access/view.js";
 import { TeachingModule } from "../modules/teaching/teaching-module.js";
 import type { WorkspaceSettings } from "./profile-shell.js";
 import { TeacherWorkspace } from "./teacher-workspace.js";
@@ -32,7 +33,12 @@ const types = (node: ReactNode) =>
   );
 const teaching = (busy: boolean, dirty: boolean, calls: string[] = []) =>
   ({
-    state: { classes: [{ classId: "class:a", displayName: "Physics" }], busy, dirty },
+    state: {
+      classes: [{ classId: "class:a", displayName: "Physics" }],
+      classId: "class:a",
+      busy,
+      dirty,
+    },
     controller: {
       selectClass: vi.fn((classId: string) => {
         calls.push(`teaching.select:${classId}`);
@@ -72,7 +78,11 @@ it("drives teaching and skill editing from the shared selector, discarding after
     "authoring.select:class:a",
     "authoring.confirm:true",
   ]);
-  expect(types(shell.settings.classroom)).toEqual([TeachingModule, "details"]);
+  expect(types(shell.settings.classroom)).toEqual([TeachingModule, ExternalAccessView, "details"]);
+  const access = Children.toArray(
+    (shell.settings.classroom as ReactElement<{ children: ReactNode }>).props.children,
+  )[1] as ReactElement<{ classId: string | null; fetchRequest: object }>;
+  expect(access.props).toMatchObject({ classId: "class:a", fetchRequest: profiles.fetch });
   const server = shell.settings.server as ReactElement<{ classNames: object }>;
   expect(server.type).toBe(ServerSettingsView);
   expect(server.props.classNames).toEqual({ "class:a": "Physics" });
@@ -100,7 +110,14 @@ it("adds center administration only for confirmed administrators", async () => {
   const shell = workspace({ governance: governance(true) });
   expect(shell.settings.administration).toBeDefined();
   expect(shell).toMatchObject({ classes: [], classBusy: false, hasClassDrafts: false });
-  expect(types(shell.settings.classroom)).toEqual([]);
+  expect(types(shell.settings.classroom)).toEqual([ExternalAccessView]);
+  expect(
+    (
+      Children.toArray(
+        (shell.settings.classroom as ReactElement<{ children: ReactNode }>).props.children,
+      )[0] as ReactElement<{ classId: string | null }>
+    ).props.classId,
+  ).toBeNull();
   expect(
     (shell.settings.server as ReactElement<{ classNames: object }>).props.classNames,
   ).toStrictEqual({});
