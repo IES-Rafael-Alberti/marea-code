@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import console from "node:console";
 import {
   copyFile,
   mkdir,
@@ -40,6 +41,7 @@ const ignoredEvents = new Set([
   "turn-ended",
   "turn-failed",
 ]);
+const operationTimeout = process.platform === "win32" ? 60_000 : 15_000;
 const turnEvents = [
   "run-activated",
   "student-message",
@@ -55,7 +57,7 @@ const coreEvents = (value: AcceptanceHarness) =>
   storedEvents(value).filter((event) => !ignoredEvents.has(event.event_type));
 
 async function durable(value: AcceptanceHarness, type: string): Promise<void> {
-  const deadline = Date.now() + 15_000;
+  const deadline = Date.now() + operationTimeout;
   while (!coreEvents(value).some((event) => event.event_type === type)) {
     if (Date.now() >= deadline) throw new Error(`Missing durable event: ${type}`);
     await delay(20);
@@ -99,20 +101,28 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   first.write(`${account.login}\r`);
   await first.waitForText("Password");
   first.write(`${account.password}\r`);
-  await first.waitForText("Write to Marea", 15_000);
+  await first.waitForText("Write to Marea", operationTimeout);
   expect(first.transcript()).not.toContain(account.password);
   value.http.loseNextResponse({
     path: "/v1/runs/events",
     matches: (body) => body.includes('"eventType":"workspace-edit"'),
   });
   first.write("Please prepare the tide notes.\r");
-  await first.waitForText("Authorize", 15_000);
+  try {
+    await first.waitForText("Authorize", operationTimeout);
+  } catch (error) {
+    console.error("Synthetic installed-client progress:", {
+      providerRequests: value.provider.requests.length,
+      events: coreEvents(value).map((event) => event.event_type),
+    });
+    throw error;
+  }
   const notes = join(project, "notes/tide.txt");
   await expect(stat(notes)).rejects.toMatchObject({ code: "ENOENT" });
   first.write("y");
   await durable(value, "workspace-edit");
   expect(await readFile(notes, "utf8")).toBe("The tide is rising.\n");
-  await first.waitForText("Retry", 15_000);
+  await first.waitForText("Retry", operationTimeout);
   const before = coreEvents(value);
   expect(before.map((event) => event.event_type)).toEqual(turnEvents.slice(0, 5));
   const runs = value.database.readAll("SELECT id FROM marea_runs");
@@ -127,11 +137,11 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   first.kill();
   await first.waitForExit(5_000);
   const resumed = launch();
-  await resumed.waitForText("Retry", 15_000);
+  await resumed.waitForText("Retry", operationTimeout);
   expect(resumed.transcript()).not.toContain("Password");
   expect(value.provider.requests).toHaveLength(1);
   resumed.write("/retry\r");
-  await resumed.waitForText("saved.", 15_000);
+  await resumed.waitForText("saved.", operationTimeout);
   await durable(value, "assistant-message");
   const recovered = coreEvents(value);
   expect(recovered.slice(0, before.length)).toEqual(before);

@@ -57,11 +57,11 @@ public static class MareaConPty {
    if(mode!="help") {
     bool ready=false;
     for(int attempt=0;attempt<300;attempt++){
-     lock(captured){ready=captured.ToString().Contains(mode=="server"?"Teacher host ready at ":"Marea");}
+     lock(captured){ready=captured.ToString().Contains(mode=="server"?"Teacher host ready at ":"q: quit");}
      if(ready || WaitForSingleObject(process.process,0)==0)break;
      System.Threading.Thread.Sleep(50);
     }
-    if(!ready)throw new Exception("OpenTUI did not render in native ConPTY");
+    if(!ready)throw new Exception("OpenTUI did not render in native ConPTY: "+captured.ToString());
     if(mode=="copy-then-quit") {
      byte[] copy=Encoding.UTF8.GetBytes("\u0003");writer.Write(copy,0,copy.Length);writer.Flush();
      if(WaitForSingleObject(process.process,300)==0)throw new Exception("Ctrl+C copy unexpectedly closed the TUI");
@@ -69,7 +69,7 @@ public static class MareaConPty {
     byte[] input=Encoding.UTF8.GetBytes(mode=="server"?"\u0003":"q"); writer.Write(input,0,input.Length);writer.Flush();
    }
    if(ResizePseudoConsole(pc,new Coord(80,24))!=0)throw new Exception("ResizePseudoConsole failed");
-   if(WaitForSingleObject(process.process,15000)!=0){TerminateProcess(process.process,1);throw new Exception("ConPTY command timed out");}
+   if(WaitForSingleObject(process.process,15000)!=0){TerminateProcess(process.process,1);throw new Exception("ConPTY command timed out: "+captured.ToString());}
    uint code; Check(GetExitCodeProcess(process.process,out code));
    ClosePseudoConsole(pc); pc=IntPtr.Zero; writer.Dispose();
    if(!output.Wait(5000))throw new Exception("ConPTY output did not drain");

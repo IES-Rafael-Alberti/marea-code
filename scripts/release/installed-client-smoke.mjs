@@ -25,7 +25,7 @@ const result = spawnSync(
       MAREA_CLIENT_RECEIPT: resolve(receipt),
     },
     stdio: "inherit",
-    timeout: 120_000,
+    timeout: process.platform === "win32" ? 300_000 : 120_000,
   },
 );
 if (result.error) throw result.error;

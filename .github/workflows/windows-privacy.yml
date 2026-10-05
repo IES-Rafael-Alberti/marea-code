@@ -5,7 +5,11 @@ permissions:
   contents: read
 jobs:
   privacy:
-    runs-on: windows-2025
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-2025, windows-11-arm]
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -14,9 +18,24 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.23.1
-      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - if: matrix.runner != 'windows-11-arm'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.0
+      - name: Install native Windows ARM64 Bun from verified pinned release asset
+        if: matrix.runner == 'windows-11-arm'
+        run: |
+          $base = 'https://github.com/oven-sh/bun/releases/download/bun-v1.4.0'
+          $archive = Join-Path $env:RUNNER_TEMP 'bun-windows-aarch64.zip'
+          $checksums = Join-Path $env:RUNNER_TEMP 'bun-checksums.txt'
+          Invoke-WebRequest "$base/bun-windows-aarch64.zip" -OutFile $archive
+          Invoke-WebRequest "$base/SHASUMS256.txt" -OutFile $checksums
+          $line = Get-Content $checksums | Where-Object { $_ -match '\s+bun-windows-aarch64\.zip$' }
+          if (@($line).Count -ne 1) { throw 'Missing unambiguous native runtime checksum' }
+          $expected = ($line -split '\s+')[0]
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected.ToLowerInvariant()) { throw 'Runtime checksum mismatch' }
+          Expand-Archive $archive -DestinationPath (Join-Path $env:RUNNER_TEMP 'native-bun')
+          (Join-Path $env:RUNNER_TEMP 'native-bun/bun-windows-aarch64') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - run: bun install --frozen-lockfile --ignore-scripts
       - run: bun scripts/release/workspace-install-smoke.mjs
       - run: bun packages/private-filesystem/smoke/native-permissions.ts
@@ -54,5 +73,5 @@ jobs:
         if: ${{ !cancelled() && steps.programs.outcome == 'success' }}
         run: bun scripts/release/preview-launcher-smoke.mjs reports/windows-smoke
       - name: Exercise fresh server setup and recovery
-        if: ${{ !cancelled() && steps.programs.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.programs.outcome == 'success' && matrix.runner == 'windows-2025' }}
         run: bun scripts/release/preview-setup-smoke.mjs reports/windows-smoke

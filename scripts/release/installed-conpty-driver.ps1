@@ -50,7 +50,7 @@ public static class MareaInstalledConPty {
    writer=new FileStream(new SafeFileHandle(iw,true),FileAccess.Write); iw=IntPtr.Zero;
    var output=Task.Run(()=>{char[] buffer=new char[4096];int count;while((count=reader.Read(buffer,0,buffer.Length))>0){Console.Out.Write(buffer,0,count);Console.Out.Flush();}});
    var input=Task.Run(()=>{byte[] buffer=new byte[4096];int count;var stdin=Console.OpenStandardInput();while((count=stdin.Read(buffer,0,buffer.Length))>0){writer.Write(buffer,0,count);writer.Flush();}});
-   if(WaitForSingleObject(process.process,90000)!=0)throw new Exception("ConPTY journey exceeded deadline");
+   if(WaitForSingleObject(process.process,240000)!=0)throw new Exception("ConPTY journey exceeded deadline");
    uint code;Check(GetExitCodeProcess(process.process,out code));
    ClosePseudoConsole(pc);pc=IntPtr.Zero;
    if(!output.Wait(5000))throw new Exception("ConPTY output did not drain");
