@@ -30,3 +30,5 @@ export * from "./educational-insights.js";
 export * from "./inference-budget.js";
 
 export * from "./server-model-route.js";
+
+export * from "./external-identity.js";

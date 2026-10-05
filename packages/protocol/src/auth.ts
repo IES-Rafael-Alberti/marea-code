@@ -51,7 +51,7 @@ export const EnrollStudentRequestSchema = z
   .strict()
   .readonly();
 
-const AuthSessionSchema = z
+export const AuthSessionSchema = z
   .object({
     token: SessionTokenSchema,
     issuedAt: UtcTimestampSchema,
