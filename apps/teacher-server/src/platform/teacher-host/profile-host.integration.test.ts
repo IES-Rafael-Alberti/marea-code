@@ -4,7 +4,8 @@ import {
   readOperatorCliConfig,
 } from "../operator-cli/composition.js";
 import { syntheticProfileHostServices } from "./profile-host-options.fixture.js";
-import { rmSync } from "node:fs";
+import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { acquireInstallation } from "../operator-cli/installation-lock.js";
 import { createOperationsApplication } from "../operations-cli/operations-application.js";
 import { readOperationsConfig } from "../operations-cli/operations-config.js";
@@ -151,7 +152,8 @@ it.each([
     try {
       expect(operations.activate().schemaVersion).toBe(version);
       const backup = await operations.createBackup("profiles-backup");
-      const destination = `${f.root}-profiles-restored`;
+      const destinationParent = realpathSync(mkdtempSync(join(tmpdir(), "marea-profile-restore-")));
+      const destination = join(destinationParent, "restored");
       try {
         const result = await operations.restore({
           bundlePath: backup.path,
@@ -167,7 +169,7 @@ it.each([
         ).toBe("backup-revision");
         restored.close();
       } finally {
-        rmSync(destination, { recursive: true, force: true });
+        rmSync(destinationParent, { recursive: true, force: true });
       }
     } finally {
       operations.close();

@@ -1,8 +1,12 @@
-import { expect, it, vi } from "vitest";
+import { beforeEach, expect, it, vi } from "vitest";
 import * as z from "zod";
 import { EDUCATIONAL_INSIGHTS_PATH } from "@marea/protocol";
 import type { DashboardFetch } from "../active-runs/active-runs-client.boundary.js";
-import { insightsClient } from "./client.js";
+let insightsClient: typeof import("./client.js").insightsClient;
+beforeEach(async () => {
+  vi.resetModules();
+  ({ insightsClient } = await import("./client.js"));
+});
 
 it.each(["settings", "history"])(
   "checks the response kind before returning %s data",

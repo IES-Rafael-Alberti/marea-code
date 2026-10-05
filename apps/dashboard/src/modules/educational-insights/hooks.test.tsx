@@ -116,6 +116,9 @@ it("loads history, appends another page and replaces it on refresh", async () =>
   await vi.advanceTimersByTimeAsync(1);
   expect(mocked.client.mock.lastCall?.[1]).toMatchObject({ after: 51 });
   expect(elements(render(history)).filter((e) => e.type === "li")).toHaveLength(52);
+  expect(
+    elements(render(history)).filter((e) => e.type === "button" && e.props.children === m.more),
+  ).toHaveLength(0);
   button(render(history), m.history).onClick?.();
   await vi.advanceTimersByTimeAsync(1);
   expect(elements(render(history)).filter((e) => e.type === "li")).toHaveLength(0);
@@ -133,6 +136,7 @@ it.each([false, true])("does not publish history after unmount (failure: %s)", a
   else pending.resolve({ entries: [entry] });
   await vi.advanceTimersByTimeAsync(1);
   expect(hooks.values[0]).toEqual([]);
+  expect(hooks.values[2]).toBe(true);
   expect(hooks.values[3]).toBe(false);
 });
 it("shows a history failure and permits retry", async () => {

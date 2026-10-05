@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   CURRENT_PROTOCOL_VERSION,
@@ -20,7 +20,11 @@ import {
   skillSavedFixture,
   skillValidatedFixture,
 } from "./skill-authoring.fixture.js";
-import { createSkillAuthoringClient } from "./skill-authoring-client.boundary.js";
+let createSkillAuthoringClient: typeof import("./skill-authoring-client.boundary.js").createSkillAuthoringClient;
+beforeEach(async () => {
+  vi.resetModules();
+  ({ createSkillAuthoringClient } = await import("./skill-authoring-client.boundary.js"));
+});
 
 const signal = new AbortController().signal;
 

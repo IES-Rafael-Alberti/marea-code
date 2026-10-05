@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 vi.mock("bun:sqlite", () => ({
   Database: class DatabaseMock {
@@ -144,7 +146,7 @@ describe("SQLite storage lifecycle", () => {
     expectCode(
       () =>
         initializeSqliteStorageWith(
-          { databasePath: "/private/database.sqlite" },
+          { databasePath: join(tmpdir(), "database.sqlite") },
           dependencies(database),
         ),
       "schema-mismatch",
@@ -157,7 +159,7 @@ describe("SQLite storage lifecycle", () => {
     expectCode(
       () =>
         initializeSqliteStorageWith(
-          { databasePath: "/private/database.sqlite" },
+          { databasePath: join(tmpdir(), "database.sqlite") },
           dependencies(new ReadyDatabase(), { driver: throwingDriver }),
         ),
       "database-unavailable",
@@ -172,7 +174,7 @@ describe("SQLite storage lifecycle", () => {
     expectCode(
       () =>
         initializeSqliteStorageWith(
-          { databasePath: "/private/database.sqlite" },
+          { databasePath: join(tmpdir(), "database.sqlite") },
           dependencies(configurationFailure),
         ),
       "database-unavailable",
