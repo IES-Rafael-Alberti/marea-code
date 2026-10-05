@@ -23,6 +23,23 @@ withBuildWorkspace(process.cwd(), files, (workspace) => {
   );
   if (install.status !== 0) {
     console.error(install.stderr);
+    if (process.platform === "win32") {
+      const shell = spawnSync(
+        "powershell.exe",
+        [
+          "-NoProfile",
+          "-NonInteractive",
+          "-Command",
+          "& $env:MAREA_BUILD_BUN install --frozen-lockfile --ignore-scripts --backend copyfile; exit $LASTEXITCODE",
+        ],
+        {
+          cwd: workspace,
+          encoding: "utf8",
+          env: { ...process.env, MAREA_BUILD_BUN: process.execPath },
+        },
+      );
+      console.error("PowerShell-hosted frozen install:", shell.status, shell.stderr);
+    }
     // Diagnose only inside this disposable copy; never use a changed lockfile to build a release.
     const diagnostic = spawnSync(
       process.execPath,

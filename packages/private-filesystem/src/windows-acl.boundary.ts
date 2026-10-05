@@ -26,7 +26,7 @@ export function windowsPrivateKind(
     {
       input: JSON.stringify({ path, action }),
       encoding: "utf8",
-      timeout: 10_000,
+      timeout: 30_000,
       maxBuffer: 1024,
       windowsHide: true,
     },

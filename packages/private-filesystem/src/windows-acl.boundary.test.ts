@@ -53,7 +53,7 @@ it("passes paths as bounded JSON stdin to a fixed noninteractive script", () => 
     {
       input: JSON.stringify({ path, action: "inspect" }),
       encoding: "utf8",
-      timeout: 10_000,
+      timeout: 30_000,
       maxBuffer: 1024,
       windowsHide: true,
     },

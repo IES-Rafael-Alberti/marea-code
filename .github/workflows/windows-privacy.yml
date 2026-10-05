@@ -15,5 +15,6 @@ jobs:
         with:
           bun-version: 1.4.0
       - run: bun install --frozen-lockfile --ignore-scripts
-      - run: bun packages/private-filesystem/smoke/native-permissions.ts
       - run: bun scripts/release/workspace-install-smoke.mjs
+      - run: bun packages/private-filesystem/smoke/native-permissions.ts
+        if: ${{ !cancelled() }}
