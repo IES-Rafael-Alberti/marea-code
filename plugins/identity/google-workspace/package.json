@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@marea/plugin-api": "workspace:*",
-    "zod": "4.4.3"
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@marea/test-config": "workspace:*"

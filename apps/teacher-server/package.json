@@ -47,9 +47,9 @@
     "@marea/sqlite-storage": "workspace:*",
     "@marea/telemetry-pipeline": "workspace:*",
     "@marea/transport-server": "workspace:*",
-    "hono": "4.12.32",
-    "yaml": "2.8.2",
-    "zod": "4.4.3"
+    "hono": "4.13.12",
+    "yaml": "2.9.1",
+    "zod": "4.6.5"
   },
   "devDependencies": {
     "@marea/test-config": "workspace:*"
