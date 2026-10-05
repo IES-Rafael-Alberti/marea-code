@@ -59,7 +59,13 @@ it("copies without exiting, cuts/pastes through the real editor and copies a set
     expect(setup.renderer.currentFocusedEditor?.plainText).toBe("");
     await press("v", true);
     expect(setup.renderer.currentFocusedEditor?.plainText).toBe("copy me");
-    const frame = await setup.waitForFrame((value) => value.includes("Drag this sentence"));
+    // Markdown parsing runs in a worker; a fixed number of render passes is not a readiness signal.
+    const frame = await vi.waitFor(async () => {
+      await setup.flush();
+      const rendered = setup.captureCharFrame();
+      expect(rendered).toContain("Drag this sentence");
+      return rendered;
+    });
     const rows = frame.split("\n");
     const row = rows.findIndex((line) => line.includes("Drag this sentence"));
     const column = rows[row]?.indexOf("Drag") ?? -1;
