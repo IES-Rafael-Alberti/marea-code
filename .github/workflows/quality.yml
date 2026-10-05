@@ -74,16 +74,16 @@ jobs:
         include:
           - workspace: apps/teacher-server
             partition: host
-            mutate: src/platform/teacher-host/**/*.ts,!src/**/*.{spec,test}.ts,!src/**/*.fixture.ts
+            mutate: src/platform/teacher-host/**/*.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
           - workspace: apps/teacher-server
             partition: operations
-            mutate: src/platform/operations*/**/*.ts,!src/**/*.{spec,test}.ts,!src/**/*.fixture.ts
+            mutate: src/platform/operations*/**/*.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
           - workspace: apps/teacher-server
             partition: platform
-            mutate: src/platform/**/*.ts,!src/platform/teacher-host/**,!src/platform/operations*/**,!src/**/*.{spec,test}.ts,!src/**/*.fixture.ts
+            mutate: src/platform/**/*.ts,!src/platform/teacher-host/**,!src/platform/operations*/**,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
           - workspace: apps/teacher-server
             partition: domain
-            mutate: src/**/*.ts,!src/platform/**,!src/**/*.{spec,test}.ts,!src/**/*.fixture.ts
+            mutate: src/**/*.ts,!src/platform/**,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
