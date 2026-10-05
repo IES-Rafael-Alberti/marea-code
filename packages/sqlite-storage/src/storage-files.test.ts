@@ -14,6 +14,8 @@ vi.mock("./sqlite-driver.boundary.js", async (importOriginal) =>
 );
 
 import { createAuditMigrationCatalog } from "./audit-migration-catalog.js";
+import { createEducationalMigrationCatalog } from "./educational-migration-catalog.js";
+import { createStudentIdentityMigrationCatalog } from "./student-identity-migration-catalog.js";
 import { SqliteStorageError, type SqliteApplicationDatabase } from "./contracts.js";
 import { createMigrationCatalog } from "./migration-catalog.js";
 import {
@@ -39,6 +41,12 @@ describe("SQLite storage files", () => {
     expect(createDefaultDependencies("application").migrations).toEqual(createMigrationCatalog());
     expect(createDefaultDependencies("retention-audit").migrations).toEqual(
       createAuditMigrationCatalog(),
+    );
+    expect(createDefaultDependencies("student-identities").migrations).toEqual(
+      createStudentIdentityMigrationCatalog(),
+    );
+    expect(createDefaultDependencies("educational-insights").migrations).toEqual(
+      createEducationalMigrationCatalog(),
     );
   });
 
