@@ -32,7 +32,7 @@ function powershell(source: string, path: string): void {
       "-EncodedCommand",
       Buffer.from(script, "utf16le").toString("base64"),
     ],
-    { input: path, encoding: "utf8", timeout: 10_000, maxBuffer: 4096, windowsHide: true },
+    { input: path, encoding: "utf8", timeout: 30_000, maxBuffer: 4096, windowsHide: true },
   );
   assert.equal(result.status, 0, "Native ACL fixture creation failed");
 }

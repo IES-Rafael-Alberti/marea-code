@@ -55,8 +55,6 @@ jobs:
       matrix:
         workspace:
           - .
-          - apps/dashboard
-          - apps/student
           - packages/deepagents-adapter
           - packages/i18n
           - packages/plugin-api
@@ -72,6 +70,24 @@ jobs:
           - plugins/telemetry/langfuse
           - plugins/telemetry/otlp
         include:
+          - workspace: apps/dashboard
+            partition: governance
+            mutate: src/modules/governance/**/*.ts,src/modules/governance/**/*.tsx,src/profiles/**/*.ts,src/profiles/**/*.tsx,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts,!src/**/*.spec.tsx,!src/**/*.test.tsx
+          - workspace: apps/dashboard
+            partition: authoring
+            mutate: src/modules/skill-authoring/**/*.ts,src/modules/skill-authoring/**/*.tsx,src/modules/teaching/**/*.ts,src/modules/teaching/**/*.tsx,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts,!src/**/*.spec.tsx,!src/**/*.test.tsx
+          - workspace: apps/dashboard
+            partition: classroom
+            mutate: src/modules/sessions/**/*.ts,src/modules/sessions/**/*.tsx,src/modules/session/**/*.ts,src/modules/session/**/*.tsx,src/modules/educational-insights/**/*.ts,src/modules/educational-insights/**/*.tsx,src/modules/evaluation/**/*.ts,src/modules/evaluation/**/*.tsx,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts,!src/**/*.spec.tsx,!src/**/*.test.tsx
+          - workspace: apps/dashboard
+            partition: shell
+            mutate: src/**/*.ts,src/**/*.tsx,!src/modules/governance/**,!src/profiles/**,!src/modules/skill-authoring/**,!src/modules/teaching/**,!src/modules/sessions/**,!src/modules/session/**,!src/modules/educational-insights/**,!src/modules/evaluation/**,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts,!src/**/*.spec.tsx,!src/**/*.test.tsx
+          - workspace: apps/student
+            partition: boundaries
+            mutate: src/**/*.boundary.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
+          - workspace: apps/student
+            partition: session
+            mutate: src/**/*.ts,!src/**/*.boundary.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
           - workspace: apps/teacher-server
             partition: host
             mutate: src/platform/teacher-host/**/*.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
@@ -79,11 +95,23 @@ jobs:
             partition: operations
             mutate: src/platform/operations*/**/*.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
           - workspace: apps/teacher-server
+            partition: persistence
+            mutate: src/platform/persistence/**/*.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
+          - workspace: apps/teacher-server
             partition: platform
-            mutate: src/platform/**/*.ts,!src/platform/teacher-host/**,!src/platform/operations*/**,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
+            mutate: src/platform/**/*.ts,!src/platform/teacher-host/**,!src/platform/operations*/**,!src/platform/persistence/**,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
+          - workspace: apps/teacher-server
+            partition: teaching
+            mutate: src/teaching/**/*.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
+          - workspace: apps/teacher-server
+            partition: education
+            mutate: src/educational-insights/**/*.ts,src/evaluation/**/*.ts,src/dashboard-profiles/**/*.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
+          - workspace: apps/teacher-server
+            partition: http
+            mutate: src/product-http/**/*.ts,src/model-gateway/**/*.ts,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
           - workspace: apps/teacher-server
             partition: domain
-            mutate: src/**/*.ts,!src/platform/**,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
+            mutate: src/**/*.ts,!src/platform/**,!src/teaching/**,!src/educational-insights/**,!src/evaluation/**,!src/dashboard-profiles/**,!src/product-http/**,!src/model-gateway/**,!src/**/*.spec.ts,!src/**/*.test.ts,!src/**/*.fixture.ts
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
