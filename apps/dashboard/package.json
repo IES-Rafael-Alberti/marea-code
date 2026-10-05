@@ -24,6 +24,6 @@
     "@marea/test-config": "workspace:*",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.3",
-    "vite": "8.2.2"
+    "vite": "8.3.2"
   }
 }
