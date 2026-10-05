@@ -2,7 +2,7 @@
 
 exports[`packages the native verifier, license and extra inventory before signing > packaged verifier linux-x64 1`] = `
 {
-  "bun": "1.4.0",
+  "bun": "1.4.2",
   "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "component": "student",
   "files": [
@@ -41,7 +41,7 @@ exports[`packages the native verifier, license and extra inventory before signin
 
 exports[`packages the native verifier, license and extra inventory before signing > packaged verifier win32-x64 1`] = `
 {
-  "bun": "1.4.0",
+  "bun": "1.4.2",
   "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "component": "student",
   "files": [

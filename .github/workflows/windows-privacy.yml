@@ -26,11 +26,11 @@ jobs:
       - if: matrix.runner != 'windows-11-arm'
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.0
+          bun-version: 1.4.2
       - name: Install native Windows ARM64 Bun from verified pinned release asset
         if: matrix.runner == 'windows-11-arm'
         run: |
-          $base = 'https://github.com/oven-sh/bun/releases/download/bun-v1.4.0'
+          $base = 'https://github.com/oven-sh/bun/releases/download/bun-v1.4.2'
           $archive = Join-Path $env:RUNNER_TEMP 'bun-windows-aarch64.zip'
           $checksums = Join-Path $env:RUNNER_TEMP 'bun-checksums.txt'
           Invoke-WebRequest "$base/bun-windows-aarch64.zip" -OutFile $archive

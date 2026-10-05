@@ -39,7 +39,7 @@ exact preview version. Download failures do not replace the installed program.
 
 ## Develop
 
-Install **Bun 1.4.0**, then:
+Install **Bun 1.4.2**, then:
 
 ```sh
 bun install --frozen-lockfile --ignore-scripts

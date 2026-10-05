@@ -46,8 +46,9 @@ export const manifestSchema = z
     version: releaseVersion,
     component,
     target,
-    bun: z.literal("1.4.0"),
-    opentui: z.literal("0.5.10"),
+    // Runtime versions describe the signed bundle, not the installed updater.
+    bun: releaseVersion,
+    opentui: releaseVersion,
     commit: z.string().regex(/^[a-f0-9]{40}$/u),
     files: z
       .array(

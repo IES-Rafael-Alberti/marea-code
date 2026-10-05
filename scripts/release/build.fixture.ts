@@ -24,7 +24,7 @@ beforeEach(() => {
     (_source: string, _files: unknown, operation: (workspace: string) => string) =>
       operation("/isolated"),
   );
-  vi.stubGlobal("Bun", { version: "1.4.0" });
+  vi.stubGlobal("Bun", { version: "1.4.2" });
   Object.defineProperty(process, "platform", { value: "darwin" });
   Object.defineProperty(process, "arch", { value: "arm64" });
   mocks.existsSync.mockImplementation((path: string) => path !== "deleted");

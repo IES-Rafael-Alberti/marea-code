@@ -14,7 +14,7 @@ export function buildCandidate(argv: readonly string[]): string {
   const version = releaseVersion.parse(rawVersion);
   const selected = component.parse(rawComponent);
   const nativeTarget = target.parse(`${process.platform}-${process.arch}`);
-  if (Bun.version !== "1.4.0") throw new Error("Build requires Bun 1.4.0");
+  if (Bun.version !== "1.4.2") throw new Error("Build requires Bun 1.4.2");
   const declared = JSON.parse(readFileSync("apps/student/package.json", "utf8")) as {
     dependencies: Record<string, string>;
   };
@@ -130,13 +130,13 @@ export function buildCandidate(argv: readonly string[]): string {
     sbom.components.push({
       type: "application",
       name: "bun",
-      version: "1.4.0",
-      purl: "pkg:github/oven-sh/bun@bun-v1.4.0",
+      version: "1.4.2",
+      purl: "pkg:github/oven-sh/bun@bun-v1.4.2",
       externalReferences: [
-        { type: "license", url: "https://github.com/oven-sh/bun/blob/bun-v1.4.0/LICENSE.md" },
+        { type: "license", url: "https://github.com/oven-sh/bun/blob/bun-v1.4.2/LICENSE.md" },
       ],
       properties: [
-        { name: "marea:runtime-license-inventory", value: "licenses/bun-1.4.0-LICENSE.md" },
+        { name: "marea:runtime-license-inventory", value: "licenses/bun-1.4.2-LICENSE.md" },
       ],
     });
     writeFileSync(join(root, "sbom.cdx.json"), JSON.stringify(sbom, null, 2));
@@ -206,7 +206,7 @@ export function buildCandidate(argv: readonly string[]): string {
       version,
       component: selected,
       target: nativeTarget,
-      bun: "1.4.0",
+      bun: "1.4.2",
       opentui: "0.5.10",
       commit,
       files,

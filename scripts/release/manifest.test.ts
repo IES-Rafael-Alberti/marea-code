@@ -5,7 +5,7 @@ const valid = {
   version: "1.2.3",
   component: "student",
   target: "win32-arm64",
-  bun: "1.4.0",
+  bun: "1.4.2",
   opentui: "0.5.10",
   commit: "a".repeat(40),
   files: [{ path: "marea.exe", sha256: "b".repeat(64), executable: true }],
@@ -35,4 +35,12 @@ it("validates portable closed manifests and explicit trusted identity", () => {
   expect(sha256(Buffer.from("abc"))).toBe(
     "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   );
+});
+
+it("accepts signed runtime upgrades without requiring the old updater to know their versions", () => {
+  const upgraded = { ...valid, bun: "1.5.0", opentui: "0.6.0" };
+  expect(selectRelease(upgraded, "1.2.3", "student", "win32-arm64")).toEqual(upgraded);
+  for (const field of ["bun", "opentui"]) {
+    expect(manifestSchema.safeParse({ ...valid, [field]: "unknown" }).success).toBe(false);
+  }
 });

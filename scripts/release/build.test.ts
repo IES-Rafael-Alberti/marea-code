@@ -43,7 +43,7 @@ it("builds selected server programs, matching assets, real inventory command and
     version: "1.2.3",
     component: "server",
     target: "darwin-arm64",
-    bun: "1.4.0",
+    bun: "1.4.2",
     opentui: "0.5.10",
   });
 });
@@ -91,7 +91,7 @@ it("does not package a teacher dashboard into student distributions", () => {
 it("rejects changed runtime, OpenTUI, invalid selection and failed native build", () => {
   vi.stubGlobal("Bun", { version: "other" });
   expect(() => buildCandidate(["1.2.3", "student"])).toThrow("Bun");
-  vi.stubGlobal("Bun", { version: "1.4.0" });
+  vi.stubGlobal("Bun", { version: "1.4.2" });
   mocks.readFileSync.mockReturnValue('{"dependencies":{}}');
   expect(() => buildCandidate(["1.2.3", "student"])).toThrow("OpenTUI");
   expect(() => buildCandidate(["../bad", "student"])).toThrow();
@@ -240,13 +240,13 @@ it("binds reproducible output metadata to actual commands, source bytes and nati
   const runtime = {
     type: "application",
     name: "bun",
-    version: "1.4.0",
-    purl: "pkg:github/oven-sh/bun@bun-v1.4.0",
+    version: "1.4.2",
+    purl: "pkg:github/oven-sh/bun@bun-v1.4.2",
     externalReferences: [
-      { type: "license", url: "https://github.com/oven-sh/bun/blob/bun-v1.4.0/LICENSE.md" },
+      { type: "license", url: "https://github.com/oven-sh/bun/blob/bun-v1.4.2/LICENSE.md" },
     ],
     properties: [
-      { name: "marea:runtime-license-inventory", value: "licenses/bun-1.4.0-LICENSE.md" },
+      { name: "marea:runtime-license-inventory", value: "licenses/bun-1.4.2-LICENSE.md" },
     ],
   };
   const components = [
@@ -282,7 +282,7 @@ it("binds reproducible output metadata to actual commands, source bytes and nati
         version: "1.2.3",
         component: "server",
         target: "darwin-arm64",
-        bun: "1.4.0",
+        bun: "1.4.2",
         opentui: "0.5.10",
         commit: "a".repeat(40),
         files: [

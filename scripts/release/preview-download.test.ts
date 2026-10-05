@@ -25,7 +25,7 @@ const manifest = {
   version,
   component: "student",
   target: "linux-x64",
-  bun: "1.4.0",
+  bun: "1.4.2",
   opentui: "0.5.10",
   commit: "a".repeat(40),
   files: [

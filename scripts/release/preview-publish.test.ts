@@ -48,7 +48,7 @@ function candidate(component: string, target: string, tool = true) {
     version,
     component,
     target,
-    bun: "1.4.0",
+    bun: "1.4.2",
     opentui: "0.5.10",
     commit: "a".repeat(40),
     files,

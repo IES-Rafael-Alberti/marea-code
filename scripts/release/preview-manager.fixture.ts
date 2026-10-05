@@ -65,7 +65,7 @@ beforeEach(() => {
             version: state.version,
             component: state.selected,
             target: "darwin-arm64",
-            bun: "1.4.0",
+            bun: "1.4.2",
             opentui: "0.5.10",
             commit: "a".repeat(40),
             files: [{ path: "marea", executable: true, sha256: "b".repeat(64) }],

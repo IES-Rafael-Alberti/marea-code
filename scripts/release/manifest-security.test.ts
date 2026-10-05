@@ -14,7 +14,7 @@ function manifest(paths = ["marea"]) {
     version: "12.23.34-preview.15",
     component: "student",
     target: "darwin-arm64",
-    bun: "1.4.0",
+    bun: "1.4.2",
     opentui: "0.5.10",
     commit: "a".repeat(40),
     files: paths.map((path) => ({ path, sha256: "b".repeat(64), executable: true })),

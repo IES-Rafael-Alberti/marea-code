@@ -24,7 +24,7 @@ it("accepts the exact total byte budget and refuses the next authenticated file 
     version,
     component: "student",
     target: "linux-x64",
-    bun: "1.4.0",
+    bun: "1.4.2",
     opentui: "0.5.10",
     commit: "b".repeat(40),
     files,

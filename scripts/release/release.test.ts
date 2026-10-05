@@ -35,7 +35,7 @@ function fixture() {
     version: "1.2.3",
     component: "student",
     target: `${process.platform}-${process.arch}`,
-    bun: "1.4.0",
+    bun: "1.4.2",
     opentui: "0.5.10",
     commit: "a".repeat(40),
     files: [{ path: "marea", sha256: sha256(Buffer.from("binary")), executable: true }],

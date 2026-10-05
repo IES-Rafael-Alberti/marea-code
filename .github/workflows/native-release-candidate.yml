@@ -85,11 +85,11 @@ jobs:
       - if: matrix.runner != 'windows-11-arm'
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.0
+          bun-version: 1.4.2
       - name: Install native Windows ARM64 Bun from verified pinned release asset
         if: matrix.runner == 'windows-11-arm'
         run: |
-          $base = 'https://github.com/oven-sh/bun/releases/download/bun-v1.4.0'
+          $base = 'https://github.com/oven-sh/bun/releases/download/bun-v1.4.2'
           $archive = Join-Path $env:RUNNER_TEMP 'bun-windows-aarch64.zip'
           $checksums = Join-Path $env:RUNNER_TEMP 'bun-checksums.txt'
           Invoke-WebRequest "$base/bun-windows-aarch64.zip" -OutFile $archive
@@ -106,7 +106,7 @@ jobs:
           if ((git status --porcelain).Length -ne 0) { throw 'Signed candidates require a clean checkout' }
       - name: Assert pinned native runtime
         run: |
-          if ((bun --version) -ne '1.4.0') { throw 'Wrong Bun version' }
+          if ((bun --version) -ne '1.4.2') { throw 'Wrong Bun version' }
           if ((bun -e 'console.log(process.arch)') -ne $env:EXPECTED_ARCH) { throw 'Emulated runtime is not native validation' }
           bun install --frozen-lockfile --ignore-scripts
           if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed' }
@@ -231,7 +231,7 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.0
+          bun-version: 1.4.2
       - run: bun install --frozen-lockfile --ignore-scripts
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:

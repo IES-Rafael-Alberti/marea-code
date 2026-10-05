@@ -57,7 +57,7 @@ function fixture(selected: "student" | "server" = "student") {
     version: "1.2.3",
     component: selected,
     target: `${process.platform}-${process.arch}`,
-    bun: "1.4.0",
+    bun: "1.4.2",
     opentui: "0.5.10",
     commit: "a".repeat(40),
     files: [

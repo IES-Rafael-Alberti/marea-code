@@ -31,10 +31,10 @@ jobs:
       - name: Set up Bun
         uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.0
+          bun-version: 1.4.2
 
       - name: Verify Bun version
-        run: test "$(bun --version)" = "1.4.0"
+        run: test "$(bun --version)" = "1.4.2"
 
       - name: Install dependencies
         # Lifecycle scripts from dependencies are not needed by the quality gates.
@@ -124,7 +124,7 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: 1.4.0
+          bun-version: 1.4.2
       - run: bun install --frozen-lockfile --ignore-scripts
       - name: Run the complete workspace mutation gate
         working-directory: ${{ matrix.workspace }}

@@ -6,7 +6,7 @@ Educational content may use the language used with students.
 
 ## Before you start
 
-- Install Bun 1.4.0. The `packageManager` and `engines` fields in the root
+- Install Bun 1.4.2. The `packageManager` and `engines` fields in the root
   `package.json` are the version contract.
 - Keep generated output, private installation state and local research notebooks
   out of changes. Shared behavior and setup instructions belong in tracked documentation.
