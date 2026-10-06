@@ -1,10 +1,11 @@
-import { ChildProcess, spawn } from "node:child_process";
+import { ChildProcess, spawn, spawnSync } from "node:child_process";
 import { PassThrough } from "node:stream";
 import { afterEach, expect, it, vi } from "vitest";
 import { runProjectCommand } from "./command-runner.boundary.js";
 vi.mock("node:child_process", async (original) => ({
   ...(await original<typeof import("node:child_process")>()),
   spawn: vi.fn(),
+  spawnSync: vi.fn(),
 }));
 afterEach(() => {
   vi.restoreAllMocks();
@@ -36,6 +37,7 @@ it.each([16384, 16385])(
     expect(spawn).toHaveBeenLastCalledWith("/bin/sh", ["-c", "synthetic command"], {
       cwd: "/synthetic",
       detached: true,
+      windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
     f.stdout.write(Buffer.from("first "));
@@ -91,4 +93,66 @@ it("decodes split UTF-8 independently on both streams and flushes incomplete fin
   f.stderr.write(Buffer.from([0xc3]));
   f.child.emit("close", 0);
   expect(JSON.parse(await f.running)).toMatchObject({ output: "€é��", truncated: false });
+});
+
+it.each([0, 1])(
+  "uses the Windows command processor and terminates its tree (status %s)",
+  async (status) => {
+    vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+    vi.stubEnv("SystemRoot", "D:\\Windows");
+    vi.mocked(spawnSync).mockReturnValue({
+      status,
+      signal: null,
+      pid: 99,
+      output: [],
+      stdout: Buffer.alloc(0),
+      stderr: Buffer.alloc(0),
+    });
+    try {
+      const f = fixture();
+      expect(spawn).toHaveBeenLastCalledWith(
+        "D:\\Windows\\System32\\cmd.exe",
+        ["/d", "/s", "/c", "synthetic command"],
+        {
+          cwd: "/synthetic",
+          detached: false,
+          windowsHide: true,
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
+      f.abort.abort();
+      expect(spawnSync).toHaveBeenLastCalledWith(
+        "D:\\Windows\\System32\\taskkill.exe",
+        ["/pid", "42", "/T", "/F"],
+        { stdio: "ignore", windowsHide: true, timeout: 5000 },
+      );
+      expect(f.group).not.toHaveBeenCalled();
+      if (status === 0) expect(f.kill).not.toHaveBeenCalled();
+      else expect(f.kill).toHaveBeenCalledWith("SIGTERM");
+      f.child.emit("close", 1);
+      expect(JSON.parse(await f.running)).toMatchObject({ stopped: true, exitCode: 1 });
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  },
+);
+
+it("uses the standard Windows directory when the environment is absent and falls back if taskkill cannot start", async () => {
+  vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+  vi.stubEnv("SystemRoot", undefined);
+  vi.mocked(spawnSync).mockImplementation(() => {
+    throw new Error("taskkill unavailable");
+  });
+  try {
+    const f = fixture();
+    expect(vi.mocked(spawn).mock.calls.at(-1)?.[0]).toBe("C:\\Windows\\System32\\cmd.exe");
+    f.abort.abort();
+    expect(vi.mocked(spawnSync).mock.calls.at(-1)?.[0]).toBe("C:\\Windows\\System32\\taskkill.exe");
+    expect(f.kill).toHaveBeenCalledWith("SIGTERM");
+    f.child.emit("close", null);
+    expect(JSON.parse(await f.running)).toMatchObject({ stopped: true });
+  } finally {
+    vi.unstubAllEnvs();
+  }
 });

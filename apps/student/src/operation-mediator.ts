@@ -13,7 +13,7 @@ export class OperationMediator implements ApprovalTool {
     this.name = `marea_${operation}`;
     this.description =
       operation === "execute"
-        ? "Run a shell command from the project directory after explicit student authorization. Arguments: command. Deadline 30 seconds. Output is bounded. Commands have the student's OS permissions."
+        ? "Run a shell command from the project directory after explicit student authorization. Arguments: command. Deadline 30 seconds. Output is bounded. Commands have the student's OS permissions. Shell: cmd.exe on Windows; /bin/sh on macOS and Linux."
         : operation === "delete"
           ? "Delete one project text file after explicit student authorization. Arguments: path. The exact contents are rechecked before deletion; directories are not accepted."
           : "Replace an exact unique text fragment in a project file after student authorization. Arguments: path, old_string, new_string. The file is rechecked before applying.";

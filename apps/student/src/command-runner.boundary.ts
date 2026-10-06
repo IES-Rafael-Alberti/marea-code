@@ -1,5 +1,6 @@
 import { StringDecoder } from "node:string_decoder";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { win32 } from "node:path";
 
 /** Commands are explicit effects, with a bounded lifetime and output. */
 export function runProjectCommand(
@@ -9,11 +10,18 @@ export function runProjectCommand(
 ): Promise<string> {
   signal.throwIfAborted();
   return new Promise((resolve, reject) => {
-    const child = spawn("/bin/sh", ["-c", command], {
-      cwd: root,
-      detached: true,
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    const windows = process.platform === "win32";
+    const systemDirectory = win32.join(process.env.SystemRoot ?? "C:\\Windows", "System32");
+    const child = spawn(
+      windows ? win32.join(systemDirectory, "cmd.exe") : "/bin/sh",
+      windows ? ["/d", "/s", "/c", command] : ["-c", command],
+      {
+        cwd: root,
+        detached: !windows,
+        windowsHide: true,
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
     let output = "";
     let truncated = false;
     let stopped = false;
@@ -34,6 +42,15 @@ export function runProjectCommand(
     const kill = (kind: NodeJS.Signals) => {
       if (child.pid === undefined) return;
       try {
+        if (windows) {
+          const result = spawnSync(
+            win32.join(systemDirectory, "taskkill.exe"),
+            ["/pid", String(child.pid), "/T", "/F"],
+            { stdio: "ignore", windowsHide: true, timeout: 5_000 },
+          );
+          if (result.status !== 0) child.kill(kind);
+          return;
+        }
         process.kill(-child.pid, kind);
       } catch {
         child.kill(kind);
@@ -60,7 +77,7 @@ export function runProjectCommand(
     child.once("close", (code) => {
       receive(stdout.end());
       receive(stderr.end());
-      // Do not leave detached descendants alive after the shell exits.
+      // Best-effort process-tree cleanup; commands still have the user's OS permissions.
       kill("SIGKILL");
       cleanup();
       resolve(JSON.stringify({ exitCode: code, stopped, truncated, output }));

@@ -50,6 +50,10 @@ jobs:
         if: ${{ !cancelled() }}
         run: bun scripts/release/checkpoint-smoke.mjs
 
+      - name: Check native project commands and cancellation
+        if: ${{ !cancelled() }}
+        run: bun scripts/release/command-smoke.mjs
+
       - name: Compile disposable native acceptance programs
         id: programs
         shell: pwsh
