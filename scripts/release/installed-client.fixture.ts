@@ -58,7 +58,7 @@ const coreEvents = (value: AcceptanceHarness) =>
 
 async function durable(value: AcceptanceHarness, type: string): Promise<void> {
   const deadline = Date.now() + operationTimeout;
-  while (!coreEvents(value).some((event) => event.event_type === type)) {
+  while (!storedEvents(value).some((event) => event.event_type === type)) {
     if (Date.now() >= deadline) throw new Error(`Missing durable event: ${type}`);
     await delay(20);
   }
@@ -85,10 +85,11 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   await copyFile(executableSource, executable);
   const binaryHash = digest(await readFile(executable));
   expect(binaryHash).toBe(digest(await readFile(executableSource)));
-  const requests: { path: string; status: number }[] = [];
+  const startedAt = Date.now();
+  const requests: { path: string; status: number; atMs: number }[] = [];
   harness = await createAcceptanceHarness({
     observeHttpResponse: (path, status) => {
-      requests.push({ path, status });
+      requests.push({ path, status, atMs: Date.now() - startedAt });
     },
   });
   const value = harness;
@@ -171,9 +172,16 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   expect(ledger.effects).toHaveLength(1);
   expect(value.provider.requests).toHaveLength(2);
   expect(await readFile(notes, "utf8")).toBe("The tide is rising.\n");
+  await durable(value, "turn-ended");
   await resumed.waitForQuiet();
   resumed.write("/exit\r");
   const exit = await resumed.waitForExit(15_000);
+  if (exit.exitCode !== 0) {
+    console.error("Synthetic client shutdown progress:", {
+      requests,
+      events: storedEvents(value).map((event) => event.event_type),
+    });
+  }
   expect(exit.exitCode, `${exit.stderr}\n${exit.stdout.slice(-4000)}`).toBe(0);
   expect(resumed.transcript()).toContain("[?1049l");
   expect(digest(await readFile(executable))).toBe(binaryHash);

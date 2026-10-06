@@ -59,7 +59,7 @@ export function launchInstalledClient(
   });
   const result = new Promise<ProcessResult>((resolveResult, reject) => {
     child.once("error", reject);
-    child.once("exit", (exitCode, signal) => {
+    child.once("close", (exitCode, signal) => {
       resolveResult({ exitCode, signal, stderr: errors, stdout: output });
     });
   });
