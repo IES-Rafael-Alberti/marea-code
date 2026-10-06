@@ -2,7 +2,8 @@ import process from "node:process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import { recommendedNotes } from "./preview-recommend.ts";
+import { recommendPreview } from "./preview-recommend.ts";
+import { updatePreviewChannel } from "./preview-channel-store.mjs";
 import { previewVersion, repositoryName } from "./preview-channel.ts";
 
 const [repository, version, directory, verifier, selected] = process.argv.slice(2);
@@ -22,11 +23,6 @@ function run(command, args, input) {
 // Promotion always verifies every published asset and its immutable workflow/tag signature first.
 run("python3", ["scripts/release/verify-published.py", repository, version, directory, verifier]);
 const api = (path) => JSON.parse(run("gh", ["api", path]));
-const endpoint = `repos/${repository}/releases`;
-const releases = api(`${endpoint}?per_page=100`);
-const release = api(`${endpoint}/tags/v${version}`);
-if (!releases.some((entry) => entry.id === release.id))
-  throw new Error("Release is outside the discovery window");
 // A signature is emitted before some native acceptance steps. Require the successful publishing run as well.
 const commit = run("git", ["rev-parse", `v${version}^{commit}`]).trim();
 const runs = api(
@@ -39,7 +35,7 @@ const publishedWithGates = runs.some((candidate) => {
 });
 if (!publishedWithGates)
   throw new Error("No successful native publication workflow for this exact source");
-let body = release.body ?? "";
+const inventories = [];
 for (const component of selected === "both" ? ["student", "server"] : [selected]) {
   const targets =
     component === "student"
@@ -53,17 +49,12 @@ for (const component of selected === "both" ? ["student", "server"] : [selected]
     if (!metadata) throw new Error("This release predates protocol-aware recommendations");
     return JSON.parse(readFileSync(join(directory, `sha256-${metadata.sha256}`), "utf8"));
   });
-  body = recommendedNotes(releases, version, component, body, compatibility);
+  inventories.push({ component, compatibility });
 }
-if ((api(`${endpoint}/${release.id}`).body ?? "") !== (release.body ?? ""))
-  throw new Error("Release notes changed during verification; retry");
-if (body !== (release.body ?? "")) {
-  run(
-    "gh",
-    ["api", "--method", "PATCH", `${endpoint}/${release.id}`, "--input", "-"],
-    JSON.stringify({ body }),
-  );
-}
-if (api(`${endpoint}/${release.id}`).body !== body)
-  throw new Error("Recommendation readback failed");
-process.stdout.write(`Recommended v${version} for ${selected}; signed assets and tag unchanged.\n`);
+updatePreviewChannel(repository, `Recommend preview ${version} for ${selected}`, (previous) => {
+  let channel = previous;
+  for (const { component, compatibility } of inventories)
+    channel = recommendPreview(channel, version, component, compatibility);
+  return channel;
+});
+process.stdout.write(`Recommended v${version} for ${selected}; published releases unchanged.\n`);

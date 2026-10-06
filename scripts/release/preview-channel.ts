@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CURRENT_PROTOCOL_VERSION } from "@marea/protocol";
+import { CURRENT_PROTOCOL_VERSION, ProtocolVersionSchema } from "@marea/protocol";
 import { component, target } from "./manifest.js";
 
 /** Preview tags are monotonically ordered numbers; stable/RC/nightly tags never enter this channel. */
@@ -60,35 +60,35 @@ export function serverOrigin(value: string): string {
   return url.origin;
 }
 
-/** Release notes carry the maintainer's recommendation without changing any signed asset. */
-export function recommendationMarker(selected: "student" | "server"): string {
-  return `<!-- marea-recommended:${selected}:${CURRENT_PROTOCOL_VERSION} -->`;
+/** A small static index avoids downloading all release assets or sharing GitHub API quotas in a classroom. */
+export const previewChannelSchema = z
+  .object({
+    format: z.literal(1),
+    available: previewVersion,
+    recommended: z.record(
+      ProtocolVersionSchema,
+      z.object({ student: previewVersion.optional(), server: previewVersion.optional() }).strict(),
+    ),
+  })
+  .strict();
+export type PreviewChannel = z.infer<typeof previewChannelSchema>;
+
+export function channelVersion(
+  input: unknown,
+  selected: "student" | "server",
+  discovery: "recommended" | "available",
+): string | undefined {
+  const channel = previewChannelSchema.parse(input);
+  return discovery === "recommended"
+    ? channel.recommended[ProtocolVersionSchema.parse(CURRENT_PROTOCOL_VERSION)]?.[selected]
+    : channel.available;
 }
 
-export function newestPreview(
-  input: unknown,
-  recommendedFor?: "student" | "server",
-): string | undefined {
-  const releases = z
-    .array(
-      z.object({
-        tag_name: z.string(),
-        draft: z.boolean(),
-        prerelease: z.boolean(),
-        body: z.string().nullish(),
-      }),
-    )
-    .max(100)
-    .parse(input);
-  return releases
-    .filter((entry) => !entry.draft && entry.prerelease && entry.tag_name.startsWith("v"))
-    .filter(
-      (entry) =>
-        recommendedFor === undefined ||
-        entry.body?.split(/\r?\n/u).includes(recommendationMarker(recommendedFor)),
-    )
-    .map((entry) => entry.tag_name.slice(1))
-    .filter((value) => previewVersion.safeParse(value).success)
-    .sort(comparePreview)
-    .at(-1);
+export function availablePreview(input: unknown, version: string): PreviewChannel {
+  previewVersion.parse(version);
+  if (input === undefined) return { format: 1, available: version, recommended: {} };
+  const previous = previewChannelSchema.parse(input);
+  return comparePreview(version, previous.available) === 1
+    ? { ...previous, available: version }
+    : previous;
 }

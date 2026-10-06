@@ -59,6 +59,16 @@ try {
     assert.equal(inspectPrivatePath(path), "file");
   }
   checks.push("private-created-child-files");
+  const unicode = join(root, "José 日本語");
+  mkdirSync(unicode, { mode: 0o700 });
+  diagnosticPath = unicode;
+  securePrivatePath(unicode, 0o700);
+  assert.equal(inspectPrivatePath(unicode), "directory");
+  const unicodeFile = join(unicode, "sesión.json");
+  writeFileSync(unicodeFile, "synthetic", { mode: 0o600 });
+  securePrivatePath(unicodeFile, 0o600);
+  assert.equal(inspectPrivatePath(unicodeFile), "file");
+  checks.push("unicode-private-paths");
   const databasePath = join(child, "live.sqlite");
   writeFileSync(databasePath, "", { mode: 0o600 });
   const storage = openSqliteDatabaseFile({ databasePath });
@@ -146,7 +156,9 @@ try {
         Buffer.from(diagnostic, "utf16le").toString("base64"),
       ],
       {
-        input: JSON.stringify({ path: diagnosticPath, action: "inspect" }),
+        input: Buffer.from(JSON.stringify({ path: diagnosticPath, action: "inspect" })).toString(
+          "base64",
+        ),
         encoding: "utf8",
         timeout: 30000,
         maxBuffer: 65536,

@@ -63,29 +63,19 @@ it("bounds streamed downloads and fails closed on status, missing body and overs
 it("discovers recommendations independently of the school and keeps manual previews separate", async () => {
   const github = vi.fn(() =>
     Promise.resolve(
-      Response.json([
-        {
-          tag_name: `v${version}`,
-          prerelease: true,
-          draft: false,
-          body: "<!-- marea-recommended:server:0.1 -->",
-        },
-        {
-          tag_name: "v0.1.0-preview.1",
-          prerelease: true,
-          draft: false,
-          body: "<!-- marea-recommended:student:0.1 -->",
-        },
-      ]),
+      Response.json({
+        format: 1,
+        available: version,
+        recommended: { "0.1": { student: "0.1.0-preview.1", server: version } },
+      }),
     ),
   );
   expect(await offeredVersion(settings, github)).toBe("0.1.0-preview.1");
   expect(await offeredVersion(settings, github, "available")).toBe(version);
   expect(await offeredVersion({ ...settings, component: "server" }, github)).toBe(version);
   expect(github).toHaveBeenCalledWith(
-    "https://api.github.com/repos/school/marea/releases?per_page=100",
+    "https://raw.githubusercontent.com/school/marea/marea-preview-channel/preview.json",
     {
-      headers: { accept: "application/vnd.github+json" },
       signal: expect.any(AbortSignal) as AbortSignal,
     },
   );
@@ -205,4 +195,17 @@ it("cancels streams on completion and rejects failed status even with a valid bo
   await expect(
     boundedDownload(() => Promise.resolve(new Response("abcd")), "https://test", 3),
   ).rejects.toThrow("Release download exceeds size limit");
+});
+
+it("bounds the static channel independently of the number or size of published release assets", async () => {
+  const body = JSON.stringify({ format: 1, available: version, recommended: {} }).padEnd(
+    65_536,
+    " ",
+  );
+  expect(
+    await offeredVersion(settings, () => Promise.resolve(new Response(body)), "available"),
+  ).toBe(version);
+  await expect(
+    offeredVersion(settings, () => Promise.resolve(new Response(body + " ")), "available"),
+  ).rejects.toThrow("size limit");
 });

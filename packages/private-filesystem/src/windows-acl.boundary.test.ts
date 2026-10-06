@@ -36,10 +36,10 @@ it.each([
   expect(windowsPrivateKind(path, "inspect")).toBeUndefined();
   expect(spawn).not.toHaveBeenCalled();
 });
-it("passes paths as bounded JSON stdin to a fixed noninteractive script", () => {
+it("passes paths as ASCII-wrapped UTF-8 JSON stdin to a fixed noninteractive script", () => {
   vi.stubEnv("SystemRoot", "D:\\Windows");
   mockOutput("file");
-  const path = "C:\\private\\$(unsafe);'\"state";
+  const path = "C:\\José 日本語\\$(unsafe);'\"state";
   expect(windowsPrivateKind(path, "inspect")).toBe("file");
   expect(spawn).toHaveBeenCalledWith(
     "D:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe",
@@ -51,7 +51,7 @@ it("passes paths as bounded JSON stdin to a fixed noninteractive script", () => 
       Buffer.from(WINDOWS_ACL_SCRIPT, "utf16le").toString("base64"),
     ],
     {
-      input: JSON.stringify({ path, action: "inspect" }),
+      input: Buffer.from(JSON.stringify({ path, action: "inspect" })).toString("base64"),
       encoding: "utf8",
       timeout: 30_000,
       maxBuffer: 1024,
@@ -61,6 +61,9 @@ it("passes paths as bounded JSON stdin to a fixed noninteractive script", () => 
   expect(WINDOWS_ACL_SCRIPT).toContain("GetAccessRules($true, $true");
   expect(WINDOWS_ACL_SCRIPT).toContain("$rules.Count -eq 0");
   expect(WINDOWS_ACL_SCRIPT).toContain("ReparsePoint");
+  expect(WINDOWS_ACL_SCRIPT).toContain(
+    "[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String([Console]::In.ReadToEnd()))",
+  );
 });
 it("uses the system fallback and accepts only exact successful directory/file outputs", () => {
   vi.stubEnv("SystemRoot", undefined);

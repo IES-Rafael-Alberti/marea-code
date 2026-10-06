@@ -8,7 +8,7 @@ import {
 } from "@marea/protocol";
 import {
   manifestAsset,
-  newestPreview,
+  channelVersion,
   previewVersion,
   releaseUrl,
   repositoryName,
@@ -59,16 +59,10 @@ export async function offeredVersion(
     fetcher(input, { ...init, signal: AbortSignal.timeout(2_000) });
   const body = await boundedDownload(
     quickFetch,
-    `https://api.github.com/repos/${repositoryName.parse(settings.repository)}/releases?per_page=100`,
-    2_000_000,
-    {
-      headers: { accept: "application/vnd.github+json" },
-    },
+    `https://raw.githubusercontent.com/${repositoryName.parse(settings.repository)}/marea-preview-channel/preview.json`,
+    65_536,
   );
-  return newestPreview(
-    JSON.parse(new TextDecoder().decode(body)),
-    discovery === "recommended" ? settings.component : undefined,
-  );
+  return channelVersion(JSON.parse(new TextDecoder().decode(body)), settings.component, discovery);
 }
 
 /** A different software version is fine; only an incompatible wire protocol requires a switch. */

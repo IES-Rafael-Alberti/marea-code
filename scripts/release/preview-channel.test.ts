@@ -2,12 +2,13 @@ import { expect, it } from "vitest";
 import {
   comparePreview,
   manifestAsset,
-  newestPreview,
+  channelVersion,
+  availablePreview,
+  previewChannelSchema,
   previewSettingsSchema,
   previewVersion,
   releaseUrl,
   repositoryName,
-  recommendationMarker,
   serverOrigin,
 } from "./preview-channel.js";
 
@@ -38,23 +39,6 @@ it("orders the explicit preview channel numerically without mixing stable or arb
     "../evil",
   ])
     expect(previewVersion.safeParse(value).success).toBe(false);
-  const entry = (tag_name: string, draft = false, prerelease = true) => ({
-    tag_name,
-    draft,
-    prerelease,
-  });
-  expect(
-    newestPreview([
-      entry("v0.1.0-preview.9"),
-      entry("v0.1.0-preview.10"),
-      entry("v9.0.0-preview.0", true),
-      entry("v8.0.0-preview.0", false, false),
-      entry("v9.0.0"),
-      entry("0.1.0-preview.20"),
-    ]),
-  ).toBe("0.1.0-preview.10");
-  expect(newestPreview([])).toBeUndefined();
-  expect(() => newestPreview([{}])).toThrow();
 });
 
 it("constructs fixed GitHub assets and refuses insecure school origins or embedded credentials", () => {
@@ -132,53 +116,43 @@ it("bounds untrusted versions and repositories and validates saved settings", ()
   expect(previewSettingsSchema.parse(settings)).toEqual(settings);
   expect(() => previewSettingsSchema.parse({ ...settings, format: 2 })).toThrow();
   expect(() => previewSettingsSchema.parse({ ...settings, unknown: true })).toThrow();
-  const entry = (tag_name: string) => ({ tag_name, draft: false, prerelease: true });
-  expect(newestPreview([entry("v0.2.0-preview.2"), entry("v0.1.0-preview.1")])).toBe(
-    "0.2.0-preview.2",
-  );
-  expect(newestPreview([entry("untagged")])).toBeUndefined();
-  expect(newestPreview([entry("x9.0.0-preview.1")])).toBeUndefined();
-  expect(() =>
-    newestPreview(Array.from({ length: 101 }, () => entry("v0.1.0-preview.1"))),
-  ).toThrow();
 });
 
-it("recommends components separately and never treats an ordinary publication as recommended", () => {
-  const entry = (version: number, body?: string | null) => ({
-    tag_name: `v0.1.0-preview.${String(version)}`,
-    draft: false,
-    prerelease: true,
-    body,
-  });
-  const releases = [
-    entry(9),
-    entry(8, null),
-    entry(7, "not a recommendation"),
-    entry(6, "prefix <!-- marea-recommended:student:0.1 --> suffix"),
-    entry(5, recommendationMarker("student") + "\r\nnotes"),
-    entry(4, "notes\n" + recommendationMarker("server")),
-    entry(3, recommendationMarker("student")),
-  ];
-  expect(newestPreview(releases)).toBe("0.1.0-preview.9");
-  expect(newestPreview(releases, "student")).toBe("0.1.0-preview.5");
-  expect(newestPreview(releases, "server")).toBe("0.1.0-preview.4");
-  expect(newestPreview([entry(1)], "student")).toBeUndefined();
-  expect(recommendationMarker("student")).toBe("<!-- marea-recommended:student:0.1 -->");
-  expect(recommendationMarker("server")).toBe("<!-- marea-recommended:server:0.1 -->");
-});
-
-it("keeps recommendations for different wire protocol generations separate", () => {
+it("keeps available versions independent from component and protocol recommendations", () => {
+  const channel = {
+    format: 1,
+    available: "0.1.0-preview.9",
+    recommended: {
+      "0.1": { student: "0.1.0-preview.6", server: "0.1.0-preview.5" },
+      "2.0": { student: "0.1.0-preview.8" },
+    },
+  };
+  expect(channelVersion(channel, "student", "available")).toBe("0.1.0-preview.9");
+  expect(channelVersion(channel, "server", "available")).toBe("0.1.0-preview.9");
+  expect(channelVersion(channel, "student", "recommended")).toBe("0.1.0-preview.6");
+  expect(channelVersion(channel, "server", "recommended")).toBe("0.1.0-preview.5");
+  expect(channelVersion({ ...channel, recommended: {} }, "student", "recommended")).toBeUndefined();
   expect(
-    newestPreview(
-      [
-        {
-          tag_name: "v0.1.0-preview.9",
-          draft: false,
-          prerelease: true,
-          body: "<!-- marea-recommended:student:2.0 -->",
-        },
-      ],
-      "student",
-    ),
+    channelVersion({ ...channel, recommended: { "0.1": {} } }, "server", "recommended"),
   ).toBeUndefined();
+  expect(availablePreview(undefined, "0.1.0-preview.1")).toEqual({
+    format: 1,
+    available: "0.1.0-preview.1",
+    recommended: {},
+  });
+  expect(availablePreview(channel, "0.1.0-preview.10")).toEqual({
+    ...channel,
+    available: "0.1.0-preview.10",
+  });
+  expect(availablePreview(channel, "0.1.0-preview.9")).toEqual(channel);
+  expect(availablePreview(channel, "0.1.0-preview.8")).toEqual(channel);
+  for (const value of [
+    { ...channel, format: 2 },
+    { ...channel, available: "1.0.0" },
+    { ...channel, extra: true },
+    { ...channel, recommended: { bad: {} } },
+    { ...channel, recommended: { "0.1": { extra: true } } },
+  ])
+    expect(previewChannelSchema.safeParse(value).success).toBe(false);
+  expect(() => availablePreview(undefined, "invalid")).toThrow();
 });

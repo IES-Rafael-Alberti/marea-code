@@ -89,4 +89,4 @@ Publishing makes a preview available to explicit `update` commands. Recommendati
 is a separate maintainer operation after pilot testing; see [distribution](DISTRIBUTION.md).
 Never move signed tags, replace published assets, or use recommendation as a database
 rollback. The recommendation workflow verifies the successful native publication
-and signed protocol metadata before changing release notes.
+and signed protocol metadata before updating the small static channel index.

@@ -24,7 +24,7 @@ export function windowsPrivateKind(
       Buffer.from(WINDOWS_ACL_SCRIPT, "utf16le").toString("base64"),
     ],
     {
-      input: JSON.stringify({ path, action }),
+      input: Buffer.from(JSON.stringify({ path, action })).toString("base64"),
       encoding: "utf8",
       timeout: 30_000,
       maxBuffer: 1024,

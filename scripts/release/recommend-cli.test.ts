@@ -12,19 +12,22 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { afterEach, beforeEach, expect, it } from "vitest";
 import { recommendationCommandFixture } from "./recommend-cli.fixture.js";
+import { previewChannelSchema, type PreviewChannel } from "./preview-channel.js";
 let scratch: string;
 let state: ReturnType<typeof initialState>;
-const tag = "v0.1.0-preview.7";
+const version = "0.1.0-preview.7";
 function initialState() {
-  const release = { id: 1, body: "Existing notes", tag_name: tag, draft: false, prerelease: true };
   return {
-    release,
-    releases: [release],
+    release: { tag_name: `v${version}`, draft: false, prerelease: true },
     runs: [{ id: 2, head_sha: "a".repeat(40), conclusion: "success" }],
     jobs: [{ name: "publish", conclusion: "success" }],
-    calls: [] as { command: string; args: string[] }[],
+    calls: [] as { command: string; args: string[]; input?: Record<string, unknown> }[],
     rejectSignature: false,
     rejectWrite: false,
+    conflict: false,
+    branch: true,
+    blob: "original",
+    channel: { format: 1, available: version, recommended: {} } as PreviewChannel | null,
   };
 }
 beforeEach(() => {
@@ -50,16 +53,18 @@ beforeEach(() => {
 afterEach(() => {
   rmSync(scratch, { recursive: true, force: true });
 });
-function run(selected = "both") {
+function run(selected = "both", publish = false) {
   const statePath = join(scratch, "state.json");
   writeFileSync(statePath, JSON.stringify(state));
   const arguments_ = [
-    resolve("scripts/release/recommend-preview.mjs"),
+    resolve(
+      publish
+        ? "scripts/release/publish-preview-channel.mjs"
+        : "scripts/release/recommend-preview.mjs",
+    ),
     "school/marea",
-    "0.1.0-preview.7",
-    scratch,
-    "/independent/cosign",
-    selected,
+    version,
+    ...(publish ? [] : [scratch, "/independent/cosign", selected]),
   ];
   const result = spawnSync("bun", arguments_, {
     encoding: "utf8",
@@ -73,28 +78,32 @@ function run(selected = "both") {
   state = JSON.parse(readFileSync(statePath, "utf8")) as typeof state;
   return result;
 }
-it("verifies before writing, preserves notes, scopes recommendations and reads them back", () => {
+const writes = () => state.calls.filter((call) => call.args.includes("--input"));
+it("verifies before promoting, scopes recommendations, reads back and remains idempotent", () => {
   const result = run();
   expect(result.status, result.stderr).toBe(0);
-  expect(state.release.body).toBe(
-    "Existing notes\n\n<!-- marea-recommended:student:0.1 -->\n\n\n<!-- marea-recommended:server:0.1 -->\n",
-  );
+  expect(state.channel).toEqual({
+    format: 1,
+    available: version,
+    recommended: { "0.1": { student: version, server: version } },
+  });
   expect(state.calls[0]).toEqual({
     command: "python3",
     args: [
       "scripts/release/verify-published.py",
       "school/marea",
-      "0.1.0-preview.7",
+      version,
       scratch,
       "/independent/cosign",
     ],
   });
-  state.releases = [state.release];
+  expect(writes()).toHaveLength(1);
+  expect(writes()[0]?.input).toMatchObject({ branch: "marea-preview-channel", sha: "original" });
   state.calls = [];
   expect(run("student").status).toBe(0);
-  expect(state.calls.some((call) => call.args.includes("PATCH"))).toBe(false);
+  expect(writes()).toHaveLength(0);
 });
-it("refuses a failed signature, missing publication evidence, or missing metadata without writes", () => {
+it("refuses failed signatures, missing publication evidence or metadata without writes", () => {
   state.rejectSignature = true;
   expect(run().status).not.toBe(0);
   expect(state.calls).toHaveLength(1);
@@ -104,13 +113,66 @@ it("refuses a failed signature, missing publication evidence, or missing metadat
   state.jobs = [{ name: "publish", conclusion: "success" }];
   writeFileSync(join(scratch, "student-linux-x64.manifest.json"), JSON.stringify({ files: [] }));
   expect(run().stderr).toContain("predates protocol-aware");
-  expect(state.calls.some((call) => call.args.includes("PATCH"))).toBe(false);
+  expect(writes()).toHaveLength(0);
 });
-it("rejects undiscoverable releases, failed readback and unsupported component choices", () => {
-  state.releases = [];
-  expect(run().stderr).toContain("outside the discovery window");
-  state.releases = [state.release];
+it("rejects lost updates, failed readback and invalid component choices", () => {
+  state.conflict = true;
+  expect(run().stderr).toContain("GitHub channel request failed");
+  expect(state.channel?.recommended).toEqual({});
+  state.conflict = false;
   state.rejectWrite = true;
-  expect(run().stderr).toContain("Recommendation readback failed");
+  expect(run().stderr).toContain("Preview channel readback failed");
   expect(run("unknown").stderr).toContain("Choose student, server or both");
+});
+it("publishes availability on a metadata-only orphan branch without recommending it", () => {
+  state.branch = false;
+  state.channel = null;
+  const result = run("both", true);
+  expect(result.status, result.stderr).toBe(0);
+  expect(state.channel).toEqual({ format: 1, available: version, recommended: {} });
+  expect(writes().map((call) => call.args.at(-3))).toEqual([
+    "repos/school/marea/git/trees",
+    "repos/school/marea/git/commits",
+    "repos/school/marea/git/refs",
+  ]);
+  expect(writes()[0]?.input).toEqual({
+    tree: [
+      {
+        path: "preview.json",
+        mode: "100644",
+        type: "blob",
+        content: JSON.stringify(state.channel, null, 2) + "\n",
+      },
+    ],
+  });
+  expect(writes()[1]?.input).toMatchObject({ parents: [], tree: "tree" });
+  expect(writes()[2]?.input).toEqual({ ref: "refs/heads/marea-preview-channel", sha: "commit" });
+});
+it("preserves recommendations during publication and never adopts an unrelated branch", () => {
+  state.channel = previewChannelSchema.parse({
+    format: 1,
+    available: "0.1.0-preview.6",
+    recommended: { "0.1": { student: "0.1.0-preview.6" } },
+  });
+  expect(run("both", true).status).toBe(0);
+  expect(state.channel).toEqual({
+    format: 1,
+    available: version,
+    recommended: { "0.1": { student: "0.1.0-preview.6" } },
+  });
+  state.channel = null;
+  state.calls = [];
+  expect(run("both", true).stderr).toContain("GitHub channel request failed");
+  expect(writes()).toHaveLength(0);
+});
+it("refuses drafts, stable releases and a mismatched tag before publishing availability", () => {
+  for (const release of [
+    { ...state.release, draft: true },
+    { ...state.release, prerelease: false },
+    { ...state.release, tag_name: "v0.1.0-preview.8" },
+  ]) {
+    state.release = release;
+    expect(run("both", true).stderr).toContain("Only a published preview");
+  }
+  expect(writes()).toHaveLength(0);
 });

@@ -1,11 +1,12 @@
-/** Paths arrive as JSON on stdin, never as PowerShell source. No sensitive output. */
+/** Paths arrive as base64-encoded UTF-8 JSON on stdin, never as PowerShell source. No sensitive output. */
 export const WINDOWS_ACL_SCRIPT = String.raw`
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 # A Bun child of PowerShell 7 can inherit module paths incompatible with Windows PowerShell.
 $env:PSModulePath = [IO.Path]::Combine($PSHOME, 'Modules')
 try {
-  $request = [Console]::In.ReadToEnd() | ConvertFrom-Json
+  # Console input codepages vary; an ASCII envelope preserves Unicode paths in redirected stdin.
+  $request = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String([Console]::In.ReadToEnd())) | ConvertFrom-Json
   $path = [string]$request.path
   $path = [IO.Path]::GetFullPath($path)
   $volume = [IO.Path]::GetPathRoot($path)

@@ -1,0 +1,77 @@
+name: Managed installation smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            arch: x64
+            server: true
+          - runner: windows-11-arm
+            arch: arm64
+            server: false
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      EXPECTED_ARCH: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - if: matrix.arch == 'x64'
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - name: Install native ARM64 runtime
+        if: matrix.arch == 'arm64'
+        run: |
+          $base = 'https://github.com/oven-sh/bun/releases/download/bun-v1.4.2'
+          $archive = Join-Path $env:RUNNER_TEMP 'bun-windows-aarch64.zip'
+          $checksums = Join-Path $env:RUNNER_TEMP 'bun-checksums.txt'
+          Invoke-WebRequest "$base/bun-windows-aarch64.zip" -OutFile $archive
+          Invoke-WebRequest "$base/SHASUMS256.txt" -OutFile $checksums
+          $line = Get-Content $checksums | Where-Object { $_ -match '\s+bun-windows-aarch64\.zip$' }
+          if (@($line).Count -ne 1) { throw 'Missing native runtime checksum' }
+          $expected = ($line -split '\s+')[0]
+          if ((Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected.ToLowerInvariant()) { throw 'Runtime checksum mismatch' }
+          Expand-Archive $archive -DestinationPath (Join-Path $env:RUNNER_TEMP 'native-bun')
+          (Join-Path $env:RUNNER_TEMP 'native-bun/bun-windows-aarch64') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Install pinned dependencies and check native permissions, including Unicode
+        run: |
+          if ((bun --version) -ne '1.4.2') { throw 'Wrong Bun version' }
+          if ((bun -e 'console.log(process.arch)') -ne $env:EXPECTED_ARCH) { throw 'Runtime must be native' }
+          bun install --frozen-lockfile --ignore-scripts
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed' }
+          bun packages/private-filesystem/smoke/native-permissions.ts
+          if ($LASTEXITCODE -ne 0) { throw 'Native privacy check failed' }
+      - name: Compile and exercise managed launch and uninstall
+        run: |
+          New-Item -ItemType Directory -Force reports/managed-smoke | Out-Null
+          bun build scripts/release/install.mjs --compile --outfile reports/managed-smoke/marea-install.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed' }
+          '{"component":"student","version":"0.0.0-preview.0"}' | Set-Content reports/managed-smoke/manifest.json -Encoding utf8NoBOM
+          bun scripts/release/preview-launcher-smoke.mjs reports/managed-smoke
+          if ($LASTEXITCODE -ne 0) { throw 'Managed launcher and uninstall failed' }
+      - name: Exercise real server setup, locking, recovery and purge
+        if: matrix.server
+        run: |
+          foreach ($entry in @(@('teacher-host-entry.ts','marea-teacher'),@('cli-entry.ts','marea-admin'),@('operations-entry.ts','marea-operations'))) {
+            bun build "apps/teacher-server/$($entry[0])" --compile --outfile "reports/managed-smoke/$($entry[1]).exe"
+            if ($LASTEXITCODE -ne 0) { throw 'Server compilation failed' }
+          }
+          bun run --cwd apps/dashboard build
+          if ($LASTEXITCODE -ne 0) { throw 'Dashboard compilation failed' }
+          Copy-Item apps/dashboard/dist reports/managed-smoke/dashboard -Recurse
+          bun scripts/release/preview-setup-smoke.mjs reports/managed-smoke
+          if ($LASTEXITCODE -ne 0) { throw 'Managed server lifecycle failed' }
