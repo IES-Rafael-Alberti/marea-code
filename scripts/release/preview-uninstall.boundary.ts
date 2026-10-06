@@ -3,7 +3,6 @@ import {
   lstatSync,
   readFileSync,
   readdirSync,
-  renameSync,
   rmSync,
   rmdirSync,
   writeFileSync,
@@ -11,7 +10,10 @@ import {
 import { homedir } from "node:os";
 import { join, sep } from "node:path";
 import { spawnSync } from "node:child_process";
-import { acquireInstallation } from "../../apps/teacher-server/src/platform/operator-cli/installation-lock.js";
+import {
+  acquireInstallation,
+  type OwnedInstallation,
+} from "../../apps/teacher-server/src/platform/operator-cli/installation-lock.js";
 import type { PreviewSettings } from "./preview-channel.js";
 import { powershellLiteral, windowsLauncher } from "./preview-launchers.js";
 import { removePosixPath } from "./preview-path.boundary.js";
@@ -62,6 +64,14 @@ function printUninstallScope(settings: PreviewSettings, purge: boolean): void {
   process.stdout.write(`${detail}\nCierra las otras sesiones de Marea antes de continuar.\n`);
 }
 
+function retireInstallation(root: string, owner: OwnedInstallation | undefined): string {
+  const destination = join(root, "installation-uninstalling");
+  if (existsSync(destination)) throw new Error("Previous uninstall data needs inspection");
+  if (owner?.release(destination) !== true)
+    throw new Error("Could not retire the locked installation for removal");
+  return destination;
+}
+
 /** Remove only managed paths. Classroom data and user project directories are separate choices. */
 export async function uninstallPreview(
   root: string,
@@ -99,11 +109,7 @@ export async function uninstallPreview(
     const bin = join(root, "bin");
     removeManagedPath(bin);
     owner?.capability.assertOwned();
-    if (purge) {
-      removedData = join(root, "installation-uninstalling");
-      if (existsSync(removedData)) throw new Error("Previous uninstall data needs inspection");
-      renameSync(join(root, "installation"), removedData);
-    }
+    if (purge) removedData = retireInstallation(root, owner);
     for (const name of paths) rmSync(join(root, name), { recursive: true, force: true });
   } finally {
     owner?.release();

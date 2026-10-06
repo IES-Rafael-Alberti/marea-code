@@ -5,6 +5,7 @@ import {
   openSync,
   writeSync,
   realpathSync,
+  renameSync,
   unlinkSync,
   type Stats,
 } from "node:fs";
@@ -15,8 +16,11 @@ import { currentUid, privateKind } from "./private-path.js";
 
 export interface OwnedInstallation {
   readonly capability: InstallationCapability;
-  /** True only when this descriptor's lock was still in place and has been removed. */
-  readonly release: () => boolean;
+  /** Close the descriptor and remove its lock, or retire the locked root to a deletion path.
+   * Retirement preserves the marker while moving, so Windows can rename without admitting another owner.
+   * False means ownership was lost or cleanup failed; an uncertain lock is never removed.
+   */
+  readonly release: (retireTo?: string) => boolean;
 }
 
 function identity(status: Stats | undefined): string | undefined {
@@ -78,12 +82,15 @@ export function acquireInstallation(root: string, uid = currentUid()): OwnedInst
         return undefined;
       },
     }),
-    release: () => {
+    release: (retireTo) => {
       if (released !== undefined) return released;
       released = inPlace();
       try {
         closeSync(descriptor);
-        if (released) unlinkSync(lockPath);
+        if (released) {
+          if (retireTo === undefined) unlinkSync(lockPath);
+          else renameSync(root, retireTo);
+        }
       } catch {
         released = false;
       }

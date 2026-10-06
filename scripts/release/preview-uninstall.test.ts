@@ -4,6 +4,7 @@ import {
   mkdtempSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -54,6 +55,10 @@ beforeEach(() => {
   ports.acquireInstallation.mockReturnValue({
     capability: { assertOwned: ports.assertOwned },
     release: ports.release,
+  });
+  ports.release.mockImplementation((destination?: string) => {
+    if (destination !== undefined) renameSync(join(root, "installation"), destination);
+    return true;
   });
   ports.spawnSync.mockReturnValue({ status: 0 });
   output = vi.spyOn(process.stdout, "write").mockReturnValue(true);
@@ -185,4 +190,14 @@ it("can remove a running POSIX executable without taking the Windows repair path
   Object.defineProperty(process, "execPath", { value: join(root, "programs", "marea-install") });
   await uninstallPreview(root, settings(), ["--yes"]);
   expect(existsSync(join(root, "programs"))).toBe(false);
+});
+
+it("leaves managed files in place when locked retirement fails", async () => {
+  ports.release.mockReturnValue(false);
+  await expect(uninstallPreview(root, server(), ["--yes", "--purge-data"])).rejects.toThrow(
+    "Could not retire the locked installation",
+  );
+  expect(ports.release).toHaveBeenCalledWith(join(root, "installation-uninstalling"));
+  expect(existsSync(join(root, "installation", "data"))).toBe(true);
+  expect(existsSync(join(root, "programs"))).toBe(true);
 });

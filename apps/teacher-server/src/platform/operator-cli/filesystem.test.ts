@@ -71,6 +71,36 @@ describe("private installation paths", () => {
 });
 
 describe("exclusive offline installation ownership", () => {
+  it("closes the descriptor before retiring a still-locked installation", () => {
+    const parent = temporaryInstallation();
+    const root = join(parent, "active");
+    const retired = join(parent, "retired");
+    fs.mkdirSync(join(root, "locks"), { recursive: true, mode: 0o700 });
+    const owned = acquireInstallation(root);
+    const descriptor = vi.mocked(fs.openSync).mock.results.at(-1)?.value as number;
+    const rename = vi.spyOn(fs, "renameSync");
+    rename.mockImplementationOnce((source, destination) => {
+      expect(() => fs.fstatSync(descriptor)).toThrow();
+      expect(() => acquireInstallation(root)).toThrow("installation-busy");
+      rename.mockRestore();
+      fs.renameSync(source, destination);
+    });
+    expect(owned.release(retired)).toBe(true);
+    expect(fs.existsSync(root)).toBe(false);
+    expect(fs.existsSync(join(retired, "locks/installation.lock"))).toBe(true);
+    expect(owned.release()).toBe(true);
+    expect(() => {
+      owned.capability.assertOwned();
+    }).toThrow("installation-lost");
+  });
+  it("retains the lock and original data when retirement cannot complete", () => {
+    const root = temporaryInstallation();
+    const owned = acquireInstallation(root);
+    expect(owned.release(join(root, "missing", "retired"))).toBe(false);
+    expect(fs.existsSync(join(root, "locks/installation.lock"))).toBe(true);
+    expect(owned.release()).toBe(false);
+  });
+
   it("creates only a private lock, rejects contention, verifies ownership and releases once", () => {
     const root = temporaryInstallation();
     const path = join(root, "locks/installation.lock");
