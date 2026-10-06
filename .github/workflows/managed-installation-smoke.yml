@@ -24,6 +24,16 @@ jobs:
       - run: bun install --frozen-lockfile --ignore-scripts
       - name: Piped and direct bootstrap with a real interactive terminal
         run: bun scripts/release/preview-wizard-smoke.mjs
+      - name: Compile server and exercise HTTP, managed Ctrl+C and clean uninstall
+        run: |
+          mkdir -p reports/managed-smoke
+          bun build scripts/release/install.mjs --compile --outfile reports/managed-smoke/marea-install
+          bun build apps/teacher-server/teacher-host-entry.ts --compile --outfile reports/managed-smoke/marea-teacher
+          bun build apps/teacher-server/cli-entry.ts --compile --outfile reports/managed-smoke/marea-admin
+          bun build apps/teacher-server/operations-entry.ts --compile --outfile reports/managed-smoke/marea-operations
+          bun run --cwd apps/dashboard build
+          cp -R apps/dashboard/dist reports/managed-smoke/dashboard
+          bun scripts/release/preview-setup-smoke.mjs reports/managed-smoke
   windows:
     strategy:
       fail-fast: false

@@ -12,7 +12,7 @@ import { bunServe } from "./bun-serve.boundary.js";
 import { startTeacherHost, type ServePort } from "./teacher-host.js";
 
 interface SignalSource {
-  once(signal: "SIGINT" | "SIGTERM", listener: () => void): unknown;
+  on(signal: "SIGINT" | "SIGTERM", listener: () => void): unknown;
   removeListener(signal: "SIGINT" | "SIGTERM", listener: () => void): unknown;
 }
 
@@ -98,7 +98,7 @@ export async function runTeacherHost(
     stopRequested.resolve(undefined);
   };
   const signals = ["SIGINT", "SIGTERM"] as const;
-  for (const signal of signals) dependencies.signals.once(signal, onSignal);
+  for (const signal of signals) dependencies.signals.on(signal, onSignal);
   const stopListening = () => {
     for (const signal of signals) dependencies.signals.removeListener(signal, onSignal);
   };
@@ -119,8 +119,9 @@ export async function runTeacherHost(
     for (const url of httpConnectionUrls(httpHosts, host.url))
       dependencies.stdout(`Student connection: marea --server ${url}\n`);
   await stopRequested.promise;
-  stopListening();
-  const stopped = await host.stop();
+  // A terminal and its managed launcher can both deliver the same interruption.
+  // Keep handling signals until draining completes, so a duplicate cannot kill cleanup.
+  const stopped = await host.stop().finally(stopListening);
   if (stopped.state === "stopped") {
     dependencies.stdout("Teacher host stopped.\n");
     return 0;

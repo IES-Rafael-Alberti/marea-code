@@ -231,6 +231,38 @@ describe("teacher host executable", () => {
     }
   });
 
+  it.each([false, true])(
+    "keeps repeated signals idempotent throughout draining, including failure: %s",
+    async (fail) => {
+      const f = dependencies();
+      const pending = Promise.withResolvers<{ state: "stopped"; reasonCode: "stopped" }>();
+      const stop = vi.fn(() => pending.promise);
+      mocks.start.mockResolvedValueOnce({ state: "ready", url: "http://127.0.0.1:1", stop });
+      const exit = runTeacherHost(ARGV, f.ports);
+      await vi.waitFor(() => {
+        expect(f.stdout).toHaveLength(1);
+      });
+      f.signals.emit("SIGINT");
+      await vi.waitFor(() => {
+        expect(stop).toHaveBeenCalledOnce();
+      });
+      for (const signal of ["SIGINT", "SIGTERM", "SIGINT"]) {
+        expect(f.signals.listenerCount(signal)).toBe(1);
+        f.signals.emit(signal);
+      }
+      if (fail) {
+        const rejected = expect(exit).rejects.toThrow("synthetic stop failure");
+        pending.reject(new Error("synthetic stop failure"));
+        await rejected;
+      } else {
+        pending.resolve({ state: "stopped", reasonCode: "stopped" });
+        expect(await exit).toBe(0);
+      }
+      expect(stop).toHaveBeenCalledOnce();
+      expect(["SIGINT", "SIGTERM"].map((name) => f.signals.listenerCount(name))).toEqual([0, 0]);
+    },
+  );
+
   it("wires process ports and the root entry assigns the exit code", async () => {
     const write = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     const out = vi.spyOn(process.stdout, "write").mockImplementation(() => true);

@@ -1,3 +1,4 @@
+import { verifyManagedHostStop } from "./managed-host-stop-smoke.mjs";
 import assert from "node:assert/strict";
 import console from "node:console";
 import { spawnSync } from "node:child_process";
@@ -180,6 +181,8 @@ try {
         await stopCompiledHost(host);
       }
     }
+  if (process.platform !== "win32")
+    await verifyManagedHostStop(join(release, "marea-teacher"), root, "release:preview");
   const held = acquireInstallation(root);
   try {
     await assert.rejects(
