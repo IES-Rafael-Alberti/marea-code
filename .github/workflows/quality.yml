@@ -47,6 +47,7 @@ jobs:
         run: bun run release:audit
 
   mutation:
+    needs: quality
     name: Mutation (${{ matrix.workspace }}, ${{ matrix.partition || 'all' }})
     runs-on: ubuntu-24.04
     timeout-minutes: 180

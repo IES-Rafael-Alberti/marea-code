@@ -115,6 +115,34 @@ function restoreAndRead(
 describe("recovery bundle service", () => {
   beforeEach(resetMaintenance);
 
+  it("reserves a private staging directory before entering maintenance", () => {
+    writeState();
+    createRecoveryBundle(join(root(), "staged-before-lock"), {
+      ...input(),
+      createExclusive: (operation) => {
+        const staging = readdirSync(root()).filter((name) => name.endsWith(".staging"));
+        expect(staging).toHaveLength(1);
+        const staged = join(root(), String(staging[0]));
+        expect(statSync(staged).isDirectory()).toBe(true);
+        expect(statSync(staged).mode & 0o777).toBe(0o700);
+        return maintenance(operation);
+      },
+    });
+    expect(exclusive.calls).toBe(1);
+    expect(readdirSync(root()).filter((name) => name.endsWith(".staging"))).toEqual([]);
+  });
+
+  it("rejects an occupied destination before taking the maintenance lock or capturing data", () => {
+    writeState();
+    const destination = join(root(), "already-present");
+    mkdirSync(destination);
+    expectRecoveryError(() => {
+      createRecoveryBundle(destination, input());
+    }, "bundle-destination-invalid");
+    expect(exclusive.calls).toBe(0);
+    expect(readdirSync(destination)).toEqual([]);
+  });
+
   it("preserves recovery errors and maps unknown failures", () => {
     const recovery = new RecoveryBundleError("bundle-input-invalid", "known");
     expect(ensureRecoveryError(recovery, "bundle-restore-failed", "mapped")).toBe(recovery);
