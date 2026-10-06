@@ -17,6 +17,7 @@ Use the version's `install.sh` or `install.ps1` as described in the
 [installation and update guide](DISTRIBUTION.md). The server installer asks for
 the initial school, teacher and class. Students only need their school's server
 address. Bun, Node and a source checkout are not required to install a package.
+Student computers need Git on `PATH` for project snapshots and change tracking.
 
 | System              | Student | Teacher server |
 | ------------------- | ------- | -------------- |

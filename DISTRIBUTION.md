@@ -42,6 +42,9 @@ service-account configuration.
 
 ## Student computers
 
+Student computers need Git installed and available on `PATH` for project snapshots
+and change tracking. The application runtime is included in the package.
+
 Use the **same version as the school's server** and replace the example origin.
 macOS Apple Silicon or Linux x64/ARM64:
 
