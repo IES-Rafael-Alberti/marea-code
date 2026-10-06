@@ -10,6 +10,10 @@ on:
         description: Publish a tested preview (otherwise keep review artifacts only)
         type: boolean
         default: false
+      verify_published:
+        description: Verify all downloads of an existing prerelease without rebuilding or publishing
+        type: boolean
+        default: false
       native_only:
         description: Build native review artifacts only (publishing still requires all quality gates)
         type: boolean
@@ -21,10 +25,10 @@ concurrency:
   cancel-in-progress: false
 jobs:
   quality:
-    if: inputs.publish || !inputs.native_only
+    if: ${{ !inputs.verify_published && (inputs.publish || !inputs.native_only) }}
     uses: ./.github/workflows/quality.yml
   native:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: ${{ !inputs.verify_published && startsWith(github.ref, 'refs/tags/v') }}
     strategy:
       fail-fast: false
       matrix:
@@ -221,7 +225,7 @@ jobs:
 
   publish:
     needs: [quality, native]
-    if: inputs.publish
+    if: ${{ !inputs.verify_published && inputs.publish }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -249,3 +253,36 @@ jobs:
           gh release create "v$PREVIEW_VERSION" --verify-tag --draft --prerelease --title "Marea $PREVIEW_VERSION" --notes-file DISTRIBUTION.md
           find reports/publication -type f -print0 | xargs -0 -n 20 gh release upload "v$PREVIEW_VERSION"
           gh release edit "v$PREVIEW_VERSION" --draft=false --prerelease --latest=false
+
+  verify-published:
+    if: inputs.verify_published
+    name: Verify published signatures and downloads
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      PREVIEW_VERSION: ${{ inputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Require read-only verification inputs
+        env:
+          PUBLISH: ${{ inputs.publish }}
+          NATIVE_ONLY: ${{ inputs.native_only }}
+        run: test "$PUBLISH" = false && test "$NATIVE_ONLY" = false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+          cache: false
+      - name: Build an independent pinned verifier
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          go install github.com/sigstore/cosign/v3/cmd/cosign@v3.0.2
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Download and verify the complete published release
+        run: |
+          gh release download "v$PREVIEW_VERSION" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/published-preview"
+          python3 scripts/release/verify-published.py "$GITHUB_REPOSITORY" "$PREVIEW_VERSION" "$RUNNER_TEMP/published-preview" "$(command -v cosign)"

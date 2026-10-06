@@ -130,3 +130,9 @@ checkpoint, and flush the resulting file. This supports recovery after the clien
 exits or crashes. Windows does not support POSIX directory synchronization, so
 checkpoint directory-entry durability across a sudden power loss is not guaranteed.
 File synchronization errors remain fatal; they are never silently ignored.
+
+To verify an existing publication without rebuilding or modifying it, run
+**Native preview releases** on `main`, set its version and enable only
+`verify_published`. This downloads every release asset and checks all eight
+Sigstore identities, the tagged source commit, the closed file inventory and
+every checksum. It does not replace the native tests required for publication.

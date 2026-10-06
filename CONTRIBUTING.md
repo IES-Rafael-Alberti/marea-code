@@ -63,3 +63,9 @@ request and update the relevant tracked documentation.
 The CI workflows run the quality suite, validate the title with the repository
 commitlint configuration, review dependency changes, audit dependencies, and
 run CodeQL. A maintainer may request additional platform or integration checks.
+
+Routine Dependabot updates are grouped monthly, with major upgrades reviewed as
+explicit migrations. Coupled dependencies such as Vitest and its coverage provider
+are proposed together. A failing update is not merged just to clear the queue;
+retain the validated versions until its compatibility failures are resolved.
+Dependency auditing continues on every CI run and on the Security schedule.
