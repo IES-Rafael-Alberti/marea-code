@@ -215,6 +215,8 @@ jobs:
             reports/phase5/installed-client-receipt.json
             reports/phase5/native-credential-writer-receipt.json
           retention-days: 7
+          # Vite's signed dashboard inventory lives in dashboard/.vite/manifest.json.
+          include-hidden-files: true
           if-no-files-found: error
 
   publish:
