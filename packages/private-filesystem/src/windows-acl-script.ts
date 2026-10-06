@@ -32,7 +32,7 @@ try {
       $rule = [Security.AccessControl.FileSystemAccessRule]::new($identity, [Security.AccessControl.FileSystemRights]::FullControl, $inherit, [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow)
       $acl.AddAccessRule($rule)
     }
-    if ($isDirectory) { [IO.Directory]::SetAccessControl($path, $acl) } else { [IO.File]::SetAccessControl($path, $acl) }
+    Set-Acl -LiteralPath $path -AclObject $acl
   }
   $acl = if ($isDirectory) { [IO.Directory]::GetAccessControl($path) } else { [IO.File]::GetAccessControl($path) }
   # Elevated Windows processes create children owned by Administrators, already a trusted ACL principal.

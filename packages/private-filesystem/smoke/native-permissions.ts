@@ -131,8 +131,8 @@ try {
   if (process.platform === "win32") {
     // Diagnostics are restricted to this synthetic, disposable fixture.
     const diagnostic = WINDOWS_ACL_SCRIPT.replace(
-      "$acl = Get-Acl -LiteralPath $path",
-      "$acl = Get-Acl -LiteralPath $path; [Console]::Error.WriteLine($acl.Sddl); [Console]::Error.WriteLine($sid.Value)",
+      "$rules = $acl.GetAccessRules",
+      "[Console]::Error.WriteLine($acl.Sddl); [Console]::Error.WriteLine($sid.Value); $rules = $acl.GetAccessRules",
     ).replace(
       "catch { [Console]::Out.Write('unsafe'); exit 1 }",
       "catch { [Console]::Error.WriteLine($_.Exception.Message); [Console]::Error.WriteLine($_.ScriptStackTrace); exit 1 }",
