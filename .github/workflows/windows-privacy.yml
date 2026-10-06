@@ -83,9 +83,6 @@ jobs:
         id: journey
         if: ${{ !cancelled() && steps.programs.outcome == 'success' }}
         run: bun scripts/release/installed-client-smoke.mjs reports/windows-smoke/marea.exe reports/windows-smoke/client-receipt.json
-      - name: Diagnose synthetic client failure without replacing the gate
-        if: ${{ !cancelled() && steps.journey.outcome == 'failure' }}
-        run: bun scripts/release/diagnose-client.mjs
       - name: Exercise managed launcher
         if: ${{ !cancelled() && steps.programs.outcome == 'success' }}
         run: bun scripts/release/preview-launcher-smoke.mjs reports/windows-smoke
