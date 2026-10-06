@@ -64,8 +64,13 @@ The CI workflows run the quality suite, validate the title with the repository
 commitlint configuration, review dependency changes, audit dependencies, and
 run CodeQL. A maintainer may request additional platform or integration checks.
 
-Routine Dependabot updates are grouped monthly, with major upgrades reviewed as
-explicit migrations. Coupled dependencies such as Vitest and its coverage provider
-are proposed together. A failing update is not merged just to clear the queue;
-retain the validated versions until its compatibility failures are resolved.
-Dependency auditing continues on every CI run and on the Security schedule.
+Routine Dependabot version PRs are paused during the first classroom pilot with
+`open-pull-requests-limit: 0` for Bun and GitHub Actions. Closing a grouped PR alone
+does not prevent Dependabot from proposing those versions again. This limit does
+not apply to security update PRs; dependency auditing also continues on every CI
+run and on the Security schedule. We do not ignore vulnerable dependency versions.
+
+When routine updates resume, raise that limit and review major upgrades as explicit
+migrations. The monthly groups keep coupled tools such as Vitest and its coverage
+provider together. A failing update is not merged just to clear the queue; retain
+the validated versions until its compatibility failures are resolved.
