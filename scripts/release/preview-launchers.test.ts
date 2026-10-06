@@ -59,3 +59,14 @@ it("quotes PowerShell literals and emits a strict component activation check", (
 it("recognizes the exact previous Windows launcher without adding portable-uninstall commands", () => {
   expect(windowsLauncher("C:\\Marea", "student", false)).toMatchSnapshot("legacy Windows launcher");
 });
+
+it("marks new PowerShell scripts as UTF-8 so legacy Windows PowerShell preserves non-ASCII home paths", () => {
+  const script = windowsLauncher("C:\\Users\\José 日本語", "student");
+  expect(Buffer.from(script).subarray(0, 3)).toEqual(Buffer.from([0xef, 0xbb, 0xbf]));
+  expect(script).toContain("$root = 'C:\\Users\\José 日本語'");
+  expect(
+    windowsLauncher("C:\\Users\\José 日本語", "student", false).startsWith(
+      "$ErrorActionPreference",
+    ),
+  ).toBe(true);
+});

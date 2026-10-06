@@ -14,7 +14,9 @@ exec "$root/programs/$active/marea-install" preview run ${selected} --root "$roo
 }
 
 export function windowsLauncher(root: string, selected: string, portableUninstall = true): string {
-  return `$ErrorActionPreference = 'Stop'
+  // Windows PowerShell 5.1 requires a UTF-8 BOM for literal non-ASCII home paths.
+  // Preserve the old bytes only when recognizing a legacy launcher for migration.
+  return `${portableUninstall ? "\uFEFF" : ""}$ErrorActionPreference = 'Stop'
 $env:PSModulePath = [IO.Path]::Combine($PSHOME, 'Modules')
 $root = ${powershellLiteral(root)}
 $active = (Get-Content -LiteralPath (Join-Path $root 'programs/active.json') -Raw | ConvertFrom-Json).current

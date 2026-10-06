@@ -20,7 +20,7 @@ const source = realpathSync(resolve(process.argv[2]));
 const manifest = JSON.parse(readFileSync(join(source, "manifest.json"), "utf8"));
 const scratch = realpathSync(mkdtempSync(join(tmpdir(), "marea-managed-launcher-")));
 try {
-  const root = join(scratch, "teacher's $literal home");
+  const root = join(scratch, "José's $literal home 日本語");
   const current = `${manifest.component}-${manifest.version}`;
   const release = join(root, "programs", current);
   mkdirSync(release, { recursive: true, mode: 0o700 });

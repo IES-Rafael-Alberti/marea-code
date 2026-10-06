@@ -21,7 +21,7 @@ exports[`installs per-user Windows launchers and PATH without a shell profile > 
 [
   [
     "/private/bin/marea.ps1",
-    "$ErrorActionPreference = 'Stop'
+    "﻿$ErrorActionPreference = 'Stop'
 $env:PSModulePath = [IO.Path]::Combine($PSHOME, 'Modules')
 $root = '/private'
 $active = (Get-Content -LiteralPath (Join-Path $root 'programs/active.json') -Raw | ConvertFrom-Json).current
