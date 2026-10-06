@@ -88,6 +88,8 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   const startedAt = Date.now();
   const requests: { path: string; status: number; atMs: number }[] = [];
   harness = await createAcceptanceHarness({
+    // The compiled client uses the real clock, unlike in-process acceptance clients.
+    initialTime: new Date().toISOString(),
     observeHttpResponse: (path, status) => {
       requests.push({ path, status, atMs: Date.now() - startedAt });
     },
@@ -171,6 +173,7 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   ) as { effects: unknown[] };
   expect(ledger.effects).toHaveLength(1);
   expect(value.provider.requests).toHaveLength(2);
+  expect(requests.filter((request) => request.path === "/v1/runs/lease-renew")).toEqual([]);
   expect(await readFile(notes, "utf8")).toBe("The tide is rising.\n");
   await durable(value, "turn-ended");
   await resumed.waitForQuiet();

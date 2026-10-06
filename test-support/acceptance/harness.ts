@@ -196,6 +196,7 @@ export function enrollAcceptanceStudent(harness: AcceptanceHarness, name: "ada" 
 
 export async function createAcceptanceHarness(
   options: {
+    readonly initialTime?: string;
     readonly snapshotSource?: (database: NodeSqliteTestDatabase) => RunSnapshotSource;
     readonly provider?: DeterministicInferenceProvider;
     readonly evaluationIntervalMs?: number;
@@ -205,7 +206,7 @@ export async function createAcceptanceHarness(
 ): Promise<AcceptanceHarness> {
   const database = new NodeSqliteTestDatabase();
   installSchema(database);
-  const clock = new MutableTestClock();
+  const clock = new MutableTestClock(options.initialTime);
   const values = new AcceptanceValues();
   const identities = new IdentityService({
     clock,
