@@ -55,3 +55,7 @@ it("quotes PowerShell literals and emits a strict component activation check", (
   expect(windowsLauncher("C:\\User's $home", "server")).toContain("'^server-[a-zA-Z0-9.-]+$'");
   expect(windowsLauncher("C:\\User's $home", "server")).toContain("--root $root -- @args");
 });
+
+it("recognizes the exact previous Windows launcher without adding portable-uninstall commands", () => {
+  expect(windowsLauncher("C:\\Marea", "student", false)).toMatchSnapshot("legacy Windows launcher");
+});

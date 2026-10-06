@@ -1,3 +1,4 @@
+import { SUPPORTED_PROTOCOL_VERSIONS } from "@marea/protocol";
 import { buildCommand } from "./build-command.js";
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -195,6 +196,10 @@ export function buildCandidate(argv: readonly string[]): string {
         null,
         2,
       ),
+    );
+    writeFileSync(
+      join(root, "compatibility.json"),
+      JSON.stringify({ supportedProtocolVersions: SUPPORTED_PROTOCOL_VERSIONS }),
     );
     const files = ordinaryFiles(root).map((path) => ({
       path,

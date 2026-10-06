@@ -66,7 +66,7 @@ export function bootstrapScript(
     "",
   );
   if (windows)
-    return `param([ValidateSet('student','server')][string]$Component='student', [string]$Server='')
+    return `param([ValidateSet('student','server')][string]$Component='student', [string]$Server='', [string]$Version='')
 $ErrorActionPreference='Stop'
 $architecture=[System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
 switch ("$Component-win32-$architecture") {
@@ -81,7 +81,8 @@ try {
     Invoke-WebRequest -UseBasicParsing -Uri (${powershellLiteral(base)}+'sha256-'+$entry[1]) -OutFile $path
     if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry[1]) { throw 'Bootstrap checksum mismatch' }
   }
-  $arguments=@('preview','install',$Component,'--repository',${powershellLiteral(repository)},'--version',${powershellLiteral(version)},'--cosign',(Join-Path $temp 'cosign.exe'))
+  $arguments=@('preview','install',$Component,'--repository',${powershellLiteral(repository)},'--cosign',(Join-Path $temp 'cosign.exe'))
+  if ($Version) { $arguments+=@('--version',$Version) }
   if ($Server) { $arguments+=@('--server',$Server) }
   & (Join-Path $temp 'marea-install.exe') @arguments
   if ($LASTEXITCODE -ne 0) { throw 'Marea installation failed' }
@@ -108,7 +109,7 @@ download() {
 }
 download marea-install "$installerHash"
 download cosign "$cosignHash"
-"$temp/marea-install" preview install "$component" --repository ${shellLiteral(repository)} --version ${shellLiteral(version)} --cosign "$temp/cosign" "$@" < /dev/tty
+"$temp/marea-install" preview install "$component" --repository ${shellLiteral(repository)} --cosign "$temp/cosign" "$@" < /dev/tty
 `;
 }
 

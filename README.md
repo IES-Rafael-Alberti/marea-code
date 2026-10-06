@@ -34,9 +34,12 @@ The server listens on loopback; access from other computers needs an HTTPS rever
 proxy and a school-reachable address. A local `127.0.0.1` address cannot be shared
 with students on other computers.
 
-Managed installations offer updates at startup. Teachers choose when to update a
-stopped server, with a backup before migration. Students follow their school's
-exact preview version. Download failures do not replace the installed program.
+Managed installations offer **recommended** updates at startup; `marea update`
+and `marea-teacher update` let a pilot group try the latest published preview first.
+Client and server software versions can differ while their wire protocol and
+required capabilities remain compatible. Teachers update a stopped server, with a
+backup before migration. Download failures do not replace the installed program.
+See [distribution](DISTRIBUTION.md) for recommendation, recovery and uninstall commands.
 
 ## Develop
 

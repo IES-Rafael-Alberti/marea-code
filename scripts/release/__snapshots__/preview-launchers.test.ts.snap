@@ -1,0 +1,12 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`recognizes the exact previous Windows launcher without adding portable-uninstall commands > legacy Windows launcher 1`] = `
+"$ErrorActionPreference = 'Stop'
+$env:PSModulePath = [IO.Path]::Combine($PSHOME, 'Modules')
+$root = 'C:\\Marea'
+$active = (Get-Content -LiteralPath (Join-Path $root 'programs/active.json') -Raw | ConvertFrom-Json).current
+if ($active -cnotmatch '^student-[a-zA-Z0-9.-]+$') { throw 'Invalid activation' }
+& (Join-Path $root "programs/$active/marea-install.exe") preview run student --root $root -- @args
+exit $LASTEXITCODE
+"
+`;

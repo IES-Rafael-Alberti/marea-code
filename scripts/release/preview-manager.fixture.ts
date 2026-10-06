@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, vi } from "vitest";
 const ports = vi.hoisted(() => ({
+  uninstallPreview: vi.fn(),
   existsSync: vi.fn(),
   mkdirSync: vi.fn(),
   mkdtempSync: vi.fn(),
@@ -14,6 +15,7 @@ const ports = vi.hoisted(() => ({
   verifySignature: vi.fn(),
   downloadPreview: vi.fn(),
   offeredVersion: vi.fn(),
+  requiredPreviewVersion: vi.fn(),
   activatePreviewServer: vi.fn(),
   assertPreviewServerReady: vi.fn(),
   provisionServer: vi.fn(),
@@ -24,6 +26,7 @@ const ports = vi.hoisted(() => ({
   configurePosixPath: vi.fn(),
   runForeground: vi.fn(),
 }));
+vi.mock("./preview-uninstall.boundary.js", () => ports);
 vi.mock("node:fs", () => ports);
 vi.mock("node:child_process", () => ports);
 vi.mock("node:os", () => ({ homedir: () => "/home/test" }));

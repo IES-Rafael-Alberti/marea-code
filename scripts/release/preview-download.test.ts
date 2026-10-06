@@ -4,7 +4,12 @@ import { mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, statSync 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
-import { boundedDownload, downloadPreview, offeredVersion } from "./preview-download.boundary.js";
+import {
+  boundedDownload,
+  downloadPreview,
+  offeredVersion,
+  requiredPreviewVersion,
+} from "./preview-download.boundary.js";
 import { sha256 } from "./manifest.js";
 
 const scratch: string[] = [];
@@ -55,18 +60,49 @@ it("bounds streamed downloads and fails closed on status, missing body and overs
     ).rejects.toThrow();
 });
 
-it("uses the school's exact version for students and the preview list for teachers", async () => {
-  const fetcher = vi.fn(() =>
+it("discovers recommendations independently of the school and keeps manual previews separate", async () => {
+  const github = vi.fn(() =>
     Promise.resolve(
-      Response.json({
-        requestId: "request:preview-update",
-        serverVersion: version,
-        supportedProtocolVersions: ["0.1"],
-        capabilities: [],
-      }),
+      Response.json([
+        {
+          tag_name: `v${version}`,
+          prerelease: true,
+          draft: false,
+          body: "<!-- marea-recommended:server:0.1 -->",
+        },
+        {
+          tag_name: "v0.1.0-preview.1",
+          prerelease: true,
+          draft: false,
+          body: "<!-- marea-recommended:student:0.1 -->",
+        },
+      ]),
     ),
   );
-  expect(await offeredVersion(settings, "0.1.0-preview.1", fetcher)).toBe(version);
+  expect(await offeredVersion(settings, github)).toBe("0.1.0-preview.1");
+  expect(await offeredVersion(settings, github, "available")).toBe(version);
+  expect(await offeredVersion({ ...settings, component: "server" }, github)).toBe(version);
+  expect(github).toHaveBeenCalledWith(
+    "https://api.github.com/repos/school/marea/releases?per_page=100",
+    {
+      headers: { accept: "application/vnd.github+json" },
+      signal: expect.any(AbortSignal) as AbortSignal,
+    },
+  );
+  await expect(
+    offeredVersion(settings, () => Promise.reject(new Error("offline"))),
+  ).rejects.toThrow("offline");
+});
+
+it("requires a school release only for incompatible protocols, never for a different software version", async () => {
+  const response = {
+    requestId: "request:preview-update",
+    serverVersion: version,
+    supportedProtocolVersions: ["0.1"],
+    capabilities: [],
+  };
+  const fetcher = vi.fn(() => Promise.resolve(Response.json(response)));
+  expect(await requiredPreviewVersion(settings, "0.1.0-preview.1", fetcher)).toBeUndefined();
   expect(fetcher).toHaveBeenCalledWith(
     "https://school.test/v1/capabilities",
     expect.objectContaining({
@@ -79,23 +115,20 @@ it("uses the school's exact version for students and the preview list for teache
       }),
     }),
   );
+  response.supportedProtocolVersions = ["2.0"];
+  expect(await requiredPreviewVersion(settings, "0.1.0-preview.1", fetcher)).toBe(version);
+  response.requestId = "request:unrelated";
+  await expect(requiredPreviewVersion(settings, version, fetcher)).rejects.toThrow(
+    "Unrelated capabilities response",
+  );
+  const calls = fetcher.mock.calls.length;
   expect(
-    await offeredVersion({ ...settings, serverUrl: undefined }, version, fetcher),
+    await requiredPreviewVersion({ ...settings, serverUrl: undefined }, version, fetcher),
   ).toBeUndefined();
-  const github = vi.fn(() =>
-    Promise.resolve(Response.json([{ tag_name: `v${version}`, prerelease: true, draft: false }])),
-  );
-  expect(await offeredVersion({ ...settings, component: "server" }, version, github)).toBe(version);
-  expect(github).toHaveBeenCalledWith(
-    "https://api.github.com/repos/school/marea/releases?per_page=100",
-    {
-      headers: { accept: "application/vnd.github+json" },
-      signal: expect.any(AbortSignal) as AbortSignal,
-    },
-  );
-  await expect(
-    offeredVersion(settings, version, () => Promise.reject(new Error("offline"))),
-  ).rejects.toThrow("offline");
+  expect(
+    await requiredPreviewVersion({ ...settings, component: "server" }, version, fetcher),
+  ).toBeUndefined();
+  expect(fetcher).toHaveBeenCalledTimes(calls);
 });
 
 it("authenticates the inventory before downloading any selected path and checks every hash", async () => {

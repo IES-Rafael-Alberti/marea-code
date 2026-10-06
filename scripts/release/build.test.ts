@@ -325,7 +325,11 @@ it("binds reproducible output metadata to actual commands, source bytes and nati
   });
   expect(written(`${root}/provenance.json`)).toBe(JSON.stringify(provenance, null, 2));
   expect(mocks.readFileSync).toHaveBeenCalledWith("bun.lock");
-  expect(mocks.writeFileSync).toHaveBeenCalledTimes(5);
+  expect(mocks.writeFileSync).toHaveBeenCalledTimes(6);
+  expect(mocks.writeFileSync).toHaveBeenCalledWith(
+    `${root}/compatibility.json`,
+    JSON.stringify({ supportedProtocolVersions: ["0.1"] }),
+  );
   for (const name of ["marea-teacher", "marea-admin", "marea-operations"])
     expect(mocks.readFileSync).toHaveBeenCalledWith(`${root}/${name}`);
   expect(mocks.readFileSync).toHaveBeenCalledWith(`${root}/sbom.cdx.json`, "utf8");

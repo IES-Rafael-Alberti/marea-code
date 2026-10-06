@@ -130,3 +130,11 @@ it("refuses mismatching passwords before creating any installation", async () =>
     .mockResolvedValueOnce("other-password");
   await expect(serverQuestions()).rejects.toThrow("contraseñas no coinciden");
 });
+
+it("explains the protocol requirement before requesting an update", async () => {
+  mocks.question.mockResolvedValueOnce("s");
+  expect(await acceptUpdate("0.1.0-preview.3", true)).toBe(true);
+  expect(mocks.question).toHaveBeenCalledWith(
+    "El servidor requiere una versión compatible (0.1.0-preview.3). ¿Instalarla para conectarte? (s/n) [n]: ",
+  );
+});

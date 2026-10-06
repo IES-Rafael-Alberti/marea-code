@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import console from "node:console";
 import { spawnSync } from "node:child_process";
 import {
+  existsSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -202,8 +203,42 @@ try {
     ]),
   );
   assert.equal(restored.state, "restored");
+  // Exercise managed uninstall against real server data and its real exclusive lock.
+  const settings = {
+    format: 1,
+    repository: "school/marea",
+    component: "server",
+    channel: "preview",
+    installation: root,
+  };
+  const record = () =>
+    writeFileSync(join(scratch, "preview.json"), JSON.stringify(settings), { mode: 0o600 });
+  const uninstall = ["preview", "run", "server", "--root", scratch, "--", "uninstall", "--yes"];
+  const installer = join(release, `marea-install${suffix}`);
+  record();
+  const busy = acquireInstallation(root);
+  try {
+    const refused = spawnSync(installer, [...uninstall, "--purge-data"], {
+      encoding: "utf8",
+      timeout: 30_000,
+    });
+    assert.notEqual(refused.status, 0, "A live owner must prevent uninstall");
+    assert.equal(existsSync(join(root, "config")), true);
+  } finally {
+    busy.release();
+  }
+  run(installer, uninstall);
+  assert.equal(existsSync(join(root, "config")), true, "Default uninstall must retain center data");
+  record();
+  run(installer, [...uninstall, "--purge-data"]);
+  assert.equal(existsSync(root), false, "Explicit purge must remove center data");
+  assert.equal(
+    existsSync(join(scratch, "restored")),
+    true,
+    "Unowned recovery destinations must survive",
+  );
   process.stdout.write(
-    "Preview setup passed: offline CLIs, private state, teacher provisioning, version negotiation, busy update refusal, upgrade, interrupted update and deletion-aware restore.\n",
+    "Preview setup passed: offline CLIs, private state, teacher provisioning, version negotiation, busy update refusal, upgrade, interrupted update, deletion-aware restore and managed uninstall.\n",
   );
 } finally {
   rmSync(scratch, { recursive: true, force: true });

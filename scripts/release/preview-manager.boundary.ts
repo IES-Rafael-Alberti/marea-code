@@ -1,3 +1,4 @@
+import { uninstallPreview } from "./preview-uninstall.boundary.js";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -18,7 +19,11 @@ import {
   serverOrigin,
   type PreviewSettings,
 } from "./preview-channel.js";
-import { downloadPreview, offeredVersion } from "./preview-download.boundary.js";
+import {
+  downloadPreview,
+  offeredVersion,
+  requiredPreviewVersion,
+} from "./preview-download.boundary.js";
 import {
   activatePreviewServer,
   assertPreviewServerReady,
@@ -184,7 +189,12 @@ async function initialInstall(
           ),
         }),
   });
-  const version = previewVersion.parse(flags.get("--version"));
+  const recommended = flags.get("--version") ?? (await offeredVersion(settings, globalThis.fetch));
+  if (recommended === undefined)
+    throw new Error(
+      "No recommended preview. Use --version with a published preview for a pilot installation.",
+    );
+  const version = previewVersion.parse(recommended);
   const cosign = flags.get("--cosign");
   if (cosign === undefined)
     throw new Error("Initial install needs the verified bootstrap signature tool");
@@ -221,62 +231,113 @@ function managedEnvironment(root: string, settings: PreviewSettings): NodeJS.Pro
   };
 }
 
+function shouldOfferUpdate(
+  settings: PreviewSettings,
+  offered: string,
+  current: string,
+  required: boolean,
+  selectedVersion: string | undefined,
+): boolean {
+  const comparison = comparePreview(offered, current);
+  if (comparison === 0) {
+    if (required)
+      throw new Error(
+        "El servidor anuncia un protocolo incompatible para la misma versión. Contacta con el administrador.",
+      );
+    return false;
+  }
+  if (comparison === -1 && settings.component === "server") {
+    if (selectedVersion !== undefined)
+      throw new Error(
+        "Server downgrades require backup recovery; an older executable cannot open migrated data.",
+      );
+    return false;
+  }
+  if (comparison === -1 && !required && selectedVersion === undefined) return false;
+  return true;
+}
+
 async function updateBeforeStart(
   root: string,
   settings: PreviewSettings,
   release: string,
   current: string,
+  manual: boolean,
+  selectedVersion?: string,
 ): Promise<string> {
   let offered: string | undefined;
+  let required = false;
+  const discoverySettings = {
+    ...settings,
+    ...(settings.component === "student" && process.env.MAREA_SERVER_URL
+      ? { serverUrl: serverOrigin(process.env.MAREA_SERVER_URL) }
+      : {}),
+  };
   try {
-    offered = await offeredVersion(
-      {
-        ...settings,
-        ...(settings.component === "student" && process.env.MAREA_SERVER_URL
-          ? { serverUrl: serverOrigin(process.env.MAREA_SERVER_URL) }
-          : {}),
-      },
-      current,
-      globalThis.fetch,
-    );
+    if (!manual) {
+      offered = await requiredPreviewVersion(discoverySettings, current, globalThis.fetch);
+      required = offered !== undefined;
+    }
+    offered ??=
+      selectedVersion ??
+      (await offeredVersion(
+        discoverySettings,
+        globalThis.fetch,
+        manual ? "available" : "recommended",
+      ));
   } catch {
     process.stderr.write(
       "No se ha podido comprobar la actualización; se conserva la versión instalada.\n",
     );
+    process.exitCode = 1;
+    return release;
   }
-  if (
-    offered !== undefined &&
-    (settings.component === "student"
-      ? offered !== current
-      : comparePreview(offered, current) > 0) &&
-    (await acceptUpdate(offered))
-  )
-    try {
-      return await fetchAndInstall(
-        root,
-        settings,
-        offered,
-        join(release, `cosign${executableSuffix()}`),
+  if (offered === undefined) return release;
+  if (!shouldOfferUpdate(settings, offered, current, required, selectedVersion)) return release;
+  if (!(await acceptUpdate(offered, required))) {
+    if (required)
+      throw new Error(
+        `El servidor requiere un protocolo compatible. Instala Marea ${offered} para conectarte.`,
       );
-    } catch {
-      if (settings.installation !== undefined) assertPreviewServerReady(settings.installation);
-      process.stderr.write("No se ha podido actualizar; se conserva la instalación verificada.\n");
-      process.exitCode = 1;
-      return activeRelease(root);
-    }
-  return release;
+    return release;
+  }
+  try {
+    return await fetchAndInstall(
+      root,
+      settings,
+      offered,
+      join(release, `cosign${executableSuffix()}`),
+    );
+  } catch {
+    if (settings.installation !== undefined) assertPreviewServerReady(settings.installation);
+    if (required)
+      throw new Error(
+        `No se ha podido instalar la versión ${offered} necesaria para este servidor.`,
+      );
+    process.stderr.write("No se ha podido actualizar; se conserva la instalación verificada.\n");
+    process.exitCode = 1;
+    return activeRelease(root);
+  }
 }
 
 export async function previewMain(argv: readonly string[]): Promise<void> {
   const request = parsePreviewArguments(argv);
   if (request.forwarded.includes("--help") || request.forwarded.includes("-h")) {
     process.stdout.write(
-      "Marea preview: --version, --status, --update. Run without these options to start.\n",
+      "Marea preview: --version, status, update [--version X.Y.Z-preview.N], uninstall [--yes] [--purge-data]. Run without these options to start.\n",
     );
     return;
   }
-  if (request.forwarded[0] === "--status") request.action = "status";
-  if (request.forwarded[0] === "--update") request.action = "update";
+  if (["status", "--status"].includes(String(request.forwarded[0]))) request.action = "status";
+  if (["update", "--update"].includes(String(request.forwarded[0]))) {
+    request.action = "update";
+    const options = request.forwarded.slice(1);
+    if (options.length !== 0) {
+      if (options.length !== 2 || options[0] !== "--version")
+        throw new Error("Use update [--version X.Y.Z-preview.N]");
+      request.flags.set("--version", previewVersion.parse(options[1]));
+    }
+  }
   const root = resolve(
     request.flags.get("--root") ?? join(homedir(), ".marea-preview", request.selected),
   );
@@ -286,6 +347,8 @@ export async function previewMain(argv: readonly string[]): Promise<void> {
     JSON.parse(readFileSync(join(root, "preview.json"), "utf8")),
   );
   if (settings.component !== request.selected) throw new Error("Component selection mismatch");
+  if (request.forwarded[0] === "uninstall")
+    return uninstallPreview(root, settings, request.forwarded.slice(1));
   let release = activeRelease(root);
   const current = previewVersion.parse(
     manifestSchema.parse(JSON.parse(readFileSync(join(release, "manifest.json"), "utf8"))).version,
@@ -299,7 +362,14 @@ export async function previewMain(argv: readonly string[]): Promise<void> {
     return;
   }
   if (settings.installation !== undefined) assertPreviewServerReady(settings.installation);
-  release = await updateBeforeStart(root, settings, release, current);
+  release = await updateBeforeStart(
+    root,
+    settings,
+    release,
+    current,
+    request.action === "update",
+    request.flags.get("--version"),
+  );
   if (request.action === "update") return;
   const binary = join(
     release,

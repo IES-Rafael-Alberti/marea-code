@@ -56,11 +56,16 @@ export async function serverQuestions(): Promise<{ answers: SetupAnswers; passwo
   };
 }
 
-export async function acceptUpdate(version: string): Promise<boolean> {
+export async function acceptUpdate(version: string, required = false): Promise<boolean> {
   if (!process.stdin.isTTY || !process.stderr.isTTY) return false;
   return (
     (
-      await question(`Hay una nueva versión de pruebas (${version}). ¿Actualizar ahora? (s/n)`, "n")
+      await question(
+        required
+          ? `El servidor requiere una versión compatible (${version}). ¿Instalarla para conectarte? (s/n)`
+          : `Hay una nueva versión de pruebas (${version}). ¿Actualizar ahora? (s/n)`,
+        "n",
+      )
     ).toLowerCase() === "s"
   );
 }

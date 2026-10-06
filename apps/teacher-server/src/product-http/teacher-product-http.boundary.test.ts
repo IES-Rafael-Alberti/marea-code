@@ -350,3 +350,22 @@ describe("teacher product HTTP boundary", () => {
     expect((await app.fetch(select("class:physics"))).status).toBe(401);
   });
 });
+
+it.each(["0.1.0-preview.6", "9.0.0-preview.1"])(
+  "accepts a client software version %s independently of the wire protocol",
+  async (clientVersion) => {
+    const app = createApplication(createServices(new RecordingProvider()));
+    const response = await fetchJson(
+      app,
+      request("/v1/capabilities", {
+        ...capabilitiesRequest,
+        clientVersion,
+      }),
+    );
+    expect(response.response.status).toBe(200);
+    expect(JSON.parse(response.text)).toMatchObject({
+      serverVersion: "0.2.0",
+      supportedProtocolVersions: ["0.1"],
+    });
+  },
+);

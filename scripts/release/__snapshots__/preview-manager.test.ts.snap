@@ -26,6 +26,17 @@ $env:PSModulePath = [IO.Path]::Combine($PSHOME, 'Modules')
 $root = '/private'
 $active = (Get-Content -LiteralPath (Join-Path $root 'programs/active.json') -Raw | ConvertFrom-Json).current
 if ($active -cnotmatch '^student-[a-zA-Z0-9.-]+$') { throw 'Invalid activation' }
+if ($args.Count -gt 0 -and $args[0] -ceq 'uninstall') {
+  $temp = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
+  New-Item -ItemType Directory -Path $temp | Out-Null
+  try {
+    $copy = Join-Path $temp 'marea-install.exe'
+    Copy-Item -LiteralPath (Join-Path $root "programs/$active/marea-install.exe") -Destination $copy
+    & $copy preview run student --root $root -- @args
+    $code = $LASTEXITCODE
+  } finally { Remove-Item -LiteralPath $temp -Recurse -Force }
+  exit $code
+}
 & (Join-Path $root "programs/$active/marea-install.exe") preview run student --root $root -- @args
 exit $LASTEXITCODE
 ",
@@ -106,11 +117,11 @@ exports[`provisions a new teacher installation and binds the offline update call
 exports[`returns help, actual version and status without network discovery > managed help and status 1`] = `
 [
   [
-    "Marea preview: --version, --status, --update. Run without these options to start.
+    "Marea preview: --version, status, update [--version X.Y.Z-preview.N], uninstall [--yes] [--purge-data]. Run without these options to start.
 ",
   ],
   [
-    "Marea preview: --version, --status, --update. Run without these options to start.
+    "Marea preview: --version, status, update [--version X.Y.Z-preview.N], uninstall [--yes] [--purge-data]. Run without these options to start.
 ",
   ],
   [

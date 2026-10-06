@@ -79,7 +79,7 @@ exports[`packages the native verifier, license and extra inventory before signin
 `;
 
 exports[`requires a complete matching matrix and produces content-addressed files and both bootstrap scripts > install.ps1 1`] = `
-"param([ValidateSet('student','server')][string]$Component='student', [string]$Server='')
+"param([ValidateSet('student','server')][string]$Component='student', [string]$Server='', [string]$Version='')
 $ErrorActionPreference='Stop'
 $architecture=[System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
 switch ("$Component-win32-$architecture") {
@@ -96,7 +96,8 @@ try {
     Invoke-WebRequest -UseBasicParsing -Uri ('https://github.com/school/marea/releases/download/v0.1.0-preview.1/'+'sha256-'+$entry[1]) -OutFile $path
     if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry[1]) { throw 'Bootstrap checksum mismatch' }
   }
-  $arguments=@('preview','install',$Component,'--repository','school/marea','--version','0.1.0-preview.1','--cosign',(Join-Path $temp 'cosign.exe'))
+  $arguments=@('preview','install',$Component,'--repository','school/marea','--cosign',(Join-Path $temp 'cosign.exe'))
+  if ($Version) { $arguments+=@('--version',$Version) }
   if ($Server) { $arguments+=@('--server',$Server) }
   & (Join-Path $temp 'marea-install.exe') @arguments
   if ($LASTEXITCODE -ne 0) { throw 'Marea installation failed' }
@@ -130,6 +131,6 @@ download() {
 }
 download marea-install "$installerHash"
 download cosign "$cosignHash"
-"$temp/marea-install" preview install "$component" --repository 'school/marea' --version '0.1.0-preview.1' --cosign "$temp/cosign" "$@" < /dev/tty
+"$temp/marea-install" preview install "$component" --repository 'school/marea' --cosign "$temp/cosign" "$@" < /dev/tty
 "
 `;

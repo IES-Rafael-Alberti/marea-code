@@ -165,9 +165,7 @@ it("requires a complete matching matrix and produces content-addressed files and
   }).toThrow();
   expect(statSync(output).isDirectory()).toBe(true);
   expect(names.filter((name) => name.startsWith("sha256-"))).toHaveLength(5);
-  expect(readFileSync(join(output, "install.sh"), "utf8")).toContain(
-    "--repository 'school/marea' --version '0.1.0-preview.1'",
-  );
+  expect(readFileSync(join(output, "install.sh"), "utf8")).toContain("--repository 'school/marea'");
   expect(readFileSync(join(output, "install.ps1"), "utf8")).toContain("Get-FileHash");
   expect(spawnSync("sh", ["-n", join(output, "install.sh")]).status).toBe(0);
   const denied = spawnSync("sh", [join(output, "install.sh"), "invalid"], { encoding: "utf8" });

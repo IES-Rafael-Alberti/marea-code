@@ -13,7 +13,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, it, vi } from "vitest";
-import { configurePosixPath } from "./preview-path.boundary.js";
+import { configurePosixPath, removePosixPath } from "./preview-path.boundary.js";
 it("adds a quoted PATH entry once, preserving existing shell configuration", () => {
   const append = vi.spyOn(filesystem, "appendFileSync").mockClear();
   const home = mkdtempSync(join(tmpdir(), "marea-path-"));
@@ -63,6 +63,79 @@ it("does not follow linked profiles or write to a directory or oversized startup
     expect(configurePosixPath(home, "zsh", "/bin")).toBe(false);
     expect(readFileSync(source, "utf8")).toBe("keep");
   } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+it("removes exact managed blocks in every shell while preserving other installations", () => {
+  const home = mkdtempSync(join(tmpdir(), "marea-path-remove-"));
+  try {
+    for (const [shell, file] of [
+      ["zsh", ".zshrc"],
+      ["bash", ".bashrc"],
+      ["sh", ".profile"],
+    ] as const) {
+      writeFileSync(join(home, file), "# Keep\n");
+      configurePosixPath(home, shell, "/managed/bin");
+      configurePosixPath(home, shell, "/other/bin");
+    }
+    removePosixPath(home, "/managed/bin");
+    for (const file of [".zshrc", ".bashrc", ".profile"]) {
+      expect(readFileSync(join(home, file), "utf8")).toBe(
+        "# Keep\n\n# Marea preview\nexport PATH='/other/bin':\"$PATH\"\n",
+      );
+      rmSync(join(home, file));
+    }
+    removePosixPath(home, "/managed/bin");
+    writeFileSync(join(home, ".zshrc"), "# custom\n");
+    const writes = vi.spyOn(filesystem, "writeFileSync").mockClear();
+    removePosixPath(home, "/managed/bin");
+    expect(writes).not.toHaveBeenCalled();
+    expect(readFileSync(join(home, ".zshrc"), "utf8")).toBe("# custom\n");
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+it("preserves linked or oversized profiles and reports the paths which need manual inspection", () => {
+  const warning = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+  const home = mkdtempSync(join(tmpdir(), "marea-path-remove-"));
+  try {
+    const original = join(home, "original");
+    writeFileSync(original, "custom configuration");
+    const target = join(home, ".bashrc");
+    for (const setup of [
+      () => {
+        symlinkSync(original, target);
+      },
+      () => {
+        linkSync(original, target);
+      },
+      () => {
+        mkdirSync(target);
+      },
+      () => {
+        writeFileSync(target, Buffer.alloc(1_000_001));
+      },
+    ]) {
+      configurePosixPath(home, "zsh", "/managed/bin");
+      warning.mockClear();
+      setup();
+      removePosixPath(home, "/managed/bin");
+      expect(readFileSync(join(home, ".zshrc"), "utf8")).toBe("");
+      expect(readFileSync(original, "utf8")).toBe("custom configuration");
+      expect(warning).toHaveBeenCalledOnce();
+      expect(warning).toHaveBeenLastCalledWith(
+        `Perfil protegido sin modificar: ${target}. Revisa manualmente las entradas PATH de Marea.\n`,
+      );
+      rmSync(target, { recursive: true });
+    }
+    warning.mockClear();
+    writeFileSync(target, Buffer.alloc(1_000_000));
+    removePosixPath(home, "/managed/bin");
+    expect(warning).not.toHaveBeenCalled();
+  } finally {
+    warning.mockRestore();
     rmSync(home, { recursive: true, force: true });
   }
 });

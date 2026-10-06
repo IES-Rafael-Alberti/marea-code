@@ -231,8 +231,8 @@ it("continues offline, honors explicit environment and forwards student argument
   await previewMain(run("student", ["--lang", "eu"]));
   expect(ports.offeredVersion).toHaveBeenCalledWith(
     expect.objectContaining({ serverUrl: "https://another.test" }),
-    state.version,
     globalThis.fetch,
+    "recommended",
   );
   expect(ports.runForeground).toHaveBeenCalledWith(
     "/private/programs/student-0.1.0-preview.1/marea",
@@ -245,7 +245,7 @@ it("continues offline, honors explicit environment and forwards student argument
   expect(process.exitCode).toBe(7);
 });
 
-it("asks before selecting the school version and can update without launching", async () => {
+it("asks before installing a discovered version and never automatically downgrades students", async () => {
   ports.offeredVersion.mockResolvedValue("0.1.0-preview.2");
   ports.acceptUpdate.mockResolvedValue(false);
   await previewMain(run());
@@ -259,10 +259,7 @@ it("asks before selecting the school version and can update without launching", 
   expect(ports.runForeground).toHaveBeenCalledTimes(1);
   ports.offeredVersion.mockResolvedValue("0.0.0-preview.1");
   await previewMain(run());
-  expect(ports.installRelease).toHaveBeenLastCalledWith(
-    expect.objectContaining({ version: "0.0.0-preview.1", reuseVerifiedStudent: true }),
-    expect.any(Object),
-  );
+  expect(ports.installRelease).toHaveBeenCalledTimes(1);
 });
 
 it("never downgrades a server, checks recovery first and launches its own installation", async () => {
@@ -357,8 +354,8 @@ it("does not query a student's recovery journal, reinstall equal versions, or lo
   await previewMain(run("server"));
   expect(ports.offeredVersion).toHaveBeenLastCalledWith(
     expect.not.objectContaining({ serverUrl: expect.anything() as string }),
-    state.version,
     globalThis.fetch,
+    "recommended",
   );
   expect(ports.acceptUpdate).not.toHaveBeenCalled();
 });

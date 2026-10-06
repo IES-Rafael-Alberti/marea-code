@@ -74,3 +74,19 @@ When routine updates resume, raise that limit and review major upgrades as expli
 migrations. The monthly groups keep coupled tools such as Vitest and its coverage
 provider together. A failing update is not merged just to clear the queue; retain
 the validated versions until its compatibility failures are resolved.
+
+## Preview compatibility and promotion
+
+A release number identifies the executable; a protocol version identifies the wire
+contract. Keep existing request/response shapes and baseline capabilities compatible
+within a protocol generation. Gate optional features on advertised capabilities;
+if a change would break an older peer (including a strict schema), bump the protocol
+instead of silently requiring equal software versions. Do not add historical adapters
+without a concrete need. Keep focused negotiation tests for older/newer software
+versions and the native client/server journeys in the release workflow.
+
+Publishing makes a preview available to explicit `update` commands. Recommendation
+is a separate maintainer operation after pilot testing; see [distribution](DISTRIBUTION.md).
+Never move signed tags, replace published assets, or use recommendation as a database
+rollback. The recommendation workflow verifies the successful native publication
+and signed protocol metadata before changing release notes.

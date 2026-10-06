@@ -1,0 +1,55 @@
+name: Recommend preview
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published version without v (for example 0.1.0-preview.7)
+        required: true
+        type: string
+      component:
+        description: Installations which should offer this update at startup
+        required: true
+        type: choice
+        options: [both, student, server]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-recommendation
+  cancel-in-progress: false
+
+jobs:
+  recommend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PREVIEW_VERSION: ${{ inputs.version }}
+      COMPONENT: ${{ inputs.component }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.1
+          cache: false
+      - name: Build independent signature verifier
+        env:
+          CGO_ENABLED: "0"
+        run: |
+          go install github.com/sigstore/cosign/v3/cmd/cosign@v3.0.2
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - name: Verify immutable publication and recommend
+        run: |
+          gh release download "v$PREVIEW_VERSION" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/published-preview"
+          bun scripts/release/recommend-preview.mjs "$GITHUB_REPOSITORY" "$PREVIEW_VERSION" "$RUNNER_TEMP/published-preview" "$(command -v cosign)" "$COMPONENT"

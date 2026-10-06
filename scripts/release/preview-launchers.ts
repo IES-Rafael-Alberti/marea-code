@@ -13,13 +13,28 @@ exec "$root/programs/$active/marea-install" preview run ${selected} --root "$roo
 `;
 }
 
-export function windowsLauncher(root: string, selected: string): string {
+export function windowsLauncher(root: string, selected: string, portableUninstall = true): string {
   return `$ErrorActionPreference = 'Stop'
 $env:PSModulePath = [IO.Path]::Combine($PSHOME, 'Modules')
 $root = ${powershellLiteral(root)}
 $active = (Get-Content -LiteralPath (Join-Path $root 'programs/active.json') -Raw | ConvertFrom-Json).current
 if ($active -cnotmatch '^${selected}-[a-zA-Z0-9.-]+$') { throw 'Invalid activation' }
-& (Join-Path $root "programs/$active/marea-install.exe") preview run ${selected} --root $root -- @args
+${
+  portableUninstall
+    ? `if ($args.Count -gt 0 -and $args[0] -ceq 'uninstall') {
+  $temp = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString())
+  New-Item -ItemType Directory -Path $temp | Out-Null
+  try {
+    $copy = Join-Path $temp 'marea-install.exe'
+    Copy-Item -LiteralPath (Join-Path $root "programs/$active/marea-install.exe") -Destination $copy
+    & $copy preview run ${selected} --root $root -- @args
+    $code = $LASTEXITCODE
+  } finally { Remove-Item -LiteralPath $temp -Recurse -Force }
+  exit $code
+}
+`
+    : ""
+}& (Join-Path $root "programs/$active/marea-install.exe") preview run ${selected} --root $root -- @args
 exit $LASTEXITCODE
 `;
 }

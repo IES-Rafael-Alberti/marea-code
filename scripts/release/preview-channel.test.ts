@@ -7,6 +7,7 @@ import {
   previewVersion,
   releaseUrl,
   repositoryName,
+  recommendationMarker,
   serverOrigin,
 } from "./preview-channel.js";
 
@@ -140,4 +141,44 @@ it("bounds untrusted versions and repositories and validates saved settings", ()
   expect(() =>
     newestPreview(Array.from({ length: 101 }, () => entry("v0.1.0-preview.1"))),
   ).toThrow();
+});
+
+it("recommends components separately and never treats an ordinary publication as recommended", () => {
+  const entry = (version: number, body?: string | null) => ({
+    tag_name: `v0.1.0-preview.${String(version)}`,
+    draft: false,
+    prerelease: true,
+    body,
+  });
+  const releases = [
+    entry(9),
+    entry(8, null),
+    entry(7, "not a recommendation"),
+    entry(6, "prefix <!-- marea-recommended:student:0.1 --> suffix"),
+    entry(5, recommendationMarker("student") + "\r\nnotes"),
+    entry(4, "notes\n" + recommendationMarker("server")),
+    entry(3, recommendationMarker("student")),
+  ];
+  expect(newestPreview(releases)).toBe("0.1.0-preview.9");
+  expect(newestPreview(releases, "student")).toBe("0.1.0-preview.5");
+  expect(newestPreview(releases, "server")).toBe("0.1.0-preview.4");
+  expect(newestPreview([entry(1)], "student")).toBeUndefined();
+  expect(recommendationMarker("student")).toBe("<!-- marea-recommended:student:0.1 -->");
+  expect(recommendationMarker("server")).toBe("<!-- marea-recommended:server:0.1 -->");
+});
+
+it("keeps recommendations for different wire protocol generations separate", () => {
+  expect(
+    newestPreview(
+      [
+        {
+          tag_name: "v0.1.0-preview.9",
+          draft: false,
+          prerelease: true,
+          body: "<!-- marea-recommended:student:2.0 -->",
+        },
+      ],
+      "student",
+    ),
+  ).toBeUndefined();
 });

@@ -315,3 +315,18 @@ describe("StudentSessionController boundaries", () => {
     expect(fixture.state.state.run?.eventKeys).not.toContain("run:closed");
   });
 });
+
+it.each(["0.1.0-preview.6", "9.0.0-preview.1"])(
+  "opens a session with software version %s when protocol and baseline capabilities agree",
+  async (serverVersion) => {
+    const fixture = createFixtureController();
+    const original = fixture.server.capabilities.bind(fixture.server);
+    fixture.server.capabilities = async (request) => ({
+      ...(await original(request)),
+      serverVersion,
+      supportedProtocolVersions: [ProtocolVersionSchema.parse("0.1")],
+    });
+    await expect(fixture.controller.start("Compatible project")).resolves.toBeDefined();
+    await fixture.controller.close();
+  },
+);

@@ -1,21 +1,23 @@
 # Preview installation and updates
 
-The commands below are for a **published** `0.1.0-preview.6`. Substitute another
-published preview tag when appropriate. Adding this guide does not publish that
-version: first complete the native release workflow described below.
+The commands below target `0.1.0-preview.7`, the first preview with independent
+recommendations and managed uninstall. **Publish and recommend that version before
+sharing these commands.** Version 6 predates this policy; its immutable installers
+still use its original update behavior. Updating an existing installation to version
+7 or later enables the policy below.
 
 ## Teacher server
 
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.6/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.7/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.6/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.7/install.ps1'))) -Component server
 ```
 
 The wizard creates a new installation under `~/.marea-preview/server`, asks for
@@ -45,17 +47,18 @@ service-account configuration.
 Student computers need Git installed and available on `PATH` for project snapshots
 and change tracking. The application runtime is included in the package.
 
-Use the **same version as the school's server** and replace the example origin.
+Installation selects the recommended client without querying the school server.
+Replace the example origin with the address supplied by the teacher.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.6/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.7/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.6/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.7/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Run `marea` from the project directory. The managed installation keeps student
@@ -66,14 +69,27 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
 ## Updates and recovery
 
 - `marea --version` / `marea-teacher --version`: installed preview version.
-- `--status`: managed installation details, with no credentials.
-- `--update`: check and ask to update without starting the application.
-- Ordinary interactive startup also offers updates; a noninteractive start never
-  accepts one. Discovery has a short timeout and failure leaves the current
-  installation usable.
-- The server follows published `*-preview.N` versions. Students follow the exact
-  version advertised by their server, including a previously retained version.
-  Stable releases, drafts and release candidates are not part of this channel.
+- `status` (or `--status`): managed installation details, with no credentials.
+- `update` (or `--update`): check the latest **published** preview and ask to install
+  it, without starting the application. Publishing alone does not notify everyone.
+- `update --version 0.1.0-preview.7`: try a specific published preview.
+- Ordinary startup offers only a **recommended** version for this component and
+  wire protocol. Declining keeps the installed version. A noninteractive start
+  never accepts updates; discovery failures leave the current installation usable.
+- Client and server release numbers need not match. A common protocol and the
+  required baseline capabilities determine compatibility; optional capabilities
+  remain optional. Support is bounded to the advertised protocol generation,
+  rather than an indefinite collection of historical adapters.
+- If the school reports an incompatible protocol, the launcher offers its concrete
+  release as a compatible client. Refusal or a failed verified download prevents
+  that connection. It never installs unsigned code supplied by the school.
+- Recommendations never automatically downgrade an installation. An explicit
+  student version or a required protocol repair may select an older signed client.
+  Server downgrades require backup recovery; they cannot open migrated data.
+
+For a fresh pilot install before recommendation, append `--version 0.1.0-preview.7`
+to the POSIX command, or `-Version 0.1.0-preview.7` on PowerShell. With no explicit
+version and no recommendation, installation stops with a useful message.
 
 Stop the server before accepting an update. Its existing exclusive installation
 lock prevents an update while a teacher host or another offline operation owns
@@ -95,11 +111,32 @@ cannot start. Preserve the partial directory for diagnosis; retry with a new
 `--root` on POSIX or move the incomplete directory aside after checking that it
 contains no classroom data. The installer never silently deletes existing state.
 
+## Uninstall
+
+Close other Marea sessions first. Run `marea uninstall` to remove the managed
+student programs, launchers, saved credentials and session state, and the exact
+PATH entries installed by Marea. Project directories outside the managed root
+are preserved. An explicit external `MAREA_STATE_HOME` is not owned or deleted.
+
+`marea-teacher uninstall` removes programs and launchers but **preserves** the
+center data under `~/.marea-preview/server/installation`. To remove that data,
+including credentials and backups, use `marea-teacher uninstall --purge-data`.
+The server must be stopped; its exclusive installation lock prevents deletion
+while it is running. Confirmation requires typing `DESINSTALAR`; `--yes` is the
+explicit noninteractive alternative. Inspect and move preserved data before
+installing anew at the same managed root.
+
+Windows runs uninstall through a temporary copy so it can remove its executable.
+An installation upgraded from the version 6 launcher may ask you to run uninstall
+once more after upgrading the owned launcher. Customized launchers are not
+silently rewritten. Unknown files in the managed root are preserved. Linked or
+otherwise unsafe shell profiles are preserved and reported for manual PATH cleanup.
+
 ## Publish a version
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.6`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.7`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
@@ -110,6 +147,28 @@ contains no classroom data. The installer never silently deletes existing state.
 5. All assets upload to a draft first. Only after every upload succeeds is it made
    available as a prerelease, never as GitHub's latest stable release. A failed upload
    leaves a draft for inspection; do not overwrite a published version.
+6. Ask pilot users to run `update` (or install the explicit version). After classroom
+   testing, recommend it separately; publication never recommends automatically.
+
+## Recommend a tested preview
+
+Run the **Recommend preview** workflow on `main`, choosing the published version
+and `student`, `server`, or `both`. From a maintainer terminal:
+
+```sh
+gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.7 -f component=both
+```
+
+Promotion requires a successful native publication workflow for the exact source,
+downloads and verifies the complete signed publication, checks its protocol metadata, and adds a component/protocol marker to the release
+notes. It preserves assets, tag and existing notes. Recommendations are forward
+only and idempotent; an older protocol keeps its previous recommendation. Do not
+edit these markers manually. Keep published versions available so existing
+installations and explicit protocol repairs can still download them.
+
+There is no additional “recommended release” or mutable executable feed. For a
+bad recommendation, publish a corrected preview and recommend that; restore
+server backups when a database rollback is needed.
 
 Native validation and prerelease creation can run while the repository is private,
 using the organization's GitHub Actions allowance. The one-command installers
