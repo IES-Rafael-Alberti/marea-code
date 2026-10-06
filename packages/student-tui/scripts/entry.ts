@@ -1,4 +1,5 @@
 import { runCli } from "../src/cli.js";
+import { startStudentTui } from "../src/start.js";
 import type { StudentTuiCopy } from "../src/contracts.js";
 
 const SPIKE_COPY: StudentTuiCopy = Object.freeze({
@@ -18,4 +19,18 @@ const SPIKE_COPY: StudentTuiCopy = Object.freeze({
   title: "Marea · OpenTUI compatibility spike",
 });
 
-process.exitCode = await runCli(process.argv.slice(2), SPIKE_COPY);
+process.exitCode = await runCli(process.argv.slice(2), SPIKE_COPY, {
+  async start(copy) {
+    const session = await startStudentTui(copy);
+    // A painted first frame can precede the session's keyboard binding.
+    // Native probes must wait for this marker before sending their first key.
+    process.stderr.write("MAREA_TUI_READY\n");
+    return session;
+  },
+  writeError: (message) => {
+    process.stderr.write(`${message}\n`);
+  },
+  writeOutput: (message) => {
+    process.stdout.write(`${message}\n`);
+  },
+});

@@ -78,7 +78,11 @@ jobs:
       - name: Exercise native terminal
         if: ${{ !cancelled() && steps.programs.outcome == 'success' }}
         shell: pwsh
-        run: ./scripts/release/conpty-smoke.ps1 -Executable (Resolve-Path reports/windows-smoke/marea.exe) -TuiExecutable (Resolve-Path reports/windows-smoke/tui-smoke.exe)
+        run: |
+          1..5 | ForEach-Object {
+            pwsh -NoProfile -File ./scripts/release/conpty-smoke.ps1 -Executable (Resolve-Path reports/windows-smoke/marea.exe) -TuiExecutable (Resolve-Path reports/windows-smoke/tui-smoke.exe)
+            if ($LASTEXITCODE -ne 0) { throw 'Native terminal repetition failed' }
+          }
       - name: Exercise distributed student journey
         id: journey
         if: ${{ !cancelled() && steps.programs.outcome == 'success' }}

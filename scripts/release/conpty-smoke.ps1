@@ -57,7 +57,7 @@ public static class MareaConPty {
    if(mode!="help") {
     bool ready=false;
     for(int attempt=0;attempt<300;attempt++){
-     lock(captured){ready=captured.ToString().Contains(mode=="server"?"Teacher host ready at ":"q: quit");}
+     lock(captured){var screen=captured.ToString();ready=mode=="server"?screen.Contains("Teacher host ready at "):screen.Contains("MAREA_TUI_READY") && screen.Contains("q: quit");}
      if(ready || WaitForSingleObject(process.process,0)==0)break;
      System.Threading.Thread.Sleep(50);
     }
