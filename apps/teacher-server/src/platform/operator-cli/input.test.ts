@@ -2,7 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { getEventListeners } from "node:events";
-import { readJsonObject, readPassword, MAX_PASSWORD_BYTES } from "./input.js";
+import {
+  readJsonObject,
+  readPassword,
+  MAX_PASSWORD_BYTES,
+  PasswordValidationError,
+} from "./input.js";
 import { OperatorCliInterrupted } from "./errors.js";
 import {
   PasswordInput,
@@ -79,6 +84,20 @@ describe("strict bounded JSON files", () => {
 });
 
 describe("private bounded password reader", () => {
+  it("distinguishes completed invalid passwords from terminal failures", async () => {
+    for (const password of ["", "x".repeat(11), "x".repeat(257)]) {
+      const r = reader(true);
+      const result = r.start();
+      r.input.send(password + "\r");
+      await expect(result).rejects.toBeInstanceOf(PasswordValidationError);
+      await expect(result).rejects.toMatchObject({ code: "invalid-input" });
+    }
+    const r = reader(true);
+    const result = r.start();
+    r.input.emit("error");
+    await expect(result).rejects.not.toBeInstanceOf(PasswordValidationError);
+    await expect(result).rejects.toThrow("invalid-input");
+  });
   it("requires explicit non-TTY stdin or the non-echoing TTY prompt", async () => {
     for (const [tty, flag] of [
       [true, true],

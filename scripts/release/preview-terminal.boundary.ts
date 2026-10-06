@@ -1,5 +1,8 @@
 import { createInterface } from "node:readline/promises";
-import { readPassword } from "../../apps/teacher-server/src/platform/operator-cli/input.js";
+import {
+  PasswordValidationError,
+  readPassword,
+} from "../../apps/teacher-server/src/platform/operator-cli/input.js";
 import { setupAnswers, type SetupAnswers } from "./preview-setup.boundary.js";
 
 export async function question(prompt: string, fallback?: string): Promise<string> {
@@ -31,9 +34,7 @@ export async function serverQuestions(): Promise<{ answers: SetupAnswers; passwo
   const classroom = await question("Primera clase", "Clase de prueba");
   const teacher = await question("Nombre del profesor");
   const login = await question("Usuario del profesor", "profe");
-  const password = await secret("Contraseña del profesor: ");
-  if (password !== (await secret("Repite la contraseña: ")))
-    throw new Error("Las contraseñas no coinciden");
+  const password = await teacherPassword();
   const port = Number(await question("Puerto local", "18787"));
   process.stderr.write(
     "Para HTTPS, usa un proxy hacia este puerto. Para HTTP en el aula, arranca marea-teacher --allow-http.\n",
@@ -54,6 +55,24 @@ export async function serverQuestions(): Promise<{ answers: SetupAnswers; passwo
     answers: setupAnswers.parse({ center, classroom, teacher, login, port, origin, google }),
     password,
   };
+}
+
+async function teacherPassword(): Promise<string> {
+  process.stderr.write(
+    "La contraseña debe tener entre 12 y 256 caracteres. No se mostrará al escribir.\n",
+  );
+  for (;;) {
+    try {
+      const password = await secret("Contraseña del profesor: ");
+      if (password === (await secret("Repite la contraseña: "))) return password;
+      process.stderr.write("Las contraseñas no coinciden. Vuelve a introducirlas.\n");
+    } catch (error) {
+      if (!(error instanceof PasswordValidationError)) throw error;
+      process.stderr.write(
+        "Contraseña no válida: usa entre 12 y 256 caracteres. Inténtalo de nuevo.\n",
+      );
+    }
+  }
 }
 
 export async function acceptUpdate(version: string, required = false): Promise<boolean> {

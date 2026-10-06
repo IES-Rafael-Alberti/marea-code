@@ -15,12 +15,16 @@ const password = "synthetic-wizard-password";
 try {
   const entry = join(scratch, "wizard.ts");
   const moduleUrl = resolve("scripts/release/preview-terminal.boundary.ts");
+  const cliUrl = resolve("scripts/release/installer-cli.boundary.ts");
   writeFileSync(
     entry,
     `import {serverQuestions} from ${JSON.stringify(moduleUrl)};
+import {installerExitCode} from ${JSON.stringify(cliUrl)};
+process.exitCode = await installerExitCode(async () => {
 const result = await serverQuestions();
 if (result.answers.center !== "Synthetic school" || result.password !== ${JSON.stringify(password)}) throw new Error("Wrong wizard answers");
 console.log("WIZARD_COMPLETE");
+});
 `,
   );
   const executable = join(scratch, "marea-install");
@@ -78,7 +82,14 @@ esac
     ["Dirección pública del servidor", ""],
     ["¿Configurar Google Workspace?", "n"],
   ];
-  for (const scenario of ["pipe", "direct", "cancel-name", "cancel-password"]) {
+  for (const scenario of [
+    "pipe",
+    "direct",
+    "retry",
+    "cancel-name",
+    "cancel-password",
+    "cancel-retry",
+  ]) {
     const terminal = spawnPty({
       command: "/bin/sh",
       arguments: [
@@ -94,6 +105,29 @@ esac
       let cancelled = false;
       for (const [prompt, answer] of answers) {
         await terminal.waitForText(prompt);
+        if ((scenario === "retry" || scenario === "cancel-retry") && prompt === answers[4][0]) {
+          // Wait for each fresh prompt, not an earlier occurrence in the transcript.
+          const retry = async (value) => {
+            const before = terminal.transcript();
+            terminal.write(`${value}\r`);
+            await terminal.waitForQuiet();
+            assert.ok(terminal.transcript().slice(before.length).includes("Contraseña no válida:"));
+            assert.ok(terminal.transcript().slice(before.length).includes(prompt));
+          };
+          await retry("tiny");
+          if (scenario === "cancel-retry") {
+            terminal.write("\u0003");
+            cancelled = true;
+            break;
+          }
+          await retry("");
+          await retry("x".repeat(257));
+          terminal.write(`${password}\r`);
+          await terminal.waitForText("Repite la contraseña: ");
+          terminal.write("different-valid-password\r");
+          await terminal.waitForText("Las contraseñas no coinciden.");
+          await terminal.waitForQuiet();
+        }
         if (
           (scenario === "cancel-name" && prompt === answers[0][0]) ||
           (scenario === "cancel-password" && prompt === answers[4][0])
@@ -103,14 +137,25 @@ esac
           break;
         }
         terminal.write(`${answer}\r`);
+        await terminal.waitForQuiet();
       }
       const result = await terminal.waitForExit();
-      if (cancelled) assert.notEqual(result.exitCode, 0);
-      else {
+      if (cancelled) {
+        assert.notEqual(result.exitCode, 0);
+        if (scenario !== "cancel-name") {
+          assert.equal(result.exitCode, 130);
+          assert.ok(terminal.transcript().includes("Operación cancelada."));
+        }
+      } else {
         assert.equal(result.exitCode, 0, terminal.transcript());
         assert.ok(terminal.transcript().includes("WIZARD_COMPLETE"));
       }
       assert.ok(!terminal.transcript().includes(password), "Passwords must never be echoed");
+      assert.ok(!terminal.transcript().includes("different-valid-password"));
+      assert.ok(!terminal.transcript().includes("tiny"));
+      assert.ok(!terminal.transcript().includes("x".repeat(257)));
+      assert.ok(!terminal.transcript().includes("OperatorCliError"));
+      assert.ok(!terminal.transcript().includes("/$bunfs/"));
       process.stdout.write(`Wizard ${scenario}: passed.\n`);
     } finally {
       terminal.kill();

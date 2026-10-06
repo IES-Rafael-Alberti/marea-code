@@ -21,6 +21,13 @@ export interface PasswordStream {
 
 const utf8 = () => new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
+/** A completed password can be retried; terminal and stream failures cannot. */
+export class PasswordValidationError extends OperatorCliError {
+  constructor() {
+    super("invalid-input");
+  }
+}
+
 function invalid(): OperatorCliError {
   return new OperatorCliError("invalid-input");
 }
@@ -91,7 +98,7 @@ export function readPassword(
             CredentialPasswordSchema.parse(!tty && text.endsWith("\n") ? text.slice(0, -1) : text),
           );
         } catch {
-          reject(invalid());
+          reject(new PasswordValidationError());
         }
       });
     };

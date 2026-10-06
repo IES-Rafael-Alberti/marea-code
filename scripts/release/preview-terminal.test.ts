@@ -6,7 +6,17 @@ const mocks = vi.hoisted(() => ({
   readPassword: vi.fn(),
 }));
 vi.mock("node:readline/promises", () => mocks);
-vi.mock("../../apps/teacher-server/src/platform/operator-cli/input.js", () => mocks);
+vi.mock("../../apps/teacher-server/src/platform/operator-cli/input.js", async (original) => ({
+  ...(await original<
+    typeof import("../../apps/teacher-server/src/platform/operator-cli/input.js")
+  >()),
+  readPassword: mocks.readPassword,
+}));
+import { PasswordValidationError } from "../../apps/teacher-server/src/platform/operator-cli/input.js";
+import {
+  OperatorCliError,
+  OperatorCliInterrupted,
+} from "../../apps/teacher-server/src/platform/operator-cli/errors.js";
 import { acceptUpdate, question, secret, serverQuestions } from "./preview-terminal.boundary.js";
 let output: MockInstance<typeof process.stderr.write>;
 let resume: MockInstance<typeof process.stdin.resume>;
@@ -124,11 +134,41 @@ it.each([false, true])(
   },
 );
 
-it("refuses mismatching passwords before creating any installation", async () => {
+it("retries mismatching passwords without repeating the school questions", async () => {
+  mocks.question.mockResolvedValue("School").mockResolvedValueOnce("School");
+  for (const reply of ["", "Teacher", "", "", "", "n"]) mocks.question.mockResolvedValueOnce(reply);
   mocks.readPassword
     .mockResolvedValueOnce("first-password")
     .mockResolvedValueOnce("other-password");
-  await expect(serverQuestions()).rejects.toThrow("contraseñas no coinciden");
+  expect((await serverQuestions()).password).toBe("private-password");
+  expect(output).toHaveBeenCalledWith("Las contraseñas no coinciden. Vuelve a introducirlas.\n");
+  expect(mocks.readPassword).toHaveBeenCalledTimes(4);
+  expect(mocks.question).toHaveBeenCalledTimes(7);
+});
+
+it.each([false, true])(
+  "retries invalid password input, including confirmation: %s",
+  async (confirmation) => {
+    for (const reply of ["School", "", "Teacher", "", "", "", "n"])
+      mocks.question.mockResolvedValueOnce(reply);
+    if (confirmation) mocks.readPassword.mockResolvedValueOnce("first-password");
+    mocks.readPassword.mockRejectedValueOnce(new PasswordValidationError());
+    expect((await serverQuestions()).password).toBe("private-password");
+    expect(output).toHaveBeenCalledWith(
+      "Contraseña no válida: usa entre 12 y 256 caracteres. Inténtalo de nuevo.\n",
+    );
+    expect(mocks.readPassword).toHaveBeenCalledTimes(confirmation ? 4 : 3);
+  },
+);
+
+it.each([
+  new OperatorCliInterrupted(130),
+  new OperatorCliError("invalid-input"),
+  new Error("stream failed"),
+])("does not retry interruptions or terminal failures: %s", async (error) => {
+  mocks.readPassword.mockRejectedValueOnce(error);
+  await expect(serverQuestions()).rejects.toBe(error);
+  expect(mocks.readPassword).toHaveBeenCalledOnce();
 });
 
 it("explains the protocol requirement before requesting an update", async () => {

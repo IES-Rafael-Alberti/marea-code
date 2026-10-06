@@ -60,6 +60,86 @@ it("bounds streamed downloads and fails closed on status, missing body and overs
     ).rejects.toThrow();
 });
 
+it("reports bounded streamed byte totals before the download finishes", async () => {
+  const progress = vi.fn();
+  const stream = new ReadableStream({
+    start(controller) {
+      controller.enqueue(Buffer.from("abc"));
+      controller.enqueue(Buffer.from("def"));
+      controller.close();
+    },
+  });
+  await boundedDownload(
+    () => Promise.resolve(new Response(stream)),
+    "https://test",
+    6,
+    {},
+    progress,
+  );
+  expect(progress.mock.calls).toEqual([[3], [6]]);
+});
+
+it("reports signature verification, per-file streamed totals and authenticated completion", async () => {
+  const binary = Buffer.alloc(1_572_864);
+  const license = Buffer.alloc(262_144);
+  const inventory = {
+    ...manifest,
+    files: manifest.files.map((file, index) => ({
+      ...file,
+      sha256: sha256(index === 0 ? binary : license),
+    })),
+  };
+  const progress = { stage: vi.fn(), update: vi.fn() };
+  const fetcher = (url: string) =>
+    Promise.resolve(
+      url.endsWith(".manifest.json")
+        ? Response.json(inventory)
+        : new Response(
+            url.endsWith(".sigstore.json")
+              ? "bundle"
+              : url.endsWith(sha256(binary))
+                ? binary
+                : license,
+          ),
+    );
+  const verify = vi.fn(() => {
+    expect(progress.stage).toHaveBeenLastCalledWith("Verificando la firma de la versión...");
+    expect(progress.update).not.toHaveBeenCalled();
+  });
+  await downloadPreview(settings, version, "linux-x64", directory(), {
+    fetch: fetcher,
+    verify,
+    progress,
+  });
+  expect(progress.stage.mock.calls).toEqual([
+    ["Obteniendo la información de la versión..."],
+    ["Verificando la firma de la versión..."],
+    ["Descargando 2 archivos de Marea..."],
+    ["Descarga verificada: 2 archivos."],
+  ]);
+  expect(progress.update.mock.calls).toEqual([
+    ["Descargando archivo 1/2: 0.0 MiB recibidos en total"],
+    ["Descargando archivo 1/2: 1.5 MiB recibidos en total"],
+    ["Descargando archivo 2/2: 1.5 MiB recibidos en total"],
+    ["Descargando archivo 2/2: 1.8 MiB recibidos en total"],
+  ]);
+  progress.stage.mockClear();
+  verify.mockImplementationOnce(() => {
+    throw new Error("bad signature");
+  });
+  await expect(
+    downloadPreview(settings, version, "linux-x64", directory(), {
+      fetch: fetcher,
+      verify,
+      progress,
+    }),
+  ).rejects.toThrow("bad signature");
+  expect(progress.stage.mock.calls).toEqual([
+    ["Obteniendo la información de la versión..."],
+    ["Verificando la firma de la versión..."],
+  ]);
+});
+
 it("discovers recommendations independently of the school and keeps manual previews separate", async () => {
   const github = vi.fn(() =>
     Promise.resolve(

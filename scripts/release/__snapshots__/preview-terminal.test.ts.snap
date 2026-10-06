@@ -3,6 +3,10 @@
 exports[`collects validated setup answers, with optional Google: false > setup guidance and secret prompts 1`] = `
 [
   [
+    "La contraseña debe tener entre 12 y 256 caracteres. No se mostrará al escribir.
+",
+  ],
+  [
     "Para HTTPS, usa un proxy hacia este puerto. Para HTTP en el aula, arranca marea-teacher --allow-http.
 ",
   ],
@@ -43,6 +47,10 @@ exports[`collects validated setup answers, with optional Google: false > setup q
 
 exports[`collects validated setup answers, with optional Google: true > setup guidance and secret prompts 1`] = `
 [
+  [
+    "La contraseña debe tener entre 12 y 256 caracteres. No se mostrará al escribir.
+",
+  ],
   [
     "Para HTTPS, usa un proxy hacia este puerto. Para HTTP en el aula, arranca marea-teacher --allow-http.
 ",

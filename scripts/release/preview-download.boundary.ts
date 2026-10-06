@@ -16,11 +16,13 @@ import {
   type PreviewSettings,
 } from "./preview-channel.js";
 import { selectRelease, sha256, signingIdentity, type ReleaseManifest } from "./manifest.js";
+import type { InstallationProgress } from "./preview-progress.boundary.js";
 
 export type PreviewFetch = (url: string, init?: RequestInit) => Promise<Response>;
 export interface DownloadPorts {
   readonly fetch: PreviewFetch;
   readonly verify: (manifest: string, bundle: string, identity: string) => void;
+  readonly progress?: Pick<InstallationProgress, "stage" | "update">;
 }
 
 /** Bounds the streamed body as well as time; an absent or dishonest Content-Length is not trusted. */
@@ -29,6 +31,7 @@ export async function boundedDownload(
   url: string,
   limit: number,
   init: RequestInit = {},
+  progress?: (bytes: number) => void,
 ): Promise<Uint8Array> {
   const response = await fetcher(url, { ...init, signal: AbortSignal.timeout(30_000) });
   if (!response.ok || response.body === null) throw new Error("Release download unavailable");
@@ -42,6 +45,7 @@ export async function boundedDownload(
       size += part.value.length;
       if (size > limit) throw new Error("Release download exceeds size limit");
       chunks.push(part.value);
+      progress?.(size);
     }
   } finally {
     await reader.cancel();
@@ -110,11 +114,13 @@ export async function downloadPreview(
   const asset = manifestAsset(settings.component, platform);
   const get = (name: string, limit: number) =>
     boundedDownload(ports.fetch, releaseUrl(settings.repository, version, name), limit);
+  ports.progress?.stage("Obteniendo la información de la versión...");
   for (const [name, remote] of [
     ["manifest.json", asset],
     ["manifest.sigstore.json", `${asset}.sigstore.json`],
   ] as const)
     writeFileSync(join(directory, name), await get(remote, 8_388_608), { flag: "wx", mode: 0o600 });
+  ports.progress?.stage("Verificando la firma de la versión...");
   ports.verify(
     join(directory, "manifest.json"),
     join(directory, "manifest.sigstore.json"),
@@ -127,8 +133,20 @@ export async function downloadPreview(
     platform,
   );
   let totalBytes = 0;
-  for (const file of manifest.files) {
-    const bytes = await get(`sha256-${file.sha256}`, 512_000_000);
+  ports.progress?.stage(`Descargando ${String(manifest.files.length)} archivos de Marea...`);
+  for (const [index, file] of manifest.files.entries()) {
+    const report = (bytes: number) =>
+      ports.progress?.update(
+        `Descargando archivo ${String(index + 1)}/${String(manifest.files.length)}: ${((totalBytes + bytes) / 1_048_576).toFixed(1)} MiB recibidos en total`,
+      );
+    report(0);
+    const bytes = await boundedDownload(
+      ports.fetch,
+      releaseUrl(settings.repository, version, `sha256-${file.sha256}`),
+      512_000_000,
+      {},
+      report,
+    );
     totalBytes += bytes.length;
     if (totalBytes > 2_000_000_000 || sha256(bytes) !== file.sha256)
       throw new Error("Release checksum or total size mismatch");
@@ -137,5 +155,6 @@ export async function downloadPreview(
     writeFileSync(path, bytes, { flag: "wx", mode: 0o600 });
     if (file.executable) chmodSync(path, 0o700);
   }
+  ports.progress?.stage(`Descarga verificada: ${String(manifest.files.length)} archivos.`);
   return manifest;
 }

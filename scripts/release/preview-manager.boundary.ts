@@ -37,6 +37,7 @@ import {
 import { acceptUpdate, question, serverQuestions } from "./preview-terminal.boundary.js";
 import { runForeground } from "./preview-process.boundary.js";
 import { configurePosixPath } from "./preview-path.boundary.js";
+import { installationProgress } from "./preview-progress.boundary.js";
 import {
   posixLauncher,
   powershellLiteral,
@@ -106,11 +107,14 @@ async function fetchAndInstall(
   const verify = (manifest: string, bundle: string, identity: string) => {
     verifySignature(manifest, bundle, identity, cosign);
   };
+  const progress = installationProgress();
   try {
     await downloadPreview(settings, version, `${process.platform}-${process.arch}`, source, {
       fetch: globalThis.fetch,
       verify,
+      progress,
     });
+    progress.stage("Instalando los archivos verificados...");
     await installRelease(
       {
         source,
@@ -132,6 +136,7 @@ async function fetchAndInstall(
     );
     return destination;
   } finally {
+    progress.finish();
     rmSync(source, { recursive: true, force: true });
   }
 }
@@ -206,6 +211,7 @@ async function initialInstall(
   // A completion record is written last, so a partial setup cannot accidentally start a server.
   const release = await fetchAndInstall(root, settings, version, resolve(cosign));
   if (setup !== undefined) {
+    process.stderr.write("Creando el centro, la clase y la cuenta del profesor...\n");
     scaffoldServer(requiredInstallation(settings), release, version, setup.answers);
     provisionServer(
       requiredInstallation(settings),
