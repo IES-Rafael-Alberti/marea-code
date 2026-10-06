@@ -1,5 +1,10 @@
 {
   "format": 1,
   "available": "0.1.0-preview.9",
-  "recommended": {}
+  "recommended": {
+    "0.1": {
+      "student": "0.1.0-preview.9",
+      "server": "0.1.0-preview.9"
+    }
+  }
 }
