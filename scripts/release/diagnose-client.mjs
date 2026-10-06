@@ -13,9 +13,10 @@ const diagnostic = join(tmpdir(), `marea-synthetic-client-error-${process.pid}.t
 const binary = resolve("reports/windows-smoke/marea-diagnostic.exe");
 const anchor =
   '  } catch {\n    options.output.error(`${options.translator.t("student.cli.unexpected-error")}\\n`);';
-if (!original.includes(anchor)) throw new Error("Diagnostic anchor changed");
+const normalized = original.replace(/\r\n/g, "\n");
+if (!normalized.includes(anchor)) throw new Error("Diagnostic anchor changed");
 try {
-  const instrumented = `import { appendFileSync as diagnosticAppend } from "node:fs";\n${original.replace(anchor, `  } catch (error) {\n    diagnosticAppend(${JSON.stringify(diagnostic)}, String(error instanceof Error ? error.stack : "Unknown failure") + "\\n");\n    options.output.error(\`\${options.translator.t("student.cli.unexpected-error")}\\n\`);`)}`;
+  const instrumented = `import { appendFileSync as diagnosticAppend } from "node:fs";\n${normalized.replace(anchor, `  } catch (error) {\n    diagnosticAppend(${JSON.stringify(diagnostic)}, String(error instanceof Error ? error.stack : "Unknown failure") + "\\n");\n    options.output.error(\`\${options.translator.t("student.cli.unexpected-error")}\\n\`);`)}`;
   writeFileSync(source, instrumented);
   const build = spawnSync(
     process.execPath,
