@@ -16,17 +16,17 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@opentui/core": "0.5.10",
-    "@opentui/react": "0.5.10",
+    "@opentui/core": "0.5.14",
+    "@opentui/react": "0.5.14",
     "highlight.js": "11.12.0",
-    "react": "19.2.8",
-    "web-tree-sitter": "0.25.10"
+    "react": "19.3.0",
+    "web-tree-sitter": "0.27.0"
   },
   "devDependencies": {
     "@marea/test-config": "workspace:*",
-    "@types/react": "19.2.18",
+    "@types/react": "19.3.0",
     "react-devtools-core": "7.0.1",
-    "ws": "8.21.3"
+    "ws": "8.22.0"
   },
   "knip": {
     "entry": [
