@@ -173,7 +173,8 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   expect(await readFile(notes, "utf8")).toBe("The tide is rising.\n");
   await resumed.waitForQuiet();
   resumed.write("/exit\r");
-  expect((await resumed.waitForExit(15_000)).exitCode).toBe(0);
+  const exit = await resumed.waitForExit(15_000);
+  expect(exit.exitCode, `${exit.stderr}\n${exit.stdout.slice(-4000)}`).toBe(0);
   expect(resumed.transcript()).toContain("[?1049l");
   expect(digest(await readFile(executable))).toBe(binaryHash);
   const receipt = process.env.MAREA_CLIENT_RECEIPT;
