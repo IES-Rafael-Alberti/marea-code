@@ -43,19 +43,25 @@ it("cancels a command and falls back to the child handle if process group signal
 it("enforces the deadline and escalates when a shell ignores termination", async () => {
   const root = await mkdtemp(join(tmpdir(), "marea-command-deadline-"));
   try {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
+    const started = Date.now();
     const running = runProjectCommand(
       root,
       "trap '' TERM; touch ready; while :; do :; done",
       new AbortController().signal,
     );
     await vi.waitFor(() => access(join(root, "ready")));
-    await vi.advanceTimersByTimeAsync(30000);
+    const kill = vi.spyOn(process, "kill");
+    // Readiness polling can already have advanced the fake clock.
+    await vi.advanceTimersByTimeAsync(250);
+    await vi.advanceTimersToNextTimerAsync();
+    expect(Date.now() - started).toBe(30_000);
     let settled = false;
     void running.then(() => {
       settled = true;
     });
     await vi.advanceTimersByTimeAsync(999);
+    expect(kill).toHaveBeenCalledExactlyOnceWith(expect.any(Number), "SIGTERM");
     expect(settled).toBe(false);
     await vi.advanceTimersByTimeAsync(1);
     expect(JSON.parse(await running)).toMatchObject({
