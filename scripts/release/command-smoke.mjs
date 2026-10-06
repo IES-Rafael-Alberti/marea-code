@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import process from "node:process";
+import console from "node:console";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,13 +9,13 @@ import { runProjectCommand } from "../../apps/student/src/command-runner.boundar
 
 const root = mkdtempSync(join(tmpdir(), "marea-native-command-"));
 const windows = process.platform === "win32";
-const abort = new AbortController();
+const abort = new globalThis.AbortController();
 try {
   const result = JSON.parse(
     await runProjectCommand(
       root,
       windows ? "echo native-command & exit /b 7" : "printf native-command; exit 7",
-      new AbortController().signal,
+      new globalThis.AbortController().signal,
     ),
   );
   assert.equal(result.exitCode, 7);

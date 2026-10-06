@@ -140,25 +140,21 @@ export function readBoundedRegularFile(
     const isFile = before.isFile();
     if (!isFile || before.nlink !== 1) failWithFile(code);
     if (!Number.isSafeInteger(maximumBytes)) failWithFile(code);
-    const chunks: Uint8Array[] = [];
+    if (before.size > maximumBytes) failWithFile(code);
+    // One bounded allocation; a growing file cannot write beyond its initial size.
+    const bytes = new Uint8Array(before.size);
+    const chunk = new Uint8Array(65_536);
     let totalBytes = 0;
     for (;;) {
-      const chunk = new Uint8Array(65_536);
       const readBytes = readFile(descriptor, chunk);
       if (readBytes === 0) break;
-      chunks.push(chunk.slice(0, readBytes));
+      const offset = totalBytes;
       totalBytes += readBytes;
-      if (totalBytes > maximumBytes) failWithFile(code);
+      bytes.set(chunk.subarray(0, readBytes), offset);
     }
     const after = statFile(descriptor);
     if (changedReadMetadata(before, after, totalBytes)) {
       failWithFile(code);
-    }
-    const bytes = new Uint8Array(totalBytes);
-    let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
     }
     return bytes;
   } catch {

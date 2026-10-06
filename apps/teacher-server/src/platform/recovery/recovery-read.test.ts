@@ -1,7 +1,7 @@
 import { fstatSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { readBoundedRegularFile } from "./artifact.boundary.js";
 import { expectRecoveryError } from "./recovery-assertions.fixture.js";
@@ -17,7 +17,7 @@ describe("recovery bounded reads", () => {
     writeFileSync(path, bytes);
     expect(readBoundedRegularFile(path, 64, "bundle-database-invalid")).toEqual(bytes);
 
-    const multiChunk = new Uint8Array(65_536 + 1);
+    const multiChunk = Uint8Array.from({ length: 65_536 + 1 }, (_, index) => (index % 251) + 1);
     const multiPath = join(root(), "multi-chunk-read");
     writeFileSync(multiPath, multiChunk);
     expect(readBoundedRegularFile(multiPath, 131_072, "bundle-database-invalid")).toEqual(
@@ -51,6 +51,17 @@ describe("recovery bounded reads", () => {
     expect(readBoundedRegularFile(emptyPath, 0, "bundle-database-invalid")).toEqual(
       new Uint8Array(0),
     );
+  });
+
+  it("rejects an oversized file before allocating or reading its content", () => {
+    const path = join(root(), "preflight-size");
+    writeFileSync(path, "too large");
+    const readSync = vi.fn();
+    expectRecoveryError(
+      () => readBoundedRegularFile(path, 1, "bundle-database-invalid", { readSync }),
+      "bundle-database-invalid",
+    );
+    expect(readSync).not.toHaveBeenCalled();
   });
 
   it("rejects short and oversized reads", () => {
