@@ -64,10 +64,10 @@ function printUninstallScope(settings: PreviewSettings, purge: boolean): void {
   process.stdout.write(`${detail}\nCierra las otras sesiones de Marea antes de continuar.\n`);
 }
 
-function retireInstallation(root: string, owner: OwnedInstallation | undefined): string {
+function retireInstallation(root: string, owner: OwnedInstallation): string {
   const destination = join(root, "installation-uninstalling");
   if (existsSync(destination)) throw new Error("Previous uninstall data needs inspection");
-  if (owner?.release(destination) !== true)
+  if (!owner.release(destination))
     throw new Error("Could not retire the locked installation for removal");
   return destination;
 }
@@ -108,8 +108,10 @@ export async function uninstallPreview(
     }
     const bin = join(root, "bin");
     removeManagedPath(bin);
-    owner?.capability.assertOwned();
-    if (purge) removedData = retireInstallation(root, owner);
+    if (owner !== undefined) {
+      owner.capability.assertOwned();
+      if (purge) removedData = retireInstallation(root, owner);
+    }
     for (const name of paths) rmSync(join(root, name), { recursive: true, force: true });
   } finally {
     owner?.release();
