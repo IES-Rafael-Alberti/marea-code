@@ -33,7 +33,7 @@ async function filterOverrides(root: string, env: NodeJS.ProcessEnv): Promise<st
         "--get-regexp",
         "^filter\\..*\\.(clean|smudge|process|required)$",
       ],
-      { cwd: root, env, timeout: 15_000, maxBuffer: 8 * 1024 * 1024 },
+      { cwd: root, env, timeout: 15_000, maxBuffer: 8 * 1024 * 1024, windowsHide: true },
     );
     names = result.stdout;
   } catch (error) {
@@ -95,6 +95,8 @@ export async function projectGit(
       : args;
   const { stdout } = await execute("git", [...SAFE_GIT_OPTIONS, ...safeArgs], {
     cwd: root,
+    // Auxiliary Git processes must not attach a window while the TUI shuts down.
+    windowsHide: true,
     timeout: 15_000,
     maxBuffer: 8 * 1024 * 1024,
     env: commandEnv,

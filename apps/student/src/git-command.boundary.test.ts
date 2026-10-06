@@ -70,3 +70,13 @@ it.each(["status", "add", "read-tree", "write-tree", "diff"])(
     expect(execute.mock.calls[0]?.[1]).toContain("config");
   },
 );
+
+// Check only the selected spawn option: full environments may contain CI credentials.
+it("keeps configuration and snapshot processes independent of the terminal window", async () => {
+  execute.mockRejectedValueOnce(Object.assign(new Error("No filters"), { code: 1 }));
+  execute.mockResolvedValueOnce({ stdout: "synthetic-tree" });
+  await expect(projectGit("/synthetic", ["write-tree"])).resolves.toBe("synthetic-tree");
+  expect(
+    execute.mock.calls.map((call) => (call[2] as { windowsHide?: boolean }).windowsHide),
+  ).toEqual([true, true]);
+});
