@@ -34,6 +34,7 @@ public static class MareaConPty {
  public static string Run(string exe,string mode,string arguments) {
   IntPtr ir=IntPtr.Zero,iw=IntPtr.Zero,or=IntPtr.Zero,ow=IntPtr.Zero,pc=IntPtr.Zero,list=IntPtr.Zero;
   ProcessInfo process=new ProcessInfo();
+  string readyFile=Path.Combine(Path.GetTempPath(),"marea-tui-ready-"+Guid.NewGuid().ToString("N"));
   StreamReader reader=null; FileStream writer=null;
   try {
    Check(CreatePipe(out ir,out iw,IntPtr.Zero,0)); Check(CreatePipe(out or,out ow,IntPtr.Zero,0));
@@ -44,7 +45,11 @@ public static class MareaConPty {
    Extended startup=new Extended(); startup.startup.cb=Marshal.SizeOf(typeof(Extended)); startup.attributes=list;
    // Prevent redirected CI standard handles from bypassing the pseudoconsole.
    startup.startup.flags=0x100; // STARTF_USESTDHANDLES with null handles lets ConPTY supply them.
+   string previousReady=Environment.GetEnvironmentVariable("MAREA_TUI_READY_FILE");
+   try {
+    Environment.SetEnvironmentVariable("MAREA_TUI_READY_FILE",readyFile);
    Check(CreateProcess(exe,new StringBuilder("\""+exe+"\""+(mode=="help"?" --lang en --help":(" "+arguments))),IntPtr.Zero,IntPtr.Zero,false,0x80000,IntPtr.Zero,null,ref startup,out process));
+   } finally { Environment.SetEnvironmentVariable("MAREA_TUI_READY_FILE",previousReady); }
    CloseHandle(ir); ir=IntPtr.Zero; CloseHandle(ow); ow=IntPtr.Zero;
    reader=new StreamReader(new FileStream(new SafeFileHandle(or,true),FileAccess.Read)); or=IntPtr.Zero;
    var captured=new StringBuilder();
@@ -57,7 +62,7 @@ public static class MareaConPty {
    if(mode!="help") {
     bool ready=false;
     for(int attempt=0;attempt<300;attempt++){
-     lock(captured){var screen=captured.ToString();ready=mode=="server"?screen.Contains("Teacher host ready at "):screen.Contains("MAREA_TUI_READY") && screen.Contains("q: quit");}
+     lock(captured){var screen=captured.ToString();ready=mode=="server"?screen.Contains("Teacher host ready at "):File.Exists(readyFile) && screen.Contains("q: quit");}
      if(ready || WaitForSingleObject(process.process,0)==0)break;
      System.Threading.Thread.Sleep(50);
     }
@@ -88,6 +93,7 @@ public static class MareaConPty {
    if(reader!=null)reader.Dispose();
    foreach(var handle in new[]{ir,iw,or,ow})if(handle!=IntPtr.Zero)CloseHandle(handle);
    if(list!=IntPtr.Zero){DeleteProcThreadAttributeList(list);Marshal.FreeHGlobal(list);}
+   if(File.Exists(readyFile))File.Delete(readyFile);
   }
  }
 }

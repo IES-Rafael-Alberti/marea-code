@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs";
 import { runCli } from "../src/cli.js";
 import { startStudentTui } from "../src/start.js";
 import type { StudentTuiCopy } from "../src/contracts.js";
@@ -23,8 +24,9 @@ process.exitCode = await runCli(process.argv.slice(2), SPIKE_COPY, {
   async start(copy) {
     const session = await startStudentTui(copy);
     // A painted first frame can precede the session's keyboard binding.
-    // Native probes must wait for this marker before sending their first key.
-    process.stderr.write("MAREA_TUI_READY\n");
+    // Use an out-of-band marker: ConPTY can coalesce text overwritten by a frame.
+    const readyFile = process.env.MAREA_TUI_READY_FILE;
+    if (readyFile !== undefined) writeFileSync(readyFile, "ready", { flag: "wx", mode: 0o600 });
     return session;
   },
   writeError: (message) => {
