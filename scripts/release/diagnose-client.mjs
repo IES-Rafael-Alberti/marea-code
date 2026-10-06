@@ -16,7 +16,17 @@ const anchor =
 const normalized = original.replace(/\r\n/g, "\n");
 if (!normalized.includes(anchor)) throw new Error("Diagnostic anchor changed");
 try {
-  const instrumented = `import { appendFileSync as diagnosticAppend } from "node:fs";\n${normalized.replace(anchor, `  } catch (error) {\n    diagnosticAppend(${JSON.stringify(diagnostic)}, String(error instanceof Error ? error.stack : "Unknown failure") + "\\n");\n    options.output.error(\`\${options.translator.t("student.cli.unexpected-error")}\\n\`);`)}`;
+  const report = `  } catch (error) {
+    const details = error as { stack?: string; code?: unknown; signal?: unknown; stderr?: unknown };
+    const probes = [false, true].map((windowsHide) => {
+      const result = diagnosticSpawn("git", ["rev-parse", "--git-path", "index"], {
+        cwd: options.currentDirectory, encoding: "utf8", timeout: 15000, windowsHide,
+      });
+      return { windowsHide, status: result.status, signal: result.signal, stderr: result.stderr, error: result.error?.message };
+    });
+    diagnosticAppend(${JSON.stringify(diagnostic)}, JSON.stringify({ stack: details.stack, code: details.code, signal: details.signal, stderr: details.stderr, probes }) + "\\n");
+    options.output.error(\`\${options.translator.t("student.cli.unexpected-error")}\\n\`);`;
+  const instrumented = `import { appendFileSync as diagnosticAppend } from "node:fs";\nimport { spawnSync as diagnosticSpawn } from "node:child_process";\n${normalized.replace(anchor, report)}`;
   writeFileSync(source, instrumented);
   const build = spawnSync(
     process.execPath,
