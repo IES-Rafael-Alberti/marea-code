@@ -36,7 +36,7 @@ export async function serverQuestions(): Promise<{ answers: SetupAnswers; passwo
     throw new Error("Las contraseñas no coinciden");
   const port = Number(await question("Puerto local", "18787"));
   process.stderr.write(
-    "Para otros equipos, usa una dirección HTTPS con un proxy hacia este puerto local.\n",
+    "Para HTTPS, usa un proxy hacia este puerto. Para HTTP en el aula, arranca marea-teacher --allow-http.\n",
   );
   const origin = await question(
     "Dirección pública del servidor",

@@ -1,3 +1,4 @@
+import { localHttpHosts, httpConnectionUrls } from "./http-access.boundary.js";
 import { z } from "zod";
 
 import {
@@ -38,11 +39,19 @@ const START_EXIT: Record<Extract<StartResult, { state: "failed" }>["reason"], 3 
 
 export function parseHostArguments(
   argv: readonly string[],
-): { readonly root: string; readonly releaseId: string } | undefined {
+): { readonly root: string; readonly releaseId: string; readonly allowHttp: boolean } | undefined {
   const parsed = z
-    .tuple([z.literal("--installation"), z.string(), z.literal("--release"), z.string()])
+    .tuple([
+      z.literal("--installation"),
+      z.string(),
+      z.literal("--release"),
+      z.string(),
+      z.literal("--allow-http").optional(),
+    ])
     .safeParse(argv);
-  return parsed.success ? { root: parsed.data[1], releaseId: parsed.data[3] } : undefined;
+  return parsed.success
+    ? { root: parsed.data[1], releaseId: parsed.data[3], allowHttp: parsed.data[4] !== undefined }
+    : undefined;
 }
 
 /** Starts the host, serves until SIGINT or SIGTERM, then drains and stops it. */
@@ -52,13 +61,21 @@ export async function runTeacherHost(
 ): Promise<0 | 2 | 3 | 5 | 6> {
   const parsed = parseHostArguments(argv);
   if (parsed === undefined) {
-    dependencies.stderr("Usage: marea-teacher --installation <root> --release <id>\n");
+    dependencies.stderr(
+      "Usage: marea-teacher --installation <root> --release <id> [--allow-http]\n",
+    );
     return 2;
   }
+  const httpHosts = parsed.allowHttp ? localHttpHosts() : undefined;
+  if (httpHosts !== undefined)
+    dependencies.stderr(
+      "HTTP LAN mode: listening on all IPv4 interfaces without transport encryption.\n",
+    );
   const startup = new AbortController();
   const start = () =>
     startTeacherHost({
       startupSignal: startup.signal,
+      httpHosts,
       installationRoot: parsed.root,
       releaseId: parsed.releaseId,
       serve: dependencies.serve,
@@ -98,6 +115,9 @@ export async function runTeacherHost(
     return START_EXIT[host.reason];
   }
   dependencies.stdout(`Teacher host ready at ${host.url}\n`);
+  if (httpHosts !== undefined)
+    for (const url of httpConnectionUrls(httpHosts, host.url))
+      dependencies.stdout(`Student connection: marea --server ${url}\n`);
   await stopRequested.promise;
   stopListening();
   const stopped = await host.stop();

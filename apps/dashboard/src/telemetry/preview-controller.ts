@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../browser-random-uuid.js";
 import {
   CURRENT_PROTOCOL_VERSION,
   TelemetryPreviewRequestSchema,
@@ -29,7 +30,7 @@ export class PreviewController {
       const response = await this.port.preview(
         TelemetryPreviewRequestSchema.parse({
           protocolVersion: CURRENT_PROTOCOL_VERSION,
-          requestId: `preview:${crypto.randomUUID()}`,
+          requestId: `preview:${browserRandomUUID()}`,
           kind: "telemetry-preview",
           classId,
         }),

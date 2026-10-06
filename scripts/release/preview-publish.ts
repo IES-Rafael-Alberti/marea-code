@@ -109,7 +109,18 @@ download() {
 }
 download marea-install "$installerHash"
 download cosign "$cosignHash"
-"$temp/marea-install" preview install "$component" --repository ${shellLiteral(repository)} --cosign "$temp/cosign" "$@" < /dev/tty
+run_installer() {
+  "$temp/marea-install" preview install "$component" --repository ${shellLiteral(repository)} --cosign "$temp/cosign" "$@"
+}
+# Keep an inherited terminal descriptor: Bun on macOS cannot read prompts from a reopened /dev/tty.
+if [ -t 0 ]; then
+  run_installer "$@"
+elif [ -t 2 ]; then
+  run_installer "$@" 0<&2
+else
+  echo 'Installation needs an interactive terminal on stdin or stderr.' >&2
+  exit 1
+fi
 `;
 }
 

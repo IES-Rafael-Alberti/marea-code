@@ -35,7 +35,7 @@ exports[`preserves the reviewed Basque interface copy 1`] = `
   "student.auth.method-rejected": "Gordetako saioa ez da baliozkoa. Nola jarraitu nahi duzu?",
   "student.auth.password-label": "Pasahitza",
   "student.auth.required": "Eremu hau beharrezkoa da.",
-  "student.cli.help": "Erabilera: marea [--lang <locale>] [--no-mouse]
+  "student.cli.help": "Erabilera: marea [--server <URL>] [--lang <locale>] [--no-mouse]
        marea feedback
        marea feedback --ack <notice-id>
 

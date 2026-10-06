@@ -117,11 +117,11 @@ exports[`provisions a new teacher installation and binds the offline update call
 exports[`returns help, actual version and status without network discovery > managed help and status 1`] = `
 [
   [
-    "Marea preview: --version, status, update [--version X.Y.Z-preview.N], uninstall [--yes] [--purge-data]. Run without these options to start.
+    "Marea preview: --version, status, update [--version X.Y.Z-preview.N], uninstall [--yes] [--purge-data]. Start with --server <http(s)://host:port> (student) or --allow-http (server).
 ",
   ],
   [
-    "Marea preview: --version, status, update [--version X.Y.Z-preview.N], uninstall [--yes] [--purge-data]. Run without these options to start.
+    "Marea preview: --version, status, update [--version X.Y.Z-preview.N], uninstall [--yes] [--purge-data]. Start with --server <http(s)://host:port> (student) or --allow-http (server).
 ",
   ],
   [

@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import { dashboardPost } from "../../dashboard-post.js";
 import {
   ApproveEvaluationRequestSchema,
@@ -48,7 +49,7 @@ export interface EvaluationClient {
 
 export function createEvaluationClient(
   fetchRequest: DashboardFetch,
-  createId: () => string = () => `request:${crypto.randomUUID()}`,
+  createId: () => string = () => `request:${browserRandomUUID()}`,
 ): EvaluationClient {
   const envelope = () => ({ protocolVersion: "0.1", requestId: createId() });
   async function post<T extends { readonly requestId: string }>(

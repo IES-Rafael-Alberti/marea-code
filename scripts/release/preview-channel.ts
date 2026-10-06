@@ -44,19 +44,20 @@ export function manifestAsset(selected: string, platform: string): string {
   return `${component.parse(selected)}-${target.parse(platform)}.manifest.json`;
 }
 
-/** Refuse plaintext credentials over a school network; HTTP is useful for local rehearsals only. */
+/** The supplied scheme is explicit; distribution downloads always use the separate HTTPS release URL. */
 export function serverOrigin(value: string): string {
   const url = new URL(value);
-  const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   if (
     url.username ||
     url.password ||
     url.search ||
     url.hash ||
     url.pathname !== "/" ||
-    !(url.protocol === "https:" || (url.protocol === "http:" && loopback))
+    !(url.protocol === "https:" || url.protocol === "http:")
   )
-    throw new Error("Use an HTTPS server origin (HTTP is allowed only on loopback)");
+    throw new Error(
+      "Use an HTTP or HTTPS server origin without credentials, query, fragment or path",
+    );
   return url.origin;
 }
 

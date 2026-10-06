@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   ActiveRunDashboardResponseSchema,
   CURRENT_PROTOCOL_VERSION,
@@ -16,7 +17,7 @@ function activeRunsPath(): string {
 }
 
 function browserRequestId(): string {
-  return `request:${crypto.randomUUID()}`;
+  return `request:${browserRandomUUID()}`;
 }
 
 function parseJson(text: string): unknown {

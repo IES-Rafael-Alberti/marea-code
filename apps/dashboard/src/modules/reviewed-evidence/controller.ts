@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   CURRENT_PROTOCOL_VERSION,
   ReviewedEvidenceQuerySchema,
@@ -83,7 +84,7 @@ export class ReviewedEvidenceController {
     const request = ReviewedEvidenceQuerySchema.parse({
       ...selection,
       classId: this.classId,
-      requestId: `evidence:${crypto.randomUUID()}`,
+      requestId: `evidence:${browserRandomUUID()}`,
       protocolVersion: CURRENT_PROTOCOL_VERSION,
       limit: 25,
     });

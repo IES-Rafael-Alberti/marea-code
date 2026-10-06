@@ -39,6 +39,7 @@ describe("marea command", () => {
     { arguments: ["--version"], expected: MAREA_CLIENT_VERSION, status: 0, stream: "writes" },
     { arguments: ["-v"], expected: MAREA_CLIENT_VERSION, status: 0, stream: "writes" },
     { arguments: ["--no-mouse", "extra"], expected: "Usage: marea", status: 2, stream: "errors" },
+    { arguments: ["--server"], expected: "Usage: marea", status: 2, stream: "errors" },
     { arguments: ["--provider"], expected: "Usage: marea", status: 2, stream: "errors" },
     { arguments: ["--help", "extra"], expected: "Usage: marea", status: 2, stream: "errors" },
     { arguments: ["--version", "extra"], expected: "Usage: marea", status: 2, stream: "errors" },

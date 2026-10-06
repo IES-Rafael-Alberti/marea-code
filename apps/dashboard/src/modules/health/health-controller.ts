@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   CURRENT_PROTOCOL_VERSION,
   TeacherHealthRequestSchema,
@@ -37,7 +38,7 @@ export class HealthController {
         this.port.readHealth(
           TeacherHealthRequestSchema.parse({
             protocolVersion: CURRENT_PROTOCOL_VERSION,
-            requestId: `health:${crypto.randomUUID()}`,
+            requestId: `health:${browserRandomUUID()}`,
             kind: "teacher-health-read",
             classId,
           }),

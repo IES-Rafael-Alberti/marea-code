@@ -18,8 +18,13 @@ export function compileInstallationExecutables(root: string) {
 }
 
 /** Starts a compiled `marea-teacher` and resolves once it reports readiness. */
-export async function startCompiledHost(binary: string, root: string, releaseId: string) {
-  const child = spawn(binary, ["--installation", root, "--release", releaseId], {
+export async function startCompiledHost(
+  binary: string,
+  root: string,
+  releaseId: string,
+  extra: readonly string[] = [],
+) {
+  const child = spawn(binary, ["--installation", root, "--release", releaseId, ...extra], {
     stdio: ["ignore", "pipe", "pipe"],
   });
   const output = { stdout: "", stderr: "" };
@@ -37,7 +42,9 @@ export async function startCompiledHost(binary: string, root: string, releaseId:
   const deadline = Date.now() + 30_000;
   while (!output.stdout.includes("Teacher host ready at ") && Date.now() < deadline)
     await Bun.sleep(50);
-  const origin = /Teacher host ready at (http:\/\/127\.0\.0\.1:\d+)/u.exec(output.stdout)?.[1];
+  const origin = /Teacher host ready at (http:\/\/(?:127\.0\.0\.1|0\.0\.0\.0):\d+)/u.exec(
+    output.stdout,
+  )?.[1];
   assert.ok(origin, `host did not report readiness: ${output.stderr}`);
   return { child, exited, origin, output };
 }

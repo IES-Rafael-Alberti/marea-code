@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   CURRENT_PROTOCOL_VERSION,
   MAX_TEACHING_CONFIGURATION_BYTES,
@@ -25,7 +26,7 @@ const TEACHING_PATH = "/api/v1/dashboard/teaching";
 
 export function createTeachingClient(
   fetchRequest: DashboardFetch,
-  createRequestId: () => string = () => `request:${crypto.randomUUID()}`,
+  createRequestId: () => string = () => `request:${browserRandomUUID()}`,
 ): TeachingClient {
   async function post<T extends { requestId: string }>(
     path: string,

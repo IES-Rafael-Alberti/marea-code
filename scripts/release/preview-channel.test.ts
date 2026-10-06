@@ -41,7 +41,7 @@ it("orders the explicit preview channel numerically without mixing stable or arb
     expect(previewVersion.safeParse(value).success).toBe(false);
 });
 
-it("constructs fixed GitHub assets and refuses insecure school origins or embedded credentials", () => {
+it("constructs fixed GitHub assets and accepts explicit HTTP origins but refuses embedded credentials", () => {
   expect(releaseUrl("school/marea", "1.0.0-preview.1", "student-linux-x64.manifest.json")).toBe(
     "https://github.com/school/marea/releases/download/v1.0.0-preview.1/student-linux-x64.manifest.json",
   );
@@ -51,13 +51,14 @@ it("constructs fixed GitHub assets and refuses insecure school origins or embedd
   expect(() => releaseUrl("a/b/c", "1.0.0-preview.1", "asset")).toThrow();
   for (const origin of [
     "https://school.test",
+    "http://school.test",
+    "http://192.168.1.20:18787",
     "http://localhost:18787",
     "http://127.0.0.1:18787",
     "http://[::1]:18787",
   ])
     expect(serverOrigin(`${origin}/`)).toBe(origin);
   for (const origin of [
-    "http://school.test",
     "https://user:secret@school.test",
     "https://school.test/a",
     "https://school.test/?a",

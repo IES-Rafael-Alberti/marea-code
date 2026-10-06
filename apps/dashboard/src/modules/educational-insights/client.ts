@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import * as z from "zod";
 import {
   CURRENT_PROTOCOL_VERSION,
@@ -24,7 +25,7 @@ export function insightsClient(fetchRequest: DashboardFetch) {
     const request = InsightsRequestSchema.parse({
       ...input,
       classId,
-      requestId: `insights:${crypto.randomUUID()}`,
+      requestId: `insights:${browserRandomUUID()}`,
       protocolVersion: CURRENT_PROTOCOL_VERSION,
     });
     const result = await post(EDUCATIONAL_INSIGHTS_PATH, request, response, signal);

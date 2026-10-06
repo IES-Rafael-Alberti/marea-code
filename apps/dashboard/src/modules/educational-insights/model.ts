@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as z from "zod";
 import {
@@ -35,7 +36,7 @@ export function useInsightModel(props: InsightViewProps & { readonly classId: st
     | z.infer<typeof reportsSchema>
     | null
   >(null);
-  const viewer = useRef(crypto.randomUUID());
+  const viewer = useRef(browserRandomUUID());
   const [page, setPage] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [report, setReport] = useState<z.infer<typeof reportSchema> | null>(null);

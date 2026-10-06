@@ -96,6 +96,67 @@ describe("production teacher host", () => {
     acquireInstallation(f.root).release();
   });
 
+  it("serves LAN HTTP with exact host/origin checks and reverts on the next ordinary start", async () => {
+    const f = installation();
+    f.writeHost({
+      ...f.host,
+      listen: { hostname: "127.0.0.1", port: 18787 },
+      secureDashboardCookie: true,
+    });
+    const path = join(f.root, "config", "teacher-host.json");
+    const original = readFileSync(path, "utf8");
+    const loginRequest = (origin = "http://192.168.1.20:18787", host = "192.168.1.20:18787") =>
+      new Request(`${origin}/v1/auth/login`, {
+        method: "POST",
+        headers: { "content-type": "application/json", origin, host },
+        body: JSON.stringify({
+          credentials: { login: "teacher", password: "teacher-password" },
+          kind: "credential-login",
+          protocolVersion: "0.1",
+          requestId: "request:http-login",
+        }),
+      });
+    const host = await startTeacherHost({
+      installationRoot: f.root,
+      releaseId: "release:host",
+      serve: f.serve,
+      passwords,
+      httpHosts: ["192.168.1.20"],
+      onEvaluationError: () => undefined,
+    });
+    if (host.state !== "ready") throw new Error("HTTP host failed");
+    try {
+      expect(host.url).toBe("http://0.0.0.0:18787");
+      const fetch = f.served.fetch as (request: Request) => Promise<Response>;
+      const origin = "http://192.168.1.20:18787";
+      const login = await fetch(loginRequest());
+      expect(login.status).toBe(200);
+      expect(login.headers.get("set-cookie")).toContain("HttpOnly");
+      expect(login.headers.get("set-cookie")).not.toContain("Secure");
+      expect(
+        (
+          await fetch(
+            new Request(`${origin}/dashboard`, { headers: { host: "192.168.1.20:18787" } }),
+          )
+        ).status,
+      ).toBe(200);
+      expect((await fetch(loginRequest(undefined, "attacker.test:18787"))).status).toBe(403);
+      expect((await fetch(loginRequest("http://attacker.test"))).status).toBe(403);
+      expect(readFileSync(path, "utf8")).toBe(original);
+    } finally {
+      await host.stop();
+    }
+    const ordinary = await start(f);
+    if (ordinary.state !== "ready") throw new Error("Ordinary restart failed");
+    try {
+      expect(ordinary.url).toBe("http://127.0.0.1:18787");
+      expect((await f.served.fetch?.(loginRequest()))?.status).toBe(403);
+    } finally {
+      await ordinary.stop();
+    }
+    expectConnectionsClosed();
+  });
+
   it("refuses unactivated, foreign-release, busy or unrecovered installations", async () => {
     const unactivated = installation({ activate: false });
     expect(await start(unactivated)).toEqual({ state: "failed", reason: "config" });

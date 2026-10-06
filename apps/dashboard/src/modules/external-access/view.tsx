@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   MAX_EXTERNAL_RULE_VALUES_PER_CHANGE,
   RequestIdSchema,
@@ -13,7 +14,7 @@ import { externalAccessMessages } from "./messages.js";
 import "./external-access.css";
 
 function requestId(): RequestId {
-  return RequestIdSchema.parse(`external-access:${crypto.randomUUID()}`);
+  return RequestIdSchema.parse(`external-access:${browserRandomUUID()}`);
 }
 
 /** Splits pasted text on whitespace, commas and semicolons. */

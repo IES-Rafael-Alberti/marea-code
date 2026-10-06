@@ -32,6 +32,11 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+vi.mock("./http-access.boundary.js", async (original) => ({
+  ...(await original<typeof import("./http-access.boundary.js")>()),
+  localHttpHosts: () => ["localhost", "192.168.1.20"],
+}));
+
 const ARGV = ["--installation", "/private/root", "--release", "release:one"];
 
 function dependencies() {
@@ -59,7 +64,11 @@ function dependencies() {
 
 describe("teacher host executable", () => {
   it("accepts only the installation and release arguments", () => {
-    expect(parseHostArguments(ARGV)).toEqual({ root: "/private/root", releaseId: "release:one" });
+    expect(parseHostArguments(ARGV)).toEqual({
+      root: "/private/root",
+      releaseId: "release:one",
+      allowHttp: false,
+    });
     for (const argv of [
       [],
       ["--installation", "/private/root"],
@@ -72,10 +81,40 @@ describe("teacher host executable", () => {
       expect(parseHostArguments(argv)).toBeUndefined();
   });
 
+  it("enables HTTP only for an explicit startup flag and prints connection URLs", async () => {
+    expect(parseHostArguments([...ARGV, "--allow-http"])).toEqual({
+      root: "/private/root",
+      releaseId: "release:one",
+      allowHttp: true,
+    });
+    expect(parseHostArguments([...ARGV, "--allow-http", "--allow-http"])).toBeUndefined();
+    const deps = dependencies();
+    const stop = vi.fn(() => Promise.resolve({ state: "stopped", reasonCode: "stopped" }));
+    mocks.start.mockResolvedValueOnce({ state: "ready", url: "http://0.0.0.0:18787", stop });
+    const running = runTeacherHost([...ARGV, "--allow-http"], deps.ports);
+    await vi.waitFor(() => {
+      expect(deps.stdout).toContain(
+        "Student connection: marea --server http://192.168.1.20:18787\n",
+      );
+    });
+    expect(deps.stdout).toContain("Student connection: marea --server http://localhost:18787\n");
+    expect(deps.stderr).toEqual([
+      "HTTP LAN mode: listening on all IPv4 interfaces without transport encryption.\n",
+    ]);
+    expect(mocks.start.mock.calls[0]?.[0]).toMatchObject({
+      httpHosts: ["localhost", "192.168.1.20"],
+    });
+    deps.signals.emit("SIGINT");
+    expect(await running).toBe(0);
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
   it("maps start failures to exit classes without serving", async () => {
     const usage = dependencies();
     expect(await runTeacherHost([], usage.ports)).toBe(2);
-    expect(usage.stderr).toEqual(["Usage: marea-teacher --installation <root> --release <id>\n"]);
+    expect(usage.stderr).toEqual([
+      "Usage: marea-teacher --installation <root> --release <id> [--allow-http]\n",
+    ]);
     for (const [reason, code] of [
       ["lock", 3],
       ["config", 5],

@@ -281,7 +281,6 @@ describe("HTTP student server boundary", () => {
 
   it.each([
     "ftp://teacher.example",
-    "http://teacher.example",
     "https://user:pass@teacher.example",
     "https://user@teacher.example",
     "https://:pass@teacher.example",
@@ -289,13 +288,13 @@ describe("HTTP student server boundary", () => {
     "https://teacher.example#fragment",
   ])("rejects unsafe base URL %s", (baseUrl) => {
     expect(() => createHttpStudentServer({ baseUrl })).toThrow(
-      "The teacher server URL must be HTTPS without credentials, query, or fragment.",
+      "The teacher server URL must be HTTP or HTTPS without credentials, query, or fragment.",
     );
   });
 
-  it("accepts loopback HTTP and validates timeout bounds", () => {
+  it("accepts explicit HTTP and validates timeout bounds", () => {
     expect(() =>
-      createHttpStudentServer({ baseUrl: "http://localhost", timeoutMs: 100 }),
+      createHttpStudentServer({ baseUrl: "http://teacher.example:18787", timeoutMs: 100 }),
     ).not.toThrow();
     expect(() =>
       createHttpStudentServer({ baseUrl: "http://127.0.0.1", timeoutMs: 300_000 }),

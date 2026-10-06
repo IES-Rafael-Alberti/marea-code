@@ -107,7 +107,9 @@ it.each([false, true])("creates private configuration with optional Google: %s",
   expect(() => {
     scaffoldServer(root, "new", "0.1.0-preview.2", input);
   }).toThrow("empty");
-  expect(() => setupAnswers.parse({ ...answers, origin: "http://school.test" })).toThrow();
+  expect(setupAnswers.parse({ ...answers, origin: "http://school.test" }).origin).toBe(
+    "http://school.test",
+  );
 });
 
 it.each(["darwin", "win32"])(

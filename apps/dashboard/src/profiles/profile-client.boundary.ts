@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../browser-random-uuid.js";
 import { dashboardPost } from "../dashboard-post.js";
 import {
   createDashboardProfileDocumentSchema,
@@ -27,7 +28,7 @@ export interface ProfileWrite {
 export function createProfileClient(
   fetchRequest: DashboardFetch,
   release: ProfileCatalog,
-  createId: () => string = () => `request:${crypto.randomUUID()}`,
+  createId: () => string = () => `request:${browserRandomUUID()}`,
 ) {
   async function post<T extends { requestId: string; scope: DashboardProfileScope }>(
     operation: "read" | "catalog" | "save" | "reset",

@@ -1,23 +1,23 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.9`, the first preview with independent
-recommendations and managed uninstall. **Publish and recommend that version before
-sharing these commands.** Version 6 predates this policy; its immutable installers
-still use its original update behavior. Updating an existing installation to version
-9 or later enables the policy below.
+The commands below target `0.1.0-preview.10`, which fixes interactive installation
+on macOS and adds optional HTTP access on classroom networks. Version 9 introduced
+independent recommendations and managed uninstall. Version 6 predates that policy;
+its immutable installers retain their original behavior. Updating to version 10
+enables the behavior below.
 
 ## Teacher server
 
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.9/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.10/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.9/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.10/install.ps1'))) -Component server
 ```
 
 The wizard creates a new installation under `~/.marea-preview/server`, asks for
@@ -26,11 +26,25 @@ first center and class. It does not modify `~/marea-prueba` or adopt existing da
 It prints the launch command. On Windows, reopen the terminal after installation
 to pick up the per-user PATH entry.
 
-Choose an HTTPS origin accessible from student computers. Configure your reverse
-proxy to forward to `127.0.0.1:18787` (or the chosen port), preserving the public
-Host and Origin. TLS certificates, DNS, firewall access and reverse-proxy setup
-are environment-specific and are not provisioned by this installer. HTTP is
-accepted only for testing on the same machine.
+For HTTPS, choose an origin accessible from student computers and configure your
+reverse proxy to forward to `127.0.0.1:18787` (or the chosen port), preserving the
+public Host and Origin. Certificates, DNS and proxy setup are not provisioned by
+the installer.
+
+For a classroom LAN without a proxy or certificates, start with:
+
+```sh
+marea-teacher --allow-http
+```
+
+The server listens on all IPv4 interfaces and prints the addresses students can
+use. Open `http://TEACHER_IP:18787/dashboard/` for the panel. Allow the selected
+port through the teacher computer's firewall. HTTP carries passwords, sessions
+and classroom traffic without encryption; use it only on a trusted network.
+This flag applies only to that invocation and does not rewrite the saved
+configuration. Starting without it uses the configured listening address again.
+Exact Host and Origin checks remain enabled for the computer's local IPs.
+Download verification and release signatures are unchanged.
 
 Start `marea-teacher`, open `/dashboard/`, sign in and configure the model provider
 under Settings → Server. Enable the common route and save the teaching
@@ -48,17 +62,27 @@ Student computers need Git installed and available on `PATH` for project snapsho
 and change tracking. The application runtime is included in the package.
 
 Installation selects the recommended client without querying the school server.
-Replace the example origin with the address supplied by the teacher.
+Replace the example origin with the address supplied by the teacher, including
+`http://` when the server was started with `--allow-http`. After installation,
+a different server can be selected for one invocation:
+
+```sh
+marea --server http://192.168.1.20:18787
+```
+
+`--server` takes precedence over `MAREA_SERVER_URL` and the saved installation
+address. Compatibility discovery uses the same selected server. It does not
+change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.9/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.10/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.9/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.10/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Run `marea` from the project directory. The managed installation keeps student
@@ -72,7 +96,7 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
 - `status` (or `--status`): managed installation details, with no credentials.
 - `update` (or `--update`): check the latest **published** preview and ask to install
   it, without starting the application. Publishing alone does not notify everyone.
-- `update --version 0.1.0-preview.9`: try a specific published preview.
+- `update --version 0.1.0-preview.10`: try a specific published preview.
 - Ordinary startup offers only a **recommended** version for this component and
   wire protocol. Declining keeps the installed version. A noninteractive start
   never accepts updates; discovery failures leave the current installation usable.
@@ -87,8 +111,8 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
   student version or a required protocol repair may select an older signed client.
   Server downgrades require backup recovery; they cannot open migrated data.
 
-For a fresh pilot install before recommendation, append `--version 0.1.0-preview.9`
-to the POSIX command, or `-Version 0.1.0-preview.9` on PowerShell. With no explicit
+For a fresh pilot install before recommendation, append `--version 0.1.0-preview.10`
+to the POSIX command, or `-Version 0.1.0-preview.10` on PowerShell. With no explicit
 version and no recommendation, installation stops with a useful message.
 
 Stop the server before accepting an update. Its existing exclusive installation
@@ -136,7 +160,7 @@ otherwise unsafe shell profiles are preserved and reported for manual PATH clean
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.9`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.10`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
@@ -158,7 +182,7 @@ Run the **Recommend preview** workflow on `main`, choosing the published version
 and `student`, `server`, or `both`. From a maintainer terminal:
 
 ```sh
-gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.9 -f component=both
+gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.10 -f component=both
 ```
 
 Promotion requires a successful native publication workflow for the exact source,

@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   CredentialLoginRequestSchema,
   CredentialLogoutRequestSchema,
@@ -28,7 +29,7 @@ const SESSION_PATH = "/api/v1/dashboard/session";
 
 export function createDashboardSessionClient(
   fetchRequest: DashboardFetch,
-  createId: () => string = () => `request:${crypto.randomUUID()}`,
+  createId: () => string = () => `request:${browserRandomUUID()}`,
 ): DashboardSessionClient {
   const envelope = () => ({ protocolVersion: "0.1", requestId: createId() });
   const post = (path: string, body: object, signal: AbortSignal) =>

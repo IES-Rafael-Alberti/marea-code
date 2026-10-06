@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   PublishTeacherNoticeRequestSchema,
   PublishTeacherNoticeResponseSchema,
@@ -18,7 +19,7 @@ export interface NoticeClient {
   query(runId: string, key: string, signal: AbortSignal): Promise<TeacherNoticeQueryResponse>;
 }
 export function createNoticeClient(fetchRequest: DashboardFetch): NoticeClient {
-  const envelope = () => ({ protocolVersion: "0.1", requestId: `request:${crypto.randomUUID()}` });
+  const envelope = () => ({ protocolVersion: "0.1", requestId: `request:${browserRandomUUID()}` });
   async function post<T extends { requestId: string }>(
     path: string,
     body: { requestId: string },

@@ -26,9 +26,9 @@ export function launchInstalledClient(
   if (process.platform !== "win32")
     return spawnPty({
       command: executable,
-      arguments: ["--lang", "en"],
+      arguments: ["--lang", "en", "--server", server],
       currentDirectory: project,
-      environment,
+      environment: { ...environment, MAREA_SERVER_URL: "http://invalid.example:1" },
     });
   const child = spawn(
     "pwsh",

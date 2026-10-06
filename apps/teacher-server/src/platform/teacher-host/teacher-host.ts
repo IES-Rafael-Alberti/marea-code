@@ -1,3 +1,4 @@
+import { withHttpAccess } from "./http-access.boundary.js";
 import {
   startTelemetryRuntime,
   type TelemetryRuntimeOptions,
@@ -102,6 +103,8 @@ export type ServePort = (options: {
 }) => { readonly url: string; stop(): Promise<void> };
 
 export interface TeacherHostOptions {
+  /** Present only for an explicitly requested HTTP LAN invocation. */
+  readonly httpHosts?: readonly string[] | undefined;
   readonly telemetry?: Pick<TelemetryRuntimeOptions, "catalog" | "resolver">;
   readonly startupSignal?: AbortSignal;
   /** Requires an offline upgrade to schema 10 and a validated matching dashboard release. */
@@ -146,7 +149,7 @@ function storageConfigurationOf(root: string, operations: OperationsConfig): Sto
 }
 
 /** Host ports whose state (configuration, index, storage) is captured for composition after start. */
-function hostPorts(root: string, profiles: boolean) {
+function hostPorts(root: string, profiles: boolean, httpHosts: readonly string[] | undefined) {
   const state: {
     configuration?: LoadedConfiguration;
     profiles?: boolean;
@@ -162,7 +165,7 @@ function hostPorts(root: string, profiles: boolean) {
     read: () => {
       const operator = readOperatorCliConfig(root);
       const operations = readOperationsConfig(root);
-      const host = readTeacherHostConfig(root);
+      const host = withHttpAccess(readTeacherHostConfig(root), httpHosts);
       state.configuration = {
         host,
         operator,
@@ -328,7 +331,11 @@ function reportStartupDiagnostic(
 export async function startTeacherHost(
   options: TeacherHostOptions,
 ): Promise<RunningTeacherHost | Extract<StartResult, { state: "failed" }>> {
-  const ports = hostPorts(options.installationRoot, options.profiles !== undefined);
+  const ports = hostPorts(
+    options.installationRoot,
+    options.profiles !== undefined,
+    options.httpHosts,
+  );
   const drain = new RequestDrain();
   const runtime = createHostRuntime({
     ...ports.dependencies,

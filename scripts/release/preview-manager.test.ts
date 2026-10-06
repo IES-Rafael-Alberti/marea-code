@@ -437,3 +437,61 @@ it("supports direct update commands and keeps explicit school origins without pr
   expect(ports.readActivation).toHaveBeenCalledWith("/private/programs");
   expect(output).toHaveBeenCalled();
 });
+
+it("uses the explicit HTTP server for compatibility checks and launch without saving it", async () => {
+  vi.stubEnv("MAREA_SERVER_URL", "https://environment.test");
+  await previewMain(run("student", ["--server", "http://192.168.1.20:18787", "--no-mouse"]));
+  expect(ports.requiredPreviewVersion.mock.calls[0]?.[0]).toMatchObject({
+    serverUrl: "http://192.168.1.20:18787",
+  });
+  expect(ports.runForeground.mock.calls[0]?.[1]).toEqual([
+    "--server",
+    "http://192.168.1.20:18787",
+    "--no-mouse",
+  ]);
+  expect((ports.runForeground.mock.calls[0]?.[2] as NodeJS.ProcessEnv).MAREA_SERVER_URL).toBe(
+    "http://192.168.1.20:18787",
+  );
+  expect(ports.writeFileSync).not.toHaveBeenCalled();
+});
+
+it("rejects ambiguous server flags before discovery or launch", async () => {
+  await expect(previewMain(run("student", ["--server"]))).rejects.toThrow("Use --server");
+  expect(ports.requiredPreviewVersion).not.toHaveBeenCalled();
+  expect(ports.runForeground).not.toHaveBeenCalled();
+});
+
+it("passes the HTTP startup flag through the managed teacher launcher", async () => {
+  state.selected = "server";
+  await previewMain(run("server", ["--allow-http"]));
+  expect(ports.runForeground.mock.calls[0]?.[1]).toEqual([
+    "--installation",
+    "/private/installation",
+    "--release",
+    "release:preview",
+    "--allow-http",
+  ]);
+});
+
+it("lets an unconfigured student reach its missing-server diagnostic", async () => {
+  const read = ports.readFileSync.getMockImplementation();
+  ports.readFileSync.mockImplementation((path: string) => {
+    const value = String(read?.(path));
+    if (!path.endsWith("preview.json")) return value;
+    const settings = JSON.parse(value) as Record<string, unknown>;
+    delete settings.serverUrl;
+    return JSON.stringify(settings);
+  });
+  await previewMain(run());
+  expect(
+    (ports.runForeground.mock.calls[0]?.[2] as NodeJS.ProcessEnv).MAREA_SERVER_URL,
+  ).toBeUndefined();
+});
+
+it("uses the saved server when the environment contains only whitespace", async () => {
+  vi.stubEnv("MAREA_SERVER_URL", "   ");
+  await previewMain(run());
+  expect((ports.runForeground.mock.calls[0]?.[2] as NodeJS.ProcessEnv).MAREA_SERVER_URL).toBe(
+    "https://school.test",
+  );
+});

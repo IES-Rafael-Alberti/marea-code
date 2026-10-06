@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   CURRENT_PROTOCOL_VERSION,
   GovernanceAccessQuerySchema,
@@ -78,7 +79,7 @@ import {
 const GOVERNANCE_PATH = "/api/v1/dashboard/governance";
 const ENVELOPE_FIELDS = ["protocolVersion", "requestId", "kind"] as const;
 
-const browserRequestId = (): string => `request:${crypto.randomUUID()}`;
+const browserRequestId = (): string => `request:${browserRandomUUID()}`;
 
 export function createGovernanceClient(
   fetchRequest: DashboardFetch,

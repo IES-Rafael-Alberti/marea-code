@@ -121,16 +121,9 @@ function parseJson(text: string): unknown {
 
 function parseBaseUrl(value: string): URL {
   const url = new URL(value);
-  const loopback =
-    url.hostname === "localhost" || url.hostname === "127.0.0.1" || url.hostname === "[::1]";
-  if (url.protocol === "http:" && !loopback) {
-    throw new Error(
-      "The teacher server URL must be HTTPS without credentials, query, or fragment.",
-    );
-  }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     throw new Error(
-      "The teacher server URL must be HTTPS without credentials, query, or fragment.",
+      "The teacher server URL must be HTTP or HTTPS without credentials, query, or fragment.",
     );
   }
   if (
@@ -140,7 +133,7 @@ function parseBaseUrl(value: string): URL {
     url.hash.length > 0
   ) {
     throw new Error(
-      "The teacher server URL must be HTTPS without credentials, query, or fragment.",
+      "The teacher server URL must be HTTP or HTTPS without credentials, query, or fragment.",
     );
   }
   return new URL(url.origin);

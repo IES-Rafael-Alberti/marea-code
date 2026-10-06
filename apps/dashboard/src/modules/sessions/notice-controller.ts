@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import { NoticeTextSchema, type TeacherNoticeStatus } from "@marea/protocol";
 import type { NoticeClient } from "./notice-client.boundary.js";
 
@@ -23,7 +24,7 @@ export class NoticeController {
     private readonly runId: string,
     private readonly client: NoticeClient,
     private readonly changed: () => void,
-    private readonly key = () => `notice:${crypto.randomUUID()}`,
+    private readonly key = () => `notice:${browserRandomUUID()}`,
   ) {}
   edit(draft: string): void {
     if (!this.state.busy && !this.state.uncertain) this.update({ draft });

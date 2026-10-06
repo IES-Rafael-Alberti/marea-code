@@ -1,3 +1,4 @@
+import { parseServerArguments } from "./server-arguments.js";
 import { ensureGitWorkspace } from "./git-workspace.boundary.js";
 import { openInputHistory, type PersistentInputHistory } from "./input-history.boundary.js";
 import { createHash, randomUUID } from "node:crypto";
@@ -344,10 +345,10 @@ function studentLocations(options: MareaCommandOptions, serverUrl: string) {
   };
 }
 
-export async function executeMareaCommand(
+async function executeSelectedCommand(
   options: MareaCommandOptions,
-  runtime: MareaCommandRuntime = PRODUCTION_RUNTIME,
-  feedback: (options: FeedbackCommandOptions) => Promise<number> = runFeedbackCommand,
+  runtime: MareaCommandRuntime,
+  feedback: (options: FeedbackCommandOptions) => Promise<number>,
 ): Promise<number> {
   const kind = commandKind(options.arguments);
   if (kind === "help" || kind === "invalid") {
@@ -380,4 +381,22 @@ export async function executeMareaCommand(
     options.output.error(`${options.translator.t("student.cli.unexpected-error")}\n`);
     return 1;
   }
+}
+
+/** Resolve the CLI server before creating state or opening any connection. */
+export async function executeMareaCommand(
+  options: MareaCommandOptions,
+  runtime: MareaCommandRuntime = PRODUCTION_RUNTIME,
+  feedback: (options: FeedbackCommandOptions) => Promise<number> = runFeedbackCommand,
+): Promise<number> {
+  const parsed = parseServerArguments(options.arguments);
+  if (parsed === undefined) {
+    options.output.error(`${options.translator.t("student.cli.help")}\n`);
+    return 2;
+  }
+  return executeSelectedCommand(
+    { ...options, arguments: parsed.arguments, serverUrl: parsed.serverUrl ?? options.serverUrl },
+    runtime,
+    feedback,
+  );
 }

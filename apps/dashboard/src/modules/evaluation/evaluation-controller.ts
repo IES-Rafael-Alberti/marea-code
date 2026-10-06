@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   EvaluationDraftSchema,
   type EvaluationDraft,
@@ -49,7 +50,7 @@ export class EvaluationController {
   public constructor(
     private readonly client: EvaluationClient,
     private readonly changed: (state: EvaluationState) => void,
-    private readonly createKey: () => string = () => `evaluation:${crypto.randomUUID()}`,
+    private readonly createKey: () => string = () => `evaluation:${browserRandomUUID()}`,
   ) {}
 
   public loadSessions(cursor: string | null = null): Promise<void> {

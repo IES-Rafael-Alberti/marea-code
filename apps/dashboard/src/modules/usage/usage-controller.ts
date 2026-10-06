@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   CURRENT_PROTOCOL_VERSION,
   UsageQuerySchema,
@@ -89,7 +90,7 @@ export class UsageController {
         this.port.queryUsage(
           UsageQuerySchema.parse({
             protocolVersion: CURRENT_PROTOCOL_VERSION,
-            requestId: `usage:${crypto.randomUUID()}`,
+            requestId: `usage:${browserRandomUUID()}`,
             kind: "class-usage-query",
             classId,
             ...window,

@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   CURRENT_PROTOCOL_VERSION,
   MAX_SKILL_RESPONSE_BYTES,
@@ -54,7 +55,7 @@ type FailureMode = "validate" | "write";
  */
 export function createSkillAuthoringClient(
   fetchRequest: DashboardFetch,
-  createRequestId: () => string = () => `request:${crypto.randomUUID()}`,
+  createRequestId: () => string = () => `request:${browserRandomUUID()}`,
 ): SkillAuthoringClient {
   function requestId(): string {
     return RequestIdSchema.parse(createRequestId());

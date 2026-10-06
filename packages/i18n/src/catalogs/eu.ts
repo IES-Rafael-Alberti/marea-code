@@ -28,7 +28,7 @@ const basqueCatalog = {
   "student.auth.password-label": "Pasahitza",
   "student.auth.required": "Eremu hau beharrezkoa da.",
   "student.cli.help":
-    "Erabilera: marea [--lang <locale>] [--no-mouse]\n       marea feedback\n       marea feedback --ack <notice-id>\n\nIreki Marea uneko proiektuan, irakurri irakaslearen irakurri gabeko feedbacka edo markatu ohar bat irakurritzat. Erabili --lang automatic, es, en edo eu exekuzio honetarako.",
+    "Erabilera: marea [--server <URL>] [--lang <locale>] [--no-mouse]\n       marea feedback\n       marea feedback --ack <notice-id>\n\nIreki Marea uneko proiektuan, irakurri irakaslearen irakurri gabeko feedbacka edo markatu ohar bat irakurritzat. Erabili --lang automatic, es, en edo eu exekuzio honetarako.",
   "student.cli.invalid-language":
     "{{option}} hizkuntza-aukera ez da baliozkoa. Erabili automatic, es, en edo eu.",
   "student.cli.language-save-failed":

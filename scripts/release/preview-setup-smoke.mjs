@@ -12,7 +12,8 @@ import {
 } from "node:fs";
 import process from "node:process";
 import { createServer } from "node:net";
-import { tmpdir } from "node:os";
+import { tmpdir, networkInterfaces } from "node:os";
+import { verifyHttpDashboard } from "./http-dashboard-smoke.mjs";
 import { join, resolve } from "node:path";
 import { securePrivatePath, inspectPrivatePath } from "@marea/private-filesystem";
 import {
@@ -130,41 +131,55 @@ try {
       "-ReleaseId",
       "release:preview",
     ]);
-  } else {
-    const host = await startCompiledHost(
-      join(release, `marea-teacher${suffix}`),
-      root,
-      "release:preview",
-    );
-    try {
-      const dashboard = await globalThis.fetch(`${host.origin}/dashboard/`);
-      assert.equal(dashboard.status, 200);
-      const response = await globalThis.fetch(`${host.origin}/v1/capabilities`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          requestId: "request:preview",
-          clientVersion: "0.1.0-preview.1",
-          supportedProtocolVersions: ["0.1"],
-        }),
-      });
-      assert.equal(response.status, 200);
-      assert.equal((await response.json()).serverVersion, "0.1.0-preview.1");
-      const login = await globalThis.fetch(`${host.origin}/api/v1/dashboard/session/login`, {
-        method: "POST",
-        headers: { "content-type": "application/json", origin: host.origin },
-        body: JSON.stringify({
-          kind: "credential-login",
-          protocolVersion: "0.1",
-          requestId: "request:preview-login",
-          credentials: { login: "teacher", password },
-        }),
-      });
-      assert.equal(login.status, 200, "Provisioned teacher can sign in");
-    } finally {
-      await stopCompiledHost(host);
+  } else
+    for (const http of [false, true]) {
+      const before = readFileSync(join(root, "config/teacher-host.json"), "utf8");
+      const host = await startCompiledHost(
+        join(release, `marea-teacher${suffix}`),
+        root,
+        "release:preview",
+        http ? ["--allow-http"] : [],
+      );
+      const address = Object.values(networkInterfaces())
+        .flat()
+        .find((entry) => entry?.family === "IPv4" && !entry.internal)?.address;
+      assert.ok(address, "Native HTTP smoke requires a LAN interface");
+      const origin = http ? `http://${address}:${port}` : host.origin;
+      try {
+        const dashboard = await globalThis.fetch(`${origin}/dashboard/`);
+        assert.equal(dashboard.status, 200);
+        const response = await globalThis.fetch(`${origin}/v1/capabilities`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            requestId: "request:preview",
+            clientVersion: "0.1.0-preview.1",
+            supportedProtocolVersions: ["0.1"],
+          }),
+        });
+        assert.equal(response.status, 200);
+        assert.equal((await response.json()).serverVersion, "0.1.0-preview.1");
+        const login = await globalThis.fetch(`${origin}/api/v1/dashboard/session/login`, {
+          method: "POST",
+          headers: { "content-type": "application/json", origin },
+          body: JSON.stringify({
+            kind: "credential-login",
+            protocolVersion: "0.1",
+            requestId: "request:preview-login",
+            credentials: { login: "teacher", password },
+          }),
+        });
+        assert.equal(login.status, 200, "Provisioned teacher can sign in");
+        if (http) {
+          assert.ok(!login.headers.get("set-cookie").includes("Secure"));
+          assert.equal(readFileSync(join(root, "config/teacher-host.json"), "utf8"), before);
+          if (process.env.PLAYWRIGHT_PACKAGE) await verifyHttpDashboard(origin, password);
+          console.log("Native HTTP LAN login and invocation-only configuration passed.");
+        }
+      } finally {
+        await stopCompiledHost(host);
+      }
     }
-  }
   const held = acquireInstallation(root);
   try {
     await assert.rejects(

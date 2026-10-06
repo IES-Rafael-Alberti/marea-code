@@ -1,3 +1,4 @@
+import { parseServerArguments } from "../../apps/student/src/server-arguments.js";
 import { uninstallPreview } from "./preview-uninstall.boundary.js";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -222,11 +223,10 @@ async function initialInstall(
 }
 
 function managedEnvironment(root: string, settings: PreviewSettings): NodeJS.ProcessEnv {
-  const server = (process.env.MAREA_SERVER_URL ?? "").trim();
   const stateHome = (process.env.MAREA_STATE_HOME ?? "").trim();
   return {
     ...process.env,
-    MAREA_SERVER_URL: server.length > 0 ? server : settings.serverUrl,
+    MAREA_SERVER_URL: settings.serverUrl,
     MAREA_STATE_HOME: stateHome.length > 0 ? stateHome : join(root, "student-state"),
   };
 }
@@ -267,24 +267,14 @@ async function updateBeforeStart(
 ): Promise<string> {
   let offered: string | undefined;
   let required = false;
-  const discoverySettings = {
-    ...settings,
-    ...(settings.component === "student" && process.env.MAREA_SERVER_URL
-      ? { serverUrl: serverOrigin(process.env.MAREA_SERVER_URL) }
-      : {}),
-  };
   try {
     if (!manual) {
-      offered = await requiredPreviewVersion(discoverySettings, current, globalThis.fetch);
+      offered = await requiredPreviewVersion(settings, current, globalThis.fetch);
       required = offered !== undefined;
     }
     offered ??=
       selectedVersion ??
-      (await offeredVersion(
-        discoverySettings,
-        globalThis.fetch,
-        manual ? "available" : "recommended",
-      ));
+      (await offeredVersion(settings, globalThis.fetch, manual ? "available" : "recommended"));
   } catch {
     process.stderr.write(
       "No se ha podido comprobar la actualización; se conserva la versión instalada.\n",
@@ -320,11 +310,23 @@ async function updateBeforeStart(
   }
 }
 
+function selectedServerSettings(
+  settings: PreviewSettings,
+  forwarded: readonly string[],
+): PreviewSettings {
+  if (settings.component !== "student") return settings;
+  const parsed = parseServerArguments(forwarded);
+  if (parsed === undefined) throw new Error("Use --server <http(s)://host:port> once");
+  const url =
+    parsed.serverUrl ?? ((process.env.MAREA_SERVER_URL ?? "").trim() || settings.serverUrl);
+  return url === undefined ? settings : { ...settings, serverUrl: serverOrigin(url) };
+}
+
 export async function previewMain(argv: readonly string[]): Promise<void> {
   const request = parsePreviewArguments(argv);
   if (request.forwarded.includes("--help") || request.forwarded.includes("-h")) {
     process.stdout.write(
-      "Marea preview: --version, status, update [--version X.Y.Z-preview.N], uninstall [--yes] [--purge-data]. Run without these options to start.\n",
+      "Marea preview: --version, status, update [--version X.Y.Z-preview.N], uninstall [--yes] [--purge-data]. Start with --server <http(s)://host:port> (student) or --allow-http (server).\n",
     );
     return;
   }
@@ -362,9 +364,10 @@ export async function previewMain(argv: readonly string[]): Promise<void> {
     return;
   }
   if (settings.installation !== undefined) assertPreviewServerReady(settings.installation);
+  const selectedSettings = selectedServerSettings(settings, request.forwarded);
   release = await updateBeforeStart(
     root,
-    settings,
+    selectedSettings,
     release,
     current,
     request.action === "update",
@@ -383,6 +386,7 @@ export async function previewMain(argv: readonly string[]): Promise<void> {
           requiredInstallation(settings),
           "--release",
           assertPreviewServerReady(requiredInstallation(settings)),
+          ...request.forwarded,
         ];
-  process.exitCode = await runForeground(binary, args, managedEnvironment(root, settings));
+  process.exitCode = await runForeground(binary, args, managedEnvironment(root, selectedSettings));
 }

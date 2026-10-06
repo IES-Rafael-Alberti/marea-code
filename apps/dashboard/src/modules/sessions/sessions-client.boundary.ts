@@ -1,3 +1,4 @@
+import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   ClassSessionsResponseSchema,
   SessionHistoryQuerySchema,
@@ -24,7 +25,7 @@ export function createSessionsClient(fetchRequest: DashboardFetch): SessionsClie
       const body = SessionHistoryQuerySchema.parse({
         kind: "session-history-query",
         protocolVersion: "0.1",
-        requestId: `request:${crypto.randomUUID()}`,
+        requestId: `request:${browserRandomUUID()}`,
         limit: 50,
         classId,
         ...(cursor === null ? {} : { beforeRunId: cursor }),
