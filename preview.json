@@ -3,8 +3,8 @@
   "available": "0.1.0-preview.11",
   "recommended": {
     "0.1": {
-      "student": "0.1.0-preview.9",
-      "server": "0.1.0-preview.9"
+      "student": "0.1.0-preview.11",
+      "server": "0.1.0-preview.11"
     }
   }
 }
