@@ -36,3 +36,15 @@ export function httpConnectionUrls(hosts: readonly string[], listeningUrl: strin
   const port = new URL(listeningUrl).port;
   return hosts.map((host) => new URL(`http://${host}:${port}`).origin);
 }
+
+/** Advertise only origins whose Host is admitted by this running server. */
+export function studentConnectionOrigins(config: TeacherHostConfig): readonly string[] {
+  return [
+    ...new Set(
+      config.allowedOrigins.flatMap((origin) => {
+        const url = URL.parse(origin);
+        return url !== null && config.allowedHosts.includes(url.host) ? [url.origin] : [];
+      }),
+    ),
+  ];
+}

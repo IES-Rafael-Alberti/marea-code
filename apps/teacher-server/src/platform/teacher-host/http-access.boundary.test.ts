@@ -5,7 +5,12 @@ import {
   cleanupTeacherHostInstallations,
   teacherHostInstallation,
 } from "./teacher-host.fixture.js";
-import { httpConnectionUrls, localHttpHosts, withHttpAccess } from "./http-access.boundary.js";
+import {
+  httpConnectionUrls,
+  localHttpHosts,
+  studentConnectionOrigins,
+  withHttpAccess,
+} from "./http-access.boundary.js";
 
 vi.mock("bun:sqlite", () => import("../operator-cli/bun-sqlite.fixture.js"));
 vi.mock("node:os", async (original) => ({
@@ -73,4 +78,26 @@ it("prints origins for the actual listening port, including default port normali
     "http://192.168.1.20:18787",
   ]);
   expect(httpConnectionUrls(["127.0.0.1"], "http://0.0.0.0:80")).toEqual(["http://127.0.0.1"]);
+});
+
+it("advertises admitted connection origins, including invocation-only LAN access", () => {
+  const f = teacherHostInstallation();
+  const config = {
+    ...readTeacherHostConfig(f.root),
+    listen: { hostname: "127.0.0.1", port: 18787 },
+    allowedHosts: ["school.test"],
+    allowedOrigins: [
+      "https://school.test",
+      "https://school.test/",
+      "https://other.test",
+      "invalid",
+    ],
+  };
+  expect(studentConnectionOrigins(config)).toEqual(["https://school.test"]);
+  expect(studentConnectionOrigins(withHttpAccess(config, ["127.0.0.1", "10.0.4.25"]))).toEqual([
+    "https://school.test",
+    "http://127.0.0.1:18787",
+    "http://10.0.4.25:18787",
+  ]);
+  expect(studentConnectionOrigins({ ...config, allowedHosts: [] })).toEqual([]);
 });

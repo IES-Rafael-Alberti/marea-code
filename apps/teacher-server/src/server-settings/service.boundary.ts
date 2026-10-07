@@ -37,6 +37,7 @@ export class ServerSettingsService {
     readonly store: ServerSettingsStore,
     readonly catalog: readonly InferenceProviderCatalogEntry[],
     readonly changed?: (settings: ServerSettings) => void,
+    readonly connectionOrigins: readonly string[] = [],
   ) {}
   execute(
     identity: AuthenticatedIdentity,
@@ -98,6 +99,7 @@ export class ServerSettingsService {
       administrator: true,
       initialized: true,
       revision: current.revision,
+      connectionOrigins: this.connectionOrigins,
       legacyRoutes: current.legacyRoutes,
       route: current.route,
       education: current.education,

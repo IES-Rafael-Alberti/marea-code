@@ -35,6 +35,33 @@ it("validates access responses and rejects a malformed public projection", async
     settingsRequest(fetch, { operation: "read" }, new AbortController().signal),
   ).rejects.toThrow();
 });
+
+it("accepts optional runtime addresses from the server without making them editable settings", async () => {
+  const projection = {
+    administrator: true,
+    initialized: true,
+    revision: 0,
+    useCommonRoute: false,
+    legacyRoutes: [],
+    route: null,
+    education: {},
+    providers: [],
+    connectionOrigins: ["http://10.0.4.25:18787"],
+  };
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(projection)));
+  const signal = new AbortController().signal;
+  expect(await settingsRequest(fetch, { operation: "read" }, signal)).toEqual(projection);
+  expect(
+    await saveSettings(
+      fetch,
+      { ...validSave, connectionOrigins: projection.connectionOrigins },
+      signal,
+    ),
+  ).toEqual({ ok: false, reason: "invalid" });
+  expect(fetch).toHaveBeenCalledOnce();
+  fetch.mockResolvedValue(new Response(JSON.stringify({ ...projection, connectionOrigins: [3] })));
+  await expect(settingsRequest(fetch, { operation: "read" }, signal)).rejects.toThrow();
+});
 it("releases unread error bodies and bounds responses and payloads before any request", async () => {
   const signal = new AbortController().signal;
   const failingBody = new ReadableStream({

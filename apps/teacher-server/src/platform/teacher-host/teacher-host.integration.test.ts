@@ -98,6 +98,20 @@ describe("production teacher host", () => {
 
   it("serves LAN HTTP with exact host/origin checks and reverts on the next ordinary start", async () => {
     const f = installation();
+    writeFileSync(
+      join(f.root, "config/server-settings.json"),
+      JSON.stringify({
+        version: 1,
+        revision: 0,
+        administrators: ["user:teacher"],
+        connections: {},
+        route: null,
+        education: {},
+        legacyRoutes: [],
+        useCommonRoute: false,
+      }),
+      { mode: 0o600 },
+    );
     f.writeHost({
       ...f.host,
       listen: { hostname: "127.0.0.1", port: 18787 },
@@ -133,6 +147,20 @@ describe("production teacher host", () => {
       expect(login.status).toBe(200);
       expect(login.headers.get("set-cookie")).toContain("HttpOnly");
       expect(login.headers.get("set-cookie")).not.toContain("Secure");
+      const settings = await fetch(
+        new Request(`${origin}/api/v1/dashboard/server-settings`, {
+          method: "POST",
+          headers: {
+            origin,
+            host: "192.168.1.20:18787",
+            "content-type": "application/json",
+            cookie: login.headers.get("set-cookie")?.split(";")[0] ?? "",
+          },
+          body: JSON.stringify({ operation: "read" }),
+        }),
+      );
+      expect(settings.status).toBe(200);
+      expect(await settings.json()).toMatchObject({ connectionOrigins: [origin] });
       expect(
         (
           await fetch(

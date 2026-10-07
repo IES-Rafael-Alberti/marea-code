@@ -44,6 +44,27 @@ function fixture(initial: Partial<ServerSettings> = {}) {
   return { service, write, changed, save, current: () => value };
 }
 describe("server-owned provider settings", () => {
+  it("projects runtime connection addresses only to administrators and never persists them", () => {
+    const f = fixture();
+    const connectionOrigins = ["http://10.0.4.25:18787", "https://school.test"];
+    const service = new ServerSettingsService(
+      { read: f.current, write: f.write },
+      inferenceProviderCatalog,
+      undefined,
+      connectionOrigins,
+    );
+    expect(service.execute(teacher, bytes({ operation: "read" }))).toMatchObject({
+      connectionOrigins,
+    });
+    expect(service.execute(teacher, f.save())).toMatchObject({ connectionOrigins });
+    expect(f.current()).not.toHaveProperty("connectionOrigins");
+    expect(
+      service.execute({ ...teacher, userId: "other" }, bytes({ operation: "read" })),
+    ).not.toHaveProperty("connectionOrigins");
+    expect(f.service.execute(teacher, bytes({ operation: "read" }))).toMatchObject({
+      connectionOrigins: [],
+    });
+  });
   it("returns descriptors and secret presence without exposing saved credentials", () => {
     const f = fixture();
     const response = f.service.execute(teacher, bytes({ operation: "read" }));

@@ -1,4 +1,4 @@
-import { withHttpAccess } from "./http-access.boundary.js";
+import { studentConnectionOrigins, withHttpAccess } from "./http-access.boundary.js";
 import {
   startTelemetryRuntime,
   type TelemetryRuntimeOptions,
@@ -264,7 +264,11 @@ async function composeHostServices(
   const database = required(ports.state.handle).database as SqliteApplicationDatabase;
   const settings = serverSettingsStore(options.installationRoot);
   return composeTeacherServices({
-    serverSettings: { store: settings, catalog: inferenceProviderCatalog },
+    serverSettings: {
+      store: settings,
+      catalog: inferenceProviderCatalog,
+      connectionOrigins: studentConnectionOrigins(host),
+    },
     profiles:
       options.profiles ?? (ports.state.profiles ? composeBundledDashboardProfiles : undefined),
     database,

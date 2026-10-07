@@ -163,7 +163,9 @@ export function ServerSettingsView({
           />
         </form>
       )}
-      {state?.administrator === true && <PreviewInstall locale={locale} />}
+      {state?.administrator === true && (
+        <PreviewInstall locale={locale} origins={state.connectionOrigins} />
+      )}
     </section>
   );
 }

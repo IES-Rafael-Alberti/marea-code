@@ -16,12 +16,38 @@ it("generates commands for the exact server version and address, without allowin
       "& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/school/marea/releases/download/v0.1.0-preview.2/install.ps1'))) -Component student -Server 'https://school.test'",
     releases: "https://github.com/school/marea/releases",
   });
-  for (const origin of ["http://localhost:18787", "http://127.0.0.1:18787", "http://[::1]:18787"])
+  for (const origin of [
+    "http://10.0.4.25:18787",
+    "http://192.168.1.20:18787",
+    "http://school.test",
+  ])
     expect(previewInstallCommands("a/b", "0.1.0-preview.1", origin)?.posix).toContain(origin);
-  for (const origin of ["http://school.test", "ftp://school.test", "https://school'quote.test"])
+  for (const origin of [
+    "http://localhost:18787",
+    "http://127.0.0.1:18787",
+    "http://[::1]:18787",
+    "ftp://school.test",
+    "https://school'quote.test",
+  ])
     expect(previewInstallCommands("a/b", "0.1.0-preview.1", origin)).toBeNull();
   expect(previewInstallCommands("bad;repo", "0.1.0-preview.1", "https://school.test")).toBeNull();
   expect(previewInstallCommands("a/b", "0.1.0", "https://school.test")).toBeNull();
+});
+
+it("uses the server LAN address when the teacher opens localhost, and explains missing access", () => {
+  vi.stubGlobal("window", { location: { origin: "http://localhost:18787" } });
+  vi.stubEnv("VITE_MAREA_PREVIEW_REPOSITORY", "school/marea");
+  vi.stubEnv("VITE_MAREA_PREVIEW_VERSION", "0.1.0-preview.16");
+  const markup = renderToStaticMarkup(
+    <PreviewInstall locale="es" origins={["http://127.0.0.1:18787", "http://10.0.4.25:18787"]} />,
+  );
+  expect(markup).toContain("http://10.0.4.25:18787");
+  expect(markup).toContain("--server &#x27;http://10.0.4.25:18787&#x27;");
+  expect(markup).not.toContain("localhost");
+  expect(markup).not.toContain("127.0.0.1");
+  const missing = renderToStaticMarkup(<PreviewInstall locale="es" />);
+  expect(missing).toContain("marea-teacher --allow-http");
+  expect(missing).not.toContain("<textarea");
 });
 
 it("hides unpublished builds and renders selectable commands in all supported languages", () => {

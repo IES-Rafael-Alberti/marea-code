@@ -15,6 +15,7 @@ export const SettingsResponse = z.discriminatedUnion("administrator", [
       administrator: z.literal(true),
       initialized: z.literal(true),
       revision: z.number().int().nonnegative(),
+      connectionOrigins: z.array(z.string()).optional(),
       useCommonRoute: z.boolean(),
       legacyRoutes: z.array(z.object({ classId: z.string(), route: PrivateProviderRouteSchema })),
       route: PrivateProviderRouteSchema.nullable(),
