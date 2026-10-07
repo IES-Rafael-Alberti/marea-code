@@ -33,6 +33,7 @@ jobs:
           bun build apps/teacher-server/operations-entry.ts --compile --outfile reports/managed-smoke/marea-operations
           bun run --cwd apps/dashboard build
           cp -R apps/dashboard/dist reports/managed-smoke/dashboard
+          cp -R content/skills reports/managed-smoke/skills
           bun scripts/release/preview-setup-smoke.mjs reports/managed-smoke
   windows:
     strategy:
@@ -100,6 +101,7 @@ jobs:
           bun run --cwd apps/dashboard build
           if ($LASTEXITCODE -ne 0) { throw 'Dashboard compilation failed' }
           Copy-Item apps/dashboard/dist reports/managed-smoke/dashboard -Recurse
+          Copy-Item content/skills reports/managed-smoke/skills -Recurse
           bun scripts/release/preview-setup-smoke.mjs reports/managed-smoke
           if ($LASTEXITCODE -ne 0) { throw 'Managed server lifecycle failed' }
       - name: Exercise first-run browser setup with native Windows binaries
