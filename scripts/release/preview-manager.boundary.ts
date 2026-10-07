@@ -1,7 +1,8 @@
 import { parseServerArguments } from "../../apps/student/src/server-arguments.js";
 import { uninstallPreview } from "./preview-uninstall.boundary.js";
+import { preparePreviewRoot } from "./preview-existing.boundary.js";
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { securePrivatePath } from "@marea/private-filesystem";
@@ -178,10 +179,7 @@ async function initialInstall(
   selected: "student" | "server",
   flags: Map<string, string>,
 ): Promise<void> {
-  if (existsSync(root))
-    throw new Error(
-      "Preview root already exists; use its installed launcher to update. Existing installations are never adopted.",
-    );
+  if (!(await preparePreviewRoot(root, selected))) return;
   const settings: PreviewSettings = previewSettingsSchema.parse({
     format: 1,
     repository: repositoryName.parse(flags.get("--repository")),

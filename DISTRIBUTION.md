@@ -1,12 +1,12 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.12`, which explains password requirements and lets
-teachers retry invalid or mismatching passwords during installation. It also
-shows download progress and the verification and setup phases, and
-includes the macOS interactive-installation fix, graceful managed shutdown, and
-optional HTTP access on classroom networks. Version 9 introduced
+The commands below target `0.1.0-preview.13`, which makes server data removal
+an explicit choice during uninstall and lets the installer start afresh after
+an earlier uninstall preserved data. It also includes password retries,
+download progress, the macOS interactive-installation fix, graceful managed
+shutdown, and optional HTTP access on classroom networks. Version 9 introduced
 independent recommendations and managed uninstall. Version 6 predates that policy;
-its immutable installers retain their original behavior. Updating to version 12
+its immutable installers retain their original behavior. Updating to version 13
 enables the behavior below.
 
 ## Teacher server
@@ -14,13 +14,13 @@ enables the behavior below.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.12/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.13/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.12/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.13/install.ps1'))) -Component server
 ```
 
 The wizard creates a new installation under `~/.marea-preview/server`, asks for
@@ -80,13 +80,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.12/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.13/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.12/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.13/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Run `marea` from the project directory. The managed installation keeps student
@@ -100,7 +100,7 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
 - `status` (or `--status`): managed installation details, with no credentials.
 - `update` (or `--update`): check the latest **published** preview and ask to install
   it, without starting the application. Publishing alone does not notify everyone.
-- `update --version 0.1.0-preview.12`: try a specific published preview.
+- `update --version 0.1.0-preview.13`: try a specific published preview.
 - Ordinary startup offers only a **recommended** version for this component and
   wire protocol. Declining keeps the installed version. A noninteractive start
   never accepts updates; discovery failures leave the current installation usable.
@@ -115,8 +115,8 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
   student version or a required protocol repair may select an older signed client.
   Server downgrades require backup recovery; they cannot open migrated data.
 
-For a fresh pilot install before recommendation, append `--version 0.1.0-preview.12`
-to the POSIX command, or `-Version 0.1.0-preview.12` on PowerShell. With no explicit
+For a fresh pilot install before recommendation, append `--version 0.1.0-preview.13`
+to the POSIX command, or `-Version 0.1.0-preview.13` on PowerShell. With no explicit
 version and no recommendation, installation stops with a useful message.
 
 Stop the server before accepting an update. Its existing exclusive installation
@@ -146,13 +146,22 @@ student programs, launchers, saved credentials and session state, and the exact
 PATH entries installed by Marea. Project directories outside the managed root
 are preserved. An explicit external `MAREA_STATE_HOME` is not owned or deleted.
 
-`marea-teacher uninstall` removes programs and launchers but **preserves** the
-center data under `~/.marea-preview/server/installation`. To remove that data,
-including credentials and backups, use `marea-teacher uninstall --purge-data`.
+`marea-teacher uninstall` asks whether to also erase the center data, credentials
+and backups, then requires typing `DESINSTALAR` to confirm the displayed scope.
+Answer `s` to remove everything managed by Marea, or `n` (the default) to keep
+the data under `~/.marea-preview/server/installation`. `--purge-data` selects
+complete removal explicitly. `--yes` skips questions and **preserves** center
+data unless combined with `--purge-data`.
 The server must be stopped; its exclusive installation lock prevents deletion
-while it is running. Confirmation requires typing `DESINSTALAR`; `--yes` is the
-explicit noninteractive alternative. Inspect and move preserved data before
-installing anew at the same managed root.
+while it is running.
+
+If only preserved server data remains, running the installer again explains the
+previous uninstall and offers a fresh installation. Type `BORRAR` to permanently
+erase the retained data and backups before creating a new center; any other answer
+cancels without deleting anything. This is also supported for data left by earlier
+previews. It does not recover the old center automatically. Keep or move the data
+if you need to recover it. Unknown or partially installed directories are never
+adopted or erased by this flow.
 
 Windows runs uninstall through a temporary copy so it can remove its executable.
 An installation upgraded from the version 6 launcher may ask you to run uninstall
@@ -164,7 +173,7 @@ otherwise unsafe shell profiles are preserved and reported for manual PATH clean
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.12`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.13`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
@@ -175,7 +184,10 @@ otherwise unsafe shell profiles are preserved and reported for manual PATH clean
 5. All assets upload to a draft first. Only after every upload succeeds is it made
    available as a prerelease, never as GitHub's latest stable release. A failed upload
    leaves a draft for inspection; do not overwrite a published version.
-6. A separate job updates the small static availability index only after publication.
+6. After publication, a disposable public-download test installs the server,
+   uninstalls while keeping data, cancels a reinstall, explicitly starts afresh,
+   checks the new teacher credentials, and uninstalls completely. It must pass
+   before the separate job updates the small static availability index.
    If this metadata job fails, rerun that job; it never replaces signed assets.
 7. Ask pilot users to run `update` (or install the explicit version). After classroom
    testing, recommend it separately; publication never recommends automatically.
@@ -186,7 +198,7 @@ Run the **Recommend preview** workflow on `main`, choosing the published version
 and `student`, `server`, or `both`. From a maintainer terminal:
 
 ```sh
-gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.12 -f component=both
+gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.13 -f component=both
 ```
 
 Promotion requires a successful native publication workflow for the exact source,

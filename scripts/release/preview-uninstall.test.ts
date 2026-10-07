@@ -77,6 +77,7 @@ it("requires explicit consent and preserves projects and unowned root entries", 
   ports.question.mockResolvedValue("DESINSTALAR");
   await uninstallPreview(root, settings(), []);
   expect(ports.question).toHaveBeenCalledWith("¿Desinstalar Marea? Escribe DESINSTALAR", "no");
+  expect(ports.question).toHaveBeenCalledTimes(2);
   expect(existsSync(join(root, "programs"))).toBe(false);
   expect(existsSync(join(root, "student-state"))).toBe(false);
   expect(existsSync(join(root, "preview.json"))).toBe(false);
@@ -91,10 +92,45 @@ it("preserves server data by default, and purges only after taking the exclusive
   expect(ports.acquireInstallation).toHaveBeenCalledWith(join(root, "installation"));
   expect(ports.assertOwned).toHaveBeenCalledOnce();
   expect(ports.release).toHaveBeenCalledOnce();
+  expect(output).toHaveBeenLastCalledWith(
+    `Datos conservados en ${join(root, "installation")}. Al ejecutar de nuevo el instalador podrás borrarlos para empezar de cero.\n`,
+  );
+  expect(ports.question).not.toHaveBeenCalled();
   await uninstallPreview(root, server(), ["--yes", "--purge-data"]);
   expect(existsSync(root)).toBe(false);
   expect(existsSync(join(scratch, "project.txt"))).toBe(true);
   expect(output).toHaveBeenCalledWith(expect.stringContaining("datos, credenciales y copias"));
+});
+it.each(["s", "S", "n"])(
+  "asks explicitly whether to erase classroom data before final confirmation: %s",
+  async (answer) => {
+    ports.question.mockResolvedValueOnce(answer).mockResolvedValueOnce("DESINSTALAR");
+    await uninstallPreview(root, server(), []);
+    expect(ports.question.mock.calls).toEqual([
+      ["¿Borrar también los datos, credenciales y copias del centro? (s/n)", "n"],
+      ["¿Desinstalar Marea? Escribe DESINSTALAR", "no"],
+    ]);
+    expect(existsSync(root)).toBe(answer === "n");
+    expect(existsSync(join(root, "programs"))).toBe(false);
+  },
+);
+
+it("still requires final confirmation after choosing to erase data", async () => {
+  ports.question.mockResolvedValueOnce("s").mockResolvedValueOnce("no");
+  await uninstallPreview(root, server(), []);
+  expect(existsSync(join(root, "installation", "data"))).toBe(true);
+  expect(existsSync(join(root, "programs"))).toBe(true);
+  expect(ports.acquireInstallation).not.toHaveBeenCalled();
+});
+
+it("uses the explicit purge flag without asking the data question again", async () => {
+  ports.question.mockResolvedValue("DESINSTALAR");
+  await uninstallPreview(root, server(), ["--purge-data"]);
+  expect(ports.question).toHaveBeenCalledExactlyOnceWith(
+    "¿Desinstalar Marea? Escribe DESINSTALAR",
+    "no",
+  );
+  expect(existsSync(root)).toBe(false);
 });
 it("refuses ambiguous arguments, external data directories, and a busy server without deleting files", async () => {
   for (const options of [["--bad"], ["--yes", "--yes"], ["--purge-data"]])

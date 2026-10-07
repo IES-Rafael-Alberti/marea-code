@@ -19,7 +19,9 @@ import { powershellLiteral, windowsLauncher } from "./preview-launchers.js";
 import { removePosixPath } from "./preview-path.boundary.js";
 import { question } from "./preview-terminal.boundary.js";
 
-function prepareWindowsUninstall(root: string, settings: PreviewSettings): void {
+type UninstallSettings = Pick<PreviewSettings, "component" | "installation">;
+
+function prepareWindowsUninstall(root: string, settings: UninstallSettings): void {
   // On Windows an executable cannot remove itself. New launchers run uninstall from a temporary copy.
   if (
     process.platform === "win32" &&
@@ -55,7 +57,7 @@ function removeManagedPath(bin: string): void {
   } else removePosixPath(homedir(), bin);
 }
 
-function printUninstallScope(settings: PreviewSettings, purge: boolean): void {
+function printUninstallScope(settings: UninstallSettings, purge: boolean): void {
   const detail = purge
     ? "También se borrarán los datos, credenciales y copias del centro."
     : settings.component === "server"
@@ -72,10 +74,23 @@ function retireInstallation(root: string, owner: OwnedInstallation): string {
   return destination;
 }
 
+async function selectDataRemoval(
+  settings: UninstallSettings,
+  options: readonly string[],
+): Promise<boolean> {
+  const purge = options.includes("--purge-data");
+  if (settings.component !== "server" || purge || options.includes("--yes")) return purge;
+  return (
+    (
+      await question("¿Borrar también los datos, credenciales y copias del centro? (s/n)", "n")
+    ).toLowerCase() === "s"
+  );
+}
+
 /** Remove only managed paths. Classroom data and user project directories are separate choices. */
 export async function uninstallPreview(
   root: string,
-  settings: PreviewSettings,
+  settings: UninstallSettings,
   options: readonly string[],
 ): Promise<void> {
   if (
@@ -83,13 +98,13 @@ export async function uninstallPreview(
     options.some((value) => !["--yes", "--purge-data"].includes(value))
   )
     throw new Error("Use uninstall [--yes] [--purge-data]");
-  const purge = options.includes("--purge-data");
-  if (purge && settings.component !== "server")
+  if (options.includes("--purge-data") && settings.component !== "server")
     throw new Error("--purge-data applies only to servers");
   const installation = settings.installation;
   if (settings.component === "server" && installation !== join(root, "installation"))
     throw new Error("Uninstall requires the managed server data directory");
   prepareWindowsUninstall(root, settings);
+  const purge = await selectDataRemoval(settings, options);
   printUninstallScope(settings, purge);
   if (
     !options.includes("--yes") &&
@@ -119,4 +134,8 @@ export async function uninstallPreview(
   if (removedData !== undefined) rmSync(removedData, { recursive: true });
   if (readdirSync(root).length === 0) rmdirSync(root);
   process.stdout.write("Marea desinstalado. Abre una terminal nueva para actualizar PATH.\n");
+  if (settings.component === "server" && !purge)
+    process.stdout.write(
+      `Datos conservados en ${String(installation)}. Al ejecutar de nuevo el instalador podrás borrarlos para empezar de cero.\n`,
+    );
 }

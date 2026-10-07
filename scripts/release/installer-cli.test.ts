@@ -3,7 +3,15 @@ import {
   OperatorCliError,
   OperatorCliInterrupted,
 } from "../../apps/teacher-server/src/platform/operator-cli/errors.js";
-import { installerExitCode } from "./installer-cli.boundary.js";
+import { installerExitCode, InstallerUsageError } from "./installer-cli.boundary.js";
+
+it("prints an actionable existing-installation diagnostic without a stack", async () => {
+  const output = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+  expect(
+    await installerExitCode(vi.fn().mockRejectedValue(new InstallerUsageError("Use update."))),
+  ).toBe(1);
+  expect(output.mock.calls).toEqual([["Use update.\n"]]);
+});
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -29,6 +37,18 @@ it("prints a concise terminal failure without an exception or a stack", async ()
     await installerExitCode(vi.fn().mockRejectedValue(new OperatorCliError("invalid-input"))),
   ).toBe(1);
   expect(output.mock.calls).toEqual([["No se ha podido completar la lectura de la entrada.\n"]]);
+});
+
+it("explains an installation lock without misreporting a terminal failure", async () => {
+  const output = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+  expect(
+    await installerExitCode(vi.fn().mockRejectedValue(new OperatorCliError("installation-busy"))),
+  ).toBe(1);
+  expect(output.mock.calls).toEqual([
+    [
+      "La instalación está en uso o conserva un bloqueo. Cierra el servidor antes de continuar; los datos no se han borrado.\n",
+    ],
+  ]);
 });
 
 it.each([new Error("unrelated failure"), "non-Error failure"])(

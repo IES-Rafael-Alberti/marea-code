@@ -1,7 +1,7 @@
 import { beforeEach, afterEach, vi } from "vitest";
 const ports = vi.hoisted(() => ({
   uninstallPreview: vi.fn(),
-  existsSync: vi.fn(),
+  preparePreviewRoot: vi.fn(),
   mkdirSync: vi.fn(),
   mkdtempSync: vi.fn(),
   readFileSync: vi.fn(),
@@ -27,6 +27,7 @@ const ports = vi.hoisted(() => ({
   runForeground: vi.fn(),
 }));
 vi.mock("./preview-uninstall.boundary.js", () => ports);
+vi.mock("./preview-existing.boundary.js", () => ports);
 vi.mock("node:fs", () => ports);
 vi.mock("node:child_process", () => ports);
 vi.mock("node:os", () => ({ homedir: () => "/home/test" }));
@@ -96,7 +97,7 @@ beforeEach(() => {
   ports.assertPreviewServerReady.mockReturnValue("release:preview");
   ports.question.mockResolvedValue("https://school.test");
   ports.serverQuestions.mockResolvedValue({ answers, password: "private-password" });
-  ports.existsSync.mockReturnValue(false);
+  ports.preparePreviewRoot.mockResolvedValue(true);
 });
 afterEach(() => {
   vi.restoreAllMocks();

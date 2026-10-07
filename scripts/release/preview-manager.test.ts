@@ -133,7 +133,7 @@ it("installs a student, verifies through the supplied bootstrap tool and writes 
 });
 
 it("does not overwrite existing state or mark a failed setup as complete", async () => {
-  ports.existsSync.mockReturnValueOnce(true);
+  ports.preparePreviewRoot.mockRejectedValueOnce(new Error("already exists"));
   await expect(previewMain(install())).rejects.toThrow("already exists");
   await expect(previewMain(install().slice(0, -2))).rejects.toThrow("verified bootstrap");
   ports.downloadPreview.mockRejectedValueOnce(new Error("signature rejected"));
@@ -409,8 +409,10 @@ it("rejects incomplete commands and preserves native file decoding and private s
   expect(() => parsePreviewArguments(["run", "student", "--bad", "a"])).toThrow(
     "Invalid preview arguments",
   );
-  ports.existsSync.mockReturnValueOnce(true);
-  await expect(previewMain(install())).rejects.toThrow("Preview root already exists");
+  ports.preparePreviewRoot.mockResolvedValueOnce(false);
+  await previewMain(install());
+  expect(ports.preparePreviewRoot).toHaveBeenCalledWith("/private", "student");
+  expect(ports.downloadPreview).not.toHaveBeenCalled();
   await previewMain(run("student", ["--version"]));
   expect(ports.readFileSync.mock.calls).toEqual([
     ["/private/preview.json", "utf8"],
