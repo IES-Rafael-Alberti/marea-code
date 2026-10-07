@@ -58,3 +58,22 @@ it("revokes the browser download URL after activation", async () => {
   await vi.advanceTimersByTimeAsync(1000);
   expect(revoke).toHaveBeenCalledWith("blob:synthetic");
 });
+it("rejects malformed student selections using a fresh response validator", async () => {
+  vi.resetModules();
+  const { sessionExportClient: createClient } = await import("./export-client.boundary.js");
+  const fetch = vi.fn();
+  const client = createClient(fetch);
+  const signal = new AbortController().signal;
+  const student = { id: "student", name: "Student", classId: "class" };
+  fetch.mockImplementation(() => Promise.resolve(Response.json({ students: [student] })));
+  expect(await client.students(signal)).toEqual([student]);
+  for (const value of [
+    {},
+    { students: [{ ...student, extra: true }] },
+    { students: [{ ...student, id: 3 }] },
+    { students: Array.from({ length: 2002 }, () => student) },
+  ]) {
+    fetch.mockImplementation(() => Promise.resolve(Response.json(value)));
+    await expect(client.students(signal)).rejects.toThrow();
+  }
+});

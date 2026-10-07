@@ -100,7 +100,7 @@ export function createOperationsApplication(
     ? inspectSqliteSchemaVersion({ databasePath: config.databasePath })
     : null;
   let observability = schemaVersion === createObservabilityMigrationCatalog().length;
-  let identities =
+  const identities =
     observability || schemaVersion === createStudentIdentityMigrationCatalog().length;
   const educational = identities || schemaVersion === createEducationalMigrationCatalog().length;
   const profiles = educational || schemaVersion === profileVersion;
@@ -312,7 +312,6 @@ export function createOperationsApplication(
         installations.profileUpgradeDurable,
       );
       // The newest schema selects its own catalog regardless of the older flags.
-      identities = true;
       observability = true;
       return result;
     },

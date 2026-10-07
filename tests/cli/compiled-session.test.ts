@@ -179,6 +179,8 @@ describe("compiled marea OpenTUI acceptance", { concurrent: false }, () => {
       const { first: pty, location, value } = await prepareCompiledJourney(arguments_);
       expect(pty.transcript()).toContain("\u001b]0;Marea Code\u0007");
       expect(pty.transcript().includes("\u001b[?1006h")).toBe(arguments_.length === 0);
+      // The first input paint can precede the effect that registers the quit-hint listener.
+      await pty.waitForQuiet();
       pty.write("\u0003");
       await pty.waitForText("Press Ctrl+D to quit.");
 
