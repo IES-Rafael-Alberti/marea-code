@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { URL, URLSearchParams } from "node:url";
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import {
   cpSync,
   existsSync,
@@ -18,6 +18,7 @@ import { join, resolve } from "node:path";
 import process from "node:process";
 import { setTimeout as delay } from "node:timers/promises";
 import { securePrivatePath } from "@marea/private-filesystem";
+import { existingOnboarding } from "./onboarding-state.boundary.ts";
 import { setupInput } from "./onboarding.fixture.ts";
 
 const scratch = realpathSync(mkdtempSync(join(tmpdir(), "marea-browser-setup-")));
@@ -43,7 +44,13 @@ async function waitFor(predicate) {
 async function stop(child) {
   if (child.exitCode !== null) return;
   const stopped = new Promise((resolve) => child.once("exit", resolve));
-  child.kill("SIGINT");
+  if (process.platform === "win32") {
+    // This pipe-based fixture has no Windows console; ConPTY tests cover interactive Ctrl+C.
+    const killed = spawnSync("taskkill", ["/PID", String(child.pid), "/T", "/F"], {
+      stdio: "pipe",
+    });
+    assert.equal(killed.status, 0);
+  } else child.kill("SIGINT");
   await Promise.race([
     stopped,
     delay(20000).then(() => {
@@ -98,6 +105,7 @@ try {
   await stop(child);
   assert.equal(existsSync(settings.installation), false);
   assert.equal(existsSync(join(root, "onboarding-pending.json")), true);
+  assert.equal(existingOnboarding(root), null);
   assert.equal(existsSync(join(root, "onboarding-owner.json")), false);
   rmSync(join(root, "setup-url.txt"));
   process.stdout.write("Cancelled first run leaves no active school and can be reopened.\n");
@@ -186,6 +194,7 @@ try {
   assert.equal(teaching.configuration.settings.automaticEvaluation, false);
   assert.equal(teaching.configuration.settings.selection.didactic[0].id, "marea/testing");
   await stop(child);
+  assert.equal(existingOnboarding(root), null);
   assert.equal(existsSync(join(root, "onboarding-owner.json")), false);
   process.stdout.write(
     "Native web setup passed: private local API, credential checks, retry, complete class, example skill, real host readiness, automatic dashboard sign-in and clean shutdown.\n",

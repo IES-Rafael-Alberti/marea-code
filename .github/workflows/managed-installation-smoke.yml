@@ -102,3 +102,8 @@ jobs:
           Copy-Item apps/dashboard/dist reports/managed-smoke/dashboard -Recurse
           bun scripts/release/preview-setup-smoke.mjs reports/managed-smoke
           if ($LASTEXITCODE -ne 0) { throw 'Managed server lifecycle failed' }
+      - name: Exercise first-run browser setup with native Windows binaries
+        if: matrix.server
+        run: |
+          bun scripts/release/preview-wizard-smoke.mjs reports/managed-smoke
+          if ($LASTEXITCODE -ne 0) { throw 'Native web onboarding failed' }
