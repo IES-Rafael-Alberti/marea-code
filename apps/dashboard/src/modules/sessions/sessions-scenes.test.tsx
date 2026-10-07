@@ -233,3 +233,19 @@ it("renders each parallel read beside its own output, retaining the original tim
   expect(controller.state.events).toBe(events);
   controller.dispose();
 });
+
+it("offers export from the list and the selected session when the server client supports it", async () => {
+  const client = {
+    ...evaluationClientFixture(),
+    classes: vi.fn(),
+    exports: { students: vi.fn(), download: vi.fn() },
+  };
+  const controller = new SessionsController(client, { publish: vi.fn(), query: vi.fn() }, vi.fn());
+  const html = () =>
+    renderToStaticMarkup(<SessionsModule locale="en" controller={controller} classes={[]} />);
+  expect(html()).toContain("Export sessions");
+  expect(html().match(/class="session-export"/gu)).toHaveLength(1);
+  await controller.select("run:one");
+  expect(html()).toContain("Download this session");
+  controller.dispose();
+});

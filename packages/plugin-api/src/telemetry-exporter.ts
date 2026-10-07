@@ -39,6 +39,7 @@ export type TelemetryExporterManifest = z.infer<
 >;
 
 export interface TelemetryExporterCatalogEntry {
+  readonly traces?: import("./session-traces.js").SessionTraceImplementation;
   readonly manifest: TelemetryExporterManifest;
   /** Optional for existing manifest-only entries; absence means not executable. */
   readonly implementation?:

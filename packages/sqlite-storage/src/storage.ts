@@ -1,4 +1,5 @@
 import { createEducationalMigrationCatalog } from "./educational-migration-catalog.js";
+import { createObservabilityMigrationCatalog } from "./observability-migration-catalog.js";
 import { createStudentIdentityMigrationCatalog } from "./student-identity-migration-catalog.js";
 import { createProfileMigrationCatalog } from "./profile-migration-catalog.js";
 import { backupFileInstaller } from "./backup-file.boundary.js";
@@ -47,15 +48,17 @@ export function createDefaultDependencies(schema?: SqliteSchemaCatalog): Storage
     driver: bunSqliteDriver,
     initializationLock: fileInitializationLock,
     migrations:
-      schema === "student-identities"
-        ? createStudentIdentityMigrationCatalog()
-        : schema === "educational-insights"
-          ? createEducationalMigrationCatalog()
-          : schema === "dashboard-profiles"
-            ? createProfileMigrationCatalog()
-            : schema === "retention-audit"
-              ? createAuditMigrationCatalog()
-              : createMigrationCatalog(),
+      schema === "observability"
+        ? createObservabilityMigrationCatalog()
+        : schema === "student-identities"
+          ? createStudentIdentityMigrationCatalog()
+          : schema === "educational-insights"
+            ? createEducationalMigrationCatalog()
+            : schema === "dashboard-profiles"
+              ? createProfileMigrationCatalog()
+              : schema === "retention-audit"
+                ? createAuditMigrationCatalog()
+                : createMigrationCatalog(),
     maxBackupBytes: 268_435_456,
   });
 }

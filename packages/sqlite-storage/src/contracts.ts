@@ -67,7 +67,8 @@ export type SqliteSchemaCatalog =
   | "retention-audit"
   | "dashboard-profiles"
   | "educational-insights"
-  | "student-identities";
+  | "student-identities"
+  | "observability";
 
 export interface SqliteDatabaseFileOptions {
   readonly databasePath: string;

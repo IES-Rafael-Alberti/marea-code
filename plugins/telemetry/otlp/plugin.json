@@ -7,8 +7,8 @@
   "configurationVersion": 1,
   "kind": "telemetry-exporter",
   "apiVersion": "1.0",
-  "capabilities": ["metric-export"],
+  "capabilities": ["metric-export", "trace-export"],
   "runtimeTargets": ["teacher-server"],
-  "acceptedDataClassifications": ["operational"],
+  "acceptedDataClassifications": ["operational", "pseudonymous", "student-content"],
   "destination": "external"
 }

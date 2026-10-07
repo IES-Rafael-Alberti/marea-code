@@ -56,7 +56,7 @@ export async function provisionOnboarding(
   try {
     const storage = initializeSqliteStorage({
       databasePath: join(stage, "marea.sqlite"),
-      schema: "student-identities",
+      schema: "observability",
     });
     try {
       const store = serverSettingsStore(stage);

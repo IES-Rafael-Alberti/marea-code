@@ -17,10 +17,10 @@ afterEach(() => {
 });
 
 describe("OTLP construction and lifecycle", () => {
-  it("exposes an executable metric-only catalog entry and constructs without I/O or timers", async () => {
+  it("exposes an executable metric and trace catalog entry and constructs without I/O or timers", async () => {
     const fetcher = prepare();
     vi.useFakeTimers();
-    expect(plugin.manifest.capabilities).toEqual(["metric-export"]);
+    expect(plugin.manifest.capabilities).toEqual(["metric-export", "trace-export"]);
     expect(plugin.implementation?.destination).toBe("otlp");
     const port = createOtlpExporter(settings, connection());
     expect(Object.isFrozen(port)).toBe(true);

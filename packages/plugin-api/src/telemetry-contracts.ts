@@ -15,6 +15,8 @@ export interface TelemetryResource {
 
 /** Centrally sanitized, deeply frozen API 1.0 envelope; adapters must not enrich it. */
 export interface TelemetryEnvelope {
+  /** Present only on the explicit full-content session-export path. */
+  readonly trace?: import("./session-traces.js").SessionTrace;
   readonly attributes: readonly ExportedTelemetryAttribute[];
   readonly eventId: string;
   readonly eventName: string;

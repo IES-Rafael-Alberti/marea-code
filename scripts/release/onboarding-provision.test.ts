@@ -123,7 +123,7 @@ it.each([false, true])(
     );
     expect(p.initializeSqliteStorage).toHaveBeenCalledWith({
       databasePath: "/stage/marea.sqlite",
-      schema: "student-identities",
+      schema: "observability",
     });
     expect(p.repository).toHaveBeenCalledWith("database");
     expect(p.write).toHaveBeenCalledWith(data.settings, 0);

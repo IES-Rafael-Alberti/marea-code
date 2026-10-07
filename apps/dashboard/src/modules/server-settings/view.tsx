@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ObservabilityView } from "../observability/view.js";
 import type { DashboardLocale } from "../../messages.js";
 import type { DashboardFetch } from "../active-runs/active-runs-client.boundary.js";
 import {
@@ -164,7 +165,10 @@ export function ServerSettingsView({
         </form>
       )}
       {state?.administrator === true && (
-        <PreviewInstall locale={locale} origins={state.connectionOrigins} />
+        <>
+          <ObservabilityView locale={locale} fetchRequest={fetchRequest} />
+          <PreviewInstall locale={locale} origins={state.connectionOrigins} />
+        </>
       )}
     </section>
   );

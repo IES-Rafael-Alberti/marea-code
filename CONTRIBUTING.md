@@ -111,3 +111,10 @@ is a separate maintainer operation after pilot testing; see [distribution](DISTR
 Never move signed tags, replace published assets, or use recommendation as a database
 rollback. The recommendation workflow verifies the successful native publication
 and signed protocol metadata before updating the small static channel index.
+
+Session exports and optional full-content telemetry are documented in
+[Observability](OBSERVABILITY.md). Export permissions follow current class membership;
+external configuration is administrator-only. Exporter plugins declare their own setup
+fields through the session-trace API. Do not send session content through the existing
+operational-metrics sanitizer or weaken its allowlist. Schema 13 adds only delivery
+references and counters; earlier migration checksums remain immutable.

@@ -1,0 +1,311 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`bounds student choices and usage, and writes settled costs and attempts to both machine formats > exported usage records and cost summary 1`] = `
+{
+  "README.txt": "Marea session export, format 1
+
+Times use UTC. Date filters select session opening time; the end is exclusive.
+Active sessions are a consistent snapshot at download time, not a live feed.
+
+conversations/: readable Markdown; events.jsonl: stored events and session headers;
+usage.jsonl: model attempts, recorded times and policy cost units; sessions.csv: summary.
+Missing usage is null/blank, not zero. Totals include only settled attempts and may be partial.
+Cost units are estimates under the session policy, not a provider invoice.
+Truncated content remains marked; old clients may not have captured model or tool details.
+
+Pseudonyms replace identity fields in the export. Free text, code, paths and conversation
+content can still identify people: this is NOT an anonymous dataset. Review before sharing.
+No server configuration, credentials or session authentication tokens are included.
+",
+  "conversations/session-1.md": "# Marea session
+
+    s1
+    one
+    Synthetic project
+
+Opened: 2026-09-07T12:00:00.000Z
+
+Closed: still open
+
+## 1. assistant-message · 2026-09-07T12:00:00.000Z
+
+    Canonical 1
+
+## 2. assistant-message · 2026-09-07T12:00:00.000Z
+
+    Canonical 2
+",
+  "events.jsonl": "{"type":"session","runId":"run:a","classId":"class:one","studentId":"s1","studentName":"s1","className":"one","projectName":"Synthetic project","openedAt":"2026-09-07T12:00:00.000Z","closedAt":null}
+{"type":"event","runId":"run:a","event":{"eventId":"event:run:a:1","sequence":1,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"assistant-message","content":"Canonical 1"}}
+{"type":"event","runId":"run:a","event":{"eventId":"event:run:a:2","sequence":2,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"assistant-message","content":"Canonical 2"}}",
+  "sessions.csv": "session,class,student,project,opened_at,closed_at,duration_ms,events,model_attempts,unknown_attempts,known_input_tokens,known_output_tokens,known_cost_by_unit,turn_errors,model_diagnostics
+"run:a","one","s1","Synthetic project","2026-09-07T12:00:00.000Z",,,"2","1","0","2","3","{""nano-USD"":4}","0","not captured"",
+  "usage.jsonl": "{"runId":"run:a","requestId":"request","attempt":1,"purpose":"tutoring","state":"settled","inputTokens":2,"outputTokens":3,"costUnits":4,"costUnit":"nano-USD","startedAt":"2026-09-07T12:00:00.000Z","endedAt":"2026-09-07T12:00:00.000Z"}",
+}
+`;
+
+exports[`produces readable conversations, structured content, safe CSV and scoped pseudonyms > complete named export format 1`] = `
+{
+  "README.txt": "Marea session export, format 1
+
+Times use UTC. Date filters select session opening time; the end is exclusive.
+Active sessions are a consistent snapshot at download time, not a live feed.
+
+conversations/: readable Markdown; events.jsonl: stored events and session headers;
+usage.jsonl: model attempts, recorded times and policy cost units; sessions.csv: summary.
+Missing usage is null/blank, not zero. Totals include only settled attempts and may be partial.
+Cost units are estimates under the session policy, not a provider invoice.
+Truncated content remains marked; old clients may not have captured model or tool details.
+
+Pseudonyms replace identity fields in the export. Free text, code, paths and conversation
+content can still identify people: this is NOT an anonymous dataset. Review before sharing.
+No server configuration, credentials or session authentication tokens are included.
+",
+  "conversations/session-1.md": "# Marea session
+
+    s1
+    one
+    Synthetic project
+
+Opened: 2026-09-07T12:00:00.000Z
+
+Closed: still open
+
+## 1. assistant-message · 2026-09-07T12:00:00.000Z
+
+    Canonical 1
+
+## 2. assistant-message · 2026-09-07T12:00:00.000Z
+
+    Canonical 2
+
+## 3. student-message · 2026-09-07T12:00:00.000Z
+
+    Write a Python greeting
+
+## 4. model-diagnostic · 2026-09-07T12:00:00.000Z
+
+    {
+      "eventId": "event:run:a:4",
+      "sequence": 4,
+      "occurredAt": "2026-09-07T12:00:00.000Z",
+      "eventType": "model-diagnostic",
+      "requestId": "request:3",
+      "phase": "request",
+      "status": "started",
+      "content": "{\\"messages\\":[{\\"role\\":\\"user\\",\\"content\\":\\"Write a Python greeting\\"}]}",
+      "truncated": false
+    }
+
+## 5. model-diagnostic · 2026-09-07T12:00:00.000Z
+
+    {
+      "eventId": "event:run:a:5",
+      "sequence": 5,
+      "occurredAt": "2026-09-07T12:00:00.000Z",
+      "eventType": "model-diagnostic",
+      "requestId": "request:3",
+      "phase": "response",
+      "status": "completed",
+      "content": "Use print('hello')",
+      "truncated": false
+    }
+
+## 6. assistant-message · 2026-09-07T12:00:00.000Z
+
+    Use print('hello')
+
+## 7. turn-ended · 2026-09-07T12:00:00.000Z
+
+    {
+      "eventId": "event:run:a:7",
+      "sequence": 7,
+      "occurredAt": "2026-09-07T12:00:00.000Z",
+      "eventType": "turn-ended",
+      "messageId": "message:3",
+      "state": "completed"
+    }
+
+## 8. tool-started · 2026-09-07T12:00:00.000Z
+
+    write
+    main.py
+    print('á')
+
+[Content was truncated at capture.]
+
+## 9. tool-finished · 2026-09-07T12:00:00.000Z
+
+    COMPLETED
+    created
+",
+  "events.jsonl": "{"type":"session","runId":"run:a","classId":"class:one","studentId":"s1","studentName":"s1","className":"one","projectName":"Synthetic project","openedAt":"2026-09-07T12:00:00.000Z","closedAt":null}
+{"type":"event","runId":"run:a","event":{"eventId":"event:run:a:1","sequence":1,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"assistant-message","content":"Canonical 1"}}
+{"type":"event","runId":"run:a","event":{"eventId":"event:run:a:2","sequence":2,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"assistant-message","content":"Canonical 2"}}
+{"type":"event","runId":"run:a","event":{"eventId":"event:run:a:3","sequence":3,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"student-message","content":"Write a Python greeting","messageId":"message:3"}}
+{"type":"event","runId":"run:a","event":{"eventId":"event:run:a:4","sequence":4,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"model-diagnostic","requestId":"request:3","phase":"request","status":"started","content":"{\\"messages\\":[{\\"role\\":\\"user\\",\\"content\\":\\"Write a Python greeting\\"}]}","truncated":false}}
+{"type":"event","runId":"run:a","event":{"eventId":"event:run:a:5","sequence":5,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"model-diagnostic","requestId":"request:3","phase":"response","status":"completed","content":"Use print('hello')","truncated":false}}
+{"type":"event","runId":"run:a","event":{"eventId":"event:run:a:6","sequence":6,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"assistant-message","content":"Use print('hello')","messageId":"message:3"}}
+{"type":"event","runId":"run:a","event":{"eventId":"event:run:a:7","sequence":7,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"turn-ended","messageId":"message:3","state":"completed"}}
+{"type":"event","runId":"run:a","event":{"eventId":"event:run:a:8","sequence":8,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"tool-started","messageId":"message:3","callId":"call:1","name":"write","target":"main.py","arguments":"print('á')","truncated":true}}
+{"type":"event","runId":"run:a","event":{"eventId":"event:run:a:9","sequence":9,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"tool-finished","messageId":"message:3","callId":"call:1","failed":false,"result":"created","truncated":false}}",
+  "sessions.csv": "session,class,student,project,opened_at,closed_at,duration_ms,events,model_attempts,unknown_attempts,known_input_tokens,known_output_tokens,known_cost_by_unit,turn_errors,model_diagnostics
+"run:a","one","s1","Synthetic project","2026-09-07T12:00:00.000Z",,,"9","0","0",,,,"0","available"",
+  "usage.jsonl": "",
+}
+`;
+
+exports[`produces readable conversations, structured content, safe CSV and scoped pseudonyms > complete pseudonym export format 1`] = `
+{
+  "README.txt": "Marea session export, format 1
+
+Times use UTC. Date filters select session opening time; the end is exclusive.
+Active sessions are a consistent snapshot at download time, not a live feed.
+
+conversations/: readable Markdown; events.jsonl: stored events and session headers;
+usage.jsonl: model attempts, recorded times and policy cost units; sessions.csv: summary.
+Missing usage is null/blank, not zero. Totals include only settled attempts and may be partial.
+Cost units are estimates under the session policy, not a provider invoice.
+Truncated content remains marked; old clients may not have captured model or tool details.
+
+Pseudonyms replace identity fields in the export. Free text, code, paths and conversation
+content can still identify people: this is NOT an anonymous dataset. Review before sharing.
+No server configuration, credentials or session authentication tokens are included.
+",
+  "conversations/session-1.md": "# Marea session
+
+    student-1
+    class-1
+    project-1
+
+Opened: 2026-09-06T12:00:00.000Z
+
+Closed: 2026-09-07T12:00:00.000Z
+
+## 1. assistant-message · 2026-09-07T12:00:00.000Z
+
+    Canonical 1
+
+## 2. assistant-message · 2026-09-07T12:00:00.000Z
+
+    Canonical 2
+",
+  "conversations/session-2.md": "# Marea session
+
+    student-1
+    class-1
+    project-2
+
+Opened: 2026-09-07T12:00:00.000Z
+
+Closed: still open
+
+## 1. assistant-message · 2026-09-07T12:00:00.000Z
+
+    Canonical 1
+
+## 2. assistant-message · 2026-09-07T12:00:00.000Z
+
+    Canonical 2
+
+## 3. student-message · 2026-09-07T12:00:00.000Z
+
+    Write a Python greeting
+
+## 4. model-diagnostic · 2026-09-07T12:00:00.000Z
+
+    {
+      "eventId": "event:run:a:4",
+      "sequence": 4,
+      "occurredAt": "2026-09-07T12:00:00.000Z",
+      "eventType": "model-diagnostic",
+      "requestId": "request:3",
+      "phase": "request",
+      "status": "started",
+      "content": "{\\"messages\\":[{\\"role\\":\\"user\\",\\"content\\":\\"Write a Python greeting\\"}]}",
+      "truncated": false
+    }
+
+## 5. model-diagnostic · 2026-09-07T12:00:00.000Z
+
+    {
+      "eventId": "event:run:a:5",
+      "sequence": 5,
+      "occurredAt": "2026-09-07T12:00:00.000Z",
+      "eventType": "model-diagnostic",
+      "requestId": "request:3",
+      "phase": "response",
+      "status": "completed",
+      "content": "Use print('hello')",
+      "truncated": false
+    }
+
+## 6. assistant-message · 2026-09-07T12:00:00.000Z
+
+    Use print('hello')
+
+## 7. turn-ended · 2026-09-07T12:00:00.000Z
+
+    {
+      "eventId": "event:run:a:7",
+      "sequence": 7,
+      "occurredAt": "2026-09-07T12:00:00.000Z",
+      "eventType": "turn-ended",
+      "messageId": "message:3",
+      "state": "completed"
+    }
+
+## 8. tool-started · 2026-09-07T12:00:00.000Z
+
+    write
+    main.py
+    print('á')
+
+[Content was truncated at capture.]
+
+## 9. tool-finished · 2026-09-07T12:00:00.000Z
+
+    COMPLETED
+    created
+",
+  "conversations/session-3.md": "# Marea session
+
+    student-1
+    class-1
+    project-3
+
+Opened: 2026-09-07T12:00:00.000Z
+
+Closed: 2026-09-07T12:00:00.000Z
+
+## 1. assistant-message · 2026-09-07T12:00:00.000Z
+
+    Canonical 1
+
+## 2. assistant-message · 2026-09-07T12:00:00.000Z
+
+    Canonical 2
+",
+  "events.jsonl": "{"type":"session","runId":"session-1","classId":"class-1","studentId":"student-1","studentName":"student-1","className":"class-1","projectName":"project-1","openedAt":"2026-09-06T12:00:00.000Z","closedAt":"2026-09-07T12:00:00.000Z"}
+{"type":"event","runId":"session-1","event":{"eventId":"event:run:older:1","sequence":1,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"assistant-message","content":"Canonical 1"}}
+{"type":"event","runId":"session-1","event":{"eventId":"event:run:older:2","sequence":2,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"assistant-message","content":"Canonical 2"}}
+{"type":"session","runId":"session-2","classId":"class-1","studentId":"student-1","studentName":"student-1","className":"class-1","projectName":"project-2","openedAt":"2026-09-07T12:00:00.000Z","closedAt":null}
+{"type":"event","runId":"session-2","event":{"eventId":"event:run:a:1","sequence":1,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"assistant-message","content":"Canonical 1"}}
+{"type":"event","runId":"session-2","event":{"eventId":"event:run:a:2","sequence":2,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"assistant-message","content":"Canonical 2"}}
+{"type":"event","runId":"session-2","event":{"eventId":"event:run:a:3","sequence":3,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"student-message","content":"Write a Python greeting","messageId":"message:3"}}
+{"type":"event","runId":"session-2","event":{"eventId":"event:run:a:4","sequence":4,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"model-diagnostic","requestId":"request:3","phase":"request","status":"started","content":"{\\"messages\\":[{\\"role\\":\\"user\\",\\"content\\":\\"Write a Python greeting\\"}]}","truncated":false}}
+{"type":"event","runId":"session-2","event":{"eventId":"event:run:a:5","sequence":5,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"model-diagnostic","requestId":"request:3","phase":"response","status":"completed","content":"Use print('hello')","truncated":false}}
+{"type":"event","runId":"session-2","event":{"eventId":"event:run:a:6","sequence":6,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"assistant-message","content":"Use print('hello')","messageId":"message:3"}}
+{"type":"event","runId":"session-2","event":{"eventId":"event:run:a:7","sequence":7,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"turn-ended","messageId":"message:3","state":"completed"}}
+{"type":"event","runId":"session-2","event":{"eventId":"event:run:a:8","sequence":8,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"tool-started","messageId":"message:3","callId":"call:1","name":"write","target":"main.py","arguments":"print('á')","truncated":true}}
+{"type":"event","runId":"session-2","event":{"eventId":"event:run:a:9","sequence":9,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"tool-finished","messageId":"message:3","callId":"call:1","failed":false,"result":"created","truncated":false}}
+{"type":"session","runId":"session-3","classId":"class-1","studentId":"student-1","studentName":"student-1","className":"class-1","projectName":"project-3","openedAt":"2026-09-07T12:00:00.000Z","closedAt":"2026-09-07T12:00:00.000Z"}
+{"type":"event","runId":"session-3","event":{"eventId":"event:run:b:1","sequence":1,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"assistant-message","content":"Canonical 1"}}
+{"type":"event","runId":"session-3","event":{"eventId":"event:run:b:2","sequence":2,"occurredAt":"2026-09-07T12:00:00.000Z","eventType":"assistant-message","content":"Canonical 2"}}",
+  "sessions.csv": "session,class,student,project,opened_at,closed_at,duration_ms,events,model_attempts,unknown_attempts,known_input_tokens,known_output_tokens,known_cost_by_unit,turn_errors,model_diagnostics
+"session-1","class-1","student-1","project-1","2026-09-06T12:00:00.000Z","2026-09-07T12:00:00.000Z","86400000","2","0","0",,,,"0","not captured"
+"session-2","class-1","student-1","project-2","2026-09-07T12:00:00.000Z",,,"9","0","0",,,,"0","available"
+"session-3","class-1","student-1","project-3","2026-09-07T12:00:00.000Z","2026-09-07T12:00:00.000Z","0","2","0","0",,,,"0","not captured"",
+  "usage.jsonl": "",
+}
+`;

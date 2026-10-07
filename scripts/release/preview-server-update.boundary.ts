@@ -41,7 +41,7 @@ export async function activatePreviewServer<T>(
     owner.capability.assertOwned();
     initializeSqliteStorage({
       databasePath: config.databasePath,
-      schema: "student-identities",
+      schema: "observability",
     }).close();
     const result = await activate();
     installExampleSkill(installation, destination);

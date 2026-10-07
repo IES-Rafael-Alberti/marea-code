@@ -3,6 +3,7 @@ import {
   telemetryExporterFailure,
   type TelemetryExporterFactory,
   type TelemetryEnvelope,
+  encodeSessionTrace,
 } from "@marea/plugin-api";
 import { snapshot } from "./configuration.boundary.js";
 import { encodeMetrics } from "./encoding.js";
@@ -17,19 +18,27 @@ export const createOtlpExporter: TelemetryExporterFactory<"otlp"> = (configurati
     controller: AbortController,
     started: number,
   ) => {
-    const body = encodeMetrics(envelope);
+    const body =
+      envelope.trace === undefined ? encodeMetrics(envelope) : encodeSessionTrace(envelope.trace);
     if (body.byteLength > settings.maxRequestBytes)
       throw new TelemetryExporterError("payload-too-large");
     if (performance.now() - started >= settings.operationTimeoutMs) controller.abort();
     controller.signal.throwIfAborted();
-    const response = await fetch(endpoint, {
-      method: "POST",
-      body,
-      headers,
-      signal: controller.signal,
-      redirect: "error",
-    });
-    await consumeResponse(response, settings.maxResponseBytes);
+    const response = await fetch(
+      envelope.trace === undefined ? endpoint : endpoint.replace(/\/v1\/metrics$/u, "/v1/traces"),
+      {
+        method: "POST",
+        body,
+        headers,
+        signal: controller.signal,
+        redirect: "error",
+      },
+    );
+    await consumeResponse(
+      response,
+      settings.maxResponseBytes,
+      envelope.trace === undefined ? "rejectedDataPoints" : "rejectedSpans",
+    );
     if (performance.now() - started >= settings.operationTimeoutMs) controller.abort();
     controller.signal.throwIfAborted();
   };

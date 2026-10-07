@@ -1,4 +1,7 @@
 import { ServerSettingsService } from "../../server-settings/service.boundary.js";
+import { SessionExportService } from "../../session-export/service.boundary.js";
+import { SqliteSessionExportRepository } from "../persistence/sqlite-session-export.js";
+import { composeObservability, observabilityEndpoint } from "./observability-composition.js";
 import { serverSettingsOperator, usesCommonRoute } from "../../server-settings/operator.js";
 import type { ServerSettingsStore } from "../../server-settings/contracts.js";
 import type { InferenceProviderCatalogEntry } from "@marea/plugin-api";
@@ -75,6 +78,10 @@ interface TeacherHostSkillOwners {
 }
 
 export interface TeacherHostServiceDependencies {
+  readonly observability?: {
+    readonly catalog: readonly import("@marea/plugin-api").TelemetryExporterCatalogEntry[];
+    readonly release: string;
+  };
   readonly serverSettings?: {
     readonly store: ServerSettingsStore;
     readonly catalog: readonly InferenceProviderCatalogEntry[];
@@ -248,11 +255,19 @@ export async function composeTeacherServices(
     secrets,
   });
   const identityProviders = dependencies.identityProviders ?? [];
+  const observability = composeObservability(
+    database,
+    clock,
+    dependencies.serverSettings?.store,
+    dependencies.observability,
+  );
   const externalRepository = new SqliteExternalIdentityRepository(
     database,
     dependencies.identities,
   );
   const services: TeacherProductServices = {
+    sessionExport: new SessionExportService(new SqliteSessionExportRepository(database)),
+    ...observabilityEndpoint(observability),
     ...(identityProviders.length === 0
       ? {}
       : {
@@ -348,10 +363,12 @@ export async function composeTeacherServices(
         insights?.recover();
       },
       start() {
+        observability?.start();
         evaluations.start();
         insights?.start();
       },
       async stop() {
+        await observability?.stop();
         await insights?.stop();
         await evaluations.stop();
       },

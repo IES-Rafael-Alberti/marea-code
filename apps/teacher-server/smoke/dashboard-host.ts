@@ -1,3 +1,4 @@
+import { emptyServerSettings } from "../test-support/server-settings.fixture.js";
 import {
   bundledDashboardProfileAuthority,
   bundledDashboardProfileRelease,
@@ -6,6 +7,7 @@ import { composeDashboardProfiles } from "../src/platform/teacher-host/profile-c
 import { seedReleaseSession } from "./release-session.fixture.js";
 import { seedReleaseUsage } from "./release-usage.fixture.js";
 import { seedReleaseEvidence } from "./release-evidence.fixture.js";
+import { serverSettingsStore } from "../src/platform/teacher-host/server-settings-store.boundary.js";
 /** Synthetic local host for real HTTP/browser acceptance; never opens an operator installation. */
 import { cpSync } from "node:fs";
 import { resolve, join } from "node:path";
@@ -22,9 +24,10 @@ import { bunServe } from "../src/platform/teacher-host/bun-serve.boundary.js";
 
 const fixture = teacherHostInstallation();
 const legacy = process.argv.includes("--legacy");
+const observability = process.argv.includes("--observability");
 const storage = initializeSqliteStorage({
   databasePath: fixture.databasePath,
-  schema: legacy ? "retention-audit" : "dashboard-profiles",
+  schema: observability ? "observability" : legacy ? "retention-audit" : "dashboard-profiles",
 });
 storage.database.execute(
   "INSERT INTO marea_classes (id, seed_key, display_name) VALUES ('class:ready', 'ready', 'Synthetic Class')",
@@ -66,6 +69,7 @@ if (process.argv.includes("--unavailable") || process.argv.includes("--future"))
   });
 }
 storage.close();
+if (observability) serverSettingsStore(fixture.root).write(emptyServerSettings("user:teacher"), -1);
 cpSync(resolve("apps/dashboard/dist"), join(fixture.root, "dashboard"), { recursive: true });
 fixture.writeHost({
   ...fixture.host,
@@ -87,7 +91,7 @@ const options: TeacherHostOptions = {
 };
 let host = await startTeacherHost(options);
 if (host.state !== "ready") throw new Error(host.reason);
-console.log(JSON.stringify({ url: host.url, schema: legacy ? 9 : 10 }));
+console.log(JSON.stringify({ url: host.url, schema: observability ? 13 : legacy ? 9 : 10 }));
 const stop = () => {
   if (host.state === "ready") void host.stop().then(cleanupTeacherHostInstallations);
 };

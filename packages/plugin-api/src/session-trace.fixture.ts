@@ -1,0 +1,36 @@
+import type { SessionTrace } from "./session-traces.js";
+export const sessionTraceFixture: SessionTrace = {
+  version: 1,
+  id: "a".repeat(32),
+  sessionId: "session-hash",
+  userId: "student-hash",
+  classId: "class-hash",
+  release: "preview-test",
+  spans: [
+    {
+      id: "b".repeat(16),
+      name: "Turn",
+      type: "agent",
+      startedAt: "2026-10-08T00:00:00.000Z",
+      endedAt: "2026-10-08T00:00:01.000Z",
+      input: "Student question",
+      output: "Tutor answer",
+      failed: false,
+      metadata: { complete: true },
+    },
+    {
+      id: "c".repeat(16),
+      parentId: "b".repeat(16),
+      name: "Model",
+      type: "generation",
+      startedAt: "2026-10-08T00:00:00.100Z",
+      endedAt: "2026-10-08T00:00:00.900Z",
+      input: '[{"role":"user","content":"Question"}]',
+      output: "Answer",
+      failed: true,
+      metadata: { attempt: 1 },
+      model: "model-name",
+      usage: { input: 12, output: 8 },
+    },
+  ],
+};

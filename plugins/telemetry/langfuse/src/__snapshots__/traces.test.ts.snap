@@ -1,0 +1,317 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`keeps all localized credential fields and the cloud default in its plugin descriptor 1`] = `
+{
+  "fields": [
+    {
+      "defaultValue": "https://cloud.langfuse.com",
+      "key": "endpoint",
+      "kind": "url",
+      "label": {
+        "en": "Langfuse URL",
+        "es": "URL de Langfuse",
+        "eu": "Langfuse URLa",
+      },
+      "required": true,
+    },
+    {
+      "key": "publicKey",
+      "kind": "secret",
+      "label": {
+        "en": "Public key",
+        "es": "Clave pública",
+        "eu": "Gako publikoa",
+      },
+      "required": true,
+    },
+    {
+      "key": "secretKey",
+      "kind": "secret",
+      "label": {
+        "en": "Secret key",
+        "es": "Clave secreta",
+        "eu": "Gako sekretua",
+      },
+      "required": true,
+    },
+  ],
+  "name": {
+    "en": "Langfuse",
+    "es": "Langfuse",
+    "eu": "Langfuse",
+  },
+  "version": 1,
+}
+`;
+
+exports[`sends full linked observations to a custom Langfuse base URL with v4 authentication and usage > Langfuse content and observation attributes 1`] = `
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "marea-teacher",
+            },
+          },
+          {
+            "key": "service.version",
+            "value": {
+              "stringValue": "preview-test",
+            },
+          },
+        ],
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "marea.sessions",
+            "version": "1",
+          },
+          "spans": [
+            {
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-hash",
+                  },
+                },
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "student-hash",
+                  },
+                },
+                {
+                  "key": "marea.class.id",
+                  "value": {
+                    "stringValue": "class-hash",
+                  },
+                },
+                {
+                  "key": "gen_ai.input.messages",
+                  "value": {
+                    "stringValue": "Student question",
+                  },
+                },
+                {
+                  "key": "gen_ai.output.messages",
+                  "value": {
+                    "stringValue": "Tutor answer",
+                  },
+                },
+                {
+                  "key": "marea.metadata",
+                  "value": {
+                    "stringValue": "{"complete":true}",
+                  },
+                },
+                {
+                  "key": "langfuse.session.id",
+                  "value": {
+                    "stringValue": "session-hash",
+                  },
+                },
+                {
+                  "key": "langfuse.user.id",
+                  "value": {
+                    "stringValue": "student-hash",
+                  },
+                },
+                {
+                  "key": "langfuse.release",
+                  "value": {
+                    "stringValue": "preview-test",
+                  },
+                },
+                {
+                  "key": "langfuse.trace.name",
+                  "value": {
+                    "stringValue": "Marea tutoring turn",
+                  },
+                },
+                {
+                  "key": "langfuse.trace.metadata.classId",
+                  "value": {
+                    "stringValue": "class-hash",
+                  },
+                },
+                {
+                  "key": "langfuse.observation.type",
+                  "value": {
+                    "stringValue": "agent",
+                  },
+                },
+                {
+                  "key": "langfuse.observation.input",
+                  "value": {
+                    "stringValue": "Student question",
+                  },
+                },
+                {
+                  "key": "langfuse.observation.output",
+                  "value": {
+                    "stringValue": "Tutor answer",
+                  },
+                },
+                {
+                  "key": "langfuse.observation.metadata",
+                  "value": {
+                    "stringValue": "{"complete":true}",
+                  },
+                },
+              ],
+              "endTimeUnixNano": "1791417601000000000",
+              "kind": 1,
+              "name": "Turn",
+              "spanId": "bbbbbbbbbbbbbbbb",
+              "startTimeUnixNano": "1791417600000000000",
+              "status": {
+                "code": 1,
+              },
+              "traceId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            },
+            {
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-hash",
+                  },
+                },
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "student-hash",
+                  },
+                },
+                {
+                  "key": "marea.class.id",
+                  "value": {
+                    "stringValue": "class-hash",
+                  },
+                },
+                {
+                  "key": "gen_ai.input.messages",
+                  "value": {
+                    "stringValue": "[{"role":"user","content":"Question"}]",
+                  },
+                },
+                {
+                  "key": "gen_ai.output.messages",
+                  "value": {
+                    "stringValue": "Answer",
+                  },
+                },
+                {
+                  "key": "marea.metadata",
+                  "value": {
+                    "stringValue": "{"attempt":1}",
+                  },
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "model-name",
+                  },
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "12",
+                  },
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "8",
+                  },
+                },
+                {
+                  "key": "langfuse.session.id",
+                  "value": {
+                    "stringValue": "session-hash",
+                  },
+                },
+                {
+                  "key": "langfuse.user.id",
+                  "value": {
+                    "stringValue": "student-hash",
+                  },
+                },
+                {
+                  "key": "langfuse.release",
+                  "value": {
+                    "stringValue": "preview-test",
+                  },
+                },
+                {
+                  "key": "langfuse.trace.name",
+                  "value": {
+                    "stringValue": "Marea tutoring turn",
+                  },
+                },
+                {
+                  "key": "langfuse.trace.metadata.classId",
+                  "value": {
+                    "stringValue": "class-hash",
+                  },
+                },
+                {
+                  "key": "langfuse.observation.type",
+                  "value": {
+                    "stringValue": "generation",
+                  },
+                },
+                {
+                  "key": "langfuse.observation.input",
+                  "value": {
+                    "stringValue": "[{"role":"user","content":"Question"}]",
+                  },
+                },
+                {
+                  "key": "langfuse.observation.output",
+                  "value": {
+                    "stringValue": "Answer",
+                  },
+                },
+                {
+                  "key": "langfuse.observation.metadata",
+                  "value": {
+                    "stringValue": "{"attempt":1}",
+                  },
+                },
+                {
+                  "key": "langfuse.observation.model.name",
+                  "value": {
+                    "stringValue": "model-name",
+                  },
+                },
+                {
+                  "key": "langfuse.observation.usage_details",
+                  "value": {
+                    "stringValue": "{"input":12,"output":8}",
+                  },
+                },
+              ],
+              "endTimeUnixNano": "1791417600900000000",
+              "kind": 1,
+              "name": "Model",
+              "parentSpanId": "bbbbbbbbbbbbbbbb",
+              "spanId": "cccccccccccccccc",
+              "startTimeUnixNano": "1791417600100000000",
+              "status": {
+                "code": 2,
+              },
+              "traceId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            },
+          ],
+        },
+      ],
+    },
+  ],
+}
+`;

@@ -24,7 +24,11 @@ describe("Langfuse factory", () => {
     const timer = vi.spyOn(globalThis, "setTimeout");
     expect(plugin.implementation?.destination).toBe("langfuse");
     expect(plugin.implementation?.create).toBe(createLangfuseExporter);
-    expect(plugin.manifest.acceptedDataClassifications).toEqual(["operational"]);
+    expect(plugin.manifest.acceptedDataClassifications).toEqual([
+      "operational",
+      "pseudonymous",
+      "student-content",
+    ]);
     expect(createLangfuseExporter(settings, connection).id).toBe("langfuse");
     expect(transport).not.toHaveBeenCalled();
     expect(timer).not.toHaveBeenCalled();

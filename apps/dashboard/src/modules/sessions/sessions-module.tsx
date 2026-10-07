@@ -1,4 +1,5 @@
 import { conversationToolGroups } from "./conversation-tool-groups.js";
+import { SessionExportPanel } from "./export-panel.js";
 import { conversationHistory } from "./conversation-history.js";
 import { TurnSummary } from "./turn-summary.js";
 import { useEffect, useRef, useState } from "react";
@@ -58,6 +59,13 @@ export function SessionsModule({
     >
       <aside className="session-list">
         <h2>{m.heading}</h2>
+        {controller.exportClient && (
+          <SessionExportPanel
+            client={controller.exportClient}
+            locale={locale}
+            classId={state.classId}
+          />
+        )}
         <p className={`session-live connection-${state.connection}`}>
           {m[state.connection]} · {runs.length} {m.listed}
         </p>
@@ -153,6 +161,15 @@ export function SessionsModule({
           </button>
           <h2>{selected?.studentDisplayName ?? m.conversation}</h2>
           <p>{selected?.projectDisplayName}</p>
+          {controller.exportClient && state.runId !== null && (
+            <SessionExportPanel
+              key={state.runId}
+              client={controller.exportClient}
+              locale={locale}
+              classId={state.classId}
+              runId={state.runId}
+            />
+          )}
           {context?.eventType === "project-context" && (
             <p className="project-context">
               {[context.cwd, context.branch, context.repositoryUrl].filter(Boolean).join(" · ")}

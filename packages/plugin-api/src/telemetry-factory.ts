@@ -36,10 +36,16 @@ export interface TelemetryExporterCredentialResolver {
   ) => Promise<TelemetryExporterConnections[D]>;
 }
 
+/** Factories validate private, potentially incomplete setup input before retaining it. */
+export type TelemetryExporterConnectionInput<D extends TelemetryExporterDestination> = {
+  readonly [K in keyof TelemetryExporterConnections[D]]?:
+    TelemetryExporterConnections[D][K] | undefined;
+};
+
 /** Synchronous construction with no I/O, queues, timers or credential lookup. */
 export type TelemetryExporterFactory<D extends TelemetryExporterDestination> = (
   configuration: TelemetryExporterConfiguration<D>,
-  connection: TelemetryExporterConnections[D],
+  connection: TelemetryExporterConnectionInput<D>,
 ) => TelemetryExporterPort;
 
 export type TelemetryExporterErrorCode =

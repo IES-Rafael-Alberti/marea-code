@@ -81,9 +81,11 @@ export interface InferenceProviderResolver {
 }
 
 export interface TeacherProductServices {
+  readonly sessionExport?: import("../session-export/contracts.js").SessionExportEndpoint;
   readonly externalIdentity?: ExternalIdentityServices;
   readonly usageHealth?: UsageHealthService;
   readonly serverSettings?: ServerSettingsEndpoint;
+  readonly observability?: ServerSettingsEndpoint;
   readonly educationalInsights?: EducationalInsightsService;
   readonly reviewedEvidence?: ReviewedEvidenceService;
   readonly profiles?: DashboardProfileEndpoint;

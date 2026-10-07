@@ -13,3 +13,6 @@ export * from "./telemetry-failure.boundary.js";
 export * from "./provider-settings.js";
 
 export * from "./identity-provider.js";
+export * from "./session-traces.js";
+export * from "./otlp-trace.js";
+export * from "./trace-envelope.js";

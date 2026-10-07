@@ -1,0 +1,58 @@
+import type { DashboardLocale } from "../../messages.js";
+const messages = {
+  es: {
+    title: "Exportar sesiones",
+    student: "Alumno",
+    all: "Todos",
+    from: "Desde (UTC)",
+    until: "Hasta (UTC, sin incluir)",
+    identities: "Identidades",
+    names: "Nombres",
+    pseudonyms: "Seudónimos",
+    note: "Descarga un ZIP con conversaciones, eventos y resumen de uso. Los seudónimos no ocultan nombres o datos personales escritos dentro del contenido.",
+    download: "Descargar selección",
+    single: "Descargar esta sesión",
+    busy: "Preparando descarga…",
+    done: "Descarga preparada.",
+    error: "No se pudo exportar. Comprueba tu acceso e inténtalo de nuevo.",
+    large:
+      "La selección es demasiado grande. Reduce las fechas o elige un alumno (máximo 100 sesiones y 32 MiB de eventos).",
+  },
+  en: {
+    title: "Export sessions",
+    student: "Student",
+    all: "All",
+    from: "From (UTC)",
+    until: "Until (UTC, exclusive)",
+    identities: "Identities",
+    names: "Names",
+    pseudonyms: "Pseudonyms",
+    note: "Download a ZIP containing conversations, events and usage summary. Pseudonyms do not hide names or personal data written inside the content.",
+    download: "Download selection",
+    single: "Download this session",
+    busy: "Preparing download…",
+    done: "Download ready.",
+    error: "Export failed. Check your access and try again.",
+    large:
+      "Selection is too large. Narrow the dates or choose a student (maximum 100 sessions and 32 MiB of events).",
+  },
+  eu: {
+    title: "Esportatu saioak",
+    student: "Ikaslea",
+    all: "Guztiak",
+    from: "Hasiera (UTC)",
+    until: "Amaiera (UTC, kanpo)",
+    identities: "Identitateak",
+    names: "Izenak",
+    pseudonyms: "Ezizenak",
+    note: "Deskargatu elkarrizketak, gertaerak eta erabileraren laburpena ZIP batean. Ezizenek ez dituzte edukian idatzitako izenak edo datu pertsonalak ezkutatzen.",
+    download: "Deskargatu hautaketa",
+    single: "Deskargatu saio hau",
+    busy: "Deskarga prestatzen…",
+    done: "Deskarga prest.",
+    error: "Ezin izan da esportatu. Egiaztatu sarbidea eta saiatu berriro.",
+    large:
+      "Hautaketa handiegia da. Mugatu datak edo aukeratu ikasle bat (gehienez 100 saio eta 32 MiB gertaera).",
+  },
+};
+export const exportMessages = (locale: DashboardLocale) => messages[locale];

@@ -1,3 +1,6 @@
+import * as z from "zod";
+import { emptyServerSettings } from "../../../test-support/server-settings.fixture.js";
+import { serverSettingsStore } from "./server-settings-store.boundary.js";
 import { validateDashboardProfileRelease } from "../../dashboard-profiles/release.js";
 import {
   createOperatorCliApplication,
@@ -31,6 +34,7 @@ it.each([
   ["dashboard-profiles", 10],
   ["educational-insights", 11],
   ["student-identities", 12],
+  ["observability", 13],
 ] as const)(
   "starts the production host on %s, authenticates, persists, reopens and restores profiles",
   async (schema, version) => {
@@ -41,6 +45,7 @@ it.each([
     });
     expect(upgraded.schema.version).toBe(version);
     upgraded.close();
+    serverSettingsStore(f.root).write(emptyServerSettings("user:teacher"), -1);
     const host = await startTeacherHost({
       installationRoot: f.root,
       releaseId: "release:host",
@@ -72,6 +77,21 @@ it.each([
     expect(login.status).toBe(200);
     const cookie = login.headers.get("set-cookie")?.split(";")[0];
     if (cookie === undefined) throw new Error("No cookie");
+    const observability = await post(
+      "/api/v1/dashboard/observability",
+      { operation: "read" },
+      cookie,
+    );
+    expect(observability.status).toBe(version === 13 ? 200 : 503);
+    if (version === 13) {
+      const value = z
+        .object({ enabled: z.boolean(), plugins: z.array(z.object({ id: z.string() })) })
+        .parse(await observability.json());
+      expect(value.enabled).toBe(false);
+      expect(value.plugins.map((p) => p.id)).toEqual(
+        expect.arrayContaining(["org.marea.langfuse", "org.marea.otlp"]),
+      );
+    }
     const saved = await post(
       "/api/v1/dashboard/profiles/save",
       {
@@ -128,6 +148,7 @@ it.each([
   ["dashboard-profiles", 10],
   ["educational-insights", 11],
   ["student-identities", 12],
+  ["observability", 13],
 ] as const)(
   "includes %s in the authorized operations backup and restore workflow",
   async (schema, version) => {

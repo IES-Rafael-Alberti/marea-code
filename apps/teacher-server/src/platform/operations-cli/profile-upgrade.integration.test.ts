@@ -52,11 +52,11 @@ describe("explicit offline profile upgrade", () => {
           command: "installation upgrade-profiles --input <private-json-with-new-backup-name>",
           release: { ready: true },
           rollback: expect.stringContaining("current deletion index") as unknown,
-          recovery: expect.stringContaining("schema 12 is committed") as unknown,
+          recovery: expect.stringContaining("schema 13 is committed") as unknown,
         },
       });
       expect(await owned.app.upgradeProfiles("before-profiles")).toEqual({
-        schemaVersion: 12,
+        schemaVersion: 13,
         backupPath: join(f.root, "backups", "before-profiles"),
       });
       expect(
@@ -76,7 +76,7 @@ describe("explicit offline profile upgrade", () => {
     }
     const restarted = open(f);
     try {
-      expect(restarted.app.activate()).toEqual({ schemaVersion: 12 });
+      expect(restarted.app.activate()).toEqual({ schemaVersion: 13 });
       expect(await readInstallationStatus(f.root)).toMatchObject({
         profileUpgrade: { state: "active" },
       });
@@ -101,7 +101,7 @@ describe("explicit offline profile upgrade", () => {
     try {
       expect(educational.app.activate()).toEqual({ schemaVersion: 11 });
       expect(await educational.app.upgradeProfiles("before-identities")).toMatchObject({
-        schemaVersion: 12,
+        schemaVersion: 13,
       });
       expect(
         inspectSqliteSchemaVersion({
@@ -124,7 +124,7 @@ describe("explicit offline profile upgrade", () => {
         owned.close();
       }
       expect(inspectSqliteSchemaVersion({ databasePath: f.databasePath })).toBe(
-        step === "backed-up" ? 9 : 12,
+        step === "backed-up" ? 9 : 13,
       );
       expect(
         inspectSqliteSchemaVersion({
@@ -135,7 +135,7 @@ describe("explicit offline profile upgrade", () => {
       try {
         await expect(restarted.app.upgradeProfiles("interrupted")).rejects.toThrow();
         if (step === "backed-up")
-          expect(await restarted.app.upgradeProfiles("retry")).toMatchObject({ schemaVersion: 12 });
+          expect(await restarted.app.upgradeProfiles("retry")).toMatchObject({ schemaVersion: 13 });
       } finally {
         restarted.close();
       }

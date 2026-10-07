@@ -1,4 +1,6 @@
 import { browserRandomUUID } from "../../browser-random-uuid.js";
+import { authenticatedJsonRequest } from "../evaluation/authenticated-json.boundary.js";
+import { sessionExportClient, type SessionExportClient } from "./export-client.boundary.js";
 import {
   ClassSessionsResponseSchema,
   SessionHistoryQuerySchema,
@@ -7,10 +9,10 @@ import {
 import type { DashboardFetch } from "../active-runs/active-runs-client.boundary.js";
 import {
   createEvaluationClient,
-  EvaluationRequestError,
   type EvaluationClient,
 } from "../evaluation/evaluation-client.boundary.js";
 export interface SessionsClient extends EvaluationClient {
+  readonly exports?: SessionExportClient;
   subscribe?(changed: () => void): () => void;
   classes(
     cursor: string | null,
@@ -20,6 +22,7 @@ export interface SessionsClient extends EvaluationClient {
 }
 export function createSessionsClient(fetchRequest: DashboardFetch): SessionsClient {
   return {
+    exports: sessionExportClient(fetchRequest),
     ...createEvaluationClient(fetchRequest),
     async classes(cursor, signal, classId) {
       const body = SessionHistoryQuerySchema.parse({
@@ -30,15 +33,12 @@ export function createSessionsClient(fetchRequest: DashboardFetch): SessionsClie
         classId,
         ...(cursor === null ? {} : { beforeRunId: cursor }),
       });
-      const response = await fetchRequest("/api/v1/dashboard/history/classes", {
-        method: "POST",
-        credentials: "same-origin",
-        cache: "no-store",
+      const response = await authenticatedJsonRequest(
+        fetchRequest,
+        "/api/v1/dashboard/history/classes",
+        body,
         signal,
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!response.ok) throw new EvaluationRequestError(response.status);
+      );
       const page = ClassSessionsResponseSchema.parse(await response.json());
       if (
         page.requestId !== body.requestId ||

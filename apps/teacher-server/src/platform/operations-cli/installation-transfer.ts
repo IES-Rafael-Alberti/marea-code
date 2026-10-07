@@ -2,6 +2,7 @@ import {
   createProfileMigrationCatalog,
   createEducationalMigrationCatalog,
   createStudentIdentityMigrationCatalog,
+  createObservabilityMigrationCatalog,
 } from "@marea/sqlite-storage";
 import { createHash, randomUUID } from "node:crypto";
 import {
@@ -238,13 +239,16 @@ export function createInstallationTransfer(options: {
         destinationRoot: staging,
         path: bundlePath(record),
         schema:
-          bundle.manifest.release.schemaVersion === createStudentIdentityMigrationCatalog().length
-            ? "student-identities"
-            : bundle.manifest.release.schemaVersion === createEducationalMigrationCatalog().length
-              ? "educational-insights"
-              : bundle.manifest.release.schemaVersion === createProfileMigrationCatalog().length
-                ? "dashboard-profiles"
-                : "retention-audit",
+          bundle.manifest.release.schemaVersion === createObservabilityMigrationCatalog().length
+            ? "observability"
+            : bundle.manifest.release.schemaVersion ===
+                createStudentIdentityMigrationCatalog().length
+              ? "student-identities"
+              : bundle.manifest.release.schemaVersion === createEducationalMigrationCatalog().length
+                ? "educational-insights"
+                : bundle.manifest.release.schemaVersion === createProfileMigrationCatalog().length
+                  ? "dashboard-profiles"
+                  : "retention-audit",
       },
       bundle.manifest.release,
       destination.config.limits,

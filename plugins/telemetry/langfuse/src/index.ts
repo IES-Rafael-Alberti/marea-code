@@ -1,7 +1,9 @@
 import { defineTelemetryExporterCatalogEntry } from "@marea/plugin-api";
 import { createLangfuseExporter } from "./exporter.js";
+import { traces } from "./traces.js";
 
 export default defineTelemetryExporterCatalogEntry({
+  traces,
   manifest: {
     id: "org.marea.langfuse",
     displayNameKey: "plugins.langfuse.name",
@@ -11,9 +13,9 @@ export default defineTelemetryExporterCatalogEntry({
     implementationVersion: "0.1.0",
     entrypoint: "./src/index.ts",
     configurationVersion: 1,
-    capabilities: ["metric-export"],
+    capabilities: ["metric-export", "trace-export"],
     runtimeTargets: ["teacher-server"],
-    acceptedDataClassifications: ["operational"],
+    acceptedDataClassifications: ["operational", "pseudonymous", "student-content"],
     destination: "external",
     requiredDependencies: [],
     optionalDependencies: [],

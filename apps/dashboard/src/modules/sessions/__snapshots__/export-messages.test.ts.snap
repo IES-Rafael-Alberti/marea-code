@@ -1,0 +1,61 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`preserves export privacy, bounds and date-filter copy in en 1`] = `
+{
+  "all": "All",
+  "busy": "Preparing download…",
+  "done": "Download ready.",
+  "download": "Download selection",
+  "error": "Export failed. Check your access and try again.",
+  "from": "From (UTC)",
+  "identities": "Identities",
+  "large": "Selection is too large. Narrow the dates or choose a student (maximum 100 sessions and 32 MiB of events).",
+  "names": "Names",
+  "note": "Download a ZIP containing conversations, events and usage summary. Pseudonyms do not hide names or personal data written inside the content.",
+  "pseudonyms": "Pseudonyms",
+  "single": "Download this session",
+  "student": "Student",
+  "title": "Export sessions",
+  "until": "Until (UTC, exclusive)",
+}
+`;
+
+exports[`preserves export privacy, bounds and date-filter copy in es 1`] = `
+{
+  "all": "Todos",
+  "busy": "Preparando descarga…",
+  "done": "Descarga preparada.",
+  "download": "Descargar selección",
+  "error": "No se pudo exportar. Comprueba tu acceso e inténtalo de nuevo.",
+  "from": "Desde (UTC)",
+  "identities": "Identidades",
+  "large": "La selección es demasiado grande. Reduce las fechas o elige un alumno (máximo 100 sesiones y 32 MiB de eventos).",
+  "names": "Nombres",
+  "note": "Descarga un ZIP con conversaciones, eventos y resumen de uso. Los seudónimos no ocultan nombres o datos personales escritos dentro del contenido.",
+  "pseudonyms": "Seudónimos",
+  "single": "Descargar esta sesión",
+  "student": "Alumno",
+  "title": "Exportar sesiones",
+  "until": "Hasta (UTC, sin incluir)",
+}
+`;
+
+exports[`preserves export privacy, bounds and date-filter copy in eu 1`] = `
+{
+  "all": "Guztiak",
+  "busy": "Deskarga prestatzen…",
+  "done": "Deskarga prest.",
+  "download": "Deskargatu hautaketa",
+  "error": "Ezin izan da esportatu. Egiaztatu sarbidea eta saiatu berriro.",
+  "from": "Hasiera (UTC)",
+  "identities": "Identitateak",
+  "large": "Hautaketa handiegia da. Mugatu datak edo aukeratu ikasle bat (gehienez 100 saio eta 32 MiB gertaera).",
+  "names": "Izenak",
+  "note": "Deskargatu elkarrizketak, gertaerak eta erabileraren laburpena ZIP batean. Ezizenek ez dituzte edukian idatzitako izenak edo datu pertsonalak ezkutatzen.",
+  "pseudonyms": "Ezizenak",
+  "single": "Deskargatu saio hau",
+  "student": "Ikaslea",
+  "title": "Esportatu saioak",
+  "until": "Amaiera (UTC, kanpo)",
+}
+`;

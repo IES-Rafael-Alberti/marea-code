@@ -33,9 +33,9 @@ export const inferenceProviderCatalog: readonly InferenceProviderCatalogEntry[] 
 
 export const telemetryExporterCatalog: readonly TelemetryExporterCatalogEntry[] = Object.freeze([
   // prettier-ignore
-  { ...telemetryExporterPlugin0, manifest: {"id":"org.marea.langfuse","displayNameKey":"plugins.langfuse.name","descriptionKey":"plugins.langfuse.description","implementationVersion":"0.1.0","entrypoint":"./src/index.ts","configurationVersion":1,"requiredDependencies":[],"optionalDependencies":[],"conflicts":[],"kind":"telemetry-exporter","apiVersion":"1.0","capabilities":["metric-export"],"runtimeTargets":["teacher-server"],"acceptedDataClassifications":["operational"],"destination":"external"} },
+  { ...telemetryExporterPlugin0, manifest: {"id":"org.marea.langfuse","displayNameKey":"plugins.langfuse.name","descriptionKey":"plugins.langfuse.description","implementationVersion":"0.1.0","entrypoint":"./src/index.ts","configurationVersion":1,"requiredDependencies":[],"optionalDependencies":[],"conflicts":[],"kind":"telemetry-exporter","apiVersion":"1.0","capabilities":["metric-export","trace-export"],"runtimeTargets":["teacher-server"],"acceptedDataClassifications":["operational","pseudonymous","student-content"],"destination":"external"} },
   // prettier-ignore
-  { ...telemetryExporterPlugin1, manifest: {"id":"org.marea.otlp","displayNameKey":"plugins.otlp.name","descriptionKey":"plugins.otlp.description","implementationVersion":"0.1.0","entrypoint":"./src/index.ts","configurationVersion":1,"requiredDependencies":[],"optionalDependencies":[],"conflicts":[],"kind":"telemetry-exporter","apiVersion":"1.0","capabilities":["metric-export"],"runtimeTargets":["teacher-server"],"acceptedDataClassifications":["operational"],"destination":"external"} },
+  { ...telemetryExporterPlugin1, manifest: {"id":"org.marea.otlp","displayNameKey":"plugins.otlp.name","descriptionKey":"plugins.otlp.description","implementationVersion":"0.1.0","entrypoint":"./src/index.ts","configurationVersion":1,"requiredDependencies":[],"optionalDependencies":[],"conflicts":[],"kind":"telemetry-exporter","apiVersion":"1.0","capabilities":["metric-export","trace-export"],"runtimeTargets":["teacher-server"],"acceptedDataClassifications":["operational","pseudonymous","student-content"],"destination":"external"} },
 ]);
 
 export const dashboardModuleCatalog: readonly DashboardModuleCatalogEntry[] = Object.freeze([
@@ -63,4 +63,4 @@ export const dashboardThemeCatalog: readonly DashboardThemeCatalogEntry[] = Obje
 ]);
 
 export const dashboardCatalogRevision =
-  "b96bd6a040c795bd36524a4863b6bf4f0d4ee174da7941f1b545c3f7473ff063";
+  "10a54b751f5e474735d1e3dfb9ba9d749583d24d401c721a8d2631eabc3e83e8";

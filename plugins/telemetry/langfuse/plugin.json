@@ -7,8 +7,8 @@
   "implementationVersion": "0.1.0",
   "entrypoint": "./src/index.ts",
   "configurationVersion": 1,
-  "capabilities": ["metric-export"],
+  "capabilities": ["metric-export", "trace-export"],
   "runtimeTargets": ["teacher-server"],
-  "acceptedDataClassifications": ["operational"],
+  "acceptedDataClassifications": ["operational", "pseudonymous", "student-content"],
   "destination": "external"
 }

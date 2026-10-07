@@ -57,6 +57,9 @@ export class SessionsController {
   get hasUnsavedDrafts(): boolean {
     return this.drafts.hasUnsavedDrafts;
   }
+  get exportClient() {
+    return this.client.exports;
+  }
   get review(): EvaluationController | undefined {
     return this.drafts.review(this.state.runId);
   }

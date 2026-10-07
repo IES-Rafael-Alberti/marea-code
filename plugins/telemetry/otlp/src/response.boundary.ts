@@ -6,16 +6,20 @@ function object(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function accepted(text: string): void {
+function accepted(text: string, rejectedField: string): void {
   const response = object(JSON.parse(text));
   if (response.partialSuccess == null) return;
   const partial = object(response.partialSuccess);
-  const rejected = partial.rejectedDataPoints ?? "0";
+  const rejected = partial[rejectedField] ?? "0";
   if (rejected !== "0" && rejected !== 0) throw new TelemetryExporterError("unavailable");
   // Warnings with zero rejected points are accepted, but never logged or returned.
 }
 
-export async function consumeResponse(response: Response, limit: number): Promise<void> {
+export async function consumeResponse(
+  response: Response,
+  limit: number,
+  rejectedField = "rejectedDataPoints",
+): Promise<void> {
   const body: ReadableStream<Uint8Array> | null = response.body;
   const reader = body?.getReader();
   if (!reader) throw new TelemetryExporterError("unavailable");
@@ -39,7 +43,10 @@ export async function consumeResponse(response: Response, limit: number): Promis
       buffer.set(chunk.value, size);
       size += chunk.value.byteLength;
     }
-    accepted(new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, size)));
+    accepted(
+      new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, size)),
+      rejectedField,
+    );
   } finally {
     try {
       await reader.cancel();

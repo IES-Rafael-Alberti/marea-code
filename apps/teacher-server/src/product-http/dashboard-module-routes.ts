@@ -1,4 +1,5 @@
 import { registerServerSettingsRoutes } from "./server-settings-http.boundary.js";
+import { registerSessionExportRoutes } from "./session-export-http.boundary.js";
 import { registerEducationalInsightsRoutes } from "./educational-insights-http.boundary.js";
 import type { Hono, MiddlewareHandler } from "hono";
 import type { AuthenticatedIdentity } from "../identity/contracts.js";
@@ -15,6 +16,12 @@ export function registerDashboardModuleRoutes(options: {
   readonly services: TeacherProductServices;
 }): void {
   registerServerSettingsRoutes({ ...options, service: options.services.serverSettings });
+  registerServerSettingsRoutes({
+    ...options,
+    service: options.services.observability,
+    path: "/api/v1/dashboard/observability",
+  });
+  registerSessionExportRoutes({ ...options, service: options.services.sessionExport });
   registerEducationalInsightsRoutes({ ...options, service: options.services.educationalInsights });
   registerDashboardProfileRoutes({ ...options, service: options.services.profiles });
   registerUsageHealthRoutes({ ...options, service: options.services.usageHealth });

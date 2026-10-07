@@ -2,7 +2,7 @@ import {
   parseTelemetryExporterConfiguration,
   TelemetryExporterError,
   type TelemetryExporterConfiguration,
-  type TelemetryExporterConnections,
+  type TelemetryExporterConnectionInput,
 } from "@marea/plugin-api";
 
 const reserved = new Set([
@@ -20,7 +20,7 @@ const reserved = new Set([
 
 export function snapshot(
   configuration: TelemetryExporterConfiguration<"otlp">,
-  connection: TelemetryExporterConnections["otlp"],
+  connection: TelemetryExporterConnectionInput<"otlp">,
 ) {
   try {
     const settings = parseTelemetryExporterConfiguration(configuration);

@@ -1,0 +1,23 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`includes delivery references in reviewed deletion counts and invalidates a review when delivery changes > retention review with delivery references 1`] = `
+{
+  "blockers": [],
+  "bytes": 1261,
+  "fingerprint": "sha256:23674a890a2c5f058b0ebc59d6e293c2fdb31d8383e0b14dd94204f0dfcecfae",
+  "node": {
+    "key": {
+      "runId": "run:b",
+    },
+    "kind": "run",
+    "observed": {
+      "kind": "run-snapshot",
+      "runId": "run:b",
+      "snapshotDigest": "sha256:2c2c86840f2214881eebef0c332253a92f39c6177e3ed4b1c8ea2436072aa3a0",
+      "snapshotId": "snapshot:history",
+    },
+  },
+  "rows": 10,
+  "snapshotId": "snapshot:history",
+}
+`;

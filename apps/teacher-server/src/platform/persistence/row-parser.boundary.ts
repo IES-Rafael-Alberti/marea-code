@@ -7,6 +7,10 @@ const StoredNumberSchema = z.number().int();
 function storedDataError(): never {
   throw new Error("Stored teacher data is invalid.");
 }
+export function requiredRow(row: SqliteRow | undefined): SqliteRow {
+  if (row === undefined) storedDataError();
+  return row;
+}
 
 export function rowText(row: SqliteRow, key: string): string {
   const value = row[key];

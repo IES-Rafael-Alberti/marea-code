@@ -11,6 +11,7 @@ import {
   createProfileMigrationCatalog,
   createEducationalMigrationCatalog,
   createStudentIdentityMigrationCatalog,
+  createObservabilityMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
   type SqliteStorage,
@@ -104,7 +105,8 @@ export function createOperatorCliApplication(
 ): ComposedInstallation {
   capability.assertOwned();
   const version = inspectSqliteSchemaVersion({ databasePath: config.databasePath });
-  const identities = version === createStudentIdentityMigrationCatalog().length;
+  const observability = version === createObservabilityMigrationCatalog().length;
+  const identities = observability || version === createStudentIdentityMigrationCatalog().length;
   const educational = identities || version === createEducationalMigrationCatalog().length;
   const profiles = educational || version === createProfileMigrationCatalog().length;
   const activated = version === createAuditMigrationCatalog().length || profiles;
@@ -119,13 +121,15 @@ export function createOperatorCliApplication(
       activated
         ? {
             databasePath: config.databasePath,
-            schema: identities
-              ? "student-identities"
-              : educational
-                ? "educational-insights"
-                : profiles
-                  ? "dashboard-profiles"
-                  : "retention-audit",
+            schema: observability
+              ? "observability"
+              : identities
+                ? "student-identities"
+                : educational
+                  ? "educational-insights"
+                  : profiles
+                    ? "dashboard-profiles"
+                    : "retention-audit",
           }
         : { databasePath: config.databasePath },
     );

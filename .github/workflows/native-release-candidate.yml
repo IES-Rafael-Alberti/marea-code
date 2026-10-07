@@ -220,6 +220,14 @@ jobs:
           bun $browserCli install --with-deps chromium
           if ($LASTEXITCODE -ne 0) { throw 'Chromium installation failed' }
           "PLAYWRIGHT_PACKAGE=$(Join-Path $browser 'package.json')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: Observability settings and session export in a real browser
+        if: runner.os != 'Windows' && matrix.component == 'server'
+        run: |
+          $env:MAREA_PROFILE_HOST = Join-Path $env:RUNNER_TEMP 'marea-observability-host'
+          bun build apps/teacher-server/smoke/dashboard-host.ts --compile --outfile $env:MAREA_PROFILE_HOST
+          if ($LASTEXITCODE -ne 0) { throw 'Synthetic observability host compilation failed' }
+          node apps/dashboard/browser/observability.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Observability and session export browser acceptance failed' }
       - name: Fresh managed server setup and update recovery
         if: matrix.component == 'server'
         run: |

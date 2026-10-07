@@ -1,0 +1,153 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`appends the trace route without rewriting a matching segment inside the collector base path > OTLP span wire contract 1`] = `
+{
+  "resourceSpans": [
+    {
+      "resource": {
+        "attributes": [
+          {
+            "key": "service.name",
+            "value": {
+              "stringValue": "marea-teacher",
+            },
+          },
+          {
+            "key": "service.version",
+            "value": {
+              "stringValue": "preview-test",
+            },
+          },
+        ],
+      },
+      "scopeSpans": [
+        {
+          "scope": {
+            "name": "marea.sessions",
+            "version": "1",
+          },
+          "spans": [
+            {
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-hash",
+                  },
+                },
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "student-hash",
+                  },
+                },
+                {
+                  "key": "marea.class.id",
+                  "value": {
+                    "stringValue": "class-hash",
+                  },
+                },
+                {
+                  "key": "gen_ai.input.messages",
+                  "value": {
+                    "stringValue": "Student question",
+                  },
+                },
+                {
+                  "key": "gen_ai.output.messages",
+                  "value": {
+                    "stringValue": "Tutor answer",
+                  },
+                },
+                {
+                  "key": "marea.metadata",
+                  "value": {
+                    "stringValue": "{"complete":true}",
+                  },
+                },
+              ],
+              "endTimeUnixNano": "1791417601000000000",
+              "kind": 1,
+              "name": "Turn",
+              "spanId": "bbbbbbbbbbbbbbbb",
+              "startTimeUnixNano": "1791417600000000000",
+              "status": {
+                "code": 1,
+              },
+              "traceId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            },
+            {
+              "attributes": [
+                {
+                  "key": "session.id",
+                  "value": {
+                    "stringValue": "session-hash",
+                  },
+                },
+                {
+                  "key": "user.id",
+                  "value": {
+                    "stringValue": "student-hash",
+                  },
+                },
+                {
+                  "key": "marea.class.id",
+                  "value": {
+                    "stringValue": "class-hash",
+                  },
+                },
+                {
+                  "key": "gen_ai.input.messages",
+                  "value": {
+                    "stringValue": "[{"role":"user","content":"Question"}]",
+                  },
+                },
+                {
+                  "key": "gen_ai.output.messages",
+                  "value": {
+                    "stringValue": "Answer",
+                  },
+                },
+                {
+                  "key": "marea.metadata",
+                  "value": {
+                    "stringValue": "{"attempt":1}",
+                  },
+                },
+                {
+                  "key": "gen_ai.request.model",
+                  "value": {
+                    "stringValue": "model-name",
+                  },
+                },
+                {
+                  "key": "gen_ai.usage.input_tokens",
+                  "value": {
+                    "intValue": "12",
+                  },
+                },
+                {
+                  "key": "gen_ai.usage.output_tokens",
+                  "value": {
+                    "intValue": "8",
+                  },
+                },
+              ],
+              "endTimeUnixNano": "1791417600900000000",
+              "kind": 1,
+              "name": "Model",
+              "parentSpanId": "bbbbbbbbbbbbbbbb",
+              "spanId": "cccccccccccccccc",
+              "startTimeUnixNano": "1791417600100000000",
+              "status": {
+                "code": 2,
+              },
+              "traceId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            },
+          ],
+        },
+      ],
+    },
+  ],
+}
+`;

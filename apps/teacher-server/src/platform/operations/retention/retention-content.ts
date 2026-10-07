@@ -1,4 +1,5 @@
 import { hasEducationalStorage } from "./educational-retention.js";
+import { hasObservabilityStorage } from "./observability-retention.js";
 import { hasProfileStorage } from "./profile-retention.js";
 import { hasExternalIdentityStorage } from "./external-identity-retention.js";
 import type { SqliteApplicationDatabase } from "@marea/sqlite-storage";
@@ -57,6 +58,14 @@ function removeRows(database: SqliteApplicationDatabase, plan: RowPlan): number 
       plan.accountIds,
     );
   }
+  if (hasObservabilityStorage(database))
+    run(
+      [
+        "DELETE FROM marea_trace_outbox WHERE run_id = ?1",
+        "DELETE FROM marea_trace_progress WHERE run_id = ?1",
+      ],
+      plan.runIds,
+    );
   run(RUN_DELETIONS, plan.runIds);
   run(SNAPSHOT_DELETIONS, plan.snapshotIds);
   if (hasProfileStorage(database))
