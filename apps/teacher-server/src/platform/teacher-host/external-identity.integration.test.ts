@@ -1,4 +1,5 @@
 import type { ExternalIdentity, IdentityProvider } from "@marea/plugin-api";
+import { CLASS_CONFIGURATION_REQUIRED_HEADER, ProtocolErrorResponseSchema } from "@marea/protocol";
 import { createStudentIdentityMigrationCatalog } from "@marea/sqlite-storage/catalogs";
 import { describe, expect, it, vi } from "vitest";
 
@@ -6,6 +7,7 @@ vi.mock("bun:sqlite", () => import("../operations/retention/retention-bun-sqlite
 
 import { request } from "../../product-http/product-http.fixture.js";
 import { NOW, composedHost, login, seededDatabase } from "./teacher-services.fixture.js";
+import { saveRequest } from "../../teaching/configuration/dashboard-module.fixture.js";
 
 const PROVIDER_ID = "org.example.idp";
 const label = { es: "Centro", en: "School", eu: "Ikastetxea" };
@@ -120,6 +122,64 @@ function bootstrap(host: Awaited<ReturnType<typeof composedHost>>, token: string
 }
 
 describe("external sign-in through the composed teacher host", () => {
+  it("explains a missing class configuration and lets the saved external session retry after the teacher saves", async () => {
+    const database = governedDatabase();
+    database.execute("DELETE FROM marea_current_class_teaching");
+    const host = await composedHost(database, undefined, undefined, undefined, [
+      {
+        id: PROVIDER_ID,
+        descriptor: { displayName: label, ruleKinds: [{ kind: "email", label }] },
+        provider,
+      },
+    ]);
+    const cookie = await teacherCookie(host);
+    await changeRules(host, cookie, "class:one", "add", [ANA.email]);
+    const signedIn = await signIn(host);
+    expect(signedIn.status).toBe(200);
+    const token = (signedIn.body.session as { token: string }).token;
+    expect((await bootstrap(host, token)).status).toBe(200);
+    const open = {
+      protocolVersion: "0.1",
+      clientVersion: "0.1.0-preview.17",
+      requestId: "request:open",
+      idempotencyKey: "open:one",
+      clientSessionId: "client:one",
+      project: { displayName: "test" },
+      intent: { kind: "new" },
+    };
+    const rejected = await host.app.fetch(request("/v1/runs/open", open, token));
+    expect(rejected.status).toBe(409);
+    expect(rejected.headers.get(CLASS_CONFIGURATION_REQUIRED_HEADER)).toBe("true");
+    // Older clients still parse the exact protocol 0.1 body.
+    expect(ProtocolErrorResponseSchema.parse(await rejected.json())).toMatchObject({
+      error: { code: "run.unavailable", retryable: false },
+      requestId: "request:open",
+    });
+    expect(database.readOne("SELECT COUNT(*) AS total FROM marea_runs")?.total).toBe(0n);
+    const saved = await host.app.fetch(
+      request(
+        "/api/v1/dashboard/teaching/save",
+        saveRequest({
+          agentMode: "free",
+          automaticEvaluation: false,
+          classInstructions: {
+            tutoring: "Help the student learn.",
+            free: "Help with the project.",
+          },
+          selection: { didactic: [], evaluation: [] },
+        }),
+        undefined,
+        { cookie, origin: "https://dashboard.test" },
+      ),
+    );
+    expect(saved.status).toBe(200);
+    expect((await bootstrap(host, token)).status).toBe(200);
+    const opened = await host.app.fetch(request("/v1/runs/open", open, token));
+    expect(opened.status).toBe(201);
+    expect(opened.headers.has(CLASS_CONFIGURATION_REQUIRED_HEADER)).toBe(false);
+    expect(database.readOne("SELECT COUNT(*) AS total FROM marea_runs")?.total).toBe(1n);
+  });
+
   it("admits listed students into each listed class and follows the teacher's rules", async () => {
     const host = await composedHost(governedDatabase(), undefined, undefined, undefined, [
       {

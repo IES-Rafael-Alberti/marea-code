@@ -3,6 +3,9 @@ import * as z from "zod";
 import { RequestIdSchema } from "./identifiers.js";
 import { ProtocolVersionSchema } from "./version.js";
 
+/** Optional HTTP hint; the protocol 0.1 error body stays readable by older clients. */
+export const CLASS_CONFIGURATION_REQUIRED_HEADER = "x-marea-class-configuration-required";
+
 export const ProtocolErrorCodeSchema = z.enum([
   "auth.invalid",
   "protocol.incompatible",

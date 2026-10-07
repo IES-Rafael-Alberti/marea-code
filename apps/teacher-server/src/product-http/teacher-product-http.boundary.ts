@@ -7,6 +7,7 @@ import type { MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import {
   ActiveRunDashboardQuerySchema,
+  CLASS_CONFIGURATION_REQUIRED_HEADER,
   EvaluationQuerySchema,
   GenerateEvaluationRequestSchema,
   ApproveEvaluationRequestSchema,
@@ -33,7 +34,7 @@ import {
 } from "@marea/protocol";
 import { parseBearerCredential, RequestPolicy } from "@marea/transport-server";
 import * as z from "zod";
-import { TeacherDomainError } from "../identity/errors.js";
+import { ClassConfigurationRequiredError, TeacherDomainError } from "../identity/errors.js";
 import type { AuthenticatedIdentity } from "../identity/contracts.js";
 import { ModelGatewayService } from "../model-gateway/model-gateway-service.js";
 import type { TeacherProductHttpApplication, TeacherProductHttpOptions } from "./contracts.js";
@@ -91,7 +92,10 @@ function domainError(error: unknown, requestId: RequestId): Response {
     return protocolError(401, "auth.invalid", false, requestId);
   }
   if (error.code === "run.unavailable") {
-    return protocolError(409, "run.unavailable", false, requestId);
+    const response = protocolError(409, "run.unavailable", false, requestId);
+    if (error instanceof ClassConfigurationRequiredError)
+      response.headers.set(CLASS_CONFIGURATION_REQUIRED_HEADER, "true");
+    return response;
   }
   return protocolError(
     error.code === "dashboard.forbidden" ? 403 : 409,

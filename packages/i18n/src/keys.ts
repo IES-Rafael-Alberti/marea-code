@@ -28,6 +28,14 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.cli.invalid-language",
   "student.cli.language-save-failed",
   "student.cli.server-url-missing",
+  "student.cli.class-configuration-required",
+  "student.cli.run-unavailable",
+  "student.cli.connection-timeout",
+  "student.cli.response-invalid",
+  "student.cli.terminal-required",
+  "student.cli.renderer-failed",
+  "student.cli.local-state-invalid",
+  "student.cli.failure-code",
   "student.cli.unexpected-error",
   "student.feedback.ack-hint",
   "student.feedback.acknowledged",
@@ -153,6 +161,7 @@ export type MessageKey = (typeof MESSAGE_KEYS)[number];
 
 /** Parameters accepted by each message. Missing keys are intentionally not accepted. */
 export interface MessageParameterMap {
+  readonly "student.cli.failure-code": { readonly code: string };
   readonly "student.cli.invalid-language": { readonly option: string };
   readonly "student.auth.external": { readonly provider: string };
   readonly "student.auth.external-open": { readonly url: string };

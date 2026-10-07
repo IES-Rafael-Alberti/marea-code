@@ -1,7 +1,7 @@
 import { StudentRunSnapshotSchema } from "@marea/protocol";
 
 import type { AuthenticatedIdentity } from "../../identity/contracts.js";
-import { TeacherDomainError } from "../../identity/errors.js";
+import { ClassConfigurationRequiredError, TeacherDomainError } from "../../identity/errors.js";
 import type { RunSnapshotCapture, RunSnapshotSource } from "../../sessions/contracts.js";
 import type { TeachingConfigurationRepository } from "./contracts.js";
 
@@ -22,7 +22,7 @@ export class ConfigurationSnapshotSource implements RunSnapshotSource {
     if (identity.role !== "student" || identity.classId === null)
       throw new TeacherDomainError("run.unavailable");
     const configuration = this.#repository.loadForStudent(identity);
-    if (configuration === null) throw new TeacherDomainError("run.unavailable");
+    if (configuration === null) throw new ClassConfigurationRequiredError();
     const capture = Object.freeze({
       snapshot: StudentRunSnapshotSchema.parse({
         ...configuration.publicTemplate,

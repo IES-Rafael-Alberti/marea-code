@@ -35,6 +35,9 @@ exports[`preserves the reviewed Basque interface copy 1`] = `
   "student.auth.method-rejected": "Gordetako saioa ez da baliozkoa. Nola jarraitu nahi duzu?",
   "student.auth.password-label": "Pasahitza",
   "student.auth.required": "Eremu hau beharrezkoa da.",
+  "student.cli.class-configuration-required": "Irakasleak klase honen konfigurazioa Ezarpenak → Klase hau atalean gorde behar du hasi ahal izateko. Ondoren, exekutatu marea berriro; ez duzu berriro instalatu edo saioa ezabatu behar.",
+  "student.cli.connection-timeout": "Zerbitzariak ez du garaiz erantzun. Egiaztatu martxan dagoela eta ikasgelako sarean zaudela; exekutatu marea berriro.",
+  "student.cli.failure-code": "Diagnostiko-kodea: {{code}}. Sartu arazoaren berri ematean.",
   "student.cli.help": "Erabilera: marea [--server <URL>] [--lang <locale>] [--no-mouse]
        marea feedback
        marea feedback --ack <notice-id>
@@ -42,7 +45,12 @@ exports[`preserves the reviewed Basque interface copy 1`] = `
 Ireki Marea uneko proiektuan, irakurri irakaslearen irakurri gabeko feedbacka edo markatu ohar bat irakurritzat. Erabili --lang automatic, es, en edo eu exekuzio honetarako.",
   "student.cli.invalid-language": "{{option}} hizkuntza-aukera ez da baliozkoa. Erabili automatic, es, en edo eu.",
   "student.cli.language-save-failed": "Ezin izan da interfazearen hizkuntza gorde. Saio honetan bakarrik egongo da aktibo.",
+  "student.cli.local-state-invalid": "Mareak ezin ditu proiektu honen gordetako datuak irakurri. Gorde datuak eta eman kode hau irakasleari, berreskuratu ahal izateko.",
+  "student.cli.renderer-failed": "Ezin izan da terminaleko interfazea ireki. Probatu beste terminal batean eta eman kode hau berriro huts egiten badu.",
+  "student.cli.response-invalid": "Zerbitzariak bezero honek irakurri ezin duen erantzuna bidali du. Egiaztatu zerbitzariaren helbidea eta eman kode hau irakasleari.",
+  "student.cli.run-unavailable": "Zerbitzariak ezin du saio hau ireki. Eskatu irakasleari zure sarbidea eta klasearen konfigurazioa gordeta dagoela egiaztatzeko; ondoren, exekutatu marea berriro.",
   "student.cli.server-url-missing": "Mareak oraindik ez du irakaslearen zerbitzariaren helbiderik.",
+  "student.cli.terminal-required": "Exekutatu marea zuzenean terminal interaktibo batean.",
   "student.cli.unexpected-error": "Marea ezin izan da hasi. Saiatu berriro.",
   "student.conversation.approve": "Y baimendu",
   "student.conversation.input-placeholder": "Idatzi mezu bat",

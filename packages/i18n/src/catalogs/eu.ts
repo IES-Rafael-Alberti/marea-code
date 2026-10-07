@@ -34,6 +34,20 @@ const basqueCatalog = {
   "student.cli.language-save-failed":
     "Ezin izan da interfazearen hizkuntza gorde. Saio honetan bakarrik egongo da aktibo.",
   "student.cli.server-url-missing": "Mareak oraindik ez du irakaslearen zerbitzariaren helbiderik.",
+  "student.cli.class-configuration-required":
+    "Irakasleak klase honen konfigurazioa Ezarpenak → Klase hau atalean gorde behar du hasi ahal izateko. Ondoren, exekutatu marea berriro; ez duzu berriro instalatu edo saioa ezabatu behar.",
+  "student.cli.run-unavailable":
+    "Zerbitzariak ezin du saio hau ireki. Eskatu irakasleari zure sarbidea eta klasearen konfigurazioa gordeta dagoela egiaztatzeko; ondoren, exekutatu marea berriro.",
+  "student.cli.connection-timeout":
+    "Zerbitzariak ez du garaiz erantzun. Egiaztatu martxan dagoela eta ikasgelako sarean zaudela; exekutatu marea berriro.",
+  "student.cli.response-invalid":
+    "Zerbitzariak bezero honek irakurri ezin duen erantzuna bidali du. Egiaztatu zerbitzariaren helbidea eta eman kode hau irakasleari.",
+  "student.cli.terminal-required": "Exekutatu marea zuzenean terminal interaktibo batean.",
+  "student.cli.renderer-failed":
+    "Ezin izan da terminaleko interfazea ireki. Probatu beste terminal batean eta eman kode hau berriro huts egiten badu.",
+  "student.cli.local-state-invalid":
+    "Mareak ezin ditu proiektu honen gordetako datuak irakurri. Gorde datuak eta eman kode hau irakasleari, berreskuratu ahal izateko.",
+  "student.cli.failure-code": "Diagnostiko-kodea: {{code}}. Sartu arazoaren berri ematean.",
   "student.cli.unexpected-error": "Marea ezin izan da hasi. Saiatu berriro.",
   "student.feedback.ack-hint":
     "Irakurri ondoren, markatu irakurritzat komando honekin: {{command}}",

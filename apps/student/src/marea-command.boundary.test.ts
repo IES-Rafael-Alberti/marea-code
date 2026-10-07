@@ -475,7 +475,9 @@ describe("marea command", () => {
         startConversation: vi.fn(),
       }),
     ).resolves.toBe(1);
-    expect(options.errors).toEqual(["Marea no ha podido iniciarse. Inténtalo de nuevo.\n"]);
+    expect(options.errors).toEqual([
+      "Marea no ha podido iniciarse. Inténtalo de nuevo.\nCódigo de diagnóstico: local-state/unexpected. Inclúyelo al comunicar el problema.\n",
+    ]);
     expect(options.errors.join("")).not.toContain("secret provider key");
   });
 });

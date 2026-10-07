@@ -1,4 +1,5 @@
 import { parseServerArguments } from "./server-arguments.js";
+import { startupFailure } from "./startup-failure.boundary.js";
 import { ensureGitWorkspace } from "./git-workspace.boundary.js";
 import { openInputHistory, type PersistentInputHistory } from "./input-history.boundary.js";
 import { createHash, randomUUID } from "node:crypto";
@@ -225,12 +226,14 @@ async function runStudent(
   options: MareaCommandOptions,
   runtime: MareaCommandRuntime,
   serverUrl: string,
+  stage: (value: string) => void,
 ): Promise<void> {
   let languagePreference: LocalePreference =
     options.languagePreference ?? options.translator.locale;
   let translator = options.translator;
   const { projectRoot, stateDirectory } = studentLocations(options, serverUrl);
   await runtime.ensureWorkspace?.(projectRoot, translator);
+  stage("local-state");
   const conversation = createBindableConversationPort();
   const authentication = createAuthenticationPrompt(
     createInquirerAuthenticationQuestions(translator),
@@ -248,6 +251,7 @@ async function runStudent(
       getExecuteWarning: () => translator.t("student.tui.approval.execute-warning"),
     }),
   });
+  stage("session");
   let session: ConversationTuiSession | null = null;
   let startedSession: object | null = null;
   await runInteractiveMarea({
@@ -261,6 +265,7 @@ async function runStudent(
     },
     projectDisplayName: basename(projectRoot) || "project",
     async waitForExit(): Promise<void> {
+      stage("interface");
       const pendingTurn = await application.controller.pendingTurn();
       const history = await runtime.openHistory?.(stateDirectory);
       session = await runtime.startConversation({
@@ -366,6 +371,7 @@ async function executeSelectedCommand(
     options.output.error(`${options.translator.t("student.cli.server-url-missing")}\n`);
     return 1;
   }
+  let stage = "workspace";
   try {
     if (kind === "feedback")
       return await feedback({
@@ -375,10 +381,12 @@ async function executeSelectedCommand(
         translator: options.translator,
         output: options.output,
       });
-    await runStudent(options, runtime, serverUrl);
+    await runStudent(options, runtime, serverUrl, (value) => {
+      stage = value;
+    });
     return 0;
-  } catch {
-    options.output.error(`${options.translator.t("student.cli.unexpected-error")}\n`);
+  } catch (error) {
+    options.output.error(startupFailure(error, options.translator, stage));
     return 1;
   }
 }

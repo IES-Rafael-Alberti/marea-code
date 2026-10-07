@@ -37,6 +37,21 @@ const spanishCatalog = {
     "No se ha podido guardar el idioma de la interfaz. Solo estará activo durante esta sesión.",
   "student.cli.server-url-missing":
     "Marea todavía no tiene configurada la dirección del servidor del profesor.",
+  "student.cli.class-configuration-required":
+    "El profesor debe guardar la configuración de esta clase en Ajustes → Esta clase antes de que puedas empezar. Después, vuelve a ejecutar marea; no necesitas reinstalar ni borrar tu sesión.",
+  "student.cli.run-unavailable":
+    "El servidor no puede abrir esta sesión. Pide al profesor que compruebe tu acceso y que la configuración de la clase esté guardada; después vuelve a ejecutar marea.",
+  "student.cli.connection-timeout":
+    "El servidor no ha respondido a tiempo. Comprueba que sigue encendido y que estás en la red del aula; vuelve a ejecutar marea.",
+  "student.cli.response-invalid":
+    "El servidor ha enviado una respuesta que este cliente no puede leer. Comprueba la dirección del servidor y comunica este código al profesor.",
+  "student.cli.terminal-required": "Abre marea directamente en una terminal interactiva.",
+  "student.cli.renderer-failed":
+    "No se ha podido abrir la interfaz de terminal. Prueba en otra terminal y comunica este código si vuelve a fallar.",
+  "student.cli.local-state-invalid":
+    "Marea no puede leer los datos guardados de este proyecto. Conserva esos datos y comunica este código al profesor para poder recuperarlos.",
+  "student.cli.failure-code":
+    "Código de diagnóstico: {{code}}. Inclúyelo al comunicar el problema.",
   "student.cli.unexpected-error": "Marea no ha podido iniciarse. Inténtalo de nuevo.",
   "student.feedback.ack-hint": "Cuando lo hayas leído, márcalo como leído con: {{command}}",
   "student.feedback.acknowledged": "Feedback marcado como leído.",

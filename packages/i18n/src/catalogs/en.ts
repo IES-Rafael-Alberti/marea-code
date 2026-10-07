@@ -36,6 +36,20 @@ const englishCatalog = {
   "student.cli.language-save-failed":
     "The interface language could not be saved. It is active for this session only.",
   "student.cli.server-url-missing": "Marea does not have a teacher server address yet.",
+  "student.cli.class-configuration-required":
+    "Your teacher must save this class configuration in Settings → This class before you can start. Then run marea again; you do not need to reinstall or delete your session.",
+  "student.cli.run-unavailable":
+    "The server cannot open this session. Ask your teacher to check your access and that the class configuration has been saved, then run marea again.",
+  "student.cli.connection-timeout":
+    "The server did not respond in time. Check that it is running and that you are on the classroom network, then run marea again.",
+  "student.cli.response-invalid":
+    "The server sent a response this client cannot read. Check the server address and share this code with your teacher.",
+  "student.cli.terminal-required": "Run marea directly in an interactive terminal.",
+  "student.cli.renderer-failed":
+    "The terminal interface could not open. Try another terminal and share this code if it fails again.",
+  "student.cli.local-state-invalid":
+    "Marea cannot read this project’s saved data. Keep the data and share this code with your teacher so it can be recovered.",
+  "student.cli.failure-code": "Diagnostic code: {{code}}. Include it when reporting the problem.",
   "student.cli.unexpected-error": "Marea could not start. Try again.",
   "student.feedback.ack-hint": "After reading it, mark it as read with: {{command}}",
   "student.feedback.acknowledged": "Feedback marked as read.",

@@ -1,4 +1,5 @@
 import { appendGitConfigParameters } from "./git-config-parameters.js";
+import { StudentWorkspaceError } from "./startup-failure.boundary.js";
 import * as z from "zod";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -111,7 +112,7 @@ export async function ensureGitWorkspace(
   try {
     await projectGit(root, ["--version"]);
   } catch {
-    throw new Error(translator.t("student.git.missing"));
+    throw new StudentWorkspaceError("student.git.missing", translator);
   }
   let repository: string | null = null;
   try {
@@ -121,7 +122,7 @@ export async function ensureGitWorkspace(
   }
   if (repository !== null) {
     if ((await realpath(repository)) !== (await realpath(root)))
-      throw new Error(translator.t("student.git.not-root"));
+      throw new StudentWorkspaceError("student.git.not-root", translator);
     return;
   }
   const accepted = await select({
@@ -131,7 +132,7 @@ export async function ensureGitWorkspace(
       { name: translator.t("student.git.cancel"), value: false },
     ],
   });
-  if (!accepted) throw new Error(translator.t("student.git.cancelled"));
+  if (!accepted) throw new StudentWorkspaceError("student.git.cancelled", translator);
   await projectGit(root, ["init"]);
   try {
     await writeFile(join(root, ".gitignore"), "node_modules/\n.venv/\n.env\n.env.*\n.DS_Store\n", {

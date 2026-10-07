@@ -1,4 +1,5 @@
 import { StudentHttpError } from "./http-error.js";
+import { CLASS_CONFIGURATION_REQUIRED_HEADER } from "@marea/protocol";
 export { StudentHttpError } from "./http-error.js";
 import { boundedEventDelivery } from "./event-delivery.js";
 import {
@@ -248,7 +249,13 @@ async function readBoundedBody(
 async function responseError(response: Response): Promise<StudentHttpError> {
   try {
     const parsed = ProtocolErrorResponseSchema.parse(parseJson(await readBoundedBody(response)));
-    return new StudentHttpError(response.status, parsed.error.code, parsed.error.retryable);
+    return new StudentHttpError(
+      response.status,
+      parsed.error.code,
+      parsed.error.retryable,
+      parsed.error.code === "run.unavailable" &&
+        response.headers.get(CLASS_CONFIGURATION_REQUIRED_HEADER) === "true",
+    );
   } catch (error: unknown) {
     if (error instanceof StudentHttpError && error.code === "response.too-large") return error;
   }

@@ -15,3 +15,9 @@ export class TeacherDomainError extends Error {
     this.code = code;
   }
 }
+
+export class ClassConfigurationRequiredError extends TeacherDomainError {
+  constructor() {
+    super("run.unavailable");
+  }
+}

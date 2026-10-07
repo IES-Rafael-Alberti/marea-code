@@ -2,7 +2,12 @@ export class StudentHttpError extends Error {
   readonly code: string;
   readonly retryable: boolean;
   readonly status: number;
-  constructor(status: number, code: string, retryable: boolean) {
+  constructor(
+    status: number,
+    code: string,
+    retryable: boolean,
+    readonly classConfigurationRequired = false,
+  ) {
     super("The Marea teacher server rejected the request.");
     this.name = "StudentHttpError";
     this.status = status;
