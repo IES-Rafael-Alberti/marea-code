@@ -10,7 +10,7 @@ const MAX_COMPATIBILITY_LENGTH = 500;
 const MAX_CRITERIA = 64;
 const MAX_CRITERION_CODE_LENGTH = 64;
 const MAX_CRITERION_TEXT_LENGTH = 1_024;
-const FRONTMATTER = /^---\n([\s\S]*?)\n---\n/u;
+const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/u;
 const CONTROL_CHARACTER = /\p{Cc}/u;
 
 const trimmedText = z.string().trim().min(1);

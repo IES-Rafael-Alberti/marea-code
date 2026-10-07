@@ -24,6 +24,20 @@ function expectInvalid(action: () => object, message: string): void {
 }
 
 describe("parseSkillFrontmatter", () => {
+  it.each(["\n", "\r\n"])("accepts skills saved with %j line endings", (newline) => {
+    const content = frontmatter("name: testing\ndescription: Testing guidance").replaceAll(
+      "\n",
+      newline,
+    );
+    expect(parseSkillFrontmatter(content, "testing", "didactic", LOCATION)).toEqual({
+      name: "testing",
+      description: "Testing guidance",
+      license: null,
+      compatibility: null,
+      criteria: [],
+    });
+  });
+
   it("parses the DeepAgents fields and Marea criteria strictly", () => {
     const parsed = parseSkillFrontmatter(
       frontmatter(`name: testing
