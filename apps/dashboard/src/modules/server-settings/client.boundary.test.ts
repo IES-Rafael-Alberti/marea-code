@@ -1,5 +1,11 @@
-import { expect, it, vi } from "vitest";
-import { saveSettings, settingsRequest } from "./client.boundary.js";
+import { beforeEach, expect, it, vi } from "vitest";
+import { present, setupInput } from "../../setup/setup.fixture.js";
+let saveSettings: typeof import("./client.boundary.js").saveSettings;
+let settingsRequest: typeof import("./client.boundary.js").settingsRequest;
+beforeEach(async () => {
+  vi.resetModules();
+  ({ saveSettings, settingsRequest } = await import("./client.boundary.js"));
+});
 const validSave = {
   operation: "save",
   expectedRevision: 0,
@@ -8,6 +14,46 @@ const validSave = {
   education: {},
   useCommonRoute: false,
 };
+it("preserves complete model routes and provider descriptors when reading and saving", async () => {
+  const route = setupInput().route;
+  const budget = present(route.budget);
+  const education = {
+    map: {
+      providerId: route.providerId,
+      model: route.model,
+      inputTokenCeiling: budget.inputTokenCeiling,
+      budget: budget.tutoring,
+    },
+  };
+  const projection = {
+    administrator: true,
+    initialized: true,
+    revision: 1,
+    useCommonRoute: true,
+    legacyRoutes: [{ classId: "class:legacy", route }],
+    route,
+    education,
+    providers: [
+      {
+        id: route.providerId,
+        descriptor: null,
+        configured: true,
+        supportsModels: true,
+        values: {},
+        secrets: ["apiKey"],
+      },
+    ],
+  };
+  const fetch = vi.fn(() => Promise.resolve(Response.json(projection)));
+  const signal = new AbortController().signal;
+  expect(await settingsRequest(fetch, { operation: "read" }, signal)).toEqual(projection);
+  const payload = { ...validSave, route, education, useCommonRoute: true };
+  expect(await saveSettings(fetch, payload, signal)).toEqual({ ok: true, value: projection });
+  expect(fetch).toHaveBeenLastCalledWith(
+    "/api/v1/dashboard/server-settings",
+    expect.objectContaining({ body: JSON.stringify(payload), signal }),
+  );
+});
 it("keeps revision conflicts distinct from uncertain failures without replaying a write", async () => {
   const fetch = vi.fn().mockResolvedValue(new Response("{}", { status: 409 }));
   const payload = validSave;

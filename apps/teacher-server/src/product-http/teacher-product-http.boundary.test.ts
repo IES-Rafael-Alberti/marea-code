@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { CLASS_CONFIGURATION_REQUIRED_HEADER } from "@marea/protocol";
 
 import { TeacherDomainError } from "../identity/errors.js";
 import {
@@ -290,6 +291,7 @@ describe("teacher product HTTP boundary", () => {
       });
       const result = await fetchJson(app, request("/v1/auth/enroll", enrollmentRequest));
       expect(result.response.status).toBe(status);
+      expect(result.response.headers.has(CLASS_CONFIGURATION_REQUIRED_HEADER)).toBe(false);
       expect(result.text).toContain(`"code":"${code}"`);
       expect(result.text).not.toContain("private failure");
     }

@@ -1,8 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { ProtocolErrorCodeSchema, ProtocolErrorResponseSchema } from "./errors.js";
+import {
+  CLASS_CONFIGURATION_REQUIRED_HEADER,
+  ProtocolErrorCodeSchema,
+  ProtocolErrorResponseSchema,
+} from "./errors.js";
 
 describe("protocol errors", () => {
+  it("keeps the optional class setup diagnostic header stable across client versions", () => {
+    expect(CLASS_CONFIGURATION_REQUIRED_HEADER).toBe("x-marea-class-configuration-required");
+  });
+
   it.each([
     "auth.invalid",
     "protocol.incompatible",
