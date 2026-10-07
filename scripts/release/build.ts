@@ -85,6 +85,7 @@ export function buildCandidate(argv: readonly string[]): string {
         VITE_MAREA_PREVIEW_VERSION: version,
       });
       cpSync(join(workspace, "apps/dashboard/dist"), join(root, "dashboard"), { recursive: true });
+      cpSync(join(workspace, "content/skills"), join(root, "skills"), { recursive: true });
     }
     // Syft scans the resolved native dependency installation, including license expressions.
     // This deliberately includes build tools: inventory scope is an explicit superset.

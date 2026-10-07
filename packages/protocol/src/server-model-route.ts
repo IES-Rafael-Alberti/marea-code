@@ -11,8 +11,10 @@ export const RouteBudgetSchema = z
   .strict()
   .refine(
     (budget) =>
-      budget.inputTokenCeiling <= budget.tutoring.maxInputTokens &&
-      budget.inputTokenCeiling <= budget.evaluation.maxInputTokens,
+      (budget.tutoring.unlimited === true ||
+        budget.inputTokenCeiling <= budget.tutoring.maxInputTokens) &&
+      (budget.evaluation.unlimited === true ||
+        budget.inputTokenCeiling <= budget.evaluation.maxInputTokens),
     "Both budgets must reserve the complete captured route input ceiling.",
   )
   .readonly();

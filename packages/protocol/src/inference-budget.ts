@@ -8,6 +8,8 @@ export const UsagePolicySchema = z
     costUnit: z.string().min(1).max(64),
     inputCostUnitsPerToken: CountSchema,
     outputCostUnitsPerToken: CountSchema,
+    /** Server-owned choice. Numeric ceilings are retained for switching limits back on. */
+    unlimited: z.boolean().optional(),
     maxRequests: CountSchema,
     maxTokens: CountSchema,
     maxCostUnits: CountSchema,
@@ -20,15 +22,17 @@ export const UsagePolicySchema = z
   .strict()
   .refine(
     (policy) =>
+      policy.unlimited === true ||
       BigInt(policy.maxInputTokens) + BigInt(policy.maxOutputTokens) <=
-      BigInt(Number.MAX_SAFE_INTEGER),
+        BigInt(Number.MAX_SAFE_INTEGER),
     "A reservation must fit the exact token counter.",
   )
   .refine(
     (policy) =>
+      policy.unlimited === true ||
       BigInt(policy.maxInputTokens) * BigInt(policy.inputCostUnitsPerToken) +
         BigInt(policy.maxOutputTokens) * BigInt(policy.outputCostUnitsPerToken) <=
-      BigInt(Number.MAX_SAFE_INTEGER),
+        BigInt(Number.MAX_SAFE_INTEGER),
     "A reservation must fit the exact cost counter.",
   )
   .readonly();

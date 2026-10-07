@@ -14,6 +14,9 @@ const hooks = vi.hoisted(() => ({
 }));
 const client = vi.hoisted(() => ({ settingsRequest: vi.fn(), saveSettings: vi.fn() }));
 vi.mock("./client.boundary.js", () => client);
+vi.mock("./provider-models.boundary.js", () => ({
+  useProviderModels: () => ({ catalogs: {}, refresh: () => undefined }),
+}));
 /** Each slot keeps its value across renders; setters write the slot directly. */
 function slot(initial: HookValue): [HookValue, (value: HookValue) => void] {
   const position = hooks.index;

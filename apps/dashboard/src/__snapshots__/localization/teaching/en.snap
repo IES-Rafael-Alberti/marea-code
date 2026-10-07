@@ -32,7 +32,7 @@
   },
   "noCurrent": "No configuration is saved for this class yet.",
   "noDraft": "Reading the configuration…",
-  "operatorWarning": "Operator prerequisites are missing. Reading is allowed but saving is blocked.",
+  "operatorWarning": "Save a provider and model in Settings → Server, then reload this class to save its teaching settings. Ask the server administrator if you cannot manage connections.",
   "problems": {
     "conflict": "The saved configuration changed while you were editing.",
     "forbidden": "You do not have access to this class.",
@@ -40,7 +40,7 @@
     "load": "Classes could not be loaded.",
     "skill-unavailable": "A selected skill is unavailable or stale on the server.",
     "uncertain": "The save outcome is unknown. Your draft is preserved.",
-    "unconfigured": "Operator prerequisites are not configured for this deployment.",
+    "unconfigured": "No model is configured for this class. Save a provider and model in Settings → Server, then reload this class.",
   },
   "recoveryHeading": "Recovery: current saved configuration",
   "recoveryNote": "Your draft is preserved next to the current saved values. Nothing is overwritten automatically.",

@@ -289,3 +289,74 @@ it("bounds the static channel independently of the number or size of published r
     offeredVersion(settings, () => Promise.resolve(new Response(body + " ")), "available"),
   ).rejects.toThrow("size limit");
 });
+
+it.each([
+  [408, {}, true, 0],
+  [429, { "retry-after": "3" }, true, 3000],
+  [500, { "retry-after": "99" }, true, 30000],
+  [503, { "retry-after": "-1" }, true, 0],
+  [404, { "retry-after": "invalid" }, false, 0],
+  [403, {}, false, 0],
+  [403, { "retry-after": "5" }, true, 5000],
+  [403, { "x-ratelimit-remaining": "0" }, true, 0],
+] as const)(
+  "classifies HTTP %s and bounds its requested retry delay",
+  async (status, headers, retryable, retryAfterMs) => {
+    await expect(
+      boundedDownload(
+        () => Promise.resolve(new Response("upstream", { status, headers })),
+        "https://test",
+        100,
+      ),
+    ).rejects.toMatchObject({
+      retryable,
+      retryAfterMs,
+      message: `Release download unavailable: HTTP ${String(status)}`,
+    });
+  },
+);
+it.each([false, true])(
+  "retries an interrupted authenticated file and reports recovery with progress=%s",
+  async (withProgress) => {
+    vi.useFakeTimers();
+    const progress = { stage: vi.fn(), update: vi.fn() };
+    let failures = 0;
+    const fetcher = (url: string) => {
+      if (url.endsWith(".manifest.json")) return Promise.resolve(Response.json(manifest));
+      if (url.endsWith(".sigstore.json")) return Promise.resolve(new Response("bundle"));
+      if (url.endsWith(sha256(Buffer.from("binary")))) {
+        failures += 1;
+        return Promise.resolve(
+          new Response(failures === 1 ? "temporarily unavailable" : "binary", {
+            status: failures === 1 ? 503 : 200,
+          }),
+        );
+      }
+      return Promise.resolve(new Response("license"));
+    };
+    const root = directory();
+    try {
+      const result = downloadPreview(settings, version, "linux-x64", root, {
+        fetch: fetcher,
+        verify: () => undefined,
+        ...(withProgress ? { progress } : {}),
+      });
+      await vi.runAllTimersAsync();
+      await expect(result).resolves.toEqual(manifest);
+      expect(failures).toBe(2);
+      expect(readFileSync(join(root, "marea"), "utf8")).toBe("binary");
+      if (withProgress)
+        expect(progress.stage).toHaveBeenCalledWith(
+          "Descarga interrumpida: marea. Reintentando (2/4) en 1 s...",
+        );
+    } finally {
+      vi.useRealTimers();
+    }
+  },
+);
+
+it("never marks an oversized response as safe to retry", async () => {
+  await expect(
+    boundedDownload(() => Promise.resolve(new Response("abcd")), "https://test", 3),
+  ).rejects.toMatchObject({ retryable: false, message: "Release download exceeds size limit" });
+});

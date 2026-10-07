@@ -32,7 +32,7 @@
   },
   "noCurrent": "Oraindik ez dago konfiguraziorik gordeta ikasgela honetarako.",
   "noDraft": "Konfigurazioa irakurtzen…",
-  "operatorWarning": "Operadorearen aurrebaldintzak falta dira. Irakurtzea baimenduta dago, baina gordetzea blokeatuta.",
+  "operatorWarning": "Gorde hornitzailea eta eredua Ezarpenak → Zerbitzaria atalean eta kargatu ikasgela berriro irakaskuntza-ezarpenak gordetzeko. Konexioak kudeatu ezin badituzu, eskatu zerbitzariaren administratzaileari.",
   "problems": {
     "conflict": "Gordetako konfigurazioa aldatu egin da editatzen ari zinela.",
     "forbidden": "Ez duzu ikasgela honetarako sarbiderik.",
@@ -40,7 +40,7 @@
     "load": "Ezin izan dira ikasgelak kargatu.",
     "skill-unavailable": "Hautatutako skill-a ez dago eskuragarri edo zaharkituta dago zerbitzarian.",
     "uncertain": "Ez dago gordetzearen emaitza berretsita. Zure zirriborroa mantendu da.",
-    "unconfigured": "Operadorearen aurrebaldintzak ez daude instalazio honetarako konfiguratuta.",
+    "unconfigured": "Ikasgela honek ez du eredurik konfiguratuta. Gorde hornitzailea eta eredua Ezarpenak → Zerbitzaria atalean eta kargatu ikasgela berriro.",
   },
   "recoveryHeading": "Berreskuratzea: gordetako uneko konfigurazioa",
   "recoveryNote": "Zure zirriborroa gordetako balioen ondoan mantentzen da. Ez da ezer automatikoki gainidazten.",

@@ -1,9 +1,20 @@
 import type { DashboardLocale } from "../../messages.js";
 const messages = {
   es: {
+    costUsd: "Límite de coste (USD)",
+    unlimited: "Sin límites de uso",
+    modelsLoading: "Comprobando conexión y obteniendo modelos…",
+    modelsReady: "Conexión comprobada · Modelos disponibles",
+    modelsInvalid: "No se pudo validar la clave. Revísala y vuelve a intentarlo.",
+    modelsUnavailable:
+      "No se pudieron obtener los modelos. Puedes escribir el identificador manualmente.",
+    modelsRefresh: "Volver a comprobar",
+    inputPriceUsd: "USD por millón de tokens de entrada",
+    outputPriceUsd: "USD por millón de tokens de salida",
+
     connectionsStep: "1. Conexiones con proveedores",
     connectionsHelp:
-      "Las credenciales pertenecen al servidor y nunca se muestran después de guardarlas. No se hace ninguna llamada de prueba al guardar.",
+      "Las credenciales pertenecen al servidor y nunca se muestran después de guardarlas. Al introducir la clave se comprueba la conexión y se consultan los modelos disponibles.",
     routeStep: "2. Modelo para las sesiones",
     routeHelp: "El modelo principal atiende la tutoría y, salvo que indiques otro, la evaluación.",
     limitsStep: "3. Límites y precios",
@@ -54,15 +65,25 @@ const messages = {
     inputPrice: "Unidades por token de entrada",
     outputPrice: "Unidades por token de salida",
     budgetNote:
-      "Los límites de tutoría y evaluación se aplican por sesión. Los precios deben corresponder al modelo elegido; no son tarifas consultadas al proveedor.",
+      "Por defecto no hay límites de uso. Al elegir un modelo del catálogo se rellenan sus precios, que puedes editar. Si escribes otro modelo, revisa los precios manualmente. Las tarifas son estimaciones y no incluyen descuentos ni caché.",
     unavailable: "Este plugin no ofrece un formulario de configuración.",
     missing: "No hay proveedores instalados.",
     unsaved: "Hay cambios sin guardar. ¿Quieres descartarlos?",
   },
   en: {
+    costUsd: "Cost ceiling (USD)",
+    unlimited: "Unlimited usage",
+    modelsLoading: "Checking connection and loading models…",
+    modelsReady: "Connection verified · Available models",
+    modelsInvalid: "The key could not be validated. Check it and retry.",
+    modelsUnavailable: "Models could not be loaded. You can type a model ID manually.",
+    modelsRefresh: "Check again",
+    inputPriceUsd: "USD per million input tokens",
+    outputPriceUsd: "USD per million output tokens",
+
     connectionsStep: "1. Provider connections",
     connectionsHelp:
-      "Credentials belong to the server and are never shown again after saving. Saving makes no test call.",
+      "Credentials belong to the server and are never shown again after saving. Entering a key checks the connection and loads available models.",
     routeStep: "2. Model for sessions",
     routeHelp: "The main model serves tutoring and, unless you choose another, evaluation.",
     limitsStep: "3. Limits and prices",
@@ -111,15 +132,25 @@ const messages = {
     inputPrice: "Units per input token",
     outputPrice: "Units per output token",
     budgetNote:
-      "Tutoring and evaluation limits apply per session. Prices must match the selected model; they are not fetched from the provider.",
+      "Usage is unlimited by default. Choosing a catalog model fills its editable prices. If you type a different model, review prices manually. Prices are estimates and exclude discounts and caching.",
     unavailable: "This plugin does not provide a configuration form.",
     missing: "No providers installed.",
     unsaved: "Discard unsaved changes?",
   },
   eu: {
+    costUsd: "Kostu muga (USD)",
+    unlimited: "Erabilera mugagabea",
+    modelsLoading: "Konexioa egiaztatzen eta ereduak kargatzen…",
+    modelsReady: "Konexioa egiaztatuta · Eredu erabilgarriak",
+    modelsInvalid: "Ezin izan da gakoa balioztatu. Berrikusi eta saiatu berriro.",
+    modelsUnavailable: "Ezin izan dira ereduak kargatu. Ereduaren IDa eskuz idatz dezakezu.",
+    modelsRefresh: "Egiaztatu berriro",
+    inputPriceUsd: "USD milioi bat sarrera-tokeneko",
+    outputPriceUsd: "USD milioi bat irteera-tokeneko",
+
     connectionsStep: "1. Hornitzaileekiko konexioak",
     connectionsHelp:
-      "Kredentzialak zerbitzariarenak dira eta gorde ondoren ez dira berriro erakusten. Gordetzean ez da proba-deirik egiten.",
+      "Kredentzialak zerbitzariarenak dira eta gorde ondoren ez dira berriro erakusten. Gakoa sartzean konexioa egiaztatu eta erabilgarri dauden ereduak kargatzen dira.",
     routeStep: "2. Saioetarako eredua",
     routeHelp: "Eredu nagusiak tutoretza eta, beste bat aukeratu ezean, ebaluazioa egiten ditu.",
     limitsStep: "3. Mugak eta prezioak",
@@ -171,7 +202,7 @@ const messages = {
     inputPrice: "Unitateak sarrerako token bakoitzeko",
     outputPrice: "Unitateak irteerako token bakoitzeko",
     budgetNote:
-      "Tutoretza eta ebaluazio mugak saioko aplikatzen dira. Prezioak aukeratutako ereduari dagozkio; ez dira hornitzailetik eskuratzen.",
+      "Lehenespenez ez dago erabilera mugarik. Katalogoko eredu bat aukeratzean prezio editagarriak betetzen dira. Beste eredu bat idatziz gero, berrikusi prezioak eskuz. Prezioak estimazioak dira; deskontuak eta cachea ez dira sartzen.",
     unavailable: "Plugin honek ez du konfigurazio formulariorik eskaintzen.",
     missing: "Ez dago hornitzailerik instalatuta.",
     unsaved: "Baztertu gorde gabeko aldaketak?",

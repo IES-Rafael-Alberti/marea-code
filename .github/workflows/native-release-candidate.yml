@@ -292,7 +292,7 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile --ignore-scripts
-      - name: Verify public server installation, retained data and clean reinstall
+      - name: Verify public student and server installs, retained data and clean reinstall
         run: bun scripts/release/published-reinstall-smoke.mjs "$PREVIEW_VERSION" "$GITHUB_REPOSITORY"
       - name: Make the tested publication available without recommending it
         run: bun scripts/release/publish-preview-channel.mjs "$GITHUB_REPOSITORY" "$PREVIEW_VERSION"

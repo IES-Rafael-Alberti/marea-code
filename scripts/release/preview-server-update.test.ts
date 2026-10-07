@@ -1,5 +1,6 @@
 import * as filesystem from "node:fs";
 vi.mock("node:fs", { spy: true });
+vi.mock("./preview-skills.boundary.js", () => ({ installExampleSkill: vi.fn() }));
 import {
   existsSync,
   mkdirSync,
@@ -33,6 +34,7 @@ vi.mock(
   () => ports,
 );
 vi.mock("../../apps/teacher-server/src/platform/teacher-host/teacher-host-config.js", () => ports);
+import { installExampleSkill } from "./preview-skills.boundary.js";
 import {
   activatePreviewServer,
   assertPreviewServerReady,
@@ -82,6 +84,10 @@ it("backs up before migration and activation, preserves settings and clears the 
   expect(
     await activatePreviewServer(root, "/programs/server-v2", "0.1.0-preview.2", activate),
   ).toBe("activated");
+  expect(installExampleSkill).toHaveBeenCalledExactlyOnceWith(root, "/programs/server-v2");
+  expect(vi.mocked(installExampleSkill).mock.invocationCallOrder[0]).toBeGreaterThan(
+    activate.mock.invocationCallOrder[0] ?? 0,
+  );
   expect(ports.createBackup).toHaveBeenCalledWith(expect.stringMatching(/^preview-/u));
   for (const call of writes.mock.calls) expect(call[2]).toEqual({ flag: "wx", mode: 0o600 });
   expect(ports.close).toHaveBeenCalledOnce();

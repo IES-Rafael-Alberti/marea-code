@@ -6,9 +6,11 @@ import {
 import { parseOpenRouterConfiguration } from "./configuration.js";
 import { openRouterHttp } from "./openrouter-http.boundary.js";
 import { createOpenRouterProviderWith } from "./provider.js";
+import { listOpenRouterModels } from "./models.boundary.js";
 
 const openRouterProviderPlugin: InferenceProviderCatalogEntry = defineInferenceProviderCatalogEntry(
   {
+    listModels: listOpenRouterModels,
     settings: {
       version: 1,
       name: { es: "OpenRouter", en: "OpenRouter", eu: "OpenRouter" },

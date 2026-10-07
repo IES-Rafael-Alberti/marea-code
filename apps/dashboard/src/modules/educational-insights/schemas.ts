@@ -4,9 +4,9 @@ export const budgetSchema = z.object({
   requests: z.number(),
   tokens: z.number(),
   costUnits: z.number(),
-  maxRequests: z.number(),
-  maxTokens: z.number(),
-  maxCostUnits: z.number(),
+  maxRequests: z.number().nullable(),
+  maxTokens: z.number().nullable(),
+  maxCostUnits: z.number().nullable(),
   costUnit: z.string(),
 });
 export const mapSchema = z.object({

@@ -2,21 +2,16 @@ import { it, expect } from "vitest";
 import * as z from "zod";
 import type { InferenceProviderEvent } from "@marea/plugin-api";
 import { fixture } from "./insights.fixture.js";
+import { EducationalRouteSchema } from "./configuration.js";
 import { EducationalInference } from "./inference.js";
 import { SYNTHETIC_ROUTE_BUDGET } from "../../test-support/usage-fixture.js";
 import { NOW } from "../../test-support/evaluation-fixture.js";
 it("enforces independent durable budgets and reserves no student usage", async () => {
   const f = fixture();
   let calls = 0;
-  const provider = {
-    async *stream(): AsyncIterable<InferenceProviderEvent> {
-      await Promise.resolve();
-      calls++;
-      yield { type: "text-delta", text: '{"ok":true}' };
-      yield { type: "usage", inputTokens: 100, outputTokens: 10 };
-      yield { type: "completed", finishReason: "stop" };
-    },
-  };
+  const provider = analysisProvider(() => {
+    calls++;
+  });
   const inference = new EducationalInference(
     f.database,
     { resolve: () => provider },
@@ -107,4 +102,70 @@ function routeOf(f: ReturnType<typeof fixture>) {
   const route = f.service.configuration.map;
   if (!route) throw new Error("missing route");
   return route;
+}
+
+it("allows unlimited educational analysis and projects absent ceilings explicitly", async () => {
+  const f = fixture();
+  const provider = analysisProvider(() => undefined);
+  const inference = new EducationalInference(
+    f.database,
+    { resolve: () => provider },
+    { now: () => NOW },
+  );
+  const route = {
+    ...routeOf(f),
+    inputTokenCeiling: 1,
+    budget: {
+      ...SYNTHETIC_ROUTE_BUDGET.evaluation,
+      unlimited: true,
+      maxRequests: 0,
+      maxTokens: 0,
+      maxCostUnits: 0,
+    },
+  };
+  await expect(
+    inference.generate(
+      route,
+      "unlimited",
+      "Analyze material beyond the dormant input ceiling",
+      {},
+      z.object({ ok: z.boolean() }),
+      new AbortController().signal,
+    ),
+  ).resolves.toEqual({ ok: true });
+  expect(
+    EducationalRouteSchema.safeParse({
+      ...route,
+      inputTokenCeiling: route.budget.maxInputTokens + 1,
+    }).success,
+  ).toBe(true);
+  expect(
+    EducationalRouteSchema.safeParse({
+      ...route,
+      inputTokenCeiling: route.budget.maxInputTokens + 1,
+      budget: { ...route.budget, unlimited: false },
+    }).success,
+  ).toBe(false);
+  expect(inference.usage("unlimited", route)).toEqual({
+    requests: 1,
+    tokens: 110,
+    costUnits: 230,
+    inFlight: 0,
+    maxRequests: null,
+    maxTokens: null,
+    maxCostUnits: null,
+    costUnit: route.budget.costUnit,
+  });
+});
+
+function analysisProvider(onRequest: () => void) {
+  return {
+    async *stream(): AsyncIterable<InferenceProviderEvent> {
+      await Promise.resolve();
+      onRequest();
+      yield { type: "text-delta", text: '{"ok":true}' };
+      yield { type: "usage", inputTokens: 100, outputTokens: 10 };
+      yield { type: "completed", finishReason: "stop" };
+    },
+  };
 }

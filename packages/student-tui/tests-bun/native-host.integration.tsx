@@ -32,7 +32,11 @@ it("updates one mounted tree, retaining local state and releasing it on disposal
     }, []);
     return <text>{answer + ":" + draft}</text>;
   }
-  const host = await createNativeOpenTuiHost();
+  let host!: Awaited<ReturnType<typeof createNativeOpenTuiHost>>;
+  // Capture React's initial asynchronous root mount before testing local state.
+  await act(async () => {
+    host = await createNativeOpenTuiHost();
+  });
   try {
     await act(async () => {
       host.render(<Screen answer="first" />);
@@ -68,15 +72,18 @@ it("updates one mounted tree, retaining local state and releasing it on disposal
 it("retains the production conversation, editor and subscriptions across streamed host updates", async () => {
   const setup = await testRender(null, { width: 80, height: 28 });
   native.create.mockResolvedValue(setup.renderer);
-  const view = await createConversationView(
-    {
-      parity: {
-        copy,
-        context: { cwd: "/synthetic", branch: "main", model: "synthetic", repositoryUrl: "" },
+  let view!: Awaited<ReturnType<typeof createConversationView>>;
+  await act(async () => {
+    view = await createConversationView(
+      {
+        parity: {
+          copy,
+          context: { cwd: "/synthetic", branch: "main", model: "synthetic", repositoryUrl: "" },
+        },
       },
-    },
-    vi.fn(),
-  );
+      vi.fn(),
+    );
+  });
   const student = { author: "student" as const, text: "A synthetic question" };
   const frames: string[] = [];
   const record = () => frames.push(setup.captureCharFrame());

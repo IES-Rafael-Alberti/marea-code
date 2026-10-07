@@ -1,26 +1,27 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.13`, which makes server data removal
-an explicit choice during uninstall and lets the installer start afresh after
-an earlier uninstall preserved data. It also includes password retries,
-download progress, the macOS interactive-installation fix, graceful managed
-shutdown, and optional HTTP access on classroom networks. Version 9 introduced
-independent recommendations and managed uninstall. Version 6 predates that policy;
-its immutable installers retain their original behavior. Updating to version 13
-enables the behavior below.
+The commands below target `0.1.0-preview.14`. This preview retries interrupted
+downloads, lets an empty failed-installation directory be reused, and makes server
+data removal an explicit choice during uninstall or reinstall. It also adds
+unlimited default usage, verified OpenRouter model suggestions and editable
+catalog prices, and the bundled didactic testing skill. Saving the server model
+now enables class teaching settings on fresh installations.
+
+Earlier password, terminal, progress, graceful shutdown and optional classroom
+HTTP fixes are included. Published installers and tags remain immutable.
 
 ## Teacher server
 
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.13/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.14/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.13/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.14/install.ps1'))) -Component server
 ```
 
 The wizard creates a new installation under `~/.marea-preview/server`, asks for
@@ -51,9 +52,25 @@ Exact Host and Origin checks remain enabled for the computer's local IPs.
 Download verification and release signatures are unchanged.
 
 Start `marea-teacher`, open `/dashboard/`, sign in and configure the model provider
-under Settings → Server. Enable the common route and save the teaching
-configuration for the first class before inviting students. API keys stay in the
+under Settings → Server. New installations use that connection and model in every
+class automatically. Only installations with imported class-specific routes show
+the option to replace those routes. Save the teaching configuration for the first
+class before inviting students; the didactic `testing` skill is available to try. API keys stay in the
 private installation; do not include them in student installation commands.
+
+Entering an OpenRouter key checks it and loads the account's available models.
+The model field offers suggestions and also accepts a manually entered ID.
+Selecting a catalog model fills its input/output prices, shown in USD per million
+tokens; they remain editable. Unknown or manually entered models require a price
+review. These estimates omit provider caching and discounts.
+
+New model budgets have usage limits disabled; recorded usage and costs remain
+available. Existing saved limits are preserved on update. To remove an old limit,
+select **Unlimited usage** for the relevant purpose and save. Open sessions retain
+the configuration they captured when they started.
+
+Fresh installs and updates add `testing` only when the installation has no skill
+with that name; an edited local copy is preserved.
 
 The optional Google prompts accept a desktop OAuth client ID, client secret and
 school domain. Domain administration, OAuth consent and trusting the application
@@ -80,13 +97,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.13/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.14/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.13/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.14/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Run `marea` from the project directory. The managed installation keeps student
@@ -100,7 +117,7 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
 - `status` (or `--status`): managed installation details, with no credentials.
 - `update` (or `--update`): check the latest **published** preview and ask to install
   it, without starting the application. Publishing alone does not notify everyone.
-- `update --version 0.1.0-preview.13`: try a specific published preview.
+- `update --version 0.1.0-preview.14`: try a specific published preview.
 - Ordinary startup offers only a **recommended** version for this component and
   wire protocol. Declining keeps the installed version. A noninteractive start
   never accepts updates; discovery failures leave the current installation usable.
@@ -115,8 +132,8 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
   student version or a required protocol repair may select an older signed client.
   Server downgrades require backup recovery; they cannot open migrated data.
 
-For a fresh pilot install before recommendation, append `--version 0.1.0-preview.13`
-to the POSIX command, or `-Version 0.1.0-preview.13` on PowerShell. With no explicit
+For a fresh pilot install before recommendation, append `--version 0.1.0-preview.14`
+to the POSIX command, or `-Version 0.1.0-preview.14` on PowerShell. With no explicit
 version and no recommendation, installation stops with a useful message.
 
 Stop the server before accepting an update. Its existing exclusive installation
@@ -173,7 +190,7 @@ otherwise unsafe shell profiles are preserved and reported for manual PATH clean
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.13`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.14`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
@@ -198,7 +215,7 @@ Run the **Recommend preview** workflow on `main`, choosing the published version
 and `student`, `server`, or `both`. From a maintainer terminal:
 
 ```sh
-gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.13 -f component=both
+gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.14 -f component=both
 ```
 
 Promotion requires a successful native publication workflow for the exact source,

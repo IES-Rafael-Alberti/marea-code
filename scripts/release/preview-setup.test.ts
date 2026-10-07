@@ -13,6 +13,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { installExampleSkill } from "./preview-skills.boundary.js";
+vi.mock("./preview-skills.boundary.js", () => ({ installExampleSkill: vi.fn() }));
+
 import { provisionServer, scaffoldServer, setupAnswers } from "./preview-setup.boundary.js";
 let scratch: string;
 beforeEach(() => {
@@ -45,6 +48,7 @@ it.each([false, true])("creates private configuration with optional Google: %s",
     scaffoldServer(root, "/programs/server", "invalid", input);
   }).toThrow();
   scaffoldServer(root, "/programs/server", "0.1.0-preview.1", input);
+  expect(installExampleSkill).toHaveBeenCalledWith(root, "/programs/server");
   const read = (file: string) =>
     JSON.parse(readFileSync(join(root, file), "utf8")) as Record<string, unknown>;
   for (const file of [

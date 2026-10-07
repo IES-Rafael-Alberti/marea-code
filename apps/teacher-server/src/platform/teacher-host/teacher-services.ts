@@ -1,4 +1,5 @@
 import { ServerSettingsService } from "../../server-settings/service.boundary.js";
+import { serverSettingsOperator, usesCommonRoute } from "../../server-settings/operator.js";
 import type { ServerSettingsStore } from "../../server-settings/contracts.js";
 import type { InferenceProviderCatalogEntry } from "@marea/plugin-api";
 import { EducationalInsightsService } from "../../educational-insights/service.js";
@@ -150,6 +151,10 @@ export async function composeTeacherServices(
   dependencies: TeacherHostServiceDependencies,
 ): Promise<TeacherHostServices> {
   const { database, clock, ids, secrets, digest, skills } = dependencies;
+  const operator = serverSettingsOperator(
+    dependencies.operator,
+    dependencies.serverSettings?.store,
+  );
   const centers = await ownedSkills(skills.centers, "center");
   const teachers = await ownedSkills(skills.teachers, "teacher");
   const configurations = new SqliteTeachingConfigurationRepository(database);
@@ -187,7 +192,7 @@ export async function composeTeacherServices(
     snapshots: new ConfigurationSnapshotSource(configurations, (capture, identity) => {
       const settings = dependencies.serverSettings?.store.read();
       const current =
-        settings?.useCommonRoute && settings.route !== null
+        settings && usesCommonRoute(settings)
           ? { ...capture, providerRoute: settings.route }
           : capture;
       return insights === undefined ? current : insights.progress.capture(current, identity);
@@ -214,7 +219,7 @@ export async function composeTeacherServices(
   });
   const governanceRepository = createSqliteGovernanceRepository(
     database,
-    (classId) => dependencies.operator.forClass(classId) !== null,
+    (classId) => operator.forClass(classId) !== null,
     dependencies.identities,
   );
   const governanceIds = governanceIdGenerator(ids);
@@ -274,7 +279,7 @@ export async function composeTeacherServices(
       clock,
       ids,
       directory: new SqliteTeachingDashboardRepository(database),
-      operator: dependencies.operator,
+      operator,
       repository: configurations,
       skills: { forTeacherClass: sourceForTeacherClass },
     }).service,
@@ -314,7 +319,7 @@ export async function composeTeacherServices(
     repository: governanceRepository,
     clock,
     ids: governanceIds,
-    operator: dependencies.operator,
+    operator,
     passwords: dependencies.passwords,
     secrets,
     sources: new GovernanceSourceCoordinator({

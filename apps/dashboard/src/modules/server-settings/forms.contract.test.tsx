@@ -8,7 +8,7 @@ import { ProviderConnections } from "./provider-connections.js";
 
 const m = serverSettingsMessages("en");
 const one = { es: "Uno", en: "One", eu: "Bat" };
-const policy = (maxInputTokens: number) => ({ ...emptyBudget(), maxInputTokens });
+const policy = (maxInputTokens: number) => ({ ...emptyBudget(), unlimited: false, maxInputTokens });
 const budget = { inputTokenCeiling: 50, tutoring: policy(80), evaluation: policy(50) };
 const field = { key: "token", label: one, kind: "secret" as const, required: true };
 const provider = (id: string, secrets: string[] = []) => ({

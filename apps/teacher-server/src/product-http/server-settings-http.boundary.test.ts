@@ -24,7 +24,11 @@ it("uses the dashboard policy and authenticated identity before parsing bounded 
   });
   expect(response.status).toBe(200);
   expect(policy).toHaveBeenCalledOnce();
-  expect(execute).toHaveBeenCalledWith(identity, new TextEncoder().encode('{"operation":"read"}'));
+  expect(execute).toHaveBeenCalledWith(
+    identity,
+    new TextEncoder().encode('{"operation":"read"}'),
+    expect.any(AbortSignal),
+  );
   expect(await response.json()).toEqual({ administrator: false, initialized: false });
   const invalid = await app.request(path, { method: "POST", body: "{}" });
   expect(invalid.status).toBe(400);

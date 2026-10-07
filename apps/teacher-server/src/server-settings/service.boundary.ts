@@ -1,4 +1,6 @@
 import { prepareConnections, projectConnection } from "./connections.js";
+import { providerModels } from "./models.js";
+import { usesCommonRoute } from "./operator.js";
 import * as z from "zod";
 import { type InferenceProviderCatalogEntry } from "@marea/plugin-api";
 import type { AuthenticatedIdentity } from "../identity/contracts.js";
@@ -11,6 +13,13 @@ import {
 
 const Input = z.discriminatedUnion("operation", [
   z.object({ operation: z.literal("read") }).strict(),
+  z
+    .object({
+      operation: z.literal("models"),
+      providerId: z.string().min(1).max(128),
+      values: z.record(z.string().max(64), z.string().max(2048)),
+    })
+    .strict(),
   z
     .object({
       operation: z.literal("save"),
@@ -29,7 +38,11 @@ export class ServerSettingsService {
     readonly catalog: readonly InferenceProviderCatalogEntry[],
     readonly changed?: (settings: ServerSettings) => void,
   ) {}
-  execute(identity: AuthenticatedIdentity, input: Uint8Array): object {
+  execute(
+    identity: AuthenticatedIdentity,
+    input: Uint8Array,
+    signal = new AbortController().signal,
+  ): object | Promise<object> {
     if (identity.role !== "teacher") throw new ServerSettingsError(403);
     const parsed = Input.safeParse(decodeJson(input));
     if (!parsed.success) throw new ServerSettingsError(400);
@@ -39,6 +52,14 @@ export class ServerSettingsService {
       if (parsed.data.operation !== "read") throw new ServerSettingsError(403);
       return { administrator: false, initialized: current !== null };
     }
+    if (parsed.data.operation === "models")
+      return providerModels(
+        this.catalog,
+        current,
+        parsed.data.providerId,
+        parsed.data.values,
+        signal,
+      );
     if (parsed.data.operation === "save") {
       const q = parsed.data;
       if (q.expectedRevision !== current.revision) throw new ServerSettingsError(409);
@@ -58,7 +79,11 @@ export class ServerSettingsService {
         ...current,
         route: q.route,
         education: q.education,
-        useCommonRoute: q.useCommonRoute,
+        useCommonRoute: usesCommonRoute({
+          ...current,
+          route: q.route,
+          useCommonRoute: q.useCommonRoute,
+        }),
         connections,
         revision: current.revision + 1,
       });
@@ -76,7 +101,7 @@ export class ServerSettingsService {
       legacyRoutes: current.legacyRoutes,
       route: current.route,
       education: current.education,
-      useCommonRoute: current.useCommonRoute,
+      useCommonRoute: usesCommonRoute(current),
       providers: [
         ...this.catalog.map((entry) => projectConnection(entry, current.connections)),
         ...Object.keys(current.connections)

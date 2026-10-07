@@ -3,15 +3,18 @@ import type { EditableSettings } from "./client.boundary.js";
 import { serverSettingsMessages } from "./messages.js";
 import { BudgetFields, emptyBudget } from "./budget-fields.js";
 
+import { ModelInput, pricedBudget } from "./model-input.js";
+import type { ModelCatalogs } from "./provider-models.boundary.js";
+
 type Messages = ReturnType<typeof serverSettingsMessages>;
 type Route = NonNullable<EditableSettings["route"]>;
 type Budget = NonNullable<Route["budget"]>;
 type Task = NonNullable<EditableSettings["education"]["map"]>;
 type Provider = EditableSettings["providers"][number];
 
-/** A connection without captured limits starts at zero; the administrator must complete it. */
+/** New connections work without an administrator setting usage ceilings. */
 const newBudget = (): Budget => ({
-  inputTokenCeiling: 1,
+  inputTokenCeiling: 131072,
   tutoring: emptyBudget(),
   evaluation: emptyBudget(),
 });
@@ -22,7 +25,9 @@ export function ModelSettings({
   locale,
   edit,
   classNames = {},
+  catalogs = {},
 }: {
+  catalogs?: ModelCatalogs;
   state: EditableSettings;
   connections: Record<string, Record<string, string>>;
   locale: DashboardLocale;
@@ -45,6 +50,7 @@ export function ModelSettings({
         change={(providerId) => {
           edit({
             ...state,
+            useCommonRoute: state.legacyRoutes.length === 0 || state.useCommonRoute,
             route: {
               ...route,
               providerId,
@@ -58,6 +64,7 @@ export function ModelSettings({
         <RouteDetails
           state={state}
           route={route}
+          catalogs={catalogs}
           m={m}
           locale={locale}
           providers={available}
@@ -76,10 +83,12 @@ function RouteDetails({
   locale,
   providers,
   classNames,
+  catalogs,
   edit,
 }: {
   state: EditableSettings;
   route: Route;
+  catalogs: ModelCatalogs;
   m: Messages;
   locale: DashboardLocale;
   providers: readonly Provider[];
@@ -93,29 +102,40 @@ function RouteDetails({
   const evaluation = route.evaluation ?? { providerId: route.providerId, model: route.model };
   return (
     <>
-      <label className="server-field">
-        {m.model}
-        <input
-          required
-          value={route.model}
-          onChange={(event) => {
-            set({ model: event.currentTarget.value });
-          }}
-        />
-      </label>
+      <ModelInput
+        id="models-tutoring"
+        label={m.model}
+        value={route.model}
+        providerId={route.providerId}
+        catalogs={catalogs}
+        change={(model, pricing) => {
+          set({
+            model,
+            budget: {
+              ...budget,
+              tutoring: pricedBudget(budget.tutoring, pricing),
+              evaluation: route.evaluation
+                ? budget.evaluation
+                : pricedBudget(budget.evaluation, pricing),
+            },
+          });
+        }}
+      />
       <div className="server-common" data-active={state.useCommonRoute}>
-        <label>
-          <input
-            type="checkbox"
-            checked={state.useCommonRoute}
-            onChange={(event) => {
-              edit({ ...state, useCommonRoute: event.currentTarget.checked });
-            }}
-          />
-          {m.common}
-        </label>
-        <p>{state.useCommonRoute ? m.commonOn : m.commonOff}</p>
-        <p>{m.commonNote}</p>
+        {state.legacyRoutes.length > 0 && (
+          <label>
+            <input
+              type="checkbox"
+              checked={state.useCommonRoute}
+              onChange={(event) => {
+                edit({ ...state, useCommonRoute: event.currentTarget.checked });
+              }}
+            />
+            {m.common}
+          </label>
+        )}
+        <p>{state.useCommonRoute || state.legacyRoutes.length === 0 ? m.commonOn : m.commonOff}</p>
+        {state.legacyRoutes.length > 0 && <p>{m.commonNote}</p>}
         {state.legacyRoutes.length > 0 && (
           <details>
             <summary>
@@ -160,15 +180,19 @@ function RouteDetails({
         <summary>{m.advanced}</summary>
         <fieldset>
           <legend>{m.evaluation}</legend>
-          <label className="server-field">
-            {m.model}
-            <input
-              value={evaluation.model}
-              onChange={(event) => {
-                set({ evaluation: { ...evaluation, model: event.currentTarget.value } });
-              }}
-            />
-          </label>
+          <ModelInput
+            id="models-evaluation"
+            label={m.model}
+            value={evaluation.model}
+            providerId={evaluation.providerId}
+            catalogs={catalogs}
+            change={(model, pricing) => {
+              set({
+                evaluation: { ...evaluation, model },
+                budget: { ...budget, evaluation: pricedBudget(budget.evaluation, pricing) },
+              });
+            }}
+          />
           <ProviderSelect
             m={m}
             locale={locale}
@@ -183,6 +207,7 @@ function RouteDetails({
           <TaskRoute
             key={purpose}
             purpose={purpose}
+            catalogs={catalogs}
             state={state}
             seed={{
               providerId: route.providerId,
@@ -206,6 +231,7 @@ function TaskRoute({
   purpose,
   state,
   seed,
+  catalogs,
   m,
   locale,
   providers,
@@ -214,6 +240,7 @@ function TaskRoute({
   purpose: "map" | "reports";
   state: EditableSettings;
   seed: Task;
+  catalogs: ModelCatalogs;
   m: Messages;
   locale: DashboardLocale;
   providers: readonly Provider[];
@@ -241,16 +268,16 @@ function TaskRoute({
       </label>
       {task && (
         <>
-          <label className="server-field">
-            {m.model}
-            <input
-              required
-              value={task.model}
-              onChange={(event) => {
-                setTask({ ...task, model: event.currentTarget.value });
-              }}
-            />
-          </label>
+          <ModelInput
+            id={`models-${purpose}`}
+            label={m.model}
+            value={task.model}
+            providerId={task.providerId}
+            catalogs={catalogs}
+            change={(model, pricing) => {
+              setTask({ ...task, model, budget: pricedBudget(task.budget, pricing) });
+            }}
+          />
           <ProviderSelect
             m={m}
             locale={locale}

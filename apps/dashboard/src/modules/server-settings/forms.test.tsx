@@ -8,7 +8,7 @@ import { change, control, text, tree } from "./forms.fixture.js";
 
 const m = serverSettingsMessages("en");
 const label = { es: "Uno", en: "One", eu: "Bat" };
-const policy = (maxInputTokens: number) => ({ ...emptyBudget(), maxInputTokens });
+const policy = (maxInputTokens: number) => ({ ...emptyBudget(), unlimited: false, maxInputTokens });
 const budget = { inputTokenCeiling: 50, tutoring: policy(80), evaluation: policy(50) };
 const settings = (overrides: Partial<EditableSettings> = {}): EditableSettings => ({
   administrator: true,
@@ -47,7 +47,7 @@ const model = (state: EditableSettings, edit = vi.fn()) => ({
   ),
 });
 
-it("starts a route from a selected connection with zeroed limits to complete", () => {
+it("starts a route from a selected connection with unlimited usage", () => {
   const { edit, nodes } = model(settings());
   expect(nodes.some((node) => node.type === "input")).toBe(false);
   change(control(nodes, m.provider), { value: "p2" });
@@ -56,7 +56,7 @@ it("starts a route from a selected connection with zeroed limits to complete", (
       route: {
         providerId: "p2",
         model: "",
-        budget: { inputTokenCeiling: 1, tutoring: emptyBudget(), evaluation: emptyBudget() },
+        budget: { inputTokenCeiling: 131072, tutoring: emptyBudget(), evaluation: emptyBudget() },
       },
     }),
   );
@@ -111,14 +111,14 @@ it("edits the main route, adoption, limits and a separate evaluation model", () 
 it("seeds limits for a route captured without a budget", () => {
   const route = { providerId: "p1", model: "main-model" };
   const { edit, nodes } = model(settings({ route }));
-  change(control(nodes, m.requests), { valueAsNumber: 4 });
+  change(control(nodes, m.unlimited), { checked: false });
   expect(edit).toHaveBeenLastCalledWith(
     expect.objectContaining({
       route: {
         ...route,
         budget: {
-          inputTokenCeiling: 1,
-          tutoring: { ...emptyBudget(), maxRequests: 4 },
+          inputTokenCeiling: 131072,
+          tutoring: { ...emptyBudget(), unlimited: false },
           evaluation: emptyBudget(),
         },
       },

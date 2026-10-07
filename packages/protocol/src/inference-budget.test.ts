@@ -89,3 +89,12 @@ describe("explicit inference usage policy", () => {
       );
   });
 });
+
+it("keeps unlimited usage explicit and bypasses only dormant reservation ceilings", () => {
+  const large = { ...policy, maxInputTokens: MAX, maxOutputTokens: MAX, unlimited: true };
+  expect(accepts(large)).toBe(true);
+  expect(accepts({ ...large, unlimited: false })).toBe(false);
+  expect(accepts({ ...policy, unlimited: "yes" })).toBe(false);
+  expect(UsagePolicySchema.parse({ ...policy, unlimited: false }).unlimited).toBe(false);
+  expect(UsagePolicySchema.parse({ ...policy, unlimited: true }).unlimited).toBe(true);
+});

@@ -63,3 +63,24 @@ describe("captured private inference route", () => {
     expect(RouteBudgetSchema.safeParse({ ...budget, defaultBudget: true }).success).toBe(false);
   });
 });
+
+it("allows an unlimited purpose to ignore its dormant input ceiling independently", () => {
+  const unlimited = { ...policy, unlimited: true, maxInputTokens: 1 };
+  expect(RouteBudgetSchema.safeParse({ ...budget, tutoring: unlimited }).success).toBe(true);
+  expect(RouteBudgetSchema.safeParse({ ...budget, evaluation: unlimited }).success).toBe(true);
+  expect(
+    RouteBudgetSchema.safeParse({
+      inputTokenCeiling: 100,
+      tutoring: unlimited,
+      evaluation: unlimited,
+    }).success,
+  ).toBe(true);
+  expect(
+    RouteBudgetSchema.safeParse({ ...budget, tutoring: { ...unlimited, unlimited: false } })
+      .success,
+  ).toBe(false);
+  expect(
+    RouteBudgetSchema.safeParse({ ...budget, evaluation: { ...unlimited, unlimited: false } })
+      .success,
+  ).toBe(false);
+});

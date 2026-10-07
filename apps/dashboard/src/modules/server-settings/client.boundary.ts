@@ -24,6 +24,7 @@ export const SettingsResponse = z.discriminatedUnion("administrator", [
           id: z.string(),
           descriptor: ProviderSettingsDescriptorSchema.nullable(),
           configured: z.boolean(),
+          supportsModels: z.boolean().optional(),
           values: z.record(z.string(), z.string()),
           secrets: z.array(z.string()),
         }),

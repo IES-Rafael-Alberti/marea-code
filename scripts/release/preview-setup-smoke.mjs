@@ -1,3 +1,4 @@
+import { BundledSkillSource } from "../../apps/teacher-server/src/teaching/skills/bundled-skill-source.boundary.ts";
 import { verifyManagedHostStop } from "./managed-host-stop-smoke.mjs";
 import assert from "node:assert/strict";
 import console from "node:console";
@@ -110,6 +111,11 @@ function diagnoseSyntheticSetup() {
 try {
   privateDashboard(join(release, "dashboard"));
   scaffoldServer(root, release, "0.1.0-preview.1", answers);
+  const lessons = await new BundledSkillSource(join(root, "core")).list("didactic");
+  assert.ok(
+    lessons.some((lesson) => lesson.id === "marea/testing"),
+    "New installations must include the testing lesson",
+  );
   try {
     provisionServer(root, release, answers, password, run);
   } catch (error) {

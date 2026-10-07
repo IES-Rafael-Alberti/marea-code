@@ -15,11 +15,11 @@ export function AnalysisBudget({
     <details>
       <summary>{m.budget}</summary>
       <p>
-        {m.requests}: {budget.requests}/{budget.maxRequests} · {m.tokens}: {budget.tokens}/
-        {budget.maxTokens}
+        {m.requests}: {budget.requests}/{budget.maxRequests ?? "∞"} · {m.tokens}: {budget.tokens}/
+        {budget.maxTokens ?? "∞"}
       </p>
       <p>
-        {budget.costUnits}/{budget.maxCostUnits} {budget.costUnit}
+        {budget.costUnits}/{budget.maxCostUnits ?? "∞"} {budget.costUnit}
       </p>
     </details>
   );

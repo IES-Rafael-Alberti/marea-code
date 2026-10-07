@@ -1,7 +1,7 @@
-import { existsSync } from "node:fs";
 import { mkdtemp, mkdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { findRepositorySkillRoot } from "./repository-catalog.fixture.js";
 import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -15,17 +15,6 @@ import { bundledSkillId } from "./skill-source.js";
 
 const temporaryRoots: string[] = [];
 const thisDirectory = dirname(fileURLToPath(import.meta.url));
-
-function findRepositorySkillRoot(start: string): string {
-  let directory = start;
-  for (;;) {
-    const candidate = join(directory, "content/skills");
-    if (existsSync(candidate)) return candidate;
-    const parent = dirname(directory);
-    if (parent === directory) throw new Error("Could not locate the repository skill catalog.");
-    directory = parent;
-  }
-}
 
 const repositorySkillRoot = findRepositorySkillRoot(thisDirectory);
 

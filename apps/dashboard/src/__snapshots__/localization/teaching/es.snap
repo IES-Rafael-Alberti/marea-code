@@ -32,7 +32,7 @@
   },
   "noCurrent": "Todavía no hay configuración guardada para esta clase.",
   "noDraft": "Leyendo la configuración…",
-  "operatorWarning": "Faltan prerrequisitos de operador. Se puede leer, pero el guardado está bloqueado.",
+  "operatorWarning": "Guarda un proveedor y modelo en Ajustes → Servidor y recarga esta clase para poder guardar sus ajustes docentes. Si no administras las conexiones, pídeselo al administrador del servidor.",
   "problems": {
     "conflict": "La configuración guardada ha cambiado mientras editabas.",
     "forbidden": "No tienes acceso a esta clase.",
@@ -40,7 +40,7 @@
     "load": "No se han podido cargar las clases.",
     "skill-unavailable": "Una skill seleccionada no está disponible o está desactualizada.",
     "uncertain": "El resultado del guardado es desconocido. Tu borrador se conserva.",
-    "unconfigured": "Los prerrequisitos de operador no están configurados en este despliegue.",
+    "unconfigured": "Esta clase no tiene un modelo configurado. Guarda un proveedor y modelo en Ajustes → Servidor y recarga la clase.",
   },
   "recoveryHeading": "Recuperación: configuración guardada actual",
   "recoveryNote": "Tu borrador se conserva junto a los valores guardados actuales. Nada se sobrescribe automáticamente.",

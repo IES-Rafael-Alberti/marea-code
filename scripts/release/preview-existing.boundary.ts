@@ -10,6 +10,7 @@ export async function preparePreviewRoot(root: string, selected: "student" | "se
   if (!existsSync(root)) return true;
   privateDirectory(root);
   const entries = readdirSync(root);
+  if (entries.length === 0) return true;
   if (selected !== "server" || entries.length !== 1 || entries[0] !== "installation")
     throw new InstallerUsageError(
       `Ya existe una instalación o una carpeta incompleta en ${root}. Si conservas el lanzador, usa update para actualizar o uninstall --purge-data para borrar el servidor. No se ha modificado la carpeta.`,

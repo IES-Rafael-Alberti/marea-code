@@ -6,6 +6,7 @@ import { acquireInstallation } from "../../apps/teacher-server/src/platform/oper
 import { createOperationsApplication } from "../../apps/teacher-server/src/platform/operations-cli/operations-application.js";
 import { readOperationsConfig } from "../../apps/teacher-server/src/platform/operations-cli/operations-config.js";
 import { readTeacherHostConfig } from "../../apps/teacher-server/src/platform/teacher-host/teacher-host-config.js";
+import { installExampleSkill } from "./preview-skills.boundary.js";
 
 export const updateJournal = "preview-update-pending.json";
 
@@ -43,6 +44,7 @@ export async function activatePreviewServer<T>(
       schema: "student-identities",
     }).close();
     const result = await activate();
+    installExampleSkill(installation, destination);
     const hostPath = join(installation, "config", "teacher-host.json");
     const next = `${hostPath}.${randomUUID()}.tmp`;
     writeFileSync(

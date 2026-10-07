@@ -17,6 +17,7 @@ import {
 } from "./preview-channel.js";
 import { selectRelease, sha256, signingIdentity, type ReleaseManifest } from "./manifest.js";
 import type { InstallationProgress } from "./preview-progress.boundary.js";
+import { DownloadResponseError, retryReleaseDownload } from "./preview-retry.boundary.js";
 
 export type PreviewFetch = (url: string, init?: RequestInit) => Promise<Response>;
 export interface DownloadPorts {
@@ -34,7 +35,20 @@ export async function boundedDownload(
   progress?: (bytes: number) => void,
 ): Promise<Uint8Array> {
   const response = await fetcher(url, { ...init, signal: AbortSignal.timeout(30_000) });
-  if (!response.ok || response.body === null) throw new Error("Release download unavailable");
+  if (!response.ok || response.body === null) {
+    await response.body?.cancel();
+    const retryAfter = Number(response.headers.get("retry-after"));
+    throw new DownloadResponseError(
+      `Release download unavailable: HTTP ${String(response.status)}`,
+      response.status === 408 ||
+        response.status === 429 ||
+        response.status >= 500 ||
+        (response.status === 403 &&
+          (response.headers.has("retry-after") ||
+            response.headers.get("x-ratelimit-remaining") === "0")),
+      Number.isFinite(retryAfter) ? Math.max(0, Math.min(retryAfter * 1000, 30000)) : 0,
+    );
+  }
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
@@ -43,7 +57,8 @@ export async function boundedDownload(
       const part = await reader.read();
       if (part.done) break;
       size += part.value.length;
-      if (size > limit) throw new Error("Release download exceeds size limit");
+      if (size > limit)
+        throw new DownloadResponseError("Release download exceeds size limit", false);
       chunks.push(part.value);
       progress?.(size);
     }
@@ -112,8 +127,19 @@ export async function downloadPreview(
   ports: DownloadPorts,
 ): Promise<ReleaseManifest> {
   const asset = manifestAsset(settings.component, platform);
-  const get = (name: string, limit: number) =>
-    boundedDownload(ports.fetch, releaseUrl(settings.repository, version, name), limit);
+  const get = (name: string, limit: number, progress?: (bytes: number) => void, label = name) =>
+    retryReleaseDownload(
+      label,
+      () =>
+        boundedDownload(
+          ports.fetch,
+          releaseUrl(settings.repository, version, name),
+          limit,
+          {},
+          progress,
+        ),
+      (message) => ports.progress?.stage(message),
+    );
   ports.progress?.stage("Obteniendo la información de la versión...");
   for (const [name, remote] of [
     ["manifest.json", asset],
@@ -140,13 +166,7 @@ export async function downloadPreview(
         `Descargando archivo ${String(index + 1)}/${String(manifest.files.length)}: ${((totalBytes + bytes) / 1_048_576).toFixed(1)} MiB recibidos en total`,
       );
     report(0);
-    const bytes = await boundedDownload(
-      ports.fetch,
-      releaseUrl(settings.repository, version, `sha256-${file.sha256}`),
-      512_000_000,
-      {},
-      report,
-    );
+    const bytes = await get(`sha256-${file.sha256}`, 512_000_000, report, file.path);
     totalBytes += bytes.length;
     if (totalBytes > 2_000_000_000 || sha256(bytes) !== file.sha256)
       throw new Error("Release checksum or total size mismatch");

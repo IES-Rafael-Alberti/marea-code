@@ -116,12 +116,46 @@ async function loginToServer(login, obsoleteLogin) {
   }
 }
 
+async function installStudent() {
+  const pty = terminal("/bin/sh", [
+    "-c",
+    `curl -fsSL ${shellLiteral(url)} | sh -s -- student --version ${shellLiteral(version)} --server ${shellLiteral(origin)}`,
+  ]);
+  const studentRoot = join(home, ".marea-preview", "student");
+  const student = join(studentRoot, "bin", "marea");
+  try {
+    await pty.waitForText("Instalado:", 600000);
+    assert.equal((await pty.waitForExit()).exitCode, 0, pty.transcript().slice(-2000));
+    const installed = spawnSync(student, ["--version"], {
+      env: environment,
+      encoding: "utf8",
+      timeout: 120000,
+    });
+    assert.equal(installed.status, 0, installed.stderr);
+    assert.equal(installed.stdout.trim(), version);
+    const removed = spawnSync(student, ["uninstall", "--yes"], {
+      env: environment,
+      encoding: "utf8",
+      timeout: 120000,
+    });
+    assert.equal(removed.status, 0, removed.stderr);
+    assert.equal(existsSync(studentRoot), false);
+    assert.equal(readFileSync(project, "utf8"), "keep student work");
+    process.stdout.write(
+      "Public student HTTP installation, native executable and clean uninstall passed.\n",
+    );
+  } finally {
+    pty.kill();
+  }
+}
+
 try {
   await install("firstteacher");
   const installed = spawnSync(launcher, ["--version"], { env: environment, encoding: "utf8" });
   assert.equal(installed.status, 0, installed.stderr);
   assert.equal(installed.stdout.trim(), version);
   await loginToServer("firstteacher");
+  await installStudent();
   process.stdout.write("Public fresh install and teacher login passed.\n");
   const removed = spawnSync(launcher, ["uninstall", "--yes"], {
     env: environment,

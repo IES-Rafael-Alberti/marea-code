@@ -19,6 +19,9 @@ it("builds selected server programs, matching assets, real inventory command and
       recursive: true,
     },
   );
+  expect(mocks.cpSync).toHaveBeenCalledWith("/isolated/content/skills", `${result}/skills`, {
+    recursive: true,
+  });
   for (const name of ["marea-teacher", "marea-admin", "marea-operations", "marea-install"])
     expect(mocks.spawnSync).toHaveBeenCalledWith(
       "bun",

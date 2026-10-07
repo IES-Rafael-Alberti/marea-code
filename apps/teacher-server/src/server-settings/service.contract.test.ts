@@ -107,7 +107,7 @@ it("uses each plugin's own descriptor and passes endpoints and empty keys to val
     create: custom,
   };
   const f = setup({}, [{ ...base, create }, plugin]);
-  f.save({
+  void f.save({
     connections: {
       [openrouter]: { endpoint: "https://provider.example.test/v1/chat/completions" },
       "synthetic.provider": { token: "synthetic-token-value" },
@@ -133,7 +133,7 @@ it("keeps only omitted secrets: other fields return to their defaults", () => {
       [openrouter]: { apiKey: "synthetic-secret-value", endpoint: "https://old.test" },
     },
   });
-  f.save({});
+  void f.save({});
   expect(f.current().connections[openrouter]).toEqual({
     apiKey: "synthetic-secret-value",
     endpoint: defaultEndpoint,
@@ -153,7 +153,12 @@ it("projects public fields, secret presence and orphaned connections exactly onc
   expect(response).toMatchObject({
     initialized: true,
     providers: [
-      { id: openrouter, values: { endpoint: "https://custom.test" }, secrets: ["apiKey"] },
+      {
+        id: openrouter,
+        supportsModels: true,
+        values: { endpoint: "https://custom.test" },
+        secrets: ["apiKey"],
+      },
       { id: "org.marea.removed", descriptor: null, configured: true, values: {}, secrets: [] },
     ],
   });

@@ -2,6 +2,8 @@ import type { DashboardLocale } from "../../messages.js";
 import type { EditableSettings } from "./client.boundary.js";
 import { serverSettingsMessages } from "./messages.js";
 
+import type { ModelCatalog, ModelCatalogs } from "./provider-models.boundary.js";
+
 type Messages = ReturnType<typeof serverSettingsMessages>;
 type Provider = EditableSettings["providers"][number];
 type Values = Record<string, string>;
@@ -12,7 +14,11 @@ export function ProviderConnections({
   connections,
   locale,
   change,
+  catalogs = {},
+  refresh,
 }: {
+  catalogs?: ModelCatalogs;
+  refresh?: () => void;
   state: EditableSettings;
   connections: Record<string, Values>;
   locale: DashboardLocale;
@@ -29,6 +35,8 @@ export function ProviderConnections({
         <ProviderConnection
           key={provider.id}
           provider={provider}
+          catalog={catalogs[provider.id]}
+          refresh={refresh}
           values={connections[provider.id]}
           locked={used.has(provider.id)}
           m={m}
@@ -47,6 +55,8 @@ export function ProviderConnections({
 
 function ProviderConnection({
   provider,
+  catalog,
+  refresh,
   values,
   locked,
   m,
@@ -54,6 +64,8 @@ function ProviderConnection({
   change,
 }: {
   provider: Provider;
+  catalog: ModelCatalog | undefined;
+  refresh: (() => void) | undefined;
   values: Values | undefined;
   locked: boolean;
   m: Messages;
@@ -103,6 +115,27 @@ function ProviderConnection({
                 </label>
               );
             })}
+          {connected && catalog && (
+            <p role="status">
+              {
+                m[
+                  catalog.status === "ready"
+                    ? "modelsReady"
+                    : catalog.status === "loading"
+                      ? "modelsLoading"
+                      : catalog.status === "invalid"
+                        ? "modelsInvalid"
+                        : "modelsUnavailable"
+                ]
+              }
+              {catalog.status === "ready" && ` (${String(catalog.models.length)})`}
+              {catalog.status !== "loading" && (
+                <button type="button" onClick={refresh}>
+                  {m.modelsRefresh}
+                </button>
+              )}
+            </p>
+          )}
         </>
       )}
     </details>

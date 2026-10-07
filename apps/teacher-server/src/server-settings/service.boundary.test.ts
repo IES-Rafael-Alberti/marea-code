@@ -71,9 +71,9 @@ describe("server-owned provider settings", () => {
   });
   it("retains an omitted secret, rotates an explicit secret and permits removing an unused connection", () => {
     const f = fixture();
-    f.service.execute(teacher, f.save());
+    void f.service.execute(teacher, f.save());
     expect(f.current().connections["org.marea.openrouter"]?.apiKey).toBe("synthetic-secret-value");
-    f.service.execute(
+    void f.service.execute(
       teacher,
       f.save({
         connections: { "org.marea.openrouter": { apiKey: "replacement-synthetic-secret" } },
@@ -82,7 +82,7 @@ describe("server-owned provider settings", () => {
     expect(f.current().connections["org.marea.openrouter"]?.apiKey).toBe(
       "replacement-synthetic-secret",
     );
-    f.service.execute(teacher, f.save({ connections: {} }));
+    void f.service.execute(teacher, f.save({ connections: {} }));
     expect(f.current().connections).toEqual({});
     expect(f.changed).toHaveBeenCalledTimes(3);
   });
@@ -91,7 +91,7 @@ describe("server-owned provider settings", () => {
     const f = fixture({ legacyRoutes: [{ classId: "class:imported", route }] });
     expect(() => f.service.execute(teacher, f.save({ connections: {} }))).toThrow();
     expect(f.write).not.toHaveBeenCalled();
-    f.service.execute(teacher, f.save());
+    void f.service.execute(teacher, f.save());
     expect(f.write).toHaveBeenCalledOnce();
   });
   it("rejects stale writes, unknown fields, invalid credentials and unconfigured routes", () => {
@@ -118,16 +118,17 @@ describe("server-owned provider settings", () => {
       ],
     });
     expect(JSON.stringify(response)).not.toContain("synthetic-secret-value");
-    service.execute(teacher, f.save());
+    void service.execute(teacher, f.save());
     expect(f.write).toHaveBeenCalledWith(
       expect.objectContaining({ connections: current.connections }),
       0,
     );
-    expect(() =>
-      service.execute(
-        teacher,
-        f.save({ connections: { "org.marea.openrouter": { apiKey: "replacement" } } }),
-      ),
+    expect(
+      () =>
+        void service.execute(
+          teacher,
+          f.save({ connections: { "org.marea.openrouter": { apiKey: "replacement" } } }),
+        ),
     ).toThrow();
   });
   it("does not infer administrator authority before offline initialization", () => {
@@ -136,8 +137,12 @@ describe("server-owned provider settings", () => {
       administrator: false,
       initialized: false,
     });
-    expect(() =>
-      service.execute(teacher, bytes({ operation: "read", administrators: [teacher.userId] })),
+    expect(
+      () =>
+        void service.execute(
+          teacher,
+          bytes({ operation: "read", administrators: [teacher.userId] }),
+        ),
     ).toThrow();
     expect(() => service.execute(teacher, new Uint8Array([255]))).toThrow();
   });
@@ -232,21 +237,22 @@ describe("server-owned provider settings", () => {
         useCommonRoute: false,
         ...overrides,
       });
-    expect(() =>
-      service.execute(teacher, save({ connections: { "synthetic.provider": {} } })),
+    expect(
+      () => void service.execute(teacher, save({ connections: { "synthetic.provider": {} } })),
     ).toThrow();
     // A route needs a captured budget even when its connection exists.
-    expect(() =>
-      service.execute(
-        teacher,
-        save({
-          connections: { "synthetic.provider": { token: "synthetic-token" } },
-          route: { providerId: "synthetic.provider", model: "synthetic-model" },
-        }),
-      ),
+    expect(
+      () =>
+        void service.execute(
+          teacher,
+          save({
+            connections: { "synthetic.provider": { token: "synthetic-token" } },
+            route: { providerId: "synthetic.provider", model: "synthetic-model" },
+          }),
+        ),
     ).toThrow();
     expect(f.write).not.toHaveBeenCalled();
-    service.execute(
+    void service.execute(
       teacher,
       save({ connections: { "synthetic.provider": { token: "synthetic-token" } } }),
     );

@@ -7,6 +7,7 @@ import {
   type SettingsResponse,
   type EditableSettings,
 } from "./client.boundary.js";
+import { useProviderModels } from "./provider-models.boundary.js";
 import { ProviderConnections } from "./provider-connections.js";
 import { ModelSettings } from "./model-settings.js";
 import { serverSettingsMessages } from "./messages.js";
@@ -30,6 +31,7 @@ export function ServerSettingsView({
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const { catalogs, refresh } = useProviderModels(fetchRequest, state, connections);
   const accept = (next: SettingsResponse) => {
     setState(next);
     setConnections(
@@ -130,7 +132,9 @@ export function ServerSettingsView({
           <p className="server-role">{m.roleAdmin}</p>
           <fieldset disabled={busy}>
             <ProviderConnections
+              refresh={refresh}
               state={state}
+              catalogs={catalogs}
               connections={connections}
               locale={locale}
               change={(next) => {
@@ -142,6 +146,7 @@ export function ServerSettingsView({
             />
             <ModelSettings
               state={state}
+              catalogs={catalogs}
               connections={connections}
               locale={locale}
               edit={edit}

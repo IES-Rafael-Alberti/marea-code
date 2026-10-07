@@ -67,6 +67,10 @@ function nextUsage(
   return parsed.data;
 }
 
+function requestDuration(policy: UsagePolicy): number | null {
+  return policy.unlimited === true ? null : policy.maxRequestDurationMs;
+}
+
 /** One instance belongs to one logical gateway request; each provider retry reserves again. */
 export class BudgetedInferenceProvider implements InferenceProvider {
   private attempt = 0;
@@ -115,15 +119,20 @@ export class BudgetedInferenceProvider implements InferenceProvider {
     };
     let usage: TokenUsage | null = null;
     try {
-      if (this.options.providerInputTokenCeiling > reservation.policy.maxInputTokens) {
+      if (
+        reservation.policy.unlimited !== true &&
+        this.options.providerInputTokenCeiling > reservation.policy.maxInputTokens
+      ) {
         settle({ inputTokens: 0, outputTokens: 0 });
         throw limitFailure();
       }
       for await (const event of streamWithinDeadline(
         this.options.provider,
-        { ...request, maxOutputTokens: reservation.policy.maxOutputTokens },
+        reservation.policy.unlimited === true
+          ? request
+          : { ...request, maxOutputTokens: reservation.policy.maxOutputTokens },
         cancellation,
-        reservation.policy.maxRequestDurationMs,
+        requestDuration(reservation.policy),
       )) {
         if (event.type === "usage") {
           usage = this.observeUsage(usage, event, reservation.policy, settle);
@@ -157,7 +166,7 @@ export class BudgetedInferenceProvider implements InferenceProvider {
       }
       this.report(
         startedAt,
-        reservation.policy.maxRequestDurationMs,
+        requestDuration(reservation.policy),
         code,
         emitted,
         outcome,
@@ -210,7 +219,10 @@ export class BudgetedInferenceProvider implements InferenceProvider {
     settle: (usage: TokenUsage) => void,
   ): TokenUsage {
     const usage = nextUsage(previous, event);
-    if (usage.inputTokens > policy.maxInputTokens || usage.outputTokens > policy.maxOutputTokens) {
+    if (
+      policy.unlimited !== true &&
+      (usage.inputTokens > policy.maxInputTokens || usage.outputTokens > policy.maxOutputTokens)
+    ) {
       settle(usage);
       throw limitFailure();
     }

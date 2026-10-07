@@ -29,7 +29,7 @@ export async function* streamWithinDeadline(
   provider: InferenceProvider,
   request: InferenceProviderRequest,
   cancellation: InferenceCancellation,
-  durationMs: number,
+  durationMs: number | null,
 ): AsyncGenerator<InferenceProviderEvent> {
   assertNotAborted(cancellation);
   const controller = new AbortController();
@@ -42,13 +42,16 @@ export async function* streamWithinDeadline(
     controller.abort();
     stopped.reject(failure);
   };
-  const timer = setTimeout(() => {
-    failure = new InferenceFailure(
-      "deadline-exceeded",
-      "The configured inference duration limit was reached.",
-    );
-    stop();
-  }, durationMs);
+  const timer =
+    durationMs === null
+      ? undefined
+      : setTimeout(() => {
+          failure = new InferenceFailure(
+            "deadline-exceeded",
+            "The configured inference duration limit was reached.",
+          );
+          stop();
+        }, durationMs);
   let unsubscribe: () => void = () => undefined;
   let iterator: AsyncIterator<InferenceProviderEvent> | undefined;
   try {

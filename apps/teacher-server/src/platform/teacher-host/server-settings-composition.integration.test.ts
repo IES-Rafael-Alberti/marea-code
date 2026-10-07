@@ -19,7 +19,7 @@ it("captures a server-wide route only in new sessions and keeps an existing sess
     revision: 0,
     administrators: ["t1"],
     connections: {},
-    legacyRoutes: [],
+    legacyRoutes: [{ classId: "class:one", route: syntheticOperatorPolicy.route.providerRoute }],
     route: { ...syntheticOperatorPolicy.route.providerRoute, model: "shared-model-one" },
     education: {},
     useCommonRoute: true,
@@ -125,7 +125,7 @@ it.each([false, true])(
         education: { map },
         useCommonRoute: false,
       };
-      host.composed.services.serverSettings?.execute(
+      await host.composed.services.serverSettings?.execute(
         { userId: "t1", role: "teacher", classId: null, displayName: "Teacher" },
         new TextEncoder().encode(JSON.stringify(save)),
       );

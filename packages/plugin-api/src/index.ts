@@ -1,6 +1,7 @@
 export * from "./dashboard-module.js";
 export * from "./dashboard-theme.js";
 export * from "./inference-provider.js";
+export * from "./provider-models.js";
 export * from "./telemetry-exporter.js";
 export * from "./dashboard-contracts.js";
 export * from "./dashboard-theme-tokens.js";

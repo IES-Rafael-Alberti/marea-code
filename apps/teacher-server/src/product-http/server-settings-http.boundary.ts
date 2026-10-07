@@ -17,7 +17,13 @@ export function registerServerSettingsRoutes(options: {
       if (!isJson(context.req.header("content-type"))) throw new ServerSettingsError(400);
       const body = await readRequest(context.req.raw, 262144);
       if (body instanceof Response) return body;
-      return jsonResponse(options.service.execute(identity, new TextEncoder().encode(body)));
+      return jsonResponse(
+        await options.service.execute(
+          identity,
+          new TextEncoder().encode(body),
+          context.req.raw.signal,
+        ),
+      );
     } catch (error) {
       const status =
         error instanceof ServerSettingsError

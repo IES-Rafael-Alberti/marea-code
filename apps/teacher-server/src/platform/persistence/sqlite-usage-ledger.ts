@@ -162,7 +162,8 @@ export class SqliteUsageLedger implements UsageLedger {
         [rowText(row, "run_id"), rowText(row, "purpose")],
       );
       const count = total === undefined ? 0 : rowInteger(total, "total");
-      if (count >= rowJson(row, "policy_json", UsagePolicySchema).maxToolCalls) return false;
+      const policy = rowJson(row, "policy_json", UsagePolicySchema);
+      if (policy.unlimited !== true && count >= policy.maxToolCalls) return false;
       this.database.execute(
         "INSERT INTO marea_usage_tool_calls (reservation_id, call_id) VALUES (?1, ?2)",
         [reservationId, callId],
@@ -175,7 +176,8 @@ export class SqliteUsageLedger implements UsageLedger {
     const policy = rowJson(row, "policy_json", UsagePolicySchema);
     const charge = chargeForUsage(policy, usage);
     const state =
-      usage.inputTokens > policy.maxInputTokens || usage.outputTokens > policy.maxOutputTokens
+      policy.unlimited !== true &&
+      (usage.inputTokens > policy.maxInputTokens || usage.outputTokens > policy.maxOutputTokens)
         ? "breached"
         : "settled";
     this.database.execute(

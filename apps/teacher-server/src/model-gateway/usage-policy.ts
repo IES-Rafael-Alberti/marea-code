@@ -25,6 +25,7 @@ export interface UsageTotals {
 export type AdmissionDenial = "requests" | "tokens" | "cost" | "concurrency";
 
 export function reservedCharge(policy: UsagePolicy): UsageCharge {
+  if (policy.unlimited === true) return { inputTokens: 0, outputTokens: 0, costUnits: 0 };
   return chargeForUsage(policy, {
     inputTokens: policy.maxInputTokens,
     outputTokens: policy.maxOutputTokens,
@@ -40,6 +41,7 @@ export function chargeForUsage(policy: UsagePolicy, usage: TokenUsage): UsageCha
 }
 
 export function admissionDenial(policy: UsagePolicy, totals: UsageTotals): AdmissionDenial | null {
+  if (policy.unlimited === true) return null;
   if (totals.requests >= policy.maxRequests) return "requests";
   if (totals.inFlight >= policy.maxConcurrentRequests) return "concurrency";
   const charge = reservedCharge(policy);

@@ -105,10 +105,11 @@ it.each(["student", "server"] as const)(
   },
 );
 
-it("rejects empty and unrelated single-entry roots", async () => {
+it("accepts an empty failed-download root but rejects unrelated entries", async () => {
   mkdirSync(root, { mode: 0o700 });
   securePrivatePath(root, 0o700);
-  await expect(preparePreviewRoot(root, "server")).rejects.toThrow(InstallerUsageError);
+  expect(await preparePreviewRoot(root, "server")).toBe(true);
+  expect(await preparePreviewRoot(root, "student")).toBe(true);
   writeFileSync(join(root, "unrelated"), "keep");
   await expect(preparePreviewRoot(root, "server")).rejects.toThrow(InstallerUsageError);
   expect(readFileSync(join(root, "unrelated"), "utf8")).toBe("keep");

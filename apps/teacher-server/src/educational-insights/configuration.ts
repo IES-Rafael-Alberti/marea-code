@@ -9,7 +9,8 @@ export const EducationalRouteSchema = z
   })
   .strict()
   .refine(
-    (route) => route.inputTokenCeiling <= route.budget.maxInputTokens,
+    (route) =>
+      route.budget.unlimited === true || route.inputTokenCeiling <= route.budget.maxInputTokens,
     "The route input ceiling must fit the budget",
   );
 export const EducationalConfigurationSchema = z

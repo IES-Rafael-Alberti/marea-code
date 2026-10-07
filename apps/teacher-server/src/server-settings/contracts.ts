@@ -24,7 +24,11 @@ export interface ServerSettingsStore {
   write(value: ServerSettings, expectedRevision: number): void;
 }
 export interface ServerSettingsEndpoint {
-  execute(identity: AuthenticatedIdentity, input: Uint8Array): object;
+  execute(
+    identity: AuthenticatedIdentity,
+    input: Uint8Array,
+    signal?: AbortSignal,
+  ): object | Promise<object>;
 }
 export class ServerSettingsError extends Error {
   constructor(readonly status: number) {

@@ -32,9 +32,9 @@ export class EducationalInference {
     if (route === undefined) return null;
     return {
       ...this.ledger.totals({ runId: accountId, purpose: "evaluation" }),
-      maxRequests: route.budget.maxRequests,
-      maxTokens: route.budget.maxTokens,
-      maxCostUnits: route.budget.maxCostUnits,
+      maxRequests: route.budget.unlimited === true ? null : route.budget.maxRequests,
+      maxTokens: route.budget.unlimited === true ? null : route.budget.maxTokens,
+      maxCostUnits: route.budget.unlimited === true ? null : route.budget.maxCostUnits,
       costUnit: route.budget.costUnit,
     };
   }
@@ -51,7 +51,10 @@ export class EducationalInference {
     system += `\nReturn JSON matching: ${JSON.stringify(z.toJSONSchema(schema))}`;
     const text = JSON.stringify(material);
     // Conservative upper bound: UTF-8 bytes cannot undercount supported tokenizer input units.
-    if (Buffer.byteLength(system) + Buffer.byteLength(text) > route.inputTokenCeiling)
+    if (
+      route.budget.unlimited !== true &&
+      Buffer.byteLength(system) + Buffer.byteLength(text) > route.inputTokenCeiling
+    )
       throw new Error("input-too-large");
     const account = { runId: accountId, purpose: "evaluation" as const };
     this.ledger.configure(account, route.budget, this.clock.now());

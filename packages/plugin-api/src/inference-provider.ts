@@ -1,4 +1,5 @@
 import type { ProviderSettingsDescriptor } from "./provider-settings.js";
+import type { ProviderModel } from "./provider-models.js";
 import * as z from "zod";
 
 import {
@@ -49,6 +50,10 @@ export interface InferenceProviderCatalogEntry {
   readonly settings?: ProviderSettingsDescriptor;
   readonly manifest: InferenceProviderManifest;
   readonly create: InferenceProviderFactory;
+  readonly listModels?: (
+    configuration: InferenceProviderConfiguration,
+    signal: AbortSignal,
+  ) => Promise<readonly ProviderModel[]>;
 }
 
 export type InferenceMessageRole = "assistant" | "system" | "tool" | "user";

@@ -47,11 +47,12 @@ export function teachingMessages(locale: Locale) {
           forbidden: "You do not have access to this class.",
           conflict: "The saved configuration changed while you were editing.",
           uncertain: "The save outcome is unknown. Your draft is preserved.",
-          unconfigured: "Operator prerequisites are not configured for this deployment.",
+          unconfigured:
+            "No model is configured for this class. Save a provider and model in Settings → Server, then reload this class.",
           "skill-unavailable": "A selected skill is unavailable or stale on the server.",
         },
         operatorWarning:
-          "Operator prerequisites are missing. Reading is allowed but saving is blocked.",
+          "Save a provider and model in Settings → Server, then reload this class to save its teaching settings. Ask the server administrator if you cannot manage connections.",
         save: "Save configuration",
         saveBlocked: "Save configuration (blocked)",
         reloadCurrent: "Reload current configuration",
@@ -115,12 +116,12 @@ export function teachingMessages(locale: Locale) {
             conflict: "Gordetako konfigurazioa aldatu egin da editatzen ari zinela.",
             uncertain: "Ez dago gordetzearen emaitza berretsita. Zure zirriborroa mantendu da.",
             unconfigured:
-              "Operadorearen aurrebaldintzak ez daude instalazio honetarako konfiguratuta.",
+              "Ikasgela honek ez du eredurik konfiguratuta. Gorde hornitzailea eta eredua Ezarpenak → Zerbitzaria atalean eta kargatu ikasgela berriro.",
             "skill-unavailable":
               "Hautatutako skill-a ez dago eskuragarri edo zaharkituta dago zerbitzarian.",
           },
           operatorWarning:
-            "Operadorearen aurrebaldintzak falta dira. Irakurtzea baimenduta dago, baina gordetzea blokeatuta.",
+            "Gorde hornitzailea eta eredua Ezarpenak → Zerbitzaria atalean eta kargatu ikasgela berriro irakaskuntza-ezarpenak gordetzeko. Konexioak kudeatu ezin badituzu, eskatu zerbitzariaren administratzaileari.",
           save: "Gorde konfigurazioa",
           saveBlocked: "Gorde konfigurazioa (blokeatuta)",
           reloadCurrent: "Birkargatu uneko konfigurazioa",
@@ -183,11 +184,11 @@ export function teachingMessages(locale: Locale) {
             conflict: "La configuración guardada ha cambiado mientras editabas.",
             uncertain: "El resultado del guardado es desconocido. Tu borrador se conserva.",
             unconfigured:
-              "Los prerrequisitos de operador no están configurados en este despliegue.",
+              "Esta clase no tiene un modelo configurado. Guarda un proveedor y modelo en Ajustes → Servidor y recarga la clase.",
             "skill-unavailable": "Una skill seleccionada no está disponible o está desactualizada.",
           },
           operatorWarning:
-            "Faltan prerrequisitos de operador. Se puede leer, pero el guardado está bloqueado.",
+            "Guarda un proveedor y modelo en Ajustes → Servidor y recarga esta clase para poder guardar sus ajustes docentes. Si no administras las conexiones, pídeselo al administrador del servidor.",
           save: "Guardar configuración",
           saveBlocked: "Guardar configuración (bloqueado)",
           reloadCurrent: "Recargar configuración actual",

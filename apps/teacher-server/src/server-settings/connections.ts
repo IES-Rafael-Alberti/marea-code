@@ -8,38 +8,46 @@ export function prepareConnections(
   requested: ServerSettings["connections"],
   previous: ServerSettings["connections"],
 ) {
-  const connections: Record<string, Record<string, string>> = {};
-  for (const [id, fields] of Object.entries(requested)) {
-    const entry = catalog.find((item) => item.manifest.id === id);
-    if (entry?.settings === undefined) {
-      connections[id] = retainUnavailableConnection(fields, previous[id]);
-      continue;
-    }
-    const descriptor = ProviderSettingsDescriptorSchema.parse(entry.settings);
-    const values: Record<string, string> = {};
-    if (Object.keys(fields).some((key) => !descriptor.fields.some((field) => field.key === key)))
-      throw new ServerSettingsError(400);
-    for (const field of descriptor.fields) {
-      const value =
-        fields[field.key] ??
-        (field.kind === "secret" ? previous[id]?.[field.key] : undefined) ??
-        field.defaultValue;
-      if (field.required && !value) throw new ServerSettingsError(400);
-      if (value !== undefined) values[field.key] = value;
-    }
-    try {
-      entry.create({
-        apiKey: values.apiKey ?? "",
-        ...(values.endpoint ? { endpoint: values.endpoint } : {}),
-        settings: values,
-      });
-    } catch {
-      throw new ServerSettingsError(400);
-    }
-    connections[id] = values;
-  }
-  return connections;
+  return Object.fromEntries(
+    Object.entries(requested).map(([id, fields]) => [
+      id,
+      prepareConnection(catalog, id, fields, previous),
+    ]),
+  );
 }
+
+export function prepareConnection(
+  catalog: readonly InferenceProviderCatalogEntry[],
+  id: string,
+  fields: Record<string, string>,
+  previous: ServerSettings["connections"],
+): Record<string, string> {
+  const entry = catalog.find((item) => item.manifest.id === id);
+  if (entry?.settings === undefined) return retainUnavailableConnection(fields, previous[id]);
+  const descriptor = ProviderSettingsDescriptorSchema.parse(entry.settings);
+  const values: Record<string, string> = {};
+  if (Object.keys(fields).some((key) => !descriptor.fields.some((field) => field.key === key)))
+    throw new ServerSettingsError(400);
+  for (const field of descriptor.fields) {
+    const value =
+      fields[field.key] ??
+      (field.kind === "secret" ? previous[id]?.[field.key] : undefined) ??
+      field.defaultValue;
+    if (field.required && !value) throw new ServerSettingsError(400);
+    if (value !== undefined) values[field.key] = value;
+  }
+  try {
+    entry.create({
+      apiKey: values.apiKey ?? "",
+      ...(values.endpoint ? { endpoint: values.endpoint } : {}),
+      settings: values,
+    });
+  } catch {
+    throw new ServerSettingsError(400);
+  }
+  return values;
+}
+
 export function projectConnection(
   entry: InferenceProviderCatalogEntry,
   connections: ServerSettings["connections"],
@@ -49,6 +57,7 @@ export function projectConnection(
   const values = connections[entry.manifest.id] ?? {};
   return {
     id: entry.manifest.id,
+    ...(entry.listModels ? { supportsModels: true } : {}),
     descriptor,
     configured: connections[entry.manifest.id] !== undefined,
     values: Object.fromEntries(

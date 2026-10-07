@@ -5,6 +5,7 @@ import { z } from "zod";
 import { CredentialLoginSchema, SafeDisplayNameSchema } from "@marea/protocol";
 import { prepareState } from "./install.boundary.js";
 import { previewVersion, serverOrigin } from "./preview-channel.js";
+import { installExampleSkill } from "./preview-skills.boundary.js";
 
 export const setupAnswers = z
   .object({
@@ -66,6 +67,7 @@ export function scaffoldServer(
     "---\nname: evaluate\ndescription: Review learning evidence from the closed session\n---\n\nEvaluate the evidence against the teacher's criteria. Distinguish observations from inference.\n",
     { mode: 0o600 },
   );
+  installExampleSkill(root, release);
   writeFileSync(path("state/digest.key"), randomBytes(32), { flag: "wx", mode: 0o600 });
   json("policy.json", { version: 1, classes: [] });
   json("config/operator-cli.json", {
