@@ -1,0 +1,76 @@
+.setup-shell {
+  max-width: 960px;
+}
+.setup-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 2.5rem;
+  padding: 1.5rem 2rem;
+}
+.setup-steps [aria-current="step"] {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 0.4rem;
+}
+.setup-shell fieldset {
+  border: 1px solid var(--line, #cbd5e1);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 1rem 0;
+}
+.setup-shell legend {
+  font-size: 1.15rem;
+  font-weight: 650;
+  padding: 0 0.5rem;
+}
+.setup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+.setup-grid p {
+  grid-column: 1 / -1;
+}
+.setup-shell label:not(.setup-choice) {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0.6rem 0;
+}
+.setup-shell input:not([type="checkbox"]):not([type="radio"]),
+.setup-shell select {
+  width: 100%;
+  padding: 0.65rem;
+  min-height: 44px;
+}
+.setup-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1rem 0;
+}
+.setup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.setup-actions button {
+  min-height: 44px;
+  padding: 0.65rem 1.1rem;
+}
+.setup-review {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 0.8rem;
+}
+.setup-review dt {
+  font-weight: 600;
+}
+.setup-review dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.setup-progress {
+  padding: 1rem;
+  border-left: 4px solid currentColor;
+}

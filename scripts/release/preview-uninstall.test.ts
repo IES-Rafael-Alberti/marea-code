@@ -237,3 +237,45 @@ it("leaves managed files in place when locked retirement fails", async () => {
   expect(existsSync(join(root, "installation", "data"))).toBe(true);
   expect(existsSync(join(root, "programs"))).toBe(true);
 });
+
+it("removes an unfinished setup without asking to preserve nonexistent school data", async () => {
+  rmSync(join(root, "installation"), { recursive: true });
+  const { markOnboardingPending } = await import("./onboarding-state.boundary.js");
+  const { chmodSync } = await import("node:fs");
+  chmodSync(root, 0o700);
+  markOnboardingPending(root);
+  await uninstallPreview(root, server(), ["--yes"]);
+  expect(existsSync(root)).toBe(false);
+  expect(ports.acquireInstallation).not.toHaveBeenCalled();
+  expect(ports.question).not.toHaveBeenCalled();
+  expect(output).toHaveBeenCalledWith(expect.stringContaining("todavía no se ha creado"));
+});
+it("requires a live setup process to close before uninstalling", async () => {
+  const { markOnboardingPending, ownOnboarding } = await import("./onboarding-state.boundary.js");
+  const { chmodSync } = await import("node:fs");
+  chmodSync(root, 0o700);
+  markOnboardingPending(root);
+  const owner = ownOnboarding(root, "http://127.0.0.1:1234/dashboard/setup.html#token=fixture");
+  try {
+    await expect(uninstallPreview(root, server(), ["--yes"])).rejects.toThrow(
+      "Cierra el asistente",
+    );
+    expect(existsSync(join(root, "programs"))).toBe(true);
+  } finally {
+    owner.close();
+  }
+});
+it("ignores school setup markers for students and retains complete schools with stale markers", async () => {
+  writeFileSync(join(root, "onboarding-pending.json"), "not a school marker");
+  await uninstallPreview(root, settings(), ["--yes"]);
+  expect(existsSync(join(root, "programs"))).toBe(false);
+});
+it("asks the ordinary data question for a server without a pending setup marker", async () => {
+  rmSync(join(root, "installation"), { recursive: true });
+  ports.question.mockResolvedValue("n");
+  await uninstallPreview(root, server(), []);
+  expect(ports.question).toHaveBeenCalledWith(
+    "¿Borrar también los datos, credenciales y copias del centro? (s/n)",
+    "n",
+  );
+});

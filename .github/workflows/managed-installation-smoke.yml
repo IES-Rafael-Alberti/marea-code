@@ -22,7 +22,7 @@ jobs:
         with:
           bun-version: 1.4.2
       - run: bun install --frozen-lockfile --ignore-scripts
-      - name: Piped and direct bootstrap with a real interactive terminal
+      - name: First-run browser setup with compiled server binaries
         run: bun scripts/release/preview-wizard-smoke.mjs
       - name: Compile server and exercise HTTP, managed Ctrl+C and clean uninstall
         run: |

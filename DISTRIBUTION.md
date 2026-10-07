@@ -1,39 +1,55 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.17`, which fixes student installation
-commands opened from localhost and supports classroom HTTP addresses. It also
-normalizes model file paths before requesting write approval, fixing the Zod error
-that prevented file creation for paths such as `/main.py`. Update the student
-client for the write fix and the server for the installation panel. It retains
-download retries, reuse of empty failed-installation directories, and explicit
-server data removal during uninstall or reinstall. It also includes
-unlimited default usage, verified OpenRouter model suggestions and editable
-catalog prices, and the bundled didactic testing skill. Saving the server model
-now enables class teaching settings on fresh installations.
+The commands below target `0.1.0-preview.18`. Fresh teacher installations open a
+browser setup wizard on their first launch. The wizard collects the school,
+teacher account, model connection and classroom access, then saves a usable first
+class and opens the dashboard. Existing schools retain their data and settings.
+Student startup failures now explain the relevant action, including a class that
+has not yet been configured. Earlier installation, LAN HTTP, model catalog,
+default unlimited usage and file-write fixes are included.
 
-Earlier password, terminal, progress, graceful shutdown and optional classroom
-HTTP fixes are included. Published installers and tags remain immutable.
+Published installers and tags remain immutable.
 
 ## Teacher server
 
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.17/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.18/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.17/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.18/install.ps1'))) -Component server
 ```
 
-The wizard creates a new installation under `~/.marea-preview/server`, asks for
-the teacher password (12–256 characters) without displaying or storing plaintext,
-and creates the first center and class. It does not modify `~/marea-prueba` or adopt
-existing data.
-It prints the launch command. On Windows, reopen the terminal after installation
-to pick up the per-user PATH entry.
+The installer puts programs and launchers under `~/.marea-preview/server`.
+It does not ask for school data in the terminal. On Windows, reopen the terminal
+after installation to pick up the per-user PATH entry, then run:
+
+```sh
+marea-teacher
+```
+
+On the first launch, a browser opens a four-step wizard:
+
+1. School, first class and teacher account (password: 12–256 characters).
+2. Provider key and model, with OpenRouter verification, suggestions and editable prices.
+3. Local-only, classroom LAN HTTP or a configured HTTPS origin; optional Google and testing skill.
+4. Review and creation. Progress is visible while the installation is prepared.
+
+The first class is saved in tutoring mode with automatic evaluation disabled and
+student approval required for project changes. Usage defaults to unlimited.
+The local dashboard opens already signed in. HTTPS installations use their normal
+login page. Further launches start the existing school without showing the wizard.
+The LAN choice is remembered by the managed launcher.
+
+If the browser cannot open, use the private setup link printed in the terminal
+on the same computer. Setup listens only on loopback and requires the random
+capability in that link, an exact Host and a same-origin POST. Passwords and API
+keys remain in memory or private installation files; they are never put in the URL.
+`~/marea-prueba` and other existing installations are not adopted or modified.
 
 For HTTPS, choose an origin accessible from student computers and configure your
 reverse proxy to forward to `127.0.0.1:18787` (or the chosen port), preserving the
@@ -50,8 +66,8 @@ The server listens on all IPv4 interfaces and prints the addresses students can
 use. Open `http://TEACHER_IP:18787/dashboard/` for the panel. Allow the selected
 port through the teacher computer's firewall. HTTP carries passwords, sessions
 and classroom traffic without encryption; use it only on a trusted network.
-This flag applies only to that invocation and does not rewrite the saved
-configuration. Starting without it uses the configured listening address again.
+An explicit flag applies to that invocation. When LAN access was selected in the
+first-run wizard, the managed launcher supplies the flag on subsequent launches.
 Exact Host and Origin checks remain enabled for the computer's local IPs.
 Download verification and release signatures are unchanged.
 
@@ -62,11 +78,11 @@ available, choose the classroom address. A dashboard opened through a remote
 HTTP or HTTPS address retains that address. With no reachable address, the panel
 explains how to enable access instead of offering a loopback command.
 
-Start `marea-teacher`, open `/dashboard/`, sign in and configure the model provider
-under Settings → Server. New installations use that connection and model in every
-class automatically. Only installations with imported class-specific routes show
-the option to replace those routes. Save the teaching configuration for the first
-class before inviting students; the didactic `testing` skill is available to try. API keys stay in the
+After setup, change the model under Settings → Server and the teaching choices
+under Settings → This class. New installations use the common connection and
+model in every class. Installations with imported class-specific routes also
+show the option to replace those routes. Additional classes still need their
+teaching configuration saved before admitting students. API keys stay in the
 private installation; do not include them in student installation commands.
 
 Entering an OpenRouter key checks it and loads the account's available models.
@@ -83,7 +99,7 @@ the configuration they captured when they started.
 Fresh installs and updates add `testing` only when the installation has no skill
 with that name; an edited local copy is preserved.
 
-The optional Google prompts accept a desktop OAuth client ID, client secret and
+The optional Google fields accept a desktop OAuth client ID, client secret and
 school domain. Domain administration, OAuth consent and trusting the application
 for minors still happen in Google Workspace. Group membership additionally needs
 service-account configuration.
@@ -108,13 +124,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.17/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.18/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.17/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.18/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Run `marea` from the project directory. The managed installation keeps student
@@ -128,7 +144,7 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
 - `status` (or `--status`): managed installation details, with no credentials.
 - `update` (or `--update`): check the latest **published** preview and ask to install
   it, without starting the application. Publishing alone does not notify everyone.
-- `update --version 0.1.0-preview.17`: try a specific published preview.
+- `update --version 0.1.0-preview.18`: try a specific published preview.
 - Ordinary startup offers only a **recommended** version for this component and
   wire protocol. Declining keeps the installed version. A noninteractive start
   never accepts updates; discovery failures leave the current installation usable.
@@ -143,8 +159,8 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
   student version or a required protocol repair may select an older signed client.
   Server downgrades require backup recovery; they cannot open migrated data.
 
-For a fresh pilot install before recommendation, append `--version 0.1.0-preview.17`
-to the POSIX command, or `-Version 0.1.0-preview.17` on PowerShell. With no explicit
+For a fresh pilot install before recommendation, append `--version 0.1.0-preview.18`
+to the POSIX command, or `-Version 0.1.0-preview.18` on PowerShell. With no explicit
 version and no recommendation, installation stops with a useful message.
 
 Stop the server before accepting an update. Its existing exclusive installation
@@ -162,10 +178,11 @@ enforces deletion authority. Inspect the restored installation and explicitly
 select its matching program version before resuming. Retained executables alone
 are not a database rollback.
 
-If first-time setup is interrupted, `preview.json` is absent and the launcher
-cannot start. Preserve the partial directory for diagnosis; retry with a new
-`--root` on POSIX or move the incomplete directory aside after checking that it
-contains no classroom data. The installer never silently deletes existing state.
+If first-time browser setup is interrupted, run `marea-teacher` again. The
+pending marker keeps setup separate from an active school; a failed attempt
+leaves only private staging data. A complete school is promoted atomically, and
+a stale marker after promotion is reconciled on restart. Uninstall also works
+before setup is completed. Close the wizard process before uninstalling.
 
 ## Uninstall
 
@@ -201,7 +218,7 @@ otherwise unsafe shell profiles are preserved and reported for manual PATH clean
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.17`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.18`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
@@ -226,7 +243,7 @@ Run the **Recommend preview** workflow on `main`, choosing the published version
 and `student`, `server`, or `both`. From a maintainer terminal:
 
 ```sh
-gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.17 -f component=both
+gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.18 -f component=both
 ```
 
 Promotion requires a successful native publication workflow for the exact source,

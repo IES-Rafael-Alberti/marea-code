@@ -144,23 +144,13 @@ it("does not overwrite existing state or mark a failed setup as complete", async
   expect(ports.writeFileSync).not.toHaveBeenCalled();
 });
 
-it("provisions a new teacher installation and binds the offline update callback to its data directory", async () => {
+it("defers school provisioning to the first browser launch and binds the offline update callback to its data directory", async () => {
   const output = vi.spyOn(process.stdout, "write").mockReturnValue(true);
   vi.stubEnv("SHELL", undefined);
   await previewMain(install("server"));
-  expect(ports.scaffoldServer).toHaveBeenCalledWith(
-    "/private/installation",
-    "/private/programs/server-0.1.0-preview.1",
-    "0.1.0-preview.1",
-    expect.objectContaining({ center: "School" }),
-  );
-  expect(ports.provisionServer).toHaveBeenCalledWith(
-    "/private/installation",
-    "/private/programs/server-0.1.0-preview.1",
-    expect.any(Object),
-    "private-password",
-    runPrivateCommand,
-  );
+  expect(ports.markOnboardingPending).toHaveBeenCalledExactlyOnceWith("/private");
+  expect(ports.scaffoldServer).not.toHaveBeenCalled();
+  expect(ports.provisionServer).not.toHaveBeenCalled();
   const installPorts = ports.installRelease.mock.calls[0]?.[1] as InstallPorts;
   const activate = () => Promise.resolve();
   await installPorts.withOfflineBackup(activate);

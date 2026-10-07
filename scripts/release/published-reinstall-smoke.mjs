@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdirSync,
@@ -12,10 +12,11 @@ import {
 } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import process from "node:process";
 import { spawnPty } from "../../test-support/terminal/pty.ts";
 import { previewVersion, repositoryName } from "./preview-channel.ts";
+import { setupInput } from "./onboarding.fixture.ts";
 import { shellLiteral } from "./preview-launchers.ts";
 
 // Public transport, signed downloads and real executables; all state is disposable.
@@ -47,6 +48,56 @@ function terminal(command, args) {
   return spawnPty({ command, arguments: args, currentDirectory: scratch, environment });
 }
 
+async function configureSchool(login) {
+  // Compile the same first-run controller with only the external provider transport substituted.
+  // The downloaded, signature-verified server and offline administration binaries are unchanged.
+  const harness = join(scratch, "setup-probe");
+  if (!existsSync(harness))
+    execFileSync(
+      "bun",
+      [
+        "build",
+        resolve("scripts/release/onboarding-smoke-entry.fixture.ts"),
+        "--compile",
+        "--outfile",
+        harness,
+      ],
+      { stdio: "pipe" },
+    );
+  const release = join(root, "programs", `server-${version}`);
+  const setup = terminal(harness, [root, release]);
+  try {
+    await setup.waitForText("Completa la configuración en tu navegador:", 120000);
+    await setup.waitForQuiet();
+    const url = new globalThis.URL(readFileSync(join(root, "setup-url.txt"), "utf8"));
+    const token = new globalThis.URLSearchParams(url.hash.slice(1)).get("token");
+    const response = await globalThis.fetch(`${url.origin}/setup/api`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        origin: url.origin,
+        authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        operation: "finish",
+        setup: setupInput({
+          login,
+          password: `synthetic-${login}-password`,
+          port,
+          access: "local",
+        }),
+      }),
+    });
+    assert.equal(response.status, 200, setup.transcript());
+    await response.arrayBuffer();
+    setup.write("\u0003");
+    assert.equal((await setup.waitForExit(30000)).exitCode, 0, setup.transcript());
+  } finally {
+    setup.kill();
+    rmSync(join(root, "setup-url.txt"), { force: true });
+  }
+}
+
 async function install(login, retained) {
   const pty = terminal("/bin/sh", [
     "-c",
@@ -65,27 +116,15 @@ async function install(login, retained) {
         return;
       }
     }
-    for (const [prompt, answer] of [
-      ["Nombre del centro", `Synthetic school ${login}`],
-      ["Primera clase", ""],
-      ["Nombre del profesor", "Synthetic teacher"],
-      ["Usuario del profesor", login],
-      ["Contraseña del profesor: ", password],
-      ["Repite la contraseña: ", password],
-      ["Puerto local", String(port)],
-      ["Dirección pública del servidor", ""],
-      ["¿Configurar Google Workspace?", "n"],
-    ]) {
-      await pty.waitForText(prompt, 120000);
-      pty.write(`${answer}\r`);
-      await pty.waitForQuiet();
-    }
     await pty.waitForText("Instalado:", 600000);
     assert.equal((await pty.waitForExit()).exitCode, 0, pty.transcript().slice(-2000));
-    for (const stage of ["Verificando la firma", "MiB recibidos en total", "Creando el centro"])
+    for (const stage of ["Verificando la firma", "MiB recibidos en total"])
       assert.ok(pty.transcript().includes(stage));
     assert.ok(!pty.transcript().includes(password));
     assert.ok(!pty.transcript().includes("/$bunfs/"));
+    assert.equal(existsSync(join(root, "onboarding-pending.json")), true);
+    assert.ok(!pty.transcript().includes("Nombre del centro"));
+    await configureSchool(login);
   } finally {
     pty.kill();
   }

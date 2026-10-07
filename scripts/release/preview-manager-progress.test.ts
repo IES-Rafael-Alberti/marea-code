@@ -38,12 +38,13 @@ it("finishes the terminal progress line before a failed download is reported", a
 
 it.each(["student", "server"])("reports installation stages for %s", async (component) => {
   const output = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+  const instructions = vi.spyOn(process.stdout, "write").mockReturnValue(true);
   await previewMain(install(component));
   const download = ports.downloadPreview.mock.calls[0]?.[4] as DownloadPorts;
   expect(download.progress).toBeDefined();
   expect(output).toHaveBeenCalledWith("Instalando los archivos verificados...\n");
   if (component === "server")
-    expect(output).toHaveBeenCalledWith(
-      "Creando el centro, la clase y la cuenta del profesor...\n",
+    expect(instructions).toHaveBeenCalledWith(
+      "Ejecuta marea-teacher: se abrirá un asistente en tu navegador para dejar la primera clase lista.\n",
     );
 });

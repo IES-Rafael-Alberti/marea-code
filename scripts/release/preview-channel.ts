@@ -16,6 +16,7 @@ export const previewSettingsSchema = z
     channel: z.literal("preview"),
     serverUrl: z.string().optional(),
     installation: z.string().optional(),
+    allowHttp: z.boolean().optional(),
   })
   .strict();
 export type PreviewSettings = z.infer<typeof previewSettingsSchema>;

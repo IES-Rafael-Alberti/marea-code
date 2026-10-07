@@ -32,3 +32,4 @@ export * from "./inference-budget.js";
 export * from "./server-model-route.js";
 
 export * from "./external-identity.js";
+export * from "./server-setup.js";

@@ -18,6 +18,11 @@ import type { PreviewSettings } from "./preview-channel.js";
 import { powershellLiteral, windowsLauncher } from "./preview-launchers.js";
 import { removePosixPath } from "./preview-path.boundary.js";
 import { question } from "./preview-terminal.boundary.js";
+import {
+  existingOnboarding,
+  onboardingPending,
+  onboardingMarker,
+} from "./onboarding-state.boundary.js";
 
 type UninstallSettings = Pick<PreviewSettings, "component" | "installation">;
 
@@ -57,12 +62,14 @@ function removeManagedPath(bin: string): void {
   } else removePosixPath(homedir(), bin);
 }
 
-function printUninstallScope(settings: UninstallSettings, purge: boolean): void {
-  const detail = purge
-    ? "También se borrarán los datos, credenciales y copias del centro."
-    : settings.component === "server"
-      ? `Se conservarán los datos del centro en ${String(settings.installation)}.`
-      : "Se borrarán las sesiones guardadas; se conservarán tus proyectos fuera de la instalación.";
+function printUninstallScope(settings: UninstallSettings, purge: boolean, pending: boolean): void {
+  const detail = pending
+    ? "Se borrarán los archivos de Marea; todavía no se ha creado ningún centro."
+    : purge
+      ? "También se borrarán los datos, credenciales y copias del centro."
+      : settings.component === "server"
+        ? `Se conservarán los datos del centro en ${String(settings.installation)}.`
+        : "Se borrarán las sesiones guardadas; se conservarán tus proyectos fuera de la instalación.";
   process.stdout.write(`${detail}\nCierra las otras sesiones de Marea antes de continuar.\n`);
 }
 
@@ -77,14 +84,31 @@ function retireInstallation(root: string, owner: OwnedInstallation): string {
 async function selectDataRemoval(
   settings: UninstallSettings,
   options: readonly string[],
+  pending: boolean,
 ): Promise<boolean> {
   const purge = options.includes("--purge-data");
-  if (settings.component !== "server" || purge || options.includes("--yes")) return purge;
+  if (pending || settings.component !== "server" || purge || options.includes("--yes"))
+    return purge;
   return (
     (
       await question("¿Borrar también los datos, credenciales y copias del centro? (s/n)", "n")
     ).toLowerCase() === "s"
   );
+}
+
+function unfinishedSetup(root: string, settings: UninstallSettings): boolean {
+  const pending = settings.component === "server" && onboardingPending(root);
+  if (pending && existingOnboarding(root) !== null)
+    throw new Error("Cierra el asistente de Marea antes de desinstalar.");
+  // A crash after promotion already left a complete school: retain the normal data choice.
+  return pending && !existsSync(join(root, "installation"));
+}
+
+function lockExisting(root: string, settings: UninstallSettings) {
+  const installation = join(root, "installation");
+  return settings.component === "server" && existsSync(installation)
+    ? acquireInstallation(installation)
+    : undefined;
 }
 
 /** Remove only managed paths. Classroom data and user project directories are separate choices. */
@@ -104,18 +128,26 @@ export async function uninstallPreview(
   if (settings.component === "server" && installation !== join(root, "installation"))
     throw new Error("Uninstall requires the managed server data directory");
   prepareWindowsUninstall(root, settings);
-  const purge = await selectDataRemoval(settings, options);
-  printUninstallScope(settings, purge);
+  const pending = unfinishedSetup(root, settings);
+  const purge = await selectDataRemoval(settings, options, pending);
+  printUninstallScope(settings, purge, pending);
   if (
     !options.includes("--yes") &&
     (await question("¿Desinstalar Marea? Escribe DESINSTALAR", "no")) !== "DESINSTALAR"
   )
     return;
-  const owner = installation === undefined ? undefined : acquireInstallation(installation);
+  const owner = lockExisting(root, settings);
   let removedData: string | undefined;
   try {
     // Inspect before removing anything; do not traverse replaced top-level directories.
-    const paths = ["programs", "bin", "student-state", "preview.json"];
+    const paths = [
+      "programs",
+      "bin",
+      "student-state",
+      "preview.json",
+      onboardingMarker,
+      "onboarding-owner.json",
+    ];
     for (const name of paths) {
       const path = join(root, name);
       if (existsSync(path) && lstatSync(path).isSymbolicLink())
@@ -134,7 +166,7 @@ export async function uninstallPreview(
   if (removedData !== undefined) rmSync(removedData, { recursive: true });
   if (readdirSync(root).length === 0) rmdirSync(root);
   process.stdout.write("Marea desinstalado. Abre una terminal nueva para actualizar PATH.\n");
-  if (settings.component === "server" && !purge)
+  if (settings.component === "server" && !purge && !pending)
     process.stdout.write(
       `Datos conservados en ${String(installation)}. Al ejecutar de nuevo el instalador podrás borrarlos para empezar de cero.\n`,
     );

@@ -122,7 +122,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native privacy probe failed' }
           bun scripts/release/command-smoke.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Native project command probe failed' }
-      - name: Interactive server bootstrap, password and cancellation
+      - name: First-run browser setup, cancellation and ready classroom
         if: runner.os != 'Windows' && matrix.component == 'server'
         run: |
           bun scripts/release/preview-wizard-smoke.mjs

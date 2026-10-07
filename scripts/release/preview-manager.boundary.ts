@@ -2,7 +2,7 @@ import { parseServerArguments } from "../../apps/student/src/server-arguments.js
 import { uninstallPreview } from "./preview-uninstall.boundary.js";
 import { preparePreviewRoot } from "./preview-existing.boundary.js";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { securePrivatePath } from "@marea/private-filesystem";
@@ -30,12 +30,10 @@ import {
   activatePreviewServer,
   assertPreviewServerReady,
 } from "./preview-server-update.boundary.js";
-import {
-  provisionServer,
-  scaffoldServer,
-  type RunPrivateCommand,
-} from "./preview-setup.boundary.js";
-import { acceptUpdate, question, serverQuestions } from "./preview-terminal.boundary.js";
+import { type RunPrivateCommand } from "./preview-setup.boundary.js";
+import { acceptUpdate, question } from "./preview-terminal.boundary.js";
+import { markOnboardingPending, onboardingPending } from "./onboarding-state.boundary.js";
+import { runBrowserOnboarding } from "./preview-onboarding.boundary.js";
 import { runForeground } from "./preview-process.boundary.js";
 import { configurePosixPath } from "./preview-path.boundary.js";
 import { installationProgress } from "./preview-progress.boundary.js";
@@ -131,6 +129,7 @@ async function fetchAndInstall(
         privateDirectory,
         withOfflineBackup: (activate) => {
           if (settings.installation === undefined) throw new Error("Missing server installation");
+          if (onboardingPending(root) && !existsSync(settings.installation)) return activate();
           return activatePreviewServer(settings.installation, destination, version, activate);
         },
       },
@@ -202,24 +201,15 @@ async function initialInstall(
   const cosign = flags.get("--cosign");
   if (cosign === undefined)
     throw new Error("Initial install needs the verified bootstrap signature tool");
-  const setup = selected === "server" ? await serverQuestions() : undefined;
   mkdirSync(root, { recursive: true, mode: 0o700 });
   securePrivatePath(root, 0o700);
   privateDirectory(root);
-  // A completion record is written last, so a partial setup cannot accidentally start a server.
-  const release = await fetchAndInstall(root, settings, version, resolve(cosign));
-  if (setup !== undefined) {
-    process.stderr.write("Creando el centro, la clase y la cuenta del profesor...\n");
-    scaffoldServer(requiredInstallation(settings), release, version, setup.answers);
-    provisionServer(
-      requiredInstallation(settings),
-      release,
-      setup.answers,
-      setup.password,
-      runPrivateCommand,
-    );
+  // Binary installation is separate from the browser's first-run school configuration.
+  await fetchAndInstall(root, settings, version, resolve(cosign));
+  if (selected === "server") {
+    markOnboardingPending(root);
     process.stdout.write(
-      `Abre ${setup.answers.origin}/dashboard/ y entra como ${setup.answers.login}. Configura el proveedor y modelo en Ajustes → Servidor y guarda la configuración docente de la clase.\n`,
+      "Ejecuta marea-teacher: se abrirá un asistente en tu navegador para dejar la primera clase lista.\n",
     );
   }
   writeLaunchers(root, selected);
@@ -303,7 +293,8 @@ async function updateBeforeStart(
       join(release, `cosign${executableSuffix()}`),
     );
   } catch {
-    if (settings.installation !== undefined) assertPreviewServerReady(settings.installation);
+    if (settings.installation !== undefined && !onboardingPending(root))
+      assertPreviewServerReady(settings.installation);
     if (required)
       throw new Error(
         `No se ha podido instalar la versión ${offered} necesaria para este servidor.`,
@@ -367,7 +358,33 @@ export async function previewMain(argv: readonly string[]): Promise<void> {
     process.stdout.write(`${JSON.stringify({ version: current, ...settings })}\n`);
     return;
   }
-  if (settings.installation !== undefined) assertPreviewServerReady(settings.installation);
+  const pending = settings.component === "server" && onboardingPending(root);
+  const launchServer = (allowHttp: boolean) =>
+    runForeground(
+      join(release, `marea-teacher${executableSuffix()}`),
+      [
+        "--installation",
+        requiredInstallation(settings),
+        "--release",
+        assertPreviewServerReady(requiredInstallation(settings)),
+        ...request.forwarded,
+        ...(allowHttp && !request.forwarded.includes("--allow-http") ? ["--allow-http"] : []),
+      ],
+      managedEnvironment(root, settings),
+    );
+  if (pending && request.action === "run") {
+    process.exitCode = await runBrowserOnboarding({
+      root,
+      release,
+      version: current,
+      settings,
+      run: runPrivateCommand,
+      launch: launchServer,
+    });
+    return;
+  }
+  if (settings.installation !== undefined && !pending)
+    assertPreviewServerReady(settings.installation);
   const selectedSettings = selectedServerSettings(settings, request.forwarded);
   release = await updateBeforeStart(
     root,
@@ -378,19 +395,14 @@ export async function previewMain(argv: readonly string[]): Promise<void> {
     request.flags.get("--version"),
   );
   if (request.action === "update") return;
-  const binary = join(
-    release,
-    `${settings.component === "student" ? "marea" : "marea-teacher"}${executableSuffix()}`,
+  if (settings.component === "server") {
+    process.exitCode = await launchServer(settings.allowHttp === true);
+    return;
+  }
+  const binary = join(release, `marea${executableSuffix()}`);
+  process.exitCode = await runForeground(
+    binary,
+    request.forwarded,
+    managedEnvironment(root, selectedSettings),
   );
-  const args =
-    settings.component === "student"
-      ? request.forwarded
-      : [
-          "--installation",
-          requiredInstallation(settings),
-          "--release",
-          assertPreviewServerReady(requiredInstallation(settings)),
-          ...request.forwarded,
-        ];
-  process.exitCode = await runForeground(binary, args, managedEnvironment(root, selectedSettings));
 }

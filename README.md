@@ -6,8 +6,9 @@ in a web dashboard. Model credentials and private teaching instructions stay on
 the teacher server. Google Workspace sign-in is optional.
 
 Marea is under active development. The `preview` channel is for supervised pilots,
-not a stable release. Google Workspace still needs a real-school acceptance test;
-automated identity tests use simulated Google responses.
+not a stable release. Google Workspace sign-in with individual student addresses has been tried in a real
+school. Group membership still needs that acceptance test; automated identity tests
+use simulated Google responses.
 
 ## Try a preview
 

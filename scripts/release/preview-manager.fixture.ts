@@ -1,6 +1,10 @@
 import { beforeEach, afterEach, vi } from "vitest";
 const ports = vi.hoisted(() => ({
   uninstallPreview: vi.fn(),
+  existsSync: vi.fn(),
+  markOnboardingPending: vi.fn(),
+  onboardingPending: vi.fn(),
+  runBrowserOnboarding: vi.fn(),
   preparePreviewRoot: vi.fn(),
   mkdirSync: vi.fn(),
   mkdtempSync: vi.fn(),
@@ -26,6 +30,8 @@ const ports = vi.hoisted(() => ({
   configurePosixPath: vi.fn(),
   runForeground: vi.fn(),
 }));
+vi.mock("./onboarding-state.boundary.js", () => ports);
+vi.mock("./preview-onboarding.boundary.js", () => ports);
 vi.mock("./preview-uninstall.boundary.js", () => ports);
 vi.mock("./preview-existing.boundary.js", () => ports);
 vi.mock("node:fs", () => ports);
@@ -44,6 +50,7 @@ export const state = {
   version: "0.1.0-preview.1",
   installation: "/private/installation" as string | undefined,
   missingInstallation: false,
+  allowHttp: false,
 };
 export const answers = {
   center: "School",
@@ -61,6 +68,7 @@ beforeEach(() => {
   state.selected = "student";
   state.version = "0.1.0-preview.1";
   state.missingInstallation = false;
+  state.allowHttp = false;
   ports.readFileSync.mockImplementation((path: string) =>
     JSON.stringify(
       path.endsWith("manifest.json")
@@ -82,7 +90,10 @@ beforeEach(() => {
             ...(state.selected === "server"
               ? state.missingInstallation
                 ? {}
-                : { installation: "/private/installation" }
+                : {
+                    installation: "/private/installation",
+                    ...(state.allowHttp ? { allowHttp: true } : {}),
+                  }
               : { serverUrl: "https://school.test" }),
           },
     ),
@@ -98,6 +109,8 @@ beforeEach(() => {
   ports.question.mockResolvedValue("https://school.test");
   ports.serverQuestions.mockResolvedValue({ answers, password: "private-password" });
   ports.preparePreviewRoot.mockResolvedValue(true);
+  ports.onboardingPending.mockReturnValue(false);
+  ports.runBrowserOnboarding.mockResolvedValue(0);
 });
 afterEach(() => {
   vi.restoreAllMocks();

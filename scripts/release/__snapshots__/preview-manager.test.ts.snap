@@ -1,5 +1,22 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`defers school provisioning to the first browser launch and binds the offline update callback to its data directory > server installation instructions 1`] = `
+[
+  [
+    "Ejecuta marea-teacher: se abrirá un asistente en tu navegador para dejar la primera clase lista.
+",
+  ],
+  [
+    "Para usar el nombre corto en esta terminal: export PATH='/private/bin':"$PATH"
+",
+  ],
+  [
+    "Instalado: /private/bin/marea-teacher.
+",
+  ],
+]
+`;
+
 exports[`installs a student, verifies through the supplied bootstrap tool and writes launchers only after activation > student installation instructions 1`] = `
 [
   [
@@ -92,23 +109,6 @@ exports[`keeps offline diagnostics useful and checks server recovery after a fai
   ],
   [
     "No se ha podido actualizar; se conserva la instalación verificada.
-",
-  ],
-]
-`;
-
-exports[`provisions a new teacher installation and binds the offline update callback to its data directory > server installation instructions 1`] = `
-[
-  [
-    "Abre https://school.test/dashboard/ y entra como teacher. Configura el proveedor y modelo en Ajustes → Servidor y guarda la configuración docente de la clase.
-",
-  ],
-  [
-    "Para usar el nombre corto en esta terminal: export PATH='/private/bin':"$PATH"
-",
-  ],
-  [
-    "Instalado: /private/bin/marea-teacher.
 ",
   ],
 ]
