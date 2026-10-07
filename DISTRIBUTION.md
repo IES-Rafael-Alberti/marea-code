@@ -1,13 +1,14 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.20`. Fresh teacher installations open a
+The commands below target `0.1.0-preview.21`. Fresh teacher installations open a
 browser setup wizard on their first launch. The wizard collects the school,
 teacher account, model connection and classroom access, then saves a usable first
 class and opens the dashboard. Existing schools retain their data and settings.
-This version adds the configurable tutor writing gate and finishes plugin-driven
-setup for identity and model providers. Existing classes keep their previous tutor
-behavior. Earlier installation, LAN HTTP, model catalog, default unlimited usage,
-student startup diagnostics and file-write fixes are included.
+This version adds authorized session ZIP exports and optional full-content
+observability through Langfuse or an OTLP collector. Delivery is off by default
+and configured by a server administrator. Existing teaching choices and the
+configurable tutor writing gate are preserved. Earlier installation, LAN HTTP,
+model catalog, unlimited usage defaults and plugin-driven setup are included.
 
 Published installers and tags remain immutable.
 
@@ -16,13 +17,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.20/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.21/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.20/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.21/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -118,6 +119,19 @@ mode; existing classes keep their previous behavior. Changes affect new sessions
 Clients predating this feature must run `marea update` before joining a class that
 enables it. Restarting the client does not reset the policy or retry history of a turn.
 
+## Session exports and optional observability
+
+Teachers can download conversations, events and usage from **Sessions**, filtered
+by class, student and UTC dates, using names or pseudonyms. Administrators can
+configure **Settings → Server → Observability**, test a synthetic connection, and
+explicitly enable delivery with content. Langfuse supports self-hosted base URLs;
+OTLP accepts an HTTP collector. No student-side credentials are needed.
+
+Managed updates back up and migrate the database to schema 13. Export authorization,
+content limits, retries and local/external retention are documented in
+[Observability](OBSERVABILITY.md). Existing clients remain compatible; their traces
+contain only the diagnostic detail they actually recorded.
+
 ## Student computers
 
 Student computers need Git installed and available on `PATH` for project snapshots
@@ -138,13 +152,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.20/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.21/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.20/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.21/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Run `marea` from the project directory. The managed installation keeps student
@@ -158,7 +172,7 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
 - `status` (or `--status`): managed installation details, with no credentials.
 - `update` (or `--update`): check the latest **published** preview and ask to install
   it, without starting the application. Publishing alone does not notify everyone.
-- `update --version 0.1.0-preview.20`: try a specific published preview.
+- `update --version 0.1.0-preview.21`: try a specific published preview.
 - Ordinary startup offers only a **recommended** version for this component and
   wire protocol. Declining keeps the installed version. A noninteractive start
   never accepts updates; discovery failures leave the current installation usable.
@@ -173,8 +187,8 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
   student version or a required protocol repair may select an older signed client.
   Server downgrades require backup recovery; they cannot open migrated data.
 
-For a fresh pilot install before recommendation, append `--version 0.1.0-preview.20`
-to the POSIX command, or `-Version 0.1.0-preview.20` on PowerShell. With no explicit
+For a fresh pilot install before recommendation, append `--version 0.1.0-preview.21`
+to the POSIX command, or `-Version 0.1.0-preview.21` on PowerShell. With no explicit
 version and no recommendation, installation stops with a useful message.
 
 Stop the server before accepting an update. Its existing exclusive installation
@@ -232,7 +246,7 @@ otherwise unsafe shell profiles are preserved and reported for manual PATH clean
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.20`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.21`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
@@ -257,7 +271,7 @@ Run the **Recommend preview** workflow on `main`, choosing the published version
 and `student`, `server`, or `both`. From a maintainer terminal:
 
 ```sh
-gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.20 -f component=both
+gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.21 -f component=both
 ```
 
 Promotion requires a successful native publication workflow for the exact source,
