@@ -402,3 +402,19 @@ it("adds project facts after the immutable teaching prompt without rewriting its
   expect(prompt).toBe("Teach clearly.\n\nSynthetic initial project facts");
   expect(teaching.prompt.content).toBe("Teach clearly.");
 });
+
+it("applies the frozen Socratic policy only to tutoring writes and edits", async () => {
+  for (const agentMode of ["tutoring", "free"] as const) {
+    for (const socraticMode of [undefined, "off", "normal", "strict"] as const) {
+      const instance = harness(true);
+      const current = { ...snapshot(), agentMode, socraticMode };
+      await collect(instance.runtime.streamMessage(message(current), new AbortController().signal));
+      if (agentMode === "tutoring" && socraticMode !== undefined)
+        expect(instance.options[0]?.socratic).toEqual({
+          mode: socraticMode,
+          tools: [instance.options[0]?.approvalTool.name, "marea_edit_file"],
+        });
+      else expect(instance.options[0]).not.toHaveProperty("socratic");
+    }
+  }
+});

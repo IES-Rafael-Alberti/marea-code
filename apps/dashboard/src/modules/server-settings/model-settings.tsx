@@ -330,7 +330,7 @@ function ProviderSelect({
           </option>
         )}
         {providers.map((provider) => (
-          <option key={provider.id} value={provider.id}>
+          <option key={provider.id} value={provider.id} disabled={provider.descriptor === null}>
             {providerName(providers, provider.id, locale)}
           </option>
         ))}

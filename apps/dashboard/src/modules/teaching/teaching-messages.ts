@@ -17,6 +17,14 @@ export function teachingMessages(locale: Locale) {
         savedVersion: (version: string) => `Saved version ${version}`,
         modeLabel: "Agent mode",
         modes: { tutoring: "Guided tutoring", free: "Free mode" },
+        socraticLabel: "Socratic writing gate",
+        socraticModes: {
+          off: "Off",
+          normal: "Block the first attempt",
+          strict: "Block up to three attempts",
+        },
+        socraticHelp:
+          "In each student turn, pauses exercise code writes or edits until the tutor asks a question, or reaches the attempt limit. Free mode, setup files and shell commands are excluded. Student approval is still required. New sessions only; older clients must update.",
         instructionsNote:
           "Edit the complete instructions for each mode; neither field can be empty. Restoring defaults only changes this draft; save to apply it to new sessions. Tool permissions and safety rules remain enforced separately.",
         restoreTutoring: "Restore guided mode defaults",
@@ -85,6 +93,14 @@ export function teachingMessages(locale: Locale) {
           savedVersion: (version: string) => `Gordetako bertsioa ${version}`,
           modeLabel: "Agente-modua",
           modes: { tutoring: "Tutoretza gidatua", free: "Modu librea" },
+          socraticLabel: "Idazketaren blokeo sokratikoa",
+          socraticModes: {
+            off: "Desaktibatuta",
+            normal: "Blokeatu lehen saiakera",
+            strict: "Blokeatu hiru saiakera gehienez",
+          },
+          socraticHelp:
+            "Ikaslearen txanda bakoitzean, ariketako kodearen idazketa eta edizioa eteten ditu tutoreak galdera bat egin arte edo saiakera-mugara heldu arte. Modu librea, konfigurazio-fitxategiak eta shell-komandoak kanpoan geratzen dira. Ikaslearen baimena behar da beti. Saio berrietan soilik; bezero zaharrak eguneratu behar dira.",
           instructionsNote:
             "Editatu modu bakoitzeko argibide osoak; ezin da eremurik hutsik utzi. Lehenetsiak leheneratzeak zirriborro hau baino ez du aldatzen; gorde saio berrietan aplikatzeko. Tresnen baimenak eta segurtasun-arauak bereiz mantentzen dira.",
           restoreTutoring: "Leheneratu modu gidatuaren lehenetsiak",
@@ -153,6 +169,14 @@ export function teachingMessages(locale: Locale) {
           savedVersion: (version: string) => `Versión guardada ${version}`,
           modeLabel: "Modo del agente",
           modes: { tutoring: "Tutoría guiada", free: "Modo libre" },
+          socraticLabel: "Bloqueo de escritura del tutor",
+          socraticModes: {
+            off: "Desactivado",
+            normal: "Bloquear el primer intento",
+            strict: "Bloquear hasta tres intentos",
+          },
+          socraticHelp:
+            "En cada turno del alumno, frena la escritura o edición de código del ejercicio hasta que el tutor haga una pregunta o alcance el límite de intentos. No afecta al modo libre, los archivos de configuración ni los comandos de terminal. El alumno sigue teniendo que autorizar los cambios. Solo se aplica a sesiones nuevas; los clientes antiguos deberán actualizarse.",
           instructionsNote:
             "Edita las instrucciones completas de cada modo; ninguno de los dos campos puede quedar vacío. Restaurar los valores predeterminados solo cambia este borrador; guarda para aplicarlo a sesiones nuevas. Los permisos de herramientas y las reglas de seguridad se mantienen por separado.",
           restoreTutoring: "Restaurar instrucciones del modo guiado",

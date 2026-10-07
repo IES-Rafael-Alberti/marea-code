@@ -27,6 +27,7 @@ export async function materializeConfiguration(
   return StoredTeachingConfigurationSchema.parse({
     publicTemplate: {
       agentMode: request.agentMode,
+      ...(request.socraticMode === undefined ? {} : { socraticMode: request.socraticMode }),
       modelAlias: route.modelAlias,
       prompt: composed.prompt,
       didacticSkills: captured.didactic.map(({ id, digest }) => ({ id, digest })),

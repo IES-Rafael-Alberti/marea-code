@@ -356,3 +356,27 @@ it("restores each mode in the draft without overwriting the other mode", () => {
     classInstructions: { ...base.classInstructions, free: FREE_INSTRUCTIONS },
   });
 });
+
+it("offers all three writing gates, preserves the rest of the draft and leaves free mode unchanged", () => {
+  const settings = teachingDraftFixture();
+  const f = editor(settings);
+  const selector = f.elements.filter((entry) => entry.type === "select")[1];
+  expect(selector?.props.value).toBe("off");
+  const change = selector?.props.onChange as (event: { currentTarget: { value: string } }) => void;
+  for (const socraticMode of ["off", "normal", "strict"] as const) {
+    change({ currentTarget: { value: socraticMode } });
+    expect(f.edit).toHaveBeenLastCalledWith({ ...settings, socraticMode });
+    expect(
+      editor({ ...settings, socraticMode }).elements.filter((entry) => entry.type === "select")[1]
+        ?.props.value,
+    ).toBe(socraticMode);
+  }
+  change({ currentTarget: { value: "unknown" } });
+  expect(f.edit).toHaveBeenCalledTimes(3);
+  expect(renderToStaticMarkup(f.element)).toContain(m.socraticHelp);
+  expect(
+    renderToStaticMarkup(
+      editor({ ...settings, agentMode: "free", socraticMode: "strict" }).element,
+    ),
+  ).not.toContain(m.socraticLabel);
+});

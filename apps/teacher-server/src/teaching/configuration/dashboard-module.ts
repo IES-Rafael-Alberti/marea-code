@@ -173,6 +173,7 @@ class TeachingConfigurationModuleService implements ProductTeachingConfiguration
     try {
       const stored = await service.save(identity, {
         agentMode: parsed.settings.agentMode,
+        socraticMode: parsed.settings.socraticMode,
         automaticEvaluation: parsed.settings.automaticEvaluation,
         classId: parsed.classId,
         classInstructions: parsed.settings.classInstructions,
@@ -206,11 +207,17 @@ class TeachingConfigurationModuleService implements ProductTeachingConfiguration
 function settingsFrom(stored: {
   classInstructions: TeachingSettings["classInstructions"];
   content: { automaticEvaluation: boolean };
-  publicTemplate: { agentMode: TeachingSettings["agentMode"] };
+  publicTemplate: {
+    agentMode: TeachingSettings["agentMode"];
+    socraticMode?: TeachingSettings["socraticMode"];
+  };
   selection: TeachingSettings["selection"];
 }): TeachingSettings {
   return {
     agentMode: stored.publicTemplate.agentMode,
+    ...(stored.publicTemplate.socraticMode === undefined
+      ? {}
+      : { socraticMode: stored.publicTemplate.socraticMode }),
     automaticEvaluation: stored.content.automaticEvaluation,
     classInstructions: stored.classInstructions,
     selection: stored.selection,

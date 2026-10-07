@@ -33,17 +33,15 @@ const es = {
     "HTTP permite trabajar en una red local de confianza. Para HTTPS necesitas una dirección con un proxy ya configurado.",
   port: "Puerto del servidor",
   origin: "Dirección HTTPS pública",
-  google: "Configurar acceso con Google Workspace (opcional)",
-  domain: "Dominio del centro",
-  clientId: "ID de cliente OAuth de escritorio",
-  clientSecret: "Secreto del cliente OAuth",
-  googleHelp:
-    "Necesitas la aplicación de Google ya autorizada en tu dominio. Después podrás añadir los correos del alumnado desde los ajustes de la clase.",
+  identities: "Acceso con cuentas externas (opcional)",
+  identityHelp:
+    "Configura primero la aplicación en el proveedor de identidad. Después podrás dar acceso al alumnado desde los ajustes de la clase.",
+  advanced: "Más opciones",
   testing: "Activar la skill de ejemplo para aprender a escribir tests (opcional)",
   review:
     "Se guardará la clase en modo tutoría, con los límites elegidos y las modificaciones del proyecto sujetas a la aprobación del alumno.",
   optional:
-    "Google y la skill de ejemplo son opcionales. La evaluación automática se puede configurar más adelante.",
+    "Las cuentas externas y la skill de ejemplo son opcionales. La evaluación automática se puede configurar más adelante.",
   language: "Idioma",
   ready: "Configuración terminada. Abriendo tu panel…",
 };
@@ -80,17 +78,15 @@ const en: Copy = {
     "HTTP works on a trusted local network. HTTPS requires an address with a configured proxy.",
   port: "Server port",
   origin: "Public HTTPS address",
-  google: "Set up Google Workspace sign-in (optional)",
-  domain: "School domain",
-  clientId: "Desktop OAuth client ID",
-  clientSecret: "OAuth client secret",
-  googleHelp:
-    "Your Google application must already be authorized in your domain. You can then add student email addresses in the class settings.",
+  identities: "External account sign-in (optional)",
+  identityHelp:
+    "Configure your application with the identity provider first. You can then grant student access in the class settings.",
+  advanced: "More options",
   testing: "Enable the example skill for learning to write tests (optional)",
   review:
     "The class will be saved in tutoring mode, with the selected limits and project changes requiring the student's approval.",
   optional:
-    "Google and the example skill are optional. Automatic evaluation can be configured later.",
+    "External accounts and the example skill are optional. Automatic evaluation can be configured later.",
   language: "Language",
   ready: "Setup complete. Opening your dashboard…",
 };
@@ -126,17 +122,15 @@ const eu: Copy = {
     "HTTP konfiantzazko sare lokal batean erabil daiteke. HTTPS erabiltzeko proxy bat konfiguratutako helbidea behar da.",
   port: "Zerbitzariaren ataka",
   origin: "HTTPS helbide publikoa",
-  google: "Konfiguratu Google Workspace sarbidea (aukerakoa)",
-  domain: "Ikastetxearen domeinua",
-  clientId: "Mahaigaineko OAuth bezeroaren IDa",
-  clientSecret: "OAuth bezeroaren sekretua",
-  googleHelp:
-    "Google aplikazioa zure domeinuan baimenduta egon behar da. Ondoren, gehitu ikasleen helbide elektronikoak klasearen ezarpenetan.",
+  identities: "Kanpoko kontuekin sarbidea (aukerakoa)",
+  identityHelp:
+    "Konfiguratu aplikazioa identitate-hornitzailean. Ondoren, eman ikasleei sarbidea klasearen ezarpenetan.",
+  advanced: "Aukera gehiago",
   testing: "Aktibatu testak idazten ikasteko adibide-skilla (aukerakoa)",
   review:
     "Klasea tutoretza moduan gordeko da, hautatutako mugekin eta proiektuko aldaketetarako ikaslearen onespena eskatuta.",
   optional:
-    "Google eta adibide-skilla aukerakoak dira. Ebaluazio automatikoa gero konfigura daiteke.",
+    "Kanpoko kontuak eta adibide-skilla aukerakoak dira. Ebaluazio automatikoa gero konfigura daiteke.",
   language: "Hizkuntza",
   ready: "Konfigurazioa amaitu da. Panela irekitzen…",
 };

@@ -24,7 +24,10 @@ function failure(code: TeachingProblem): TeachingClientFailure {
   return Object.assign(new Error(code), { code });
 }
 
-const DEFAULT_SETTINGS = settings({ classInstructions: { tutoring: "", free: "" } });
+const DEFAULT_SETTINGS = settings({
+  classInstructions: { tutoring: "", free: "" },
+  socraticMode: "normal",
+});
 const EDITED = settings({ classInstructions: { tutoring: "Edited draft.", free: "" } });
 
 function setup() {

@@ -15,7 +15,7 @@ it("starts with one administrator and publishes descriptors without secrets", as
     education: {},
     useCommonRoute: false,
   });
-  expect(await onboardingSettings().read()).toMatchObject({
+  expect((await onboardingSettings().read()).settings).toMatchObject({
     administrator: true,
     route: null,
     providers: [{ id: "org.marea.openrouter", supportsModels: true }],
@@ -131,4 +131,70 @@ it("checks the selected model catalog even when unrelated providers are installe
     { ...base, manifest: { ...base.manifest, id: "unrelated.provider" } },
   ]).validate(setupInput(), signal);
   expect(listModels).toHaveBeenCalledOnce();
+});
+
+it("has no provider-specific setup when both catalogs are empty", async () => {
+  const setup = onboardingSettings([], []);
+  expect(await setup.read()).toMatchObject({ settings: { providers: [] }, identityProviders: [] });
+  await expect(setup.validate(setupInput(), signal)).rejects.toThrow();
+});
+it("uses an installed identity plugin's descriptor, defaults and validation", async () => {
+  const { identityProviderCatalog } = await import("@marea/plugin-runtime");
+  const base = present(identityProviderCatalog[0]);
+  const label = { es: "Synthetic identity", en: "Synthetic identity", eu: "Synthetic identity" };
+  const create = vi.fn(() =>
+    base.create(
+      { domain: "school.test", clientId: "id", clientSecret: "secret" },
+      { fetch, now: Date.now },
+    ),
+  );
+  const identity = {
+    ...base,
+    manifest: { ...base.manifest, id: "org.example.login" },
+    settings: {
+      version: 1 as const,
+      name: label,
+      fields: [
+        { key: "tenant", label, kind: "text" as const, required: true },
+        { key: "secret", label, kind: "secret" as const, required: true },
+        { key: "region", label, kind: "text" as const, required: false, defaultValue: "local" },
+      ],
+    },
+    create,
+  };
+  const model = {
+    ...present(inferenceProviderCatalog[0]),
+    listModels: vi.fn(() => Promise.resolve([])),
+  };
+  const setup = onboardingSettings([model], [identity]);
+  expect((await setup.read()).identityProviders).toEqual([
+    { id: identity.manifest.id, descriptor: identity.settings },
+  ]);
+  const values = { tenant: "school", secret: "private-key" };
+  const input = setupInput({ identityProviders: { [identity.manifest.id]: values } });
+  await setup.validate(input, signal);
+  expect(create).toHaveBeenCalledWith(
+    { ...values, region: "local" },
+    (
+      await import("../../apps/teacher-server/src/platform/teacher-host/identity-provider-composition.js")
+    ).systemIdentityRuntime,
+  );
+  expect(JSON.stringify(await setup.read())).not.toContain("private-key");
+  await expect(onboardingSettings([model], []).validate(input, signal)).rejects.toThrow(
+    "identity-provider-unavailable",
+  );
+  for (const invalid of [{ tenant: "school" }, { ...values, unknown: "value" }])
+    await expect(
+      setup.validate(
+        setupInput({ identityProviders: { [identity.manifest.id]: invalid } }),
+        signal,
+      ),
+    ).rejects.toThrow();
+  await expect(
+    setup.validate(setupInput({ identityProviders: { "org.example.absent": values } }), signal),
+  ).rejects.toThrow("identity-provider-unavailable");
+  create.mockImplementationOnce(() => {
+    throw new Error("invalid provider settings");
+  });
+  await expect(setup.validate(input, signal)).rejects.toThrow("invalid provider settings");
 });

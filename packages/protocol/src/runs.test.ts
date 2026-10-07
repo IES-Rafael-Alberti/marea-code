@@ -426,3 +426,22 @@ describe("run protocol", () => {
     expect(() => CloseRunReasonSchema.parse("")).toThrow();
   });
 });
+
+it("bounds the negotiated Socratic policy without changing legacy snapshots", async () => {
+  const { SOCRATIC_GATE_HEADER, SocraticModeSchema } = await import("./runs.js");
+  expect(SOCRATIC_GATE_HEADER).toBe("x-marea-socratic-gate");
+  for (const socraticMode of ["off", "normal", "strict"]) {
+    expect(SocraticModeSchema.parse(socraticMode)).toBe(socraticMode);
+    expect(
+      OpenRunResponseSchema.parse({
+        ...validOpenResponse,
+        snapshot: { ...validOpenResponse.snapshot, socraticMode },
+      }).snapshot.socraticMode,
+    ).toBe(socraticMode);
+  }
+  for (const value of ["", "first", "all", null, 1])
+    expect(SocraticModeSchema.safeParse(value).success).toBe(false);
+  expect(OpenRunResponseSchema.parse(validOpenResponse).snapshot).not.toHaveProperty(
+    "socraticMode",
+  );
+});

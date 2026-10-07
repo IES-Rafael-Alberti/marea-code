@@ -1,4 +1,4 @@
-import { deniesWrite } from "./operation-mediator.js";
+import { deniesWrite, socraticOptions } from "./operation-mediator.js";
 import { OperationMediator } from "./operation-mediator.js";
 import { WriteRequestSchema, type WriteRequest } from "./write-request.js";
 import type { OperationTurn } from "./operation-contracts.js";
@@ -374,6 +374,7 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
         readOnlyTools: this.options.readOnlyTools?.(runId, snapshot) ?? [],
         readOnly: startup,
         questions: !startup,
+        ...socraticOptions(snapshot, startup, mediator, operations),
       }),
       snapshotId: snapshot.id,
     };

@@ -1,4 +1,5 @@
 export type TeacherDomainErrorCode =
+  | "protocol.incompatible"
   | "auth.busy"
   | "auth.invalid"
   | "dashboard.forbidden"

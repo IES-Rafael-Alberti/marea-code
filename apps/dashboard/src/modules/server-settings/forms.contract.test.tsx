@@ -52,7 +52,7 @@ it("offers only connected providers, with a placeholder only for the main route"
   expect(options(empty, m.provider)).toEqual([
     { value: "", disabled: true, text: m.provider },
     { value: "p1", disabled: false, text: "Name p1" },
-    { value: "p2", disabled: false, text: "p2" },
+    { value: "p2", disabled: true, text: "p2" },
   ]);
   const route = { providerId: "p1", model: "main", budget };
   const routed = render(settings({ route, education: { map: task("p2") } })).nodes;

@@ -66,7 +66,8 @@ const messages = {
     outputPrice: "Unidades por token de salida",
     budgetNote:
       "Por defecto no hay límites de uso. Al elegir un modelo del catálogo se rellenan sus precios, que puedes editar. Si escribes otro modelo, revisa los precios manualmente. Las tarifas son estimaciones y no incluyen descuentos ni caché.",
-    unavailable: "Este plugin no ofrece un formulario de configuración.",
+    unavailable:
+      "Este proveedor no está disponible para configurarlo. Si se ha retirado, elige otro en Conexión y modelo. Sus ajustes guardados se conservan.",
     missing: "No hay proveedores instalados.",
     unsaved: "Hay cambios sin guardar. ¿Quieres descartarlos?",
   },
@@ -133,7 +134,8 @@ const messages = {
     outputPrice: "Units per output token",
     budgetNote:
       "Usage is unlimited by default. Choosing a catalog model fills its editable prices. If you type a different model, review prices manually. Prices are estimates and exclude discounts and caching.",
-    unavailable: "This plugin does not provide a configuration form.",
+    unavailable:
+      "This provider is unavailable for configuration. If it was removed, choose another connection and model. Its saved settings are preserved.",
     missing: "No providers installed.",
     unsaved: "Discard unsaved changes?",
   },
@@ -203,7 +205,8 @@ const messages = {
     outputPrice: "Unitateak irteerako token bakoitzeko",
     budgetNote:
       "Lehenespenez ez dago erabilera mugarik. Katalogoko eredu bat aukeratzean prezio editagarriak betetzen dira. Beste eredu bat idatziz gero, berrikusi prezioak eskuz. Prezioak estimazioak dira; deskontuak eta cachea ez dira sartzen.",
-    unavailable: "Plugin honek ez du konfigurazio formulariorik eskaintzen.",
+    unavailable:
+      "Hornitzaile hau ezin da konfiguratu. Kendu bada, aukeratu beste konexio eta modelo bat. Gordetako ezarpenak mantentzen dira.",
     missing: "Ez dago hornitzailerik instalatuta.",
     unsaved: "Baztertu gorde gabeko aldaketak?",
   },

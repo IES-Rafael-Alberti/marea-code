@@ -1,4 +1,5 @@
 import {
+  SOCRATIC_GATE_HEADER,
   MAX_TEACHING_CONFIGURATION_BYTES,
   SaveTeachingConfigurationRequestSchema,
   TeachingCatalogQuerySchema,
@@ -48,8 +49,10 @@ function sanitizedFailure(error: unknown, requestId: RequestId): Response {
 }
 
 /** Enforces the shared UTF-8 byte bound on awaited teaching responses. */
-async function teachingJson(operation: Promise<object>): Promise<Response> {
-  const body = JSON.stringify(await operation);
+async function teachingJson(operation: Promise<object>, extended: boolean): Promise<Response> {
+  const body = JSON.stringify(await operation, (key, value: unknown) =>
+    key === "socraticMode" && !extended ? undefined : value,
+  );
   if (new TextEncoder().encode(body).byteLength > TEACHING_RESPONSE_BYTES) {
     // Sanitized by the route handler as a retryable server error without details.
     throw new Error();
@@ -64,14 +67,15 @@ export function registerTeachingRoutes(dependencies: TeachingRouteDependencies):
     schema: z.ZodType<T>,
     policy: MiddlewareHandler,
     maxBytes: number,
-    operation: (identity: AuthenticatedIdentity, query: T) => Promise<object>,
+    operation: (identity: AuthenticatedIdentity, query: T, extended: boolean) => Promise<object>,
   ): void => {
     dependencies.app.post(path, policy, async (context) => {
       const parsed = await dependencies.parseJson(context.req.raw, schema, maxBytes);
       if (!parsed.ok) return parsed.response;
       try {
         const identity = dependencies.authenticate(context.req.raw);
-        return await teachingJson(operation(identity, parsed.value));
+        const extended = context.req.header(SOCRATIC_GATE_HEADER) === "1";
+        return await teachingJson(operation(identity, parsed.value, extended), extended);
       } catch (error: unknown) {
         return sanitizedFailure(error, parsed.value.requestId);
       }
@@ -104,6 +108,10 @@ export function registerTeachingRoutes(dependencies: TeachingRouteDependencies):
     SaveTeachingConfigurationRequestSchema,
     dependencies.mutationPolicy,
     MAX_TEACHING_CONFIGURATION_BYTES,
-    (identity, request) => service.save(identity, request),
+    (identity, request, extended) => {
+      if (!extended && request.settings.socraticMode !== undefined)
+        throw new TeachingConfigurationError("invalid-request");
+      return service.save(identity, request);
+    },
   );
 }

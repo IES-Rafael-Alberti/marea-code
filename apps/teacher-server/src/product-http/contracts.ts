@@ -63,7 +63,11 @@ export interface ProductRunService {
   append(leaseToken: string, request: AppendRunEventsRequest): AppendRunEventsResponse;
   authorizeLease(leaseToken: string): AuthorizedRunLease;
   close(leaseToken: string, requestId: string, reason: CloseRunRequest["reason"]): CloseRunResponse;
-  open(identity: AuthenticatedIdentity, request: OpenRunRequest): OpenRunResponse;
+  open(
+    identity: AuthenticatedIdentity,
+    request: OpenRunRequest,
+    socraticSupport?: boolean,
+  ): OpenRunResponse;
   renew(identity: AuthenticatedIdentity, request: RenewRunLeaseRequest): RenewRunLeaseResponse;
   closeAuthenticated(identity: AuthenticatedIdentity, request: CloseRunRequest): CloseRunResponse;
 }

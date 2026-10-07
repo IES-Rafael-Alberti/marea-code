@@ -57,7 +57,7 @@ describe("teacher host configuration", () => {
       ],
     };
     f.writeHost(configured);
-    expect(readTeacherHostConfig(f.root)).toEqual(configured);
+    expect(readTeacherHostConfig(f.root)).toEqual({ ...configured, providers: [providers[0]] });
     f.writeHost({ ...f.host, providers });
     expect(readTeacherHostConfig(f.root)).toEqual({ ...f.host, providers });
     writeFileSync(f.host.statusPath, "{}", { mode: 0o600 });
@@ -116,7 +116,7 @@ describe("teacher host configuration", () => {
     const identityProviders = [{ pluginId: "org.marea.google-workspace", settingsPath }];
     const both = [...identityProviders, { pluginId: "org.example.other", settingsPath }];
     f.writeHost({ ...f.host, identityProviders: both });
-    expect(readTeacherHostConfig(f.root)).toEqual({ ...f.host, identityProviders: both });
+    expect(readTeacherHostConfig(f.root)).toEqual({ ...f.host, identityProviders });
     for (const invalid of [
       [...identityProviders, ...identityProviders],
       [{ pluginId: "org.marea.google-workspace", settingsPath: join(f.root, "state") }],
@@ -136,4 +136,33 @@ describe("teacher host configuration", () => {
       captured(undefined);
     }).toThrow("The teacher host state is not available yet.");
   });
+});
+
+it("ignores retired identity and inference credentials without rewriting their configuration", () => {
+  const f = teacherHostInstallation({ activate: false });
+  const missing = join(f.root, "state", "removed.json");
+  const config = {
+    ...f.host,
+    providers: [{ pluginId: "org.example.retired-model", credentialPath: missing }],
+    identityProviders: [{ pluginId: "org.example.retired-login", settingsPath: missing }],
+  };
+  f.writeHost(config);
+  expect(readTeacherHostConfig(f.root, undefined, { inference: [], identity: [] })).toEqual({
+    ...f.host,
+    providers: [],
+    identityProviders: [],
+  });
+  // Reinstalling either plugin restores strict validation of its own credentials.
+  expect(() =>
+    readTeacherHostConfig(f.root, undefined, {
+      inference: ["org.example.retired-model"],
+      identity: [],
+    }),
+  ).toThrow();
+  expect(() =>
+    readTeacherHostConfig(f.root, undefined, {
+      inference: [],
+      identity: ["org.example.retired-login"],
+    }),
+  ).toThrow();
 });

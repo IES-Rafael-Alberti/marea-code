@@ -1,5 +1,6 @@
 import {
   AgentModeSchema,
+  SocraticModeSchema,
   ModelAliasSchema,
   RevisionIdSchema,
   TeacherToolPolicySchema,
@@ -23,6 +24,7 @@ export const SaveClassTeachingSchema = z
     classId: RevisionIdSchema,
     expectedVersion: RevisionIdSchema.nullable(),
     agentMode: AgentModeSchema,
+    socraticMode: SocraticModeSchema.optional(),
     classInstructions: ClassInstructionsSchema,
     selection: TeachingSelectionSchema,
     teacherToolPolicy: TeacherToolPolicySchema,
@@ -72,7 +74,17 @@ export class TeachingConfigurationService {
       this.#dependencies.routes.forClass(request.classId),
     );
     const source = this.#dependencies.skills.forTeacherClass(identity.userId, request.classId);
-    const configuration = await materializeConfiguration(request, route, source, revision);
+    // Older dashboard/offline clients omit this optional feature; keep the saved policy.
+    const mode =
+      request.socraticMode ??
+      this.#dependencies.repository.loadForTeacher(identity.userId, request.classId)?.publicTemplate
+        .socraticMode;
+    const configuration = await materializeConfiguration(
+      { ...request, socraticMode: mode },
+      route,
+      source,
+      revision,
+    );
     return this.#dependencies.repository.saveRevision({
       classId: request.classId,
       teacherId: identity.userId,

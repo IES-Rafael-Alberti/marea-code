@@ -1,12 +1,20 @@
 import { ServerSetupRequestSchema, type ServerSetupRequest } from "@marea/protocol";
-import { inferenceProviderCatalog } from "@marea/plugin-runtime";
-import type { InferenceProviderCatalogEntry } from "@marea/plugin-api";
+import { inferenceProviderCatalog, identityProviderCatalog } from "@marea/plugin-runtime";
+import {
+  parseIdentityProviderEntry,
+  type IdentityProviderCatalogEntry,
+  type InferenceProviderCatalogEntry,
+} from "@marea/plugin-api";
 import type { AuthenticatedIdentity } from "../../apps/teacher-server/src/identity/contracts.js";
 import { ServerSettingsService } from "../../apps/teacher-server/src/server-settings/service.boundary.js";
 import { providerModels } from "../../apps/teacher-server/src/server-settings/models.js";
 import type { ServerSettings } from "../../apps/teacher-server/src/server-settings/contracts.js";
 import { serverOrigin } from "./preview-channel.js";
 import * as z from "zod";
+import {
+  providerSettingsValues,
+  systemIdentityRuntime,
+} from "../../apps/teacher-server/src/platform/teacher-host/identity-provider-composition.js";
 
 export const setupTeacher: AuthenticatedIdentity = {
   role: "teacher",
@@ -31,6 +39,7 @@ export function emptySetupSettings(): ServerSettings {
 /** Reuses the same descriptors, credentials validation and model lookup as the dashboard. */
 export function onboardingSettings(
   catalog: readonly InferenceProviderCatalogEntry[] = inferenceProviderCatalog,
+  identities: readonly IdentityProviderCatalogEntry[] = identityProviderCatalog,
 ) {
   let settings = emptySetupSettings();
   const service = new ServerSettingsService(
@@ -44,7 +53,13 @@ export function onboardingSettings(
   );
   const encode = (value: object) => new TextEncoder().encode(JSON.stringify(value));
   return {
-    read: () => service.execute(setupTeacher, encode({ operation: "read" })),
+    read: async () => ({
+      settings: await service.execute(setupTeacher, encode({ operation: "read" })),
+      identityProviders: identities.map((entry) => ({
+        id: entry.manifest.id,
+        descriptor: parseIdentityProviderEntry(entry).settings,
+      })),
+    }),
     async models(input: unknown, signal: AbortSignal) {
       const query = z
         .object({
@@ -61,6 +76,12 @@ export function onboardingSettings(
       signal: AbortSignal,
     ): Promise<{ request: ServerSetupRequest; settings: ServerSettings; origin: string }> {
       const request = ServerSetupRequestSchema.parse(input);
+      for (const [id, values] of Object.entries(request.identityProviders ?? {})) {
+        const installed = identities.find((entry) => entry.manifest.id === id);
+        if (!installed) throw new Error("identity-provider-unavailable");
+        const entry = parseIdentityProviderEntry(installed);
+        entry.create(providerSettingsValues(entry.settings, values), systemIdentityRuntime);
+      }
       const origin =
         request.access === "https"
           ? serverOrigin(request.publicOrigin)

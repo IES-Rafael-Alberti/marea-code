@@ -57,6 +57,13 @@
   "skillCurrent": "Versión actual",
   "skillMissing": "Selección ausente: esta versión no está en el catálogo actual.",
   "skillStale": "Selección desactualizada: el digest guardado difiere de esta versión.",
+  "socraticHelp": "En cada turno del alumno, frena la escritura o edición de código del ejercicio hasta que el tutor haga una pregunta o alcance el límite de intentos. No afecta al modo libre, los archivos de configuración ni los comandos de terminal. El alumno sigue teniendo que autorizar los cambios. Solo se aplica a sesiones nuevas; los clientes antiguos deberán actualizarse.",
+  "socraticLabel": "Bloqueo de escritura del tutor",
+  "socraticModes": {
+    "normal": "Bloquear el primer intento",
+    "off": "Desactivado",
+    "strict": "Bloquear hasta tres intentos",
+  },
   "source": "Fuente",
   "switchCancel": "Cancelar",
   "switchDiscard": "Descartar el borrador y cambiar",

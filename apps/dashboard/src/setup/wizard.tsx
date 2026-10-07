@@ -5,6 +5,7 @@ import { ProviderConnections } from "../modules/server-settings/provider-connect
 import { ModelSettings } from "../modules/server-settings/model-settings.js";
 import { useProviderModels } from "../modules/server-settings/provider-models.boundary.js";
 import { AccessFields, SchoolFields, type SetupDetails } from "./fields.js";
+import { IdentityFields } from "./identity-fields.js";
 import type { SetupClient } from "./client.boundary.js";
 import { setupMessages } from "./messages.js";
 
@@ -20,7 +21,10 @@ export function SetupWizard({
   const [locale, setLocale] = useState(initialLocale);
   const m = setupMessages(locale);
   const [step, setStep] = useState(0);
-  const [state, setState] = useState<EditableSettings | null>(null);
+  const [configuration, setConfiguration] = useState<{
+    settings: EditableSettings;
+    identityProviders: Awaited<ReturnType<SetupClient["read"]>>["identityProviders"];
+  } | null>(null);
   const [connections, setConnections] = useState<Record<string, Record<string, string>>>({});
   const [details, setDetails] = useState<SetupDetails>({
     center: "",
@@ -34,22 +38,30 @@ export function SetupWizard({
     testingSkill: false,
   });
   const [confirmation, setConfirmation] = useState("");
-  const [googleEnabled, setGoogleEnabled] = useState(false);
-  const [google, setGoogle] = useState({ domain: "", clientId: "", clientSecret: "" });
+  const [identityProviders, setIdentityProviders] = useState<
+    Record<string, Record<string, string>>
+  >({});
   const [error, setError] = useState<"error" | "mismatch" | "modelRequired" | null>(null);
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const { catalogs, refresh } = useProviderModels(client.fetch, state, connections);
+  const { catalogs, refresh } = useProviderModels(
+    client.fetch,
+    configuration?.settings ?? null,
+    connections,
+  );
   useEffect(() => {
     const controller = new AbortController();
     setError(null);
     void client.read(controller.signal).then(
       (value) => {
         if (controller.signal.aborted) return;
-        if (value.administrator) {
-          setState(value);
-          const [provider, ...others] = value.providers;
+        if (value.settings.administrator) {
+          setConfiguration({
+            settings: value.settings,
+            identityProviders: value.identityProviders,
+          });
+          const [provider, ...others] = value.settings.providers;
           if (provider !== undefined && others.length === 0) setConnections({ [provider.id]: {} });
         } else setError("error");
       },
@@ -61,10 +73,14 @@ export function SetupWizard({
       controller.abort();
     };
   }, [client, attempt]);
-  const route = state?.route;
-  const provider = state?.providers.find((entry) => entry.id === route?.providerId);
+  const route = configuration?.settings.route;
+  const provider = configuration?.settings.providers.find(
+    (entry) => entry.id === route?.providerId,
+  );
   const modelReady =
-    route && (!provider?.supportsModels || catalogs[route.providerId]?.status === "ready");
+    route &&
+    provider &&
+    (!provider.supportsModels || catalogs[route.providerId]?.status === "ready");
   const submit = () => {
     setError(null);
     if (step === 0 && confirmation !== details.password) {
@@ -85,18 +101,16 @@ export function SetupWizard({
       return;
     }
     setBusy(true);
-    void client
-      .finish({ ...details, connections, route, ...(googleEnabled ? { google } : {}) })
-      .then(
-        (url) => {
-          setReady(true);
-          openDashboard(url);
-        },
-        () => {
-          setError("error");
-          setBusy(false);
-        },
-      );
+    void client.finish({ ...details, connections, route, identityProviders }).then(
+      (url) => {
+        setReady(true);
+        openDashboard(url);
+      },
+      () => {
+        setError("error");
+        setBusy(false);
+      },
+    );
   };
   return (
     <main className="shell setup-shell">
@@ -128,7 +142,7 @@ export function SetupWizard({
         ))}
       </ol>
       {error && <p role="alert">{m[error]}</p>}
-      {state === null ? (
+      {configuration === null ? (
         <p role="status">
           {error ? (
             <button
@@ -165,7 +179,7 @@ export function SetupWizard({
               <div className="server-settings">
                 <p>{m.modelHelp}</p>
                 <ProviderConnections
-                  state={state}
+                  state={configuration.settings}
                   connections={connections}
                   change={setConnections}
                   locale={locale}
@@ -173,24 +187,27 @@ export function SetupWizard({
                   refresh={refresh}
                 />
                 <ModelSettings
-                  state={state}
+                  state={configuration.settings}
                   connections={connections}
-                  edit={setState}
+                  edit={(settings) => {
+                    setConfiguration({ ...configuration, settings });
+                  }}
                   locale={locale}
                   catalogs={catalogs}
                 />
               </div>
             )}
             {step === 2 && (
-              <AccessFields
-                value={details}
-                change={setDetails}
-                google={google}
-                googleEnabled={googleEnabled}
-                toggleGoogle={setGoogleEnabled}
-                changeGoogle={setGoogle}
-                m={m}
-              />
+              <>
+                <AccessFields value={details} change={setDetails} m={m} />
+                <IdentityFields
+                  providers={configuration.identityProviders}
+                  values={identityProviders}
+                  change={setIdentityProviders}
+                  locale={locale}
+                  m={m}
+                />
+              </>
             )}
             {step === 3 && (
               <>
@@ -204,7 +221,7 @@ export function SetupWizard({
                     {details.teacher} ({details.login})
                   </dd>
                   <dt>{m.steps[1]}</dt>
-                  <dd>{state.route?.model}</dd>
+                  <dd>{configuration.settings.route?.model}</dd>
                   <dt>{m.network}</dt>
                   <dd>{m[details.access]}</dd>
                 </dl>

@@ -28,6 +28,12 @@ describe("Google Workspace settings", () => {
     ]);
   });
 
+  it("marks multiline private keys in its own descriptor", () => {
+    expect(
+      googleWorkspaceSettings.fields.find((field) => field.key === "serviceAccountKey")?.multiline,
+    ).toBe(true);
+  });
+
   it("normalizes the domain and enables groups only with a complete service account", () => {
     expect(parseGoogleWorkspaceSettings(base)).toEqual({
       clientId: "id",

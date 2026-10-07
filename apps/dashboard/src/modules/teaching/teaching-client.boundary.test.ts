@@ -65,6 +65,7 @@ describe("teaching dashboard HTTP client", () => {
     expect(classes.requests[0]?.init.cache).toBe("no-store");
     expect(classRequest?.headers.get("Accept")).toBe("application/json");
     expect(classRequest?.headers.get("Content-Type")).toBe("application/json");
+    expect(classRequest?.headers.get("x-marea-socratic-gate")).toBe("1");
     expect(JSON.parse(await requestText(classes.requests))).toEqual({
       protocolVersion: "0.1",
       requestId: "request:one",

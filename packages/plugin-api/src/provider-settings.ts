@@ -19,6 +19,7 @@ export const ProviderSettingsDescriptorSchema = z
             label: Label,
             kind: z.enum(["text", "secret", "url"]),
             required: z.boolean(),
+            multiline: z.boolean().optional(),
             defaultValue: z.string().max(2048).optional(),
           })
           .strict(),

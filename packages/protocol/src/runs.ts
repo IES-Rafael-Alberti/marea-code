@@ -118,10 +118,16 @@ export const TeacherToolPolicySchema = z
   .strict()
   .readonly();
 
+/** Explicit opt-in keeps the strict 0.1 response shape unchanged for older peers. */
+export const SOCRATIC_GATE_HEADER = "x-marea-socratic-gate";
+export const SocraticModeSchema = z.enum(["off", "normal", "strict"]);
+export type SocraticMode = z.infer<typeof SocraticModeSchema>;
+
 export const StudentRunSnapshotSchema = z
   .object({
     id: SnapshotIdSchema,
     agentMode: AgentModeSchema,
+    socraticMode: SocraticModeSchema.optional(),
     modelAlias: ModelAliasSchema,
     prompt: PromptSnapshotSchema,
     /** Absent in immutable legacy snapshots and in free mode. */

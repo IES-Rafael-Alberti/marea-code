@@ -39,6 +39,14 @@ bun run catalog:generate
 bun run catalog:check
 ```
 
+Identity and inference setup forms use installed plugin descriptors. The local web
+setup accepts generic identity settings, validates them with the selected plugin,
+and stores them in separate private files. Removed plugins are ignored before their
+credential files are read; configuration on disk is retained. Model routes pointing
+to an absent provider still need an administrator to select an installed replacement.
+Removal takes effect after regenerating the catalog and rebuilding/reinstalling the
+executables, not by deleting source files beside an already compiled binary.
+
 ## Commits and pull requests
 
 Use an English [Conventional Commit](https://www.conventionalcommits.org/)
@@ -84,6 +92,19 @@ if a change would break an older peer (including a strict schema), bump the prot
 instead of silently requiring equal software versions. Do not add historical adapters
 without a concrete need. Keep focused negotiation tests for older/newer software
 versions and the native client/server journeys in the release workflow.
+
+The optional Socratic writing gate is advertised as `marea.tutoring.socratic-gate`.
+New students and dashboard clients send `x-marea-socratic-gate: 1` to opt into
+`socraticMode` (`off`, `normal`, `strict`) in snapshots and teaching settings.
+Headerless responses keep the strict baseline shape. A tutoring run with an active
+gate refuses a headerless client with `protocol.incompatible` inside the open-run
+transaction, before changing any lease. Free mode and legacy/disabled policies remain
+compatible. A baseline editor omitting the field preserves the saved policy.
+The policy is frozen in each run; the adapter derives attempts and completed
+structured questions from the current turn's durable messages. There is no mutable
+process counter. HITL and execution use the same predicate, excluding sibling results
+from the current tool batch, so a skipped approval can only produce a blocked result.
+This is a teaching aid, not a sandbox: shell commands retain their separate approval.
 
 Publishing makes a preview available to explicit `update` commands. Recommendation
 is a separate maintainer operation after pilot testing; see [distribution](DISTRIBUTION.md).

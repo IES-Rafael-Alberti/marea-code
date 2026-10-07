@@ -1,4 +1,9 @@
-import type { ModelGatewayRequest, ModelGatewayStreamChunk, RequestId } from "@marea/protocol";
+import type {
+  ModelGatewayRequest,
+  ModelGatewayStreamChunk,
+  RequestId,
+  SocraticMode,
+} from "@marea/protocol";
 
 export interface AgentModel {
   readonly kind: "marea-agent-model";
@@ -50,6 +55,7 @@ export interface AgentRuntimeOptions {
   readonly readOnlyTools?: readonly ReadOnlyTool[];
   readonly readOnly?: boolean;
   readonly questions?: boolean;
+  readonly socratic?: { readonly mode: SocraticMode; readonly tools: readonly string[] };
 }
 
 export interface MessageTurn {

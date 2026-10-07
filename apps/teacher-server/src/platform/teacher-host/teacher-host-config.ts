@@ -9,6 +9,7 @@ import {
   SoftwareVersionSchema,
 } from "@marea/protocol";
 import { z } from "zod";
+import { identityProviderCatalog, inferenceProviderCatalog } from "@marea/plugin-runtime";
 
 import { readBoundedBytes } from "../operator/operator-filesystem-loader.js";
 import { OperatorCliError } from "../operator-cli/errors.js";
@@ -74,7 +75,14 @@ function absentOrFile(root: string, path: string, uid: number): boolean {
  * separate program installation, with a canonical private distribution root. Listening, origins,
  * retry, evaluation and drain values are never defaulted.
  */
-export function readTeacherHostConfig(root: string, uid = currentUid()): TeacherHostConfig {
+export function readTeacherHostConfig(
+  root: string,
+  uid = currentUid(),
+  installed = {
+    identity: identityProviderCatalog.map((entry) => entry.manifest.id),
+    inference: inferenceProviderCatalog.map((entry) => entry.manifest.id),
+  },
+): TeacherHostConfig {
   const configPath = join(root, "config", "teacher-host.json");
   if (privateDescendantKind(root, configPath, uid) !== "file") throw unavailable();
   const config = hostSchema().parse(
@@ -84,11 +92,17 @@ export function readTeacherHostConfig(root: string, uid = currentUid()): Teacher
       ),
     ),
   );
-  const identityProviders = config.identityProviders ?? [];
+  const identityProviders = config.identityProviders;
+  // Retired plugins are inert: do not inspect or load their former credential files.
+  const providers = config.providers.filter((entry) =>
+    installed.inference.includes(entry.pluginId),
+  );
+  const activeIdentities =
+    identityProviders?.filter((entry) => installed.identity.includes(entry.pluginId)) ?? [];
   const files = [
     config.digestKeyPath,
-    ...config.providers.map((entry) => entry.credentialPath),
-    ...identityProviders.map((entry) => entry.settingsPath),
+    ...providers.map((entry) => entry.credentialPath),
+    ...activeIdentities.map((entry) => entry.settingsPath),
   ];
   if (
     files.some((path) => privateDescendantKind(root, path, uid) !== "file") ||
@@ -96,8 +110,13 @@ export function readTeacherHostConfig(root: string, uid = currentUid()): Teacher
     privateKind(config.dashboardDistPath, uid) !== "directory" ||
     !absentOrFile(root, config.statusPath, uid) ||
     new Set(config.providers.map((entry) => entry.pluginId)).size !== config.providers.length ||
-    new Set(identityProviders.map((entry) => entry.pluginId)).size !== identityProviders.length
+    (identityProviders !== undefined &&
+      new Set(identityProviders.map((entry) => entry.pluginId)).size !== identityProviders.length)
   )
     throw unavailable();
-  return config;
+  return {
+    ...config,
+    providers,
+    ...(config.identityProviders === undefined ? {} : { identityProviders: activeIdentities }),
+  };
 }

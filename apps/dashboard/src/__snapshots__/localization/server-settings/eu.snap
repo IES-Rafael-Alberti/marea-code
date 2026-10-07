@@ -53,7 +53,7 @@
   "tokens": "Tokenak guztira",
   "tools": "Tresna deiak",
   "tutoring": "Tutoretza",
-  "unavailable": "Plugin honek ez du konfigurazio formulariorik eskaintzen.",
+  "unavailable": "Hornitzaile hau ezin da konfiguratu. Kendu bada, aukeratu beste konexio eta modelo bat. Gordetako ezarpenak mantentzen dira.",
   "unit": "Kostu unitatea",
   "unlimited": "Erabilera mugagabea",
   "unsaved": "Baztertu gorde gabeko aldaketak?",

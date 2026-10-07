@@ -1,7 +1,7 @@
 import * as z from "zod";
 
 import { RequestIdSchema, SkillIdSchema } from "./identifiers.js";
-import { AgentModeSchema, Sha256DigestSchema } from "./runs.js";
+import { AgentModeSchema, Sha256DigestSchema, SocraticModeSchema } from "./runs.js";
 import { RevisionIdSchema, SafeDisplayNameSchema } from "./technical.js";
 import { SkillBundleSchema } from "./teaching-skills.js";
 import { CurrentProtocolVersionSchema } from "./version.js";
@@ -48,6 +48,7 @@ export const ClassInstructionsSchema = z
 export const TeachingSettingsSchema = z
   .object({
     agentMode: AgentModeSchema,
+    socraticMode: SocraticModeSchema.optional(),
     classInstructions: ClassInstructionsSchema,
     selection: TeachingSelectionSchema,
     automaticEvaluation: z.boolean(),

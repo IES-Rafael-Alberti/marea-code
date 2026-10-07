@@ -57,6 +57,13 @@
   "skillCurrent": "Current version",
   "skillMissing": "Missing selection: this version is not in the current catalog.",
   "skillStale": "Stale selection: the saved digest differs from this version.",
+  "socraticHelp": "In each student turn, pauses exercise code writes or edits until the tutor asks a question, or reaches the attempt limit. Free mode, setup files and shell commands are excluded. Student approval is still required. New sessions only; older clients must update.",
+  "socraticLabel": "Socratic writing gate",
+  "socraticModes": {
+    "normal": "Block the first attempt",
+    "off": "Off",
+    "strict": "Block up to three attempts",
+  },
   "source": "Source",
   "switchCancel": "Cancel",
   "switchDiscard": "Discard draft and switch",

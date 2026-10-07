@@ -42,7 +42,7 @@ export async function provisionOnboarding(
     login: request.login,
     port: request.port,
     origin,
-    google: request.google,
+    identityProviders: request.identityProviders,
   };
   scaffoldServer(stage, release, version, answers);
   configureIdentityProviders(
@@ -81,6 +81,7 @@ export async function provisionOnboarding(
         classId: "class:main",
         expectedVersion: null,
         agentMode: "tutoring",
+        socraticMode: "normal",
         automaticEvaluation: false,
         classInstructions: completeModeInstructions({ tutoring: "", free: "" }),
         selection: { didactic: selected, evaluation: [] },

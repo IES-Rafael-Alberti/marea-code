@@ -75,32 +75,26 @@ it("bounds local port, origins and provider connection fields", () => {
       }).success,
     ).toBe(valid);
 });
-it("keeps Google optional and validates its exact bounded fields", () => {
-  const google = { domain: "school.test", clientId: "client", clientSecret: "secret" };
-  expect(ServerSetupRequestSchema.parse({ ...input, google }).google).toEqual(google);
-  for (const domain of ["ab.cd", "students.school.test", "a".repeat(250) + ".es"])
+it("keeps identity providers optional with bounded IDs, settings and count", () => {
+  const parse = (identityProviders: object) =>
+    ServerSetupRequestSchema.safeParse({ ...input, identityProviders }).success;
+  expect(parse({})).toBe(true);
+  expect(parse({ "org.example.login": { customField: "value" } })).toBe(true);
+  expect(parse({ "../path": {} })).toBe(false);
+  for (const [keySize, valueSize, valid] of [
+    [64, 16384, true],
+    [65, 16384, false],
+    [64, 16385, false],
+  ] as const)
+    expect(parse({ "org.example.login": { ["k".repeat(keySize)]: "v".repeat(valueSize) } })).toBe(
+      valid,
+    );
+  for (const count of [8, 9])
     expect(
-      ServerSetupRequestSchema.safeParse({ ...input, google: { ...google, domain } }).success,
-    ).toBe(true);
-  for (const domain of [
-    "localhost",
-    "School.test",
-    "a".repeat(251) + ".es",
-    "a b.es",
-    "school.test/",
-  ])
-    expect(
-      ServerSetupRequestSchema.safeParse({ ...input, google: { ...google, domain } }).success,
-    ).toBe(false);
-  for (const key of ["clientId", "clientSecret"] as const)
-    for (const size of [0, 1, 2048, 2049])
-      expect(
-        ServerSetupRequestSchema.safeParse({
-          ...input,
-          google: { ...google, [key]: "x".repeat(size) },
-        }).success,
-      ).toBe(size === 1 || size === 2048);
-  expect(
-    ServerSetupRequestSchema.safeParse({ ...input, google: { ...google, extra: "field" } }).success,
-  ).toBe(false);
+      parse(
+        Object.fromEntries(
+          Array.from({ length: count }, (_, index) => [`org.example.p${String(index)}`, {}]),
+        ),
+      ),
+    ).toBe(count === 8);
 });

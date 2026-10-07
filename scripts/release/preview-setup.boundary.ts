@@ -2,7 +2,11 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
-import { CredentialLoginSchema, SafeDisplayNameSchema } from "@marea/protocol";
+import {
+  CredentialLoginSchema,
+  SafeDisplayNameSchema,
+  ServerSetupRequestSchema,
+} from "@marea/protocol";
 import { prepareState } from "./install.boundary.js";
 import { previewVersion, serverOrigin } from "./preview-channel.js";
 import { installExampleSkill } from "./preview-skills.boundary.js";
@@ -15,14 +19,7 @@ export const setupAnswers = z
     login: CredentialLoginSchema,
     origin: z.string().transform(serverOrigin),
     port: z.number().int().min(1024).max(65535),
-    google: z
-      .object({
-        clientId: z.string().min(1),
-        clientSecret: z.string().min(1),
-        domain: z.string().regex(/^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/u),
-      })
-      .strict()
-      .optional(),
+    identityProviders: ServerSetupRequestSchema.shape.identityProviders,
   })
   .strict();
 export type SetupAnswers = z.infer<typeof setupAnswers>;
@@ -92,7 +89,13 @@ export function scaffoldServer(
     stateFiles: [],
   });
   const origin = new URL(answers.origin);
-  if (answers.google !== undefined) json("state/google-workspace.json", answers.google);
+  const identityProviders = Object.entries(answers.identityProviders ?? {}).map(
+    ([pluginId, values], index) => {
+      const file = `state/identity-provider-${String(index)}.json`;
+      json(file, values);
+      return { pluginId, settingsPath: path(file) };
+    },
+  );
   json("config/teacher-host.json", {
     version: 1,
     releaseId: "release:preview",
@@ -105,15 +108,7 @@ export function scaffoldServer(
     digestKeyPath: path("state/digest.key"),
     dashboardDistPath: join(release, "dashboard"),
     providers: [],
-    identityProviders:
-      answers.google === undefined
-        ? []
-        : [
-            {
-              pluginId: "org.marea.google-workspace",
-              settingsPath: path("state/google-workspace.json"),
-            },
-          ],
+    identityProviders,
     retry: { delayMs: 1000, maxDelayMs: 30000 },
     evaluationIntervalMs: 60000,
     shutdownDrainMs: 15000,

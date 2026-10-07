@@ -1,3 +1,4 @@
+import { safeOperation } from "./domain-error.boundary.js";
 import { parseJsonRequest, type ParseResult } from "./request-json.boundary.js";
 import { registerPresenceRoute } from "./presence-http.boundary.js";
 import { registerDashboardModuleRoutes } from "./dashboard-module-routes.js";
@@ -6,8 +7,8 @@ import { parseCookie, dashboardCookie, validateCookieName } from "./dashboard-co
 import type { MiddlewareHandler } from "hono";
 import { Hono } from "hono";
 import {
+  SOCRATIC_GATE_HEADER,
   ActiveRunDashboardQuerySchema,
-  CLASS_CONFIGURATION_REQUIRED_HEADER,
   EvaluationQuerySchema,
   GenerateEvaluationRequestSchema,
   ApproveEvaluationRequestSchema,
@@ -34,7 +35,7 @@ import {
 } from "@marea/protocol";
 import { parseBearerCredential, RequestPolicy } from "@marea/transport-server";
 import * as z from "zod";
-import { ClassConfigurationRequiredError, TeacherDomainError } from "../identity/errors.js";
+import { TeacherDomainError } from "../identity/errors.js";
 import type { AuthenticatedIdentity } from "../identity/contracts.js";
 import { ModelGatewayService } from "../model-gateway/model-gateway-service.js";
 import type { TeacherProductHttpApplication, TeacherProductHttpOptions } from "./contracts.js";
@@ -60,6 +61,7 @@ const CAPABILITIES = [
   "marea.runs.authenticated-close",
   "marea.runs.lease-renewal",
   "marea.runs.skills",
+  "marea.tutoring.socratic-gate",
   "marea.runs.history",
   "marea.teacher.notices",
 ] as const;
@@ -80,39 +82,6 @@ function bearer(request: Request): string {
   const token = parseBearerCredential(request.headers.get("authorization") ?? undefined);
   if (token === undefined) throw new TeacherDomainError("auth.invalid");
   return token;
-}
-function domainError(error: unknown, requestId: RequestId): Response {
-  if (!(error instanceof TeacherDomainError)) {
-    return protocolError(500, "server.error", true, requestId);
-  }
-  if (error.code === "auth.busy") {
-    return protocolError(503, "server.error", true, requestId);
-  }
-  if (error.code === "auth.invalid") {
-    return protocolError(401, "auth.invalid", false, requestId);
-  }
-  if (error.code === "run.unavailable") {
-    const response = protocolError(409, "run.unavailable", false, requestId);
-    if (error instanceof ClassConfigurationRequiredError)
-      response.headers.set(CLASS_CONFIGURATION_REQUIRED_HEADER, "true");
-    return response;
-  }
-  return protocolError(
-    error.code === "dashboard.forbidden" ? 403 : 409,
-    "request.invalid",
-    false,
-    requestId,
-  );
-}
-async function safeOperation(
-  requestId: RequestId,
-  operation: () => Response | Promise<Response>,
-): Promise<Response> {
-  try {
-    return await operation();
-  } catch (error: unknown) {
-    return domainError(error, requestId);
-  }
 }
 function parseDashboardQuery(url: URL): ParseResult<z.infer<typeof ActiveRunDashboardQuerySchema>> {
   for (const key of url.searchParams.keys()) {
@@ -398,7 +367,14 @@ export function createTeacherProductHttp(
     if (!parsed.ok) return parsed.response;
     return safeOperation(parsed.value.requestId, () => {
       const session = options.services.identity.authenticate(bearer(context.req.raw));
-      return jsonResponse(options.services.runs.open(session.identity, parsed.value), 201);
+      return jsonResponse(
+        options.services.runs.open(
+          session.identity,
+          parsed.value,
+          context.req.header(SOCRATIC_GATE_HEADER) === "1",
+        ),
+        201,
+      );
     });
   });
 

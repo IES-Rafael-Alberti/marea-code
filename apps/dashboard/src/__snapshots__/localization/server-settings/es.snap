@@ -53,7 +53,7 @@
   "tokens": "Tokens totales",
   "tools": "Llamadas a herramientas",
   "tutoring": "Tutoría",
-  "unavailable": "Este plugin no ofrece un formulario de configuración.",
+  "unavailable": "Este proveedor no está disponible para configurarlo. Si se ha retirado, elige otro en Conexión y modelo. Sus ajustes guardados se conservan.",
   "unit": "Unidad de coste",
   "unlimited": "Sin límites de uso",
   "unsaved": "Hay cambios sin guardar. ¿Quieres descartarlos?",

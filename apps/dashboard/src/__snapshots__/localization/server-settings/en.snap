@@ -53,7 +53,7 @@
   "tokens": "Total tokens",
   "tools": "Tool calls",
   "tutoring": "Tutoring",
-  "unavailable": "This plugin does not provide a configuration form.",
+  "unavailable": "This provider is unavailable for configuration. If it was removed, choose another connection and model. Its saved settings are preserved.",
   "unit": "Cost unit",
   "unlimited": "Unlimited usage",
   "unsaved": "Discard unsaved changes?",

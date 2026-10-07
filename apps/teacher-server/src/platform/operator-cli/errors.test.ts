@@ -76,6 +76,7 @@ describe("typed operator CLI exit classes", () => {
 
   it("maps accepted domain, configuration, policy and authoring error types", () => {
     const domain = [
+      ["protocol.incompatible", 4],
       ["auth.invalid", 3],
       ["dashboard.forbidden", 3],
       ["invitation.unavailable", 4],

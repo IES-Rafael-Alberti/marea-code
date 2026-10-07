@@ -82,6 +82,7 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
         this.requiredProjection(stored.runId),
         "highest_durable_sequence",
       );
+      input.acceptSnapshot?.(stored.snapshot);
       this.rotateLease(stored.runId, input);
       const startupState = loadRunStartup(this.#database, stored.runId, stored.snapshot);
       return {

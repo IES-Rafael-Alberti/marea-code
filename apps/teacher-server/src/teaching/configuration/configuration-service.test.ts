@@ -245,3 +245,22 @@ describe("configuration-backed run snapshots", () => {
     expect(() => source.capture("../invalid", student)).toThrow();
   });
 });
+
+it("freezes the selected writing gate and preserves it when an older editor omits the field", async () => {
+  const f = fixture();
+  const base = teachingInput("tutoring");
+  for (const socraticMode of ["off", "normal", "strict"] as const) {
+    const saved = await f.service.save(teacher, { ...base, socraticMode });
+    expect(saved.publicTemplate.socraticMode).toBe(socraticMode);
+    f.repository.loadForStudent.mockReturnValue(saved);
+    const captured = new ConfigurationSnapshotSource(f.repository).capture(
+      "snapshot:gate",
+      student,
+    );
+    expect(captured.snapshot.socraticMode).toBe(socraticMode);
+    f.repository.loadForTeacher.mockReturnValue(saved);
+    expect((await f.service.save(teacher, base)).publicTemplate.socraticMode).toBe(socraticMode);
+  }
+  f.repository.loadForTeacher.mockReturnValue(null);
+  expect((await f.service.save(teacher, base)).publicTemplate).not.toHaveProperty("socraticMode");
+});

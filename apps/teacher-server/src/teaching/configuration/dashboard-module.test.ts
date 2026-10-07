@@ -156,7 +156,7 @@ describe("teaching configuration module", () => {
     expect((await unconfigured.service.read(teacher, readQuery())).operatorReady).toBe(false);
     const saved = await harness.service.save(teacher, saveRequest(defaultSettings(harness)));
     const stored = await harness.service.read(teacher, readQuery());
-    expect(stored.configuration).toEqual({
+    expect(stored.configuration).toStrictEqual({
       settings: {
         agentMode: "tutoring",
         automaticEvaluation: false,
@@ -413,4 +413,19 @@ describe("teaching configuration module", () => {
       harness.repository.configurationFor("class:one")?.providerRoute.budget?.inputTokenCeiling,
     ).toBe(500);
   });
+});
+
+it("reads the saved writing gate and keeps it when a baseline editor saves other teaching settings", async () => {
+  const f = build();
+  const settings = { ...defaultSettings(f), socraticMode: "normal" as const };
+  const first = await f.service.save(teacher, rawSaveRequest(settings));
+  expect(first.configuration.settings.socraticMode).toBe("normal");
+  expect((await f.service.read(teacher, readQuery())).configuration?.settings.socraticMode).toBe(
+    "normal",
+  );
+  const second = await f.service.save(
+    teacher,
+    rawSaveRequest(defaultSettings(f), first.configuration.version),
+  );
+  expect(second.configuration.settings.socraticMode).toBe("normal");
 });

@@ -49,6 +49,8 @@ export interface OpenStoredRunInput {
   readonly resumeRunId?: string;
   /** Called once, inside the transaction, only when creating a genuinely new run. */
   readonly captureSnapshot: () => RunSnapshotCapture;
+  /** May refuse compatibility before any lease is rotated; the whole open must roll back. */
+  readonly acceptSnapshot?: (snapshot: StudentRunSnapshot) => void;
   readonly student: AuthenticatedIdentity;
 }
 

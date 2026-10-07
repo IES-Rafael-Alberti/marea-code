@@ -7,6 +7,7 @@ import {
   TeachingClassesResponseSchema,
   TeachingCatalogQuerySchema,
   TeachingConfigurationQuerySchema,
+  TeachingConfigurationResponseSchema,
   type TeachingSettings,
   type SaveTeachingConfigurationRequest,
 } from "@marea/protocol";
@@ -361,4 +362,59 @@ describe("teaching HTTP boundary", () => {
     expect(writes).not.toContain("BOUNDARYERR");
     expect(writes).not.toContain("private operator route detail");
   });
+});
+
+it("negotiates the writing-gate extension and preserves strict baseline teaching responses", async () => {
+  const query = readQuery();
+  const configuration = {
+    version: "revision:gate",
+    settings: { ...settings(), socraticMode: "strict" as const },
+  };
+  const service = recordedService();
+  const save = vi.fn(() =>
+    Promise.resolve(
+      SaveTeachingConfigurationResponseSchema.parse({
+        ...query,
+        kind: "teaching-configuration-saved",
+        configuration,
+      }),
+    ),
+  );
+  const app = createApplication({
+    ...createServices(new RecordingProvider()),
+    teachingConfiguration: {
+      ...service,
+      save,
+      read: () =>
+        Promise.resolve({
+          ...query,
+          kind: "teaching-configuration-response",
+          configuration,
+          operatorReady: true,
+        }),
+    },
+  });
+  for (const extended of [false, true]) {
+    const headers = {
+      ...origin,
+      ...teacherCookie,
+      ...(extended ? { "x-marea-socratic-gate": "1" } : {}),
+    };
+    const read = await app.fetch(teachingRequest("read", query, headers));
+    const body = TeachingConfigurationResponseSchema.parse(await read.json());
+    expect(read.status).toBe(200);
+    expect(body).toMatchObject({
+      configuration: { settings: { agentMode: "tutoring" } },
+      operatorReady: true,
+    });
+    expect(JSON.stringify(body).includes('"socraticMode":"strict"')).toBe(extended);
+    const saved = await app.fetch(
+      teachingRequest("save", saveRequest(extended ? { socraticMode: "strict" } : {}), headers),
+    );
+    expect(saved.status).toBe(200);
+    expect(JSON.stringify(await saved.json()).includes('"socraticMode":"strict"')).toBe(extended);
+  }
+  const denied = await app.fetch(teachingRequest("save", saveRequest({ socraticMode: "strict" })));
+  expect(denied.status).toBe(400);
+  expect(save).toHaveBeenCalledTimes(2);
 });

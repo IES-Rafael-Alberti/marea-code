@@ -126,7 +126,7 @@ try {
     (await globalThis.fetch(`${address.origin}/setup/api`, { method: "POST", body: "{}" })).status,
     403,
   );
-  assert.equal((await (await api({ operation: "read" })).json()).administrator, true);
+  assert.equal((await (await api({ operation: "read" })).json()).settings.administrator, true);
   const listener = createServer();
   await new Promise((done) => listener.listen(0, "127.0.0.1", done));
   const port = listener.address().port;

@@ -17,6 +17,9 @@ vi.mock("bun:sqlite", () => import("../operator-cli/bun-sqlite.fixture.js"));
 afterEach(cleanupTeacherHostInstallations);
 it("explicitly grants the existing teacher server ownership without changing host configuration", async () => {
   const f = teacherHostInstallation();
+  const credentialPath = join(f.root, "state", "key");
+  writeFileSync(credentialPath, "synthetic-key", { mode: 0o600 });
+  f.writeHost({ ...f.host, providers: [{ pluginId: "org.marea.openrouter", credentialPath }] });
   const path = join(f.root, "config", "teacher-host.json");
   const before = readFileSync(path, "utf8");
   const owned = acquireInstallation(f.root);
@@ -92,12 +95,12 @@ it("imports endpoints and educational routes, and starts without a common route 
           apiKey: "synthetic-imported-key",
           endpoint: "https://provider.example.test/v1/chat/completions",
         },
-        "org.marea.other": { apiKey: "synthetic-imported-key" },
       },
       route: null,
       legacyRoutes: [],
       education: educationalInsights,
     });
+    expect(serverSettingsStore(f.root).read()?.connections).not.toHaveProperty("org.marea.other");
   } finally {
     app.close();
     owned.release();

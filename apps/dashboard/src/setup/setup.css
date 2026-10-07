@@ -37,7 +37,8 @@
   margin: 0.6rem 0;
 }
 .setup-shell input:not([type="checkbox"]):not([type="radio"]),
-.setup-shell select {
+.setup-shell select,
+.setup-shell textarea {
   width: 100%;
   padding: 0.65rem;
   min-height: 44px;

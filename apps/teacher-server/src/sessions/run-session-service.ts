@@ -68,7 +68,11 @@ export class RunSessionService {
     this.#dependencies = dependencies;
   }
 
-  public open(identity: AuthenticatedIdentity, request: OpenRunRequest): OpenRunResponse {
+  public open(
+    identity: AuthenticatedIdentity,
+    request: OpenRunRequest,
+    socraticSupport = false,
+  ): OpenRunResponse {
     requireStudent(identity);
     const issuedAt = this.#dependencies.clock.now();
     const token = this.#dependencies.secrets.issue();
@@ -89,11 +93,22 @@ export class RunSessionService {
       requestId: request.requestId,
       ...(request.runId === undefined ? {} : { resumeRunId: request.runId }),
       captureSnapshot: () => this.#dependencies.snapshots.capture(snapshotId, identity),
+      acceptSnapshot: (snapshot) => {
+        if (
+          !socraticSupport &&
+          snapshot.agentMode === "tutoring" &&
+          snapshot.socraticMode !== undefined &&
+          snapshot.socraticMode !== "off"
+        )
+          throw new TeacherDomainError("protocol.incompatible");
+      },
       student: identity,
     });
     if (request.runId !== undefined && stored.runId !== request.runId) {
       throw new TeacherDomainError("run.unavailable");
     }
+    const snapshot = { ...stored.snapshot };
+    if (!socraticSupport) Reflect.deleteProperty(snapshot, "socraticMode");
     return OpenRunResponseSchema.parse({
       lease: {
         expiresAt: leaseExpiry(issuedAt),
@@ -104,7 +119,7 @@ export class RunSessionService {
       highestDurableSequence: stored.highestDurableSequence,
       protocolVersion: CURRENT_PROTOCOL_VERSION,
       requestId: request.requestId,
-      snapshot: stored.snapshot,
+      snapshot,
       ...(stored.startupState === undefined ? {} : { startupState: stored.startupState }),
     });
   }

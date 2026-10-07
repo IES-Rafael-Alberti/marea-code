@@ -16,6 +16,7 @@ import type {
 } from "./teaching-contracts.js";
 
 const DEFAULT_SETTINGS: TeachingSettings = {
+  socraticMode: "normal",
   agentMode: "tutoring",
   classInstructions: { tutoring: "", free: "" },
   selection: { didactic: [], evaluation: [] },

@@ -1,7 +1,7 @@
 import type { ServerSetupRequest } from "@marea/protocol";
 import type { setupMessages } from "./messages.js";
 
-export type SetupDetails = Omit<ServerSetupRequest, "route" | "connections" | "google">;
+export type SetupDetails = Omit<ServerSetupRequest, "route" | "connections" | "identityProviders">;
 type Copy = ReturnType<typeof setupMessages>;
 
 export function SchoolFields({
@@ -71,18 +71,10 @@ export function SchoolFields({
 export function AccessFields({
   value,
   change,
-  google,
-  googleEnabled,
-  toggleGoogle,
-  changeGoogle,
   m,
 }: {
   value: SetupDetails;
   change: (next: SetupDetails) => void;
-  google: NonNullable<ServerSetupRequest["google"]>;
-  googleEnabled: boolean;
-  toggleGoogle: (value: boolean) => void;
-  changeGoogle: (value: NonNullable<ServerSetupRequest["google"]>) => void;
   m: Copy;
 }) {
   return (
@@ -132,36 +124,6 @@ export function AccessFields({
             }}
           />
         </label>
-      )}
-      <label className="setup-choice">
-        <input
-          type="checkbox"
-          checked={googleEnabled}
-          onChange={(event) => {
-            toggleGoogle(event.currentTarget.checked);
-          }}
-        />
-        {m.google}
-      </label>
-      {googleEnabled && (
-        <fieldset className="setup-grid">
-          <legend>Google Workspace</legend>
-          <p>{m.googleHelp}</p>
-          {(["domain", "clientId", "clientSecret"] as const).map((key) => (
-            <label key={key}>
-              {m[key]}
-              <input
-                required
-                type={key === "clientSecret" ? "password" : "text"}
-                autoComplete="off"
-                value={google[key]}
-                onChange={(event) => {
-                  changeGoogle({ ...google, [key]: event.currentTarget.value });
-                }}
-              />
-            </label>
-          ))}
-        </fieldset>
       )}
       <label className="setup-choice">
         <input

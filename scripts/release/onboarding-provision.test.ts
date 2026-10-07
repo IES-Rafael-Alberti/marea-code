@@ -96,7 +96,7 @@ it.each([false, true])(
     if (example)
       data.request = {
         ...data.request,
-        google: { domain: "school.test", clientId: "client", clientSecret: "secret" },
+        identityProviders: { "org.example.identity": { token: "secret" } },
       };
     await provisionOnboarding("/stage", "/release", "0.1.0-preview.18", data, run);
     const answers = {
@@ -106,7 +106,7 @@ it.each([false, true])(
       login: "teacher",
       port: 18793,
       origin: data.origin,
-      google: data.request.google,
+      identityProviders: data.request.identityProviders,
     };
     expect(p.scaffoldServer).toHaveBeenCalledExactlyOnceWith(
       "/stage",
@@ -148,6 +148,7 @@ it.each([false, true])(
         classId: "class:main",
         expectedVersion: null,
         agentMode: "tutoring",
+        socraticMode: "normal",
         automaticEvaluation: false,
         classInstructions: completeModeInstructions({ tutoring: "", free: "" }),
         selection: {

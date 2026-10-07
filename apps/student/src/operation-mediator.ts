@@ -1,5 +1,5 @@
 import type { StudentRunSnapshot } from "@marea/protocol";
-import type { ApprovalTool } from "@marea/deepagents-adapter";
+import type { ApprovalTool, AgentRuntimeOptions } from "@marea/deepagents-adapter";
 import type { OperationName } from "./operation-contracts.js";
 
 /** A capability for one exact reviewed call; it never executes an effect itself. */
@@ -42,4 +42,26 @@ export function deniesWrite(snapshot: StudentRunSnapshot): boolean {
     snapshot.teacherToolPolicy.restrictions.find((rule) => rule.tool === "write_file")?.effect ===
     "deny"
   );
+}
+
+/** A teaching aid for exercise writes, independent from OS effects and student authorization. */
+export function socraticOptions(
+  snapshot: StudentRunSnapshot,
+  startup: boolean,
+  primary: ApprovalTool,
+  operations: readonly OperationMediator[],
+): Pick<AgentRuntimeOptions, "socratic"> {
+  if (startup || snapshot.agentMode !== "tutoring" || snapshot.socraticMode === undefined)
+    return {};
+  return {
+    socratic: {
+      mode: snapshot.socraticMode,
+      tools: [
+        primary.name,
+        ...operations
+          .filter((operation) => operation.operation === "edit_file")
+          .map((operation) => operation.name),
+      ],
+    },
+  };
 }

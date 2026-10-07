@@ -245,6 +245,7 @@ describe("HTTP student server boundary", () => {
         (request) =>
           request.headers.get("accept") === "application/json" &&
           request.headers.get("connection") === "close" &&
+          request.headers.get("x-marea-socratic-gate") === "1" &&
           request.headers.get("content-type") === "application/json",
       ),
     ).toBe(true);

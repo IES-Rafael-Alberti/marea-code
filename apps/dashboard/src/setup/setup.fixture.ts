@@ -22,3 +22,17 @@ export const setupInput = (overrides: Partial<ServerSetupRequest> = {}): ServerS
   testingSkill: false,
   ...overrides,
 });
+
+export const setupIdentity = {
+  id: "org.example.identity",
+  descriptor: {
+    version: 1 as const,
+    name: { es: "School identity", en: "School identity", eu: "School identity" },
+    fields: ["domain", "clientId", "clientSecret"].map((key) => ({
+      key,
+      label: { es: key, en: key, eu: key },
+      kind: key === "clientSecret" ? ("secret" as const) : ("text" as const),
+      required: true,
+    })),
+  },
+};

@@ -57,6 +57,26 @@ export function TeachingEditor({
           <option value="free">{m.modes.free}</option>
         </select>
       </label>
+      {settings.agentMode === "tutoring" && (
+        <label>
+          {m.socraticLabel}
+          <select
+            value={settings.socraticMode ?? "off"}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              if (value === "off" || value === "normal" || value === "strict")
+                edit({ ...settings, socraticMode: value });
+            }}
+          >
+            {(["off", "normal", "strict"] as const).map((mode) => (
+              <option key={mode} value={mode}>
+                {m.socraticModes[mode]}
+              </option>
+            ))}
+          </select>
+          <span className="teaching-note">{m.socraticHelp}</span>
+        </label>
+      )}
       {settings.agentMode === "free" && <p className="teaching-note">{m.freeModeNote}</p>}
       <p className="teaching-note">{m.instructionsNote}</p>
       <label>

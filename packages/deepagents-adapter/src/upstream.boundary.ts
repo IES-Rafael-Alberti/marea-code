@@ -1,3 +1,4 @@
+import { createSocraticGate } from "./socratic-gate.boundary.js";
 import { createControlledTools } from "./controlled-tools.boundary.js";
 import { toUpstreamDecision } from "./approval-decision.js";
 import {
@@ -9,7 +10,7 @@ import { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { type BaseMessageChunk } from "@langchain/core/messages";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { Command } from "@langchain/langgraph";
-import { createDeepAgent, registerHarnessProfile, type FilesystemPermission } from "deepagents";
+import { createDeepAgent, registerHarnessProfile } from "deepagents";
 import { createMiddleware } from "langchain";
 import * as z from "zod";
 
@@ -101,7 +102,12 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   };
   const drainToolEvents = (): readonly ToolLifecycleEvent[] => pendingToolEvents.splice(0);
   const effectTools = options.effectTools ?? [];
-  const controlled = createControlledTools([options.approvalTool, ...effectTools], reportToolEvent);
+  const gate = createSocraticGate(options.socratic);
+  const controlled = createControlledTools(
+    [options.approvalTool, ...effectTools],
+    reportToolEvent,
+    gate?.shouldBlock,
+  );
   const agent = createDeepAgent({
     model,
     middleware:
@@ -120,7 +126,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
                 }),
             }),
           ]
-        : [],
+        : gate === null
+          ? []
+          : [gate.middleware],
     tools: [
       ...(options.readOnly === true ? [] : controlled.tools),
       ...createQuestionTools(options.questions === true && options.readOnly !== true),
@@ -133,7 +141,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     systemPrompt: options.systemPrompt,
     checkpointer,
     subagents: [],
-    permissions: createDenyAllPermissions(),
+    permissions: [{ operations: ["read", "write"], paths: ["/**"], mode: "deny" }],
     interruptOn:
       options.readOnly === true
         ? {}
@@ -227,16 +235,6 @@ function registerMareaProfile(): void {
     excludedTools: ["task"],
     generalPurposeSubagent: { enabled: false },
   });
-}
-
-function createDenyAllPermissions(): FilesystemPermission[] {
-  return [
-    {
-      operations: ["read", "write"],
-      paths: ["/**"],
-      mode: "deny",
-    },
-  ];
 }
 
 function streamConfig(sessionId: string, messageId: string, signal: AbortSignal) {

@@ -42,6 +42,7 @@ export const googleWorkspaceSettings: ProviderSettingsDescriptor = {
     {
       key: "serviceAccountKey",
       kind: "secret",
+      multiline: true,
       required: false,
       label: text(
         "Clave privada de la cuenta de servicio (PEM)",

@@ -1,5 +1,5 @@
 import { StudentHttpError } from "./http-error.js";
-import { CLASS_CONFIGURATION_REQUIRED_HEADER } from "@marea/protocol";
+import { CLASS_CONFIGURATION_REQUIRED_HEADER, SOCRATIC_GATE_HEADER } from "@marea/protocol";
 export { StudentHttpError } from "./http-error.js";
 import { boundedEventDelivery } from "./event-delivery.js";
 import {
@@ -183,6 +183,7 @@ function createRequest(
   // mid-response and splices both bodies, which would replay turns and model streams.
   const headers = new Headers({
     accept: "application/json",
+    [SOCRATIC_GATE_HEADER]: "1",
     connection: "close",
     "content-type": "application/json",
   });

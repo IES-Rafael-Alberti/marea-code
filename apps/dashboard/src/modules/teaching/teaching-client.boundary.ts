@@ -1,5 +1,6 @@
 import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
+  SOCRATIC_GATE_HEADER,
   CURRENT_PROTOCOL_VERSION,
   MAX_TEACHING_CONFIGURATION_BYTES,
   RequestIdSchema,
@@ -43,7 +44,11 @@ export function createTeachingClient(
         credentials: "same-origin",
         cache: "no-store",
         signal,
-        headers: { Accept: "application/json", "Content-Type": "application/json" },
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          [SOCRATIC_GATE_HEADER]: "1",
+        },
         body: JSON.stringify(body),
       });
     } catch (error) {

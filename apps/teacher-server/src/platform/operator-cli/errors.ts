@@ -56,6 +56,7 @@ const CLI: Record<OperatorCliErrorCode, Exclude<ExitCode, 0>> = {
   "ownership-uncertain": 6,
 };
 const DOMAIN: Record<TeacherDomainErrorCode, Exclude<ExitCode, 0>> = {
+  "protocol.incompatible": 4,
   "auth.busy": 3,
   "auth.invalid": 3,
   "dashboard.forbidden": 3,

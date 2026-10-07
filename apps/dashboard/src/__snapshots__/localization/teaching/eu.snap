@@ -57,6 +57,13 @@
   "skillCurrent": "Uneko bertsioa",
   "skillMissing": "Hautaketa falta da: bertsio hau ez dago uneko katalogoan.",
   "skillStale": "Hautaketa zaharkituta: gordetako digest-a bertsio honetatik desberdina da.",
+  "socraticHelp": "Ikaslearen txanda bakoitzean, ariketako kodearen idazketa eta edizioa eteten ditu tutoreak galdera bat egin arte edo saiakera-mugara heldu arte. Modu librea, konfigurazio-fitxategiak eta shell-komandoak kanpoan geratzen dira. Ikaslearen baimena behar da beti. Saio berrietan soilik; bezero zaharrak eguneratu behar dira.",
+  "socraticLabel": "Idazketaren blokeo sokratikoa",
+  "socraticModes": {
+    "normal": "Blokeatu lehen saiakera",
+    "off": "Desaktibatuta",
+    "strict": "Blokeatu hiru saiakera gehienez",
+  },
   "source": "Iturria",
   "switchCancel": "Utzi",
   "switchDiscard": "Baztertu zirriborroa eta aldatu",
