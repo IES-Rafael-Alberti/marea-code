@@ -254,6 +254,9 @@ describe("canonical run event protocol", () => {
       "/etc/passwd",
       "../secret",
       "src/../secret",
+      "main.py\n",
+      "main.py\r",
+      "main.py\r\n",
       "src\\secret",
     ]) {
       expect(() => CanonicalRunEventSchema.parse({ ...edit, path })).toThrow();

@@ -100,7 +100,10 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   vi.spyOn(value.provider, "stream").mockImplementation(async function* (request, cancellation) {
     for await (const event of stream(request, cancellation)) {
       providerEvents.push(event.type);
-      yield event;
+      // Model tools use virtual-root paths just like the project read tools.
+      yield event.type === "tool-call"
+        ? { ...event, arguments: { ...event.arguments, path: "/notes/tide.txt" } }
+        : event;
     }
     providerEvents.push("stream-closed");
   });
@@ -165,6 +168,11 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   const recovered = coreEvents(value);
   expect(recovered.slice(0, before.length)).toEqual(before);
   expect(recovered.map((event) => event.event_type)).toEqual(turnEvents);
+  for (const event of recovered.filter((item) =>
+    ["approval-requested", "workspace-edit"].includes(item.event_type),
+  )) {
+    expect(JSON.parse(event.payload_json)).toMatchObject({ path: "notes/tide.txt" });
+  }
   expect(new Set(recovered.map((event) => event.event_id)).size).toBe(recovered.length);
   expect(value.database.readAll("SELECT id FROM marea_runs")).toEqual(runs);
   expect(resumed.transcript()).not.toContain("Authorize");

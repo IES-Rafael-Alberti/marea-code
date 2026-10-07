@@ -16,11 +16,11 @@ export const MAX_RUN_EVENTS_REQUEST_BYTES = 2 * 1_024 * 1_024;
 const EventSequenceSchema = z.number().int().positive();
 const EventTextSchema = z.string().min(1).max(65_536);
 const ApprovalSummarySchema = z.string().min(1).max(2_048);
-const RelativeWorkspacePathSchema = z
+export const RelativeWorkspacePathSchema = z
   .string()
   .min(1)
   .max(512)
-  .regex(/^[\p{L}\p{N}._-]+(?:\/[\p{L}\p{N}._-]+)*$/u)
+  .regex(/^[\p{L}\p{N}._-]+(?:\/[\p{L}\p{N}._-]+)*(?![\s\S])/u)
   .refine(
     (path) => path.split("/").every((segment) => segment !== "." && segment !== ".."),
     "Workspace event paths must stay relative to the project root.",

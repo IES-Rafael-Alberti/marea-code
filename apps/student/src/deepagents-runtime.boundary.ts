@@ -1,5 +1,6 @@
 import { deniesWrite } from "./operation-mediator.js";
 import { OperationMediator } from "./operation-mediator.js";
+import { WriteRequestSchema, type WriteRequest } from "./write-request.js";
 import type { OperationTurn } from "./operation-contracts.js";
 import {
   createAgentRuntime,
@@ -18,7 +19,6 @@ import {
   type RunId,
   type StudentRunSnapshot,
 } from "@marea/protocol";
-import * as z from "zod";
 
 import type {
   AgentApprovalTurn,
@@ -41,16 +41,6 @@ export interface DeepAgentsStudentRuntimeOptions {
   readonly model: DeepAgentRuntimeOptions["model"];
   readonly readOnlyTools?: (runId: RunId, snapshot: StudentRunSnapshot) => readonly ReadOnlyTool[];
 }
-
-interface WriteRequest {
-  readonly content: string;
-  readonly path: string;
-}
-
-const WriteRequestSchema = z
-  .object({ content: z.string(), path: z.string().min(1) })
-  .strict()
-  .readonly();
 
 function parseApprovalId(reviewId: string): ApprovalId {
   const parsed = ApprovalIdSchema.safeParse(reviewId);
@@ -170,7 +160,8 @@ function durableApprovalContext(turn: DurableAgentApprovalTurn): DurableApproval
 
 class ApprovalToolMediator implements ApprovalTool {
   readonly name = INTERNAL_WRITE_TOOL_NAME;
-  readonly description = "Write approved text content to a file in the student workspace.";
+  readonly description =
+    "Write approved text content to a file in the student workspace. Arguments: path, content. Use a project-relative path such as main.py or src/main.py; /main.py also refers to the project root. Parent traversal is not allowed.";
   private authorized: AuthorizedWrite | null = null;
 
   authorize(request: WriteRequest, result: WorkspaceWrite): void {
