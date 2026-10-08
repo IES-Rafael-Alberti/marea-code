@@ -70,7 +70,11 @@ if (process.argv.includes("--unavailable") || process.argv.includes("--future"))
 }
 storage.close();
 if (observability) serverSettingsStore(fixture.root).write(emptyServerSettings("user:teacher"), -1);
-cpSync(resolve("apps/dashboard/dist"), join(fixture.root, "dashboard"), { recursive: true });
+cpSync(
+  resolve(process.env.MAREA_DASHBOARD_DIST ?? "apps/dashboard/dist"),
+  join(fixture.root, "dashboard"),
+  { recursive: true },
+);
 fixture.writeHost({
   ...fixture.host,
   listen: { hostname: "127.0.0.1", port: 5196 },
