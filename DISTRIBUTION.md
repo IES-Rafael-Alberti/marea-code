@@ -1,7 +1,10 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.23`. This preview fixes the blank dashboard
-on browsers without `URL.parse`, including the redirect after initial setup.
+The commands below target `0.1.0-preview.24`. This preview simplifies first-run
+setup and organizes settings by task. It adds inline password validation, optional
+educational features, web-managed school accounts and clearer Google group setup.
+Drafts survive section changes, saved keys remain private, and saving reveals any
+invalid field. It also fixes the blank dashboard on browsers without `URL.parse`.
 Fresh teacher installations open a browser setup wizard on their first launch.
 The wizard collects the school,
 teacher account, model connection and classroom access, then saves a usable first
@@ -19,13 +22,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.23/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.24/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.23/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.24/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -36,15 +39,19 @@ after installation to pick up the per-user PATH entry, then run:
 marea-teacher
 ```
 
-On the first launch, a browser opens a four-step wizard:
+On the first launch, a browser opens a five-step wizard:
 
-1. School, first class and teacher account (password: 12–256 characters).
-2. Provider key and model, with OpenRouter verification, suggestions and editable prices.
-3. Local-only, classroom LAN HTTP or a configured HTTPS origin; optional Google and testing skill.
-4. Review and creation. Progress is visible while the installation is prepared.
+1. School, first class and teacher account, with password validation beside the fields.
+2. Provider key and model, with connection verification and model suggestions.
+3. Local-only, classroom LAN HTTP or a configured HTTPS origin; optional school accounts.
+4. Optional attention map, reports, automatic evaluation and example testing skill.
+5. Review and creation. Progress is visible while the installation is prepared.
 
-The first class is saved in tutoring mode with automatic evaluation disabled and
-student approval required for project changes. Usage defaults to unlimited.
+The first class is saved in tutoring mode with student approval required for
+project changes. Usage defaults to unlimited. Automatic evaluation is disabled
+unless selected; enabling it also selects the bundled session-review method.
+Optional map and report models initially use the verified main connection.
+Prices, usage limits and separate feature models can be adjusted later in settings.
 The local dashboard opens already signed in. HTTPS installations use their normal
 login page. Further launches start the existing school without showing the wizard.
 The LAN choice is remembered by the managed launcher.
@@ -106,7 +113,10 @@ with that name; an edited local copy is preserved.
 The optional Google fields accept a desktop OAuth client ID, client secret and
 school domain. Domain administration, OAuth consent and trusting the application
 for minors still happen in Google Workspace. Group membership additionally needs
-service-account configuration in the optional advanced fields. These controls only
+service-account configuration, explained in its own optional section. Administrators
+can change these connections under Settings → Server → School accounts; saved
+identity changes require a server restart. Class admission addresses and groups
+remain under Settings → This class → Student access. These controls only
 appear when the identity plugin is bundled. Model connections likewise come from
 installed inference plugins; neither the wizard nor the dashboard requires OpenRouter.
 If a model provider is removed, the server can still start so its administrator can
@@ -125,7 +135,7 @@ enables it. Restarting the client does not reset the policy or retry history of 
 
 Teachers can download conversations, events and usage from **Sessions**, filtered
 by class, student and UTC dates, using names or pseudonyms. Administrators can
-configure **Settings → Server → Observability**, test a synthetic connection, and
+configure **Settings → Server → External traces**, test a synthetic connection, and
 explicitly enable delivery with content. Langfuse supports self-hosted base URLs;
 OTLP accepts an HTTP collector. No student-side credentials are needed.
 
@@ -154,13 +164,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.23/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.24/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.23/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.24/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Run `marea` from the project directory. The managed installation keeps student
@@ -174,7 +184,7 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
 - `status` (or `--status`): managed installation details, with no credentials.
 - `update` (or `--update`): check the latest **published** preview and ask to install
   it, without starting the application. Publishing alone does not notify everyone.
-- `update --version 0.1.0-preview.23`: try a specific published preview.
+- `update --version 0.1.0-preview.24`: try a specific published preview.
 - Ordinary startup offers only a **recommended** version for this component and
   wire protocol. Declining keeps the installed version. A noninteractive start
   never accepts updates; discovery failures leave the current installation usable.
@@ -189,8 +199,8 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
   student version or a required protocol repair may select an older signed client.
   Server downgrades require backup recovery; they cannot open migrated data.
 
-For a fresh pilot install before recommendation, append `--version 0.1.0-preview.23`
-to the POSIX command, or `-Version 0.1.0-preview.23` on PowerShell. With no explicit
+For a fresh pilot install before recommendation, append `--version 0.1.0-preview.24`
+to the POSIX command, or `-Version 0.1.0-preview.24` on PowerShell. With no explicit
 version and no recommendation, installation stops with a useful message.
 
 Stop the server before accepting an update. Its existing exclusive installation
@@ -248,7 +258,7 @@ otherwise unsafe shell profiles are preserved and reported for manual PATH clean
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.23`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.24`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
@@ -273,7 +283,7 @@ Run the **Recommend preview** workflow on `main`, choosing the published version
 and `student`, `server`, or `both`. From a maintainer terminal:
 
 ```sh
-gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.23 -f component=both
+gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.24 -f component=both
 ```
 
 Promotion requires a successful native publication workflow for the exact source,

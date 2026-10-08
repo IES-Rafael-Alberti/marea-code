@@ -15,8 +15,8 @@ use simulated Google responses.
 Published previews, when available, are listed in
 [GitHub Releases](https://github.com/IES-Rafael-Alberti/marea-code/releases).
 Use the version's `install.sh` or `install.ps1` as described in the
-[installation and update guide](DISTRIBUTION.md). The server installer asks for
-the initial school, teacher and class. Students only need their school's server
+[installation and update guide](DISTRIBUTION.md). The first server launch opens a web wizard for
+the school, teacher, model and first class. Students only need their school's server
 address. Bun, Node and a source checkout are not required to install a package.
 Student computers need Git on `PATH` for project snapshots and change tracking.
 
@@ -31,9 +31,10 @@ Student computers need Git on `PATH` for project snapshots and change tracking.
 
 Each target must pass the native release workflow before it is published. Being
 listed here does not imply that the current working tree has passed that matrix.
-The server listens on loopback; access from other computers needs an HTTPS reverse
-proxy and a school-reachable address. A local `127.0.0.1` address cannot be shared
-with students on other computers.
+The server listens on loopback by default. For other classroom computers, choose
+LAN HTTP during setup or start with `marea-teacher --allow-http` on a trusted
+network. HTTPS uses a reverse proxy and a school-reachable address. A local
+`127.0.0.1` address cannot be shared with students on other computers.
 
 Managed installations offer **recommended** updates at startup; `marea update`
 and `marea-teacher update` let a pilot group try the latest published preview first.
