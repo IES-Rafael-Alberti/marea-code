@@ -1,8 +1,12 @@
 /** A command is meant for another computer, so loopback and wildcard hosts are never offered. */
 export function studentOrigin(value: string): string | null {
-  const url = URL.parse(value);
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return null;
+  }
   if (
-    url === null ||
     !["http:", "https:"].includes(url.protocol) ||
     url.username !== "" ||
     url.password !== "" ||

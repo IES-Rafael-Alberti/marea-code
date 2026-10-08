@@ -122,11 +122,6 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native privacy probe failed' }
           bun scripts/release/command-smoke.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Native project command probe failed' }
-      - name: First-run browser setup, cancellation and ready classroom
-        if: runner.os != 'Windows' && matrix.component == 'server'
-        run: |
-          bun scripts/release/preview-wizard-smoke.mjs
-          if ($LASTEXITCODE -ne 0) { throw 'Interactive server bootstrap failed' }
       - name: Set up pinned native Go toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -220,6 +215,12 @@ jobs:
           bun $browserCli install --with-deps chromium
           if ($LASTEXITCODE -ne 0) { throw 'Chromium installation failed' }
           "PLAYWRIGHT_PACKAGE=$(Join-Path $browser 'package.json')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+      - name: First-run browser setup, cancellation and dashboard without URL.parse
+        if: runner.os != 'Windows' && matrix.component == 'server'
+        run: |
+          $manifest = Get-ChildItem reports/phase5/candidates -Recurse -Filter manifest.json | Select-Object -First 1
+          bun scripts/release/preview-wizard-smoke.mjs $manifest.DirectoryName
+          if ($LASTEXITCODE -ne 0) { throw 'Interactive server bootstrap or dashboard failed' }
       - name: Observability settings and session export in a real browser
         if: runner.os != 'Windows' && matrix.component == 'server'
         run: |

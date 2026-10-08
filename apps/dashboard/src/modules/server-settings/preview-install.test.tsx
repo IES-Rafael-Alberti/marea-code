@@ -34,7 +34,10 @@ it("generates commands for the exact server version and address, without allowin
   expect(previewInstallCommands("a/b", "0.1.0", "https://school.test")).toBeNull();
 });
 
-it("uses the server LAN address when the teacher opens localhost, and explains missing access", () => {
+it("renders LAN commands and missing access without the newer URL.parse browser API", () => {
+  class BrowserURL extends URL {}
+  Object.defineProperty(BrowserURL, "parse", { value: undefined });
+  vi.stubGlobal("URL", BrowserURL);
   vi.stubGlobal("window", { location: { origin: "http://localhost:18787" } });
   vi.stubEnv("VITE_MAREA_PREVIEW_REPOSITORY", "school/marea");
   vi.stubEnv("VITE_MAREA_PREVIEW_VERSION", "0.1.0-preview.16");

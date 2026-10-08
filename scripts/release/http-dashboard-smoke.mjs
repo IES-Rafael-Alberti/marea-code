@@ -41,9 +41,13 @@ export async function verifyHttpDashboard(origin, password) {
   const browser = await chromium.launch({ headless: true });
   try {
     const page = await browser.newPage({ locale: "en-US" });
+    await page.addInitScript(() => {
+      Reflect.deleteProperty(globalThis.URL, "parse");
+    });
     const errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await signIn(page, origin, password);
+    assert.equal(await page.evaluate(() => typeof globalThis.URL.parse), "undefined");
     assert.equal(await page.evaluate(() => window.isSecureContext), false);
     assert.equal(await page.evaluate(() => typeof crypto.randomUUID), "undefined");
     const cookies = await page.context().cookies();

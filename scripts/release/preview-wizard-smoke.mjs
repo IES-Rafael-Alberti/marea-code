@@ -10,6 +10,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { securePrivatePath } from "@marea/private-filesystem";
 import { existingOnboarding } from "./onboarding-state.boundary.ts";
 import { setupInput } from "./onboarding.fixture.ts";
+import { finishSetupInBrowser } from "./onboarding-browser-smoke.mjs";
 
 const scratch = fs.realpathSync(fs.mkdtempSync(join(tmpdir(), "marea-browser-setup-")));
 const suffix = process.platform === "win32" ? ".exe" : "";
@@ -64,7 +65,14 @@ try {
       ["operations-entry.ts", "marea-operations"],
     ])
       build(`apps/teacher-server/${entry}`, join(release, name + suffix));
-    execFileSync("bun", ["run", "--cwd", "apps/dashboard", "build"], { stdio: "pipe" });
+    execFileSync("bun", ["run", "--cwd", "apps/dashboard", "build"], {
+      stdio: "pipe",
+      env: {
+        ...process.env,
+        VITE_MAREA_PREVIEW_REPOSITORY: "example/marea",
+        VITE_MAREA_PREVIEW_VERSION: "0.1.0-preview.1",
+      },
+    });
     fs.cpSync("apps/dashboard/dist", join(release, "dashboard"), { recursive: true });
     fs.cpSync("content/skills", join(release, "skills"), { recursive: true });
   }
@@ -144,11 +152,19 @@ try {
     400,
   );
   assert.equal(fs.existsSync(settings.installation), false);
-  const done = await api({ operation: "finish", setup: input });
-  assert.equal(done.status, 200, child.transcript());
-  const completed = await done.json();
+  let completed, cookie;
+  if (process.env.PLAYWRIGHT_PACKAGE) {
+    ({ completed, cookie } = await finishSetupInBrowser(url, input));
+    process.stdout.write(
+      "Browser onboarding, automatic dashboard sign-in and reload passed without URL.parse.\n",
+    );
+  } else {
+    const done = await api({ operation: "finish", setup: input });
+    assert.equal(done.status, 200, child.transcript());
+    completed = await done.json();
+    cookie = done.headers.get("set-cookie");
+  }
   assert.equal(completed.dashboardUrl, `http://127.0.0.1:${port}/dashboard/`);
-  const cookie = done.headers.get("set-cookie");
   assert.ok(cookie?.includes("HttpOnly"));
   assert.ok(!cookie.includes("Secure"));
   assert.equal((await globalThis.fetch(completed.dashboardUrl)).status, 200);
