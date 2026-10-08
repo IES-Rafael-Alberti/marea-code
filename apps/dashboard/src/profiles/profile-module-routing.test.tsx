@@ -1,3 +1,4 @@
+import { confirmDiscardWindow } from "./profile.fixture.js";
 import { PreviewPanel } from "../telemetry/preview-panel.js";
 import { moduleSection } from "./workspace-navigation.js";
 import { Children, isValidElement, type ReactNode, type DependencyList } from "react";
@@ -110,12 +111,7 @@ function draftSession() {
   const session = new SessionsController(runtime.sessions, runtime.notices, vi.fn());
   session.state = { ...session.state, classId: "class:a", connection: "current" };
   vi.spyOn(session, "hasUnsavedDrafts", "get").mockReturnValue(true);
-  const confirm = vi.fn().mockReturnValue(false);
-  vi.stubGlobal("window", {
-    confirm,
-    location: { href: "http://localhost/dashboard/" },
-    history: { replaceState: vi.fn() },
-  });
+  const confirm = confirmDiscardWindow();
   hooks.controller = null;
   hooks.index = 0;
   hooks.memoIndex = 0;

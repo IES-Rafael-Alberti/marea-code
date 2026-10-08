@@ -16,6 +16,7 @@
   "copyBlocked": "Copy to personal skill (blocked)",
   "copyHint": "Copy preserves every canonical relative file and uses a new personal slug.",
   "copySource": [Function],
+  "creationHelp": "Start by viewing a skill such as the testing example. Copy it to adapt it, or create a new one with a short name. Add instructions and assessment criteria, save, then activate it in Tutor and active skills.",
   "destinationSlug": "Destination slug",
   "didactic": "Didactic",
   "digest": "Loaded digest",
@@ -81,6 +82,7 @@
     "missing": "Missing",
     "stale": "Stale",
   },
+  "technicalDetails": "Technical details",
   "validate": "Validate draft",
   "validationSuccess": "The draft is valid and has not been published.",
 }

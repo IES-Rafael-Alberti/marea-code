@@ -1,3 +1,4 @@
+import { googleSetupGuides } from "./setup-guides.js";
 import type { ProviderSettingsDescriptor } from "@marea/plugin-api";
 import * as z from "zod";
 
@@ -5,6 +6,7 @@ const text = (es: string, en: string, eu: string) => ({ es, en, eu });
 
 export const googleWorkspaceSettings: ProviderSettingsDescriptor = {
   version: 1,
+  guides: googleSetupGuides,
   name: text(
     "Google Workspace del centro",
     "School Google Workspace",

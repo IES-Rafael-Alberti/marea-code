@@ -1,3 +1,13 @@
+import { validateSettingsForm } from "./form-validation.js";
+import { showFieldValidity } from "../../forms/validation.js";
+import { IdentitySettingsView } from "./identity-view.js";
+import { advanceSettingsRevision, type SettingsRevision } from "./settings-revision.js";
+import {
+  ServerSections,
+  serverSections,
+  SERVER_FEATURES_EVENT,
+  type ServerSection,
+} from "./sections.js";
 import { useEffect, useState } from "react";
 import { ObservabilityView } from "../observability/view.js";
 import type { DashboardLocale } from "../../messages.js";
@@ -32,6 +42,8 @@ export function ServerSettingsView({
   const [dirty, setDirty] = useState(false);
   const [saved, setSaved] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [section, selectSection] = useState<ServerSection>("models");
+  const [revisionChange, setRevisionChange] = useState<SettingsRevision | null>(null);
   const { catalogs, refresh } = useProviderModels(fetchRequest, state, connections);
   const accept = (next: SettingsResponse) => {
     setState(next);
@@ -75,6 +87,18 @@ export function ServerSettingsView({
       window.removeEventListener("beforeunload", prevent);
     };
   }, [dirty]);
+  useEffect(() => {
+    const requested = new URL(window.location.href).searchParams.get("server");
+    const selected = serverSections.find((id) => id === requested);
+    if (selected) selectSection(selected);
+    const features = () => {
+      selectSection("features");
+    };
+    window.addEventListener(SERVER_FEATURES_EVENT, features);
+    return () => {
+      window.removeEventListener(SERVER_FEATURES_EVENT, features);
+    };
+  }, []);
   const edit = (next: EditableSettings) => {
     if (error === "invalid") setError(null);
     setState(next);
@@ -87,6 +111,9 @@ export function ServerSettingsView({
   return (
     <section className="dashboard-module server-settings" aria-busy={busy}>
       <h2>{m.title}</h2>
+      {state?.administrator && (
+        <ServerSections value={section} change={selectSection} locale={locale} />
+      )}
       {state === null ? (
         error === null ? (
           <p>{m.loading}</p>
@@ -102,9 +129,22 @@ export function ServerSettingsView({
         <p>{state.initialized ? m.access : m.setup}</p>
       ) : (
         <form
+          noValidate
+          onInvalid={(event) => {
+            event.preventDefault();
+          }}
+          onBlur={(event) => {
+            if (event.target instanceof HTMLInputElement) showFieldValidity(event.target);
+          }}
+          data-dirty={dirty}
+          hidden={!(["models", "limits", "features"] as readonly string[]).includes(section)}
           onSubmit={(event) => {
             event.preventDefault();
-            if (busy || error !== null) return;
+            if (busy || error === "conflict") return;
+            if (!validateSettingsForm(event.currentTarget, selectSection)) {
+              setError("invalid");
+              return;
+            }
             setBusy(true);
             setSaved(false);
             void saveSettings(
@@ -121,6 +161,8 @@ export function ServerSettingsView({
             )
               .then((result) => {
                 if (result.ok) {
+                  if (result.value.administrator)
+                    setRevisionChange({ before: state.revision, after: result.value.revision });
                   accept(result.value);
                   setSaved(true);
                 } else setError(result.reason);
@@ -130,21 +172,22 @@ export function ServerSettingsView({
               });
           }}
         >
-          <p className="server-role">{m.roleAdmin}</p>
           <fieldset disabled={busy}>
-            <ProviderConnections
-              refresh={refresh}
-              state={state}
-              catalogs={catalogs}
-              connections={connections}
-              locale={locale}
-              change={(next) => {
-                if (error === "invalid") setError(null);
-                setConnections(next);
-                setDirty(true);
-                setSaved(false);
-              }}
-            />
+            <div data-settings-section="models" hidden={section !== "models"}>
+              <ProviderConnections
+                refresh={refresh}
+                state={state}
+                catalogs={catalogs}
+                connections={connections}
+                locale={locale}
+                change={(next) => {
+                  if (error === "invalid") setError(null);
+                  setConnections(next);
+                  setDirty(true);
+                  setSaved(false);
+                }}
+              />
+            </div>
             <ModelSettings
               state={state}
               catalogs={catalogs}
@@ -152,6 +195,7 @@ export function ServerSettingsView({
               locale={locale}
               edit={edit}
               classNames={classNames}
+              section={section === "limits" || section === "features" ? section : "models"}
             />
           </fieldset>
           <SettingsActions
@@ -166,8 +210,22 @@ export function ServerSettingsView({
       )}
       {state?.administrator === true && (
         <>
-          <ObservabilityView locale={locale} fetchRequest={fetchRequest} />
-          <PreviewInstall locale={locale} origins={state.connectionOrigins} />
+          <div hidden={section !== "identities"}>
+            <IdentitySettingsView
+              locale={locale}
+              fetchRequest={fetchRequest}
+              revisionChange={revisionChange}
+              onSaved={(change) => {
+                setState((current) => advanceSettingsRevision(current, change));
+              }}
+            />
+          </div>
+          <div hidden={section !== "traces"}>
+            <ObservabilityView locale={locale} fetchRequest={fetchRequest} />
+          </div>
+          <div hidden={section !== "network"}>
+            <PreviewInstall locale={locale} origins={state.connectionOrigins} />
+          </div>
         </>
       )}
     </section>
@@ -193,11 +251,11 @@ function SettingsActions({
   const problem = error === "conflict" ? m.conflict : error === "invalid" ? m.invalid : m.error;
   return (
     <div className="server-actions">
-      <button type="submit" disabled={busy || !dirty || error !== null}>
+      <button type="submit" disabled={busy || !dirty || error === "conflict"}>
         {m.save}
       </button>
       <button type="button" disabled={busy} onClick={reload}>
-        {m.reload}
+        {dirty ? m.discard : m.reload}
       </button>
       {error !== null ? (
         <span role="alert">{problem}</span>

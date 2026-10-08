@@ -29,6 +29,7 @@ export function createSetupClient(token: string, fetchRequest: DashboardFetch) {
       return z
         .object({
           settings: SettingsResponse,
+          addresses: z.array(z.string().max(253)).max(128).optional(),
           identityProviders: z
             .array(
               z.object({ id: z.string(), descriptor: ProviderSettingsDescriptorSchema }).strict(),

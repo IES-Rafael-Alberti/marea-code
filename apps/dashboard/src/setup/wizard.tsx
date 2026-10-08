@@ -1,8 +1,11 @@
 import { useEffect, useState } from "react";
 import type { DashboardLocale } from "../messages.js";
 import type { EditableSettings } from "../modules/server-settings/client.boundary.js";
-import { ProviderConnections } from "../modules/server-settings/provider-connections.js";
-import { ModelSettings } from "../modules/server-settings/model-settings.js";
+import { validateForm, showFieldValidity } from "../forms/validation.js";
+import { SetupFeatures } from "./features.js";
+import { SetupModel, isSetupModelReady } from "./model.js";
+import { SetupReview } from "./review.js";
+import { initialModelRoute } from "../modules/server-settings/model-settings.js";
 import { useProviderModels } from "../modules/server-settings/provider-models.boundary.js";
 import { AccessFields, SchoolFields, type SetupDetails } from "./fields.js";
 import { IdentityFields } from "./identity-fields.js";
@@ -23,6 +26,7 @@ export function SetupWizard({
   const [step, setStep] = useState(0);
   const [configuration, setConfiguration] = useState<{
     settings: EditableSettings;
+    addresses?: string[];
     identityProviders: Awaited<ReturnType<SetupClient["read"]>>["identityProviders"];
   } | null>(null);
   const [connections, setConnections] = useState<Record<string, Record<string, string>>>({});
@@ -57,12 +61,17 @@ export function SetupWizard({
       (value) => {
         if (controller.signal.aborted) return;
         if (value.settings.administrator) {
-          setConfiguration({
-            settings: value.settings,
-            identityProviders: value.identityProviders,
-          });
           const [provider, ...others] = value.settings.providers;
-          if (provider !== undefined && others.length === 0) setConnections({ [provider.id]: {} });
+          const single = provider !== undefined && others.length === 0;
+          setConfiguration({
+            settings:
+              single && value.settings.route === null
+                ? { ...value.settings, route: initialModelRoute(provider.id) }
+                : value.settings,
+            identityProviders: value.identityProviders,
+            addresses: value.addresses ?? [],
+          });
+          if (single) setConnections({ [provider.id]: {} });
         } else setError("error");
       },
       () => {
@@ -74,13 +83,8 @@ export function SetupWizard({
     };
   }, [client, attempt]);
   const route = configuration?.settings.route;
-  const provider = configuration?.settings.providers.find(
-    (entry) => entry.id === route?.providerId,
-  );
   const modelReady =
-    route &&
-    provider &&
-    (!provider.supportsModels || catalogs[route.providerId]?.status === "ready");
+    configuration !== null && isSetupModelReady(route, configuration.settings.providers, catalogs);
   const submit = () => {
     setError(null);
     if (step === 0 && confirmation !== details.password) {
@@ -91,7 +95,7 @@ export function SetupWizard({
       setError("modelRequired");
       return;
     }
-    if (step < 3) {
+    if (step < 4) {
       setStep(step + 1);
       return;
     }
@@ -116,8 +120,7 @@ export function SetupWizard({
     <main className="shell setup-shell">
       <header className="masthead">
         <p className="eyebrow">Marea Code</p>
-        <h1>{m.title}</h1>
-        <p>{m.intro}</p>
+        <h1>{[m.title, ...m.steps.slice(1)][step]}</h1>
         <label>
           {m.language}
           <select
@@ -160,12 +163,17 @@ export function SetupWizard({
         <form
           onSubmit={(event) => {
             event.preventDefault();
-            if (!busy) submit();
+            if (!busy && validateForm(event.currentTarget)) submit();
           }}
           aria-busy={busy}
+          noValidate
+          onInvalid={(event) => {
+            event.preventDefault();
+            if (event.target instanceof HTMLInputElement) showFieldValidity(event.target);
+          }}
         >
           <fieldset disabled={busy}>
-            <legend>{m.steps[step]}</legend>
+            <legend className="sr-only">{m.steps[step]}</legend>
             {step === 0 && (
               <SchoolFields
                 value={details}
@@ -173,33 +181,30 @@ export function SetupWizard({
                 confirmation={confirmation}
                 confirm={setConfirmation}
                 m={m}
+                locale={locale}
               />
             )}
             {step === 1 && (
-              <div className="server-settings">
-                <p>{m.modelHelp}</p>
-                <ProviderConnections
-                  state={configuration.settings}
-                  connections={connections}
-                  change={setConnections}
-                  locale={locale}
-                  catalogs={catalogs}
-                  refresh={refresh}
-                />
-                <ModelSettings
-                  state={configuration.settings}
-                  connections={connections}
-                  edit={(settings) => {
-                    setConfiguration({ ...configuration, settings });
-                  }}
-                  locale={locale}
-                  catalogs={catalogs}
-                />
-              </div>
+              <SetupModel
+                settings={configuration.settings}
+                connections={connections}
+                changeConnections={setConnections}
+                edit={(settings) => {
+                  setConfiguration({ ...configuration, settings });
+                }}
+                locale={locale}
+                catalogs={catalogs}
+                refresh={refresh}
+              />
             )}
             {step === 2 && (
               <>
-                <AccessFields value={details} change={setDetails} m={m} />
+                <AccessFields
+                  value={details}
+                  change={setDetails}
+                  m={m}
+                  addresses={configuration.addresses}
+                />
                 <IdentityFields
                   providers={configuration.identityProviders}
                   values={identityProviders}
@@ -209,25 +214,9 @@ export function SetupWizard({
                 />
               </>
             )}
-            {step === 3 && (
-              <>
-                <dl className="setup-review">
-                  <dt>{m.center}</dt>
-                  <dd>{details.center}</dd>
-                  <dt>{m.classroom}</dt>
-                  <dd>{details.classroom}</dd>
-                  <dt>{m.teacher}</dt>
-                  <dd>
-                    {details.teacher} ({details.login})
-                  </dd>
-                  <dt>{m.steps[1]}</dt>
-                  <dd>{configuration.settings.route?.model}</dd>
-                  <dt>{m.network}</dt>
-                  <dd>{m[details.access]}</dd>
-                </dl>
-                <p>{m.review}</p>
-                <p>{m.optional}</p>
-              </>
+            {step === 3 && <SetupFeatures value={details} change={setDetails} m={m} />}
+            {step === 4 && (
+              <SetupReview value={details} model={route?.model ?? ""} m={m} edit={setStep} />
             )}
             <div className="setup-actions">
               {step > 0 && (
@@ -241,7 +230,22 @@ export function SetupWizard({
                   {m.back}
                 </button>
               )}
-              <button type="submit">{step === 3 ? m.finish : m.next}</button>
+              {step === 3 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDetails({
+                      ...details,
+                      testingSkill: false,
+                      features: { map: false, reports: false, automaticEvaluation: false },
+                    });
+                    setStep(4);
+                  }}
+                >
+                  {m.skip}
+                </button>
+              )}
+              <button type="submit">{step === 4 ? m.finish : m.next}</button>
             </div>
           </fieldset>
           {busy && (

@@ -1,9 +1,13 @@
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { EditableSettings } from "./client.boundary.js";
 import { emptyBudget } from "./budget-fields.js";
 import { change, control, text, tree } from "./forms.fixture.js";
 import { serverSettingsMessages } from "./messages.js";
 import { ServerSettingsView } from "./view.js";
+import { SERVER_FEATURES_EVENT } from "./sections.js";
+import * as identityUI from "./identity-view.js";
+import type { SettingsRevision } from "./settings-revision.js";
 
 type HookValue = object | string | number | boolean | null;
 const hooks = vi.hoisted(() => ({
@@ -22,8 +26,11 @@ function slot(initial: HookValue): [HookValue, (value: HookValue) => void] {
   const position = hooks.index;
   hooks.index += 1;
   if (!(position in hooks.values)) hooks.values[position] = initial;
-  const write = (value: HookValue) => {
-    hooks.values[position] = value;
+  const write = (value: HookValue | ((previous: HookValue) => HookValue)) => {
+    hooks.values[position] =
+      typeof value === "function"
+        ? (value as (previous: HookValue) => HookValue)(hooks.values[position] ?? null)
+        : value;
   };
   return [hooks.values[position] ?? null, write];
 }
@@ -70,6 +77,7 @@ const window = {
   addEventListener: vi.fn(),
   removeEventListener: vi.fn(),
   confirm: vi.fn(),
+  location: { href: "http://localhost/dashboard/" },
 };
 /** Runs the initial read effect and waits for its settled callbacks. */
 async function load(result: Promise<object>) {
@@ -83,7 +91,10 @@ async function load(result: Promise<object>) {
 }
 const submit = (preventDefault = vi.fn()) => {
   const form = render().find((node) => node.type === "form");
-  (form?.props.onSubmit as (event: object) => void)({ preventDefault });
+  (form?.props.onSubmit as (event: object) => void)({
+    preventDefault,
+    currentTarget: { checkValidity: () => true },
+  });
   return preventDefault;
 };
 beforeEach(() => {
@@ -105,7 +116,7 @@ it("loads the editable projection and keeps only configured connections", async 
     expect.any(AbortSignal),
   );
   expect(hooks.values[1]).toEqual({ p1: { endpoint: "https://kept.test" } });
-  expect(page()).toContain(m.roleAdmin);
+  expect(page()).toContain(m.title);
 });
 
 it("explains access for other teachers and before the offline grant", async () => {
@@ -165,23 +176,25 @@ it("tracks unsaved edits, guards leaving and confirms a reload that would discar
   expect(hooks.values).toMatchObject({ 1: {}, 2: null, 4: true, 5: false });
   change(control(render(), m.connect), { checked: true });
   expect(hooks.values[1]).toEqual({ p1: { endpoint: "https://kept.test" } });
-  change(control(render(), m.provider), { value: "p1" });
   expect(page()).toContain(m.pending);
   render();
   const remove = hooks.effects[1]?.();
   const prevent = window.addEventListener.mock.lastCall?.[1] as (event: object) => void;
   const preventDefault = vi.fn();
-  prevent({ preventDefault });
+  prevent({ preventDefault, currentTarget: { checkValidity: () => true } });
   expect(preventDefault).toHaveBeenCalledOnce();
   remove?.();
   expect(window.removeEventListener).toHaveBeenCalledWith("beforeunload", prevent);
   hooks.values[4] = false;
   render();
   hooks.effects[1]?.();
-  (window.addEventListener.mock.lastCall?.[1] as (event: object) => void)({ preventDefault });
+  (window.addEventListener.mock.lastCall?.[1] as (event: object) => void)({
+    preventDefault,
+    currentTarget: { checkValidity: () => true },
+  });
   expect(preventDefault).toHaveBeenCalledOnce();
   hooks.values[4] = true;
-  const reload = render().find((node) => node.type === "button" && text(node) === m.reload)?.props
+  const reload = render().find((node) => node.type === "button" && text(node) === m.discard)?.props
     .onClick as () => void;
   window.confirm.mockReturnValueOnce(false);
   reload();
@@ -210,7 +223,12 @@ it("saves with the read revision and shows the confirmed or refused outcome", as
   );
   await Promise.resolve();
   await Promise.resolve();
-  expect(hooks.values).toMatchObject({ 0: confirmed, 3: false, 5: true });
+  expect(hooks.values).toMatchObject({
+    0: confirmed,
+    3: false,
+    5: true,
+    8: { before: 2, after: 3 },
+  });
   expect(page()).toContain(m.saved);
   for (const [reason, message] of [
     ["conflict", m.conflict],
@@ -224,7 +242,8 @@ it("saves with the read revision and shows the confirmed or refused outcome", as
     await Promise.resolve();
     expect(page()).toContain(message);
   }
-  // An unresolved problem or a pending save blocks another write.
+  // A conflicting revision or a pending save blocks another write.
+  hooks.values[2] = "conflict";
   submit();
   hooks.values[2] = null;
   hooks.values[3] = true;
@@ -244,8 +263,8 @@ it("lists limits for a configured route", async () => {
 
 it("starts idle, marks reads busy and clears an earlier problem once loaded", async () => {
   render();
-  expect(hooks.values).toEqual([null, {}, null, false, false, false, 0]);
-  expect(hooks.dependencies).toEqual([[fetchRequest, 0], [false]]);
+  expect(hooks.values).toEqual([null, {}, null, false, false, false, 0, "models", null]);
+  expect(hooks.dependencies).toEqual([[fetchRequest, 0], [false], []]);
   hooks.values[2] = "unavailable";
   hooks.values[4] = true;
   client.settingsRequest.mockResolvedValue(settings);
@@ -309,4 +328,111 @@ it("offers matching preview installation commands only to the server administrat
   hooks.values = [];
   await load(Promise.resolve({ administrator: false, initialized: true }));
   expect(page()).not.toContain("Install Marea for students");
+});
+
+it.each(["limits", "features", "invalid"])(
+  "opens the requested server section and routes feature actions (%s)",
+  async (requested) => {
+    vi.stubGlobal("window", {
+      ...window,
+      location: { href: `http://localhost/dashboard/?server=${requested}` },
+    });
+    await load(Promise.resolve(settings));
+    const cleanup = hooks.effects[2]?.();
+    expect(hooks.values[7]).toBe(requested === "invalid" ? "models" : requested);
+    render();
+    const form = render().find((node) => node.type === "form");
+    expect(form?.props.hidden).toBe(false);
+    const listener = window.addEventListener.mock.calls.find(
+      ([name]) => name === SERVER_FEATURES_EVENT,
+    )?.[1] as () => void;
+    listener();
+    expect(hooks.values[7]).toBe("features");
+    cleanup?.();
+    expect(window.removeEventListener).toHaveBeenCalledWith(SERVER_FEATURES_EVENT, listener);
+  },
+);
+
+it("keeps each server task in its visible section, with drafts mounted in hidden sections", async () => {
+  await load(
+    Promise.resolve({
+      ...settings,
+      route: {
+        providerId: "p1",
+        model: "main",
+        budget: { inputTokenCeiling: 1, tutoring: emptyBudget(), evaluation: emptyBudget() },
+      },
+    }),
+  );
+  for (const section of ["models", "identities", "network", "features", "limits", "traces"]) {
+    hooks.values[7] = section;
+    hooks.index = 0;
+    expect(
+      renderToStaticMarkup(<ServerSettingsView fetchRequest={fetchRequest} locale="en" />),
+    ).toMatchSnapshot(section);
+  }
+  hooks.values[2] = "invalid";
+  hooks.values[4] = true;
+  expect(
+    render().find((node) => node.type === "button" && node.props.type === "submit")?.props.disabled,
+  ).toBe(false);
+  hooks.values[5] = true;
+  change(control(render(), m.model), { value: "changed" });
+  expect(hooks.values[5]).toBe(false);
+});
+
+it("reveals the section owning an invalid field and preserves the unsaved model draft", async () => {
+  class Input {
+    dataset = {};
+    validity = { valid: false };
+    validationMessage = "Required";
+    focus = vi.fn();
+    setAttribute = vi.fn();
+    closest = vi.fn((selector: string) =>
+      selector === "[data-settings-section]" ? { getAttribute: () => "features" } : null,
+    );
+  }
+  vi.stubGlobal("HTMLInputElement", Input);
+  await load(Promise.resolve(settings));
+  const field = new Input();
+  const form = render().find((node) => node.type === "form");
+  const preventDefault = vi.fn();
+  (form?.props.onInvalid as (event: object) => void)({ preventDefault });
+  expect(preventDefault).toHaveBeenCalledOnce();
+  (form?.props.onBlur as (event: object) => void)({ target: {} });
+  (form?.props.onBlur as (event: object) => void)({ target: field });
+  expect(field.setAttribute).toHaveBeenCalledWith("aria-invalid", "true");
+  (form?.props.onSubmit as (event: object) => void)({
+    preventDefault,
+    currentTarget: { checkValidity: () => false, querySelector: () => field },
+  });
+  expect(hooks.values).toMatchObject({ 2: "invalid", 3: false, 7: "features" });
+  expect(client.saveSettings).not.toHaveBeenCalled();
+  await vi.waitFor(() => {
+    expect(field.focus).toHaveBeenCalledOnce();
+  });
+});
+
+it("shares only matching revisions between independent forms without losing a newer draft", async () => {
+  await load(Promise.resolve(settings));
+  let onSaved: (change: SettingsRevision) => void = () => undefined;
+  vi.spyOn(identityUI, "IdentitySettingsView").mockImplementationOnce((props) => {
+    onSaved = props.onSaved ?? (() => undefined);
+    expect(props.revisionChange).toBeNull();
+    return <div />;
+  });
+  render();
+  const draft = { ...settings, useCommonRoute: true };
+  hooks.values[0] = draft;
+  onSaved({ before: 2, after: 3 });
+  expect(hooks.values[0]).toEqual({ ...draft, revision: 3 });
+  onSaved({ before: 1, after: 4 });
+  expect(hooks.values[0]).toEqual({ ...draft, revision: 3 });
+  client.saveSettings.mockResolvedValueOnce({
+    ok: true,
+    value: { administrator: false, initialized: true },
+  });
+  submit();
+  await Promise.resolve();
+  expect(hooks.values[8]).toBeNull();
 });

@@ -10,6 +10,7 @@
   "classesHeading": "Clases",
   "classesLoading": "Cargando clases…",
   "currentValues": "Valores persistidos (solo lectura)",
+  "customizeInstructions": "Personalizar instrucciones",
   "description": "Descripción",
   "didacticCap": "Se pueden seleccionar hasta 64 skills didácticas.",
   "didacticLegend": "Skills didácticas",
@@ -68,5 +69,6 @@
   "switchCancel": "Cancelar",
   "switchDiscard": "Descartar el borrador y cambiar",
   "switchPrompt": [Function],
+  "technicalDetails": "Detalles técnicos",
   "tutoringInstructions": "Instrucciones del modo guiado",
 }

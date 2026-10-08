@@ -1,6 +1,8 @@
 import type { DashboardLocale } from "../../messages.js";
 const messages = {
   es: {
+    discard: "Descartar cambios",
+    unsaved: "Cambios sin guardar.",
     title: "Observabilidad",
     description:
       "Envía el contenido de los turnos nuevos: conversación, llamadas al modelo, herramientas, preguntas y aprobaciones. Solo el servidor realiza el envío. Las claves de configuración se ocultan.",
@@ -33,6 +35,8 @@ const messages = {
     health: "La cola necesita atención; las sesiones del alumnado siguen funcionando.",
   },
   en: {
+    discard: "Discard changes",
+    unsaved: "Unsaved changes.",
     title: "Observability",
     description:
       "Send new turns with content: conversation, model calls, tools, questions and approvals. Only the server sends data. Configuration secrets are masked.",
@@ -65,6 +69,8 @@ const messages = {
     health: "The queue needs attention; student sessions continue working.",
   },
   eu: {
+    discard: "Baztertu aldaketak",
+    unsaved: "Gorde gabeko aldaketak.",
     title: "Behatzea",
     description:
       "Bidali txanda berrien edukia: elkarrizketa, modelo-deiak, tresnak, galderak eta onarpenak. Zerbitzariak bakarrik bidaltzen ditu datuak. Konfigurazio-gakoak ezkutatzen dira.",

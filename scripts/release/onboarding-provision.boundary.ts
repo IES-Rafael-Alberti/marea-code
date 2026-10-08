@@ -1,3 +1,4 @@
+import { LearningProgress } from "../../apps/teacher-server/src/educational-insights/progress.js";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { identityProviderCatalog } from "@marea/plugin-runtime";
@@ -70,6 +71,19 @@ export async function provisionOnboarding(
             .map(({ id, digest }) => ({ id, digest }))
         : [];
       if (request.testingSkill && selected.length !== 1) throw new Error("missing-example-skill");
+      const evaluation = request.features?.automaticEvaluation
+        ? (await skills.list("evaluation"))
+            .filter((skill) => skill.id === "marea/evaluate")
+            .map(({ id, digest }) => ({ id, digest }))
+        : [];
+      if (request.features?.automaticEvaluation && evaluation.length !== 1)
+        throw new Error("missing-evaluation-method");
+      if (request.features?.map)
+        new LearningProgress(storage.database).configure(
+          "class:main",
+          { map: true, adaptive: false },
+          "initial",
+        );
       const service = new TeachingConfigurationService({
         clock: { now: () => new Date().toISOString() },
         ids: cryptoIdGenerator,
@@ -82,9 +96,9 @@ export async function provisionOnboarding(
         expectedVersion: null,
         agentMode: "tutoring",
         socraticMode: "normal",
-        automaticEvaluation: false,
+        automaticEvaluation: request.features?.automaticEvaluation ?? false,
         classInstructions: completeModeInstructions({ tutoring: "", free: "" }),
-        selection: { didactic: selected, evaluation: [] },
+        selection: { didactic: selected, evaluation },
         teacherToolPolicy: policy.teacherToolPolicy,
       });
     } finally {

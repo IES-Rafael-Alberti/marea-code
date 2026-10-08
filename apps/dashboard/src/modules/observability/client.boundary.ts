@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { ProviderSettingsDescriptorSchema } from "@marea/plugin-api";
+import { ProviderSettingsProjectionSchema } from "../../forms/provider-settings-schema.js";
 import type { DashboardFetch } from "../active-runs/active-runs-client.boundary.js";
 import { authenticatedJsonRequest } from "../evaluation/authenticated-json.boundary.js";
 
@@ -19,16 +19,7 @@ export const ObservabilityResponse = z
         available: z.boolean(),
       })
       .strict(),
-    plugins: z.array(
-      z
-        .object({
-          id: z.string(),
-          descriptor: ProviderSettingsDescriptorSchema,
-          values: z.record(z.string(), z.string()),
-          secrets: z.array(z.string()),
-        })
-        .strict(),
-    ),
+    plugins: z.array(ProviderSettingsProjectionSchema),
   })
   .strict();
 export type ObservabilityState = z.infer<typeof ObservabilityResponse>;

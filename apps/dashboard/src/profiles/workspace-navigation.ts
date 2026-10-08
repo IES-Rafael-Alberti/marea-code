@@ -13,6 +13,8 @@ export function settingsSection(value: string | null): SettingsSection {
 }
 const messages = {
   es: {
+    ready: "Tu primera clase está preparada.",
+    installStudents: "Instalar Marea en los equipos del alumnado",
     navigation: "Navegación principal",
     settingsNavigation: "Secciones de ajustes",
     sessions: "Sesiones",
@@ -26,10 +28,9 @@ const messages = {
     server: "Servidor",
     serverNote: "Proveedores, modelos y límites compartidos por todas las clases de este servidor.",
     panel: "Mi panel",
-    panelNote: "Apariencia y vistas de tu panel, estado del servicio y consumo.",
-    administration: "Administración del centro",
-    administrationNote:
-      "Cuentas, clases y pertenencias del centro. No incluye proveedores ni modelos.",
+    panelNote: "Idioma, apariencia y vistas de tu panel.",
+    administration: "Centro",
+    administrationNote: "Profesores, alumnos, clases y sus miembros.",
     appearance: "Apariencia y vistas",
     diagnostics: "Diagnóstico y consumo",
     skills: "Edición de skills",
@@ -39,6 +40,8 @@ const messages = {
     discard: "Hay cambios sin guardar. ¿Quieres descartarlos y cambiar de clase?",
   },
   en: {
+    ready: "Your first class is ready.",
+    installStudents: "Install Marea on student computers",
     navigation: "Main navigation",
     settingsNavigation: "Settings sections",
     sessions: "Sessions",
@@ -52,10 +55,9 @@ const messages = {
     server: "Server",
     serverNote: "Providers, models and limits shared by every class on this server.",
     panel: "My dashboard",
-    panelNote: "Your dashboard appearance and views, service status and usage.",
-    administration: "Center administration",
-    administrationNote:
-      "Center accounts, classes and memberships. It does not include providers or models.",
+    panelNote: "Your dashboard language, appearance and views.",
+    administration: "School",
+    administrationNote: "Teachers, students, classes and their members.",
     appearance: "Appearance and views",
     diagnostics: "Diagnostics and usage",
     skills: "Skill editing",
@@ -65,6 +67,8 @@ const messages = {
     discard: "There are unsaved changes. Discard them and switch class?",
   },
   eu: {
+    ready: "Zure lehen klasea prest dago.",
+    installStudents: "Instalatu Marea ikasleen ordenagailuetan",
     navigation: "Nabigazio nagusia",
     settingsNavigation: "Ezarpenen atalak",
     sessions: "Saioak",
@@ -79,10 +83,9 @@ const messages = {
     serverNote:
       "Zerbitzari honetako ikasgela guztiek partekatzen dituzten hornitzaileak, ereduak eta mugak.",
     panel: "Nire panela",
-    panelNote: "Zure panelaren itxura eta ikuspegiak, zerbitzuaren egoera eta kontsumoa.",
-    administration: "Ikastetxearen administrazioa",
-    administrationNote:
-      "Ikastetxeko kontuak, ikasgelak eta kidetzak. Ez ditu hornitzaileak ez ereduak barne hartzen.",
+    panelNote: "Zure panelaren hizkuntza, itxura eta ikuspegiak.",
+    administration: "Ikastetxea",
+    administrationNote: "Irakasleak, ikasleak, klaseak eta kideak.",
     appearance: "Itxura eta ikuspegiak",
     diagnostics: "Diagnostikoa eta kontsumoa",
     skills: "Skillen edizioa",

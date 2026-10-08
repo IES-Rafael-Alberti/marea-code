@@ -1,5 +1,12 @@
 import type { DashboardLocale } from "../../messages.js";
 const en = {
+  reportsReady: "Reports are available by choosing a time period in Reports.",
+  reportsMissing: "Reports need a model configured on the server.",
+  discard: "Discard changes",
+  saved: "Changes saved.",
+  unsaved: "Unsaved changes.",
+  configureServer: "Configure this feature model",
+
   budget: "Analysis budget",
   requests: "Requests",
   tokens: "Tokens",
@@ -85,6 +92,13 @@ const en = {
 };
 type Messages = typeof en;
 const es: Messages = {
+  reportsReady: "Los informes están disponibles al elegir un periodo en Informes.",
+  reportsMissing: "Los informes necesitan un modelo configurado en el servidor.",
+  discard: "Descartar cambios",
+  saved: "Cambios guardados.",
+  unsaved: "Cambios sin guardar.",
+  configureServer: "Configurar el modelo de esta función",
+
   budget: "Presupuesto de análisis",
   requests: "Consultas",
   tokens: "Tokens",
@@ -170,6 +184,13 @@ const es: Messages = {
   days7: "7 días",
 };
 const eu: Messages = {
+  reportsReady: "Txostenak eskuragarri daude Txostenak atalean denbora-tartea aukeratzean.",
+  reportsMissing: "Txostenek zerbitzarian konfiguratutako modeloa behar dute.",
+  discard: "Baztertu aldaketak",
+  saved: "Aldaketak gordeta.",
+  unsaved: "Gorde gabeko aldaketak.",
+  configureServer: "Konfiguratu funtzioaren modeloa",
+
   budget: "Analisiaren aurrekontua",
   requests: "Kontsultak",
   tokens: "Tokenak",

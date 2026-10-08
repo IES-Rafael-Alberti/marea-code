@@ -1,3 +1,5 @@
+import { SecretInput } from "../../forms/secret-input.js";
+import { useFormDraft } from "../../forms/use-form-draft.js";
 import { useEffect, useState } from "react";
 import type { DashboardLocale } from "../../messages.js";
 import type { DashboardFetch } from "../active-runs/active-runs-client.boundary.js";
@@ -25,7 +27,9 @@ export function ObservabilityView({
   const [message, setMessage] = useState<
     "saved" | "tested" | "error" | "conflict" | "unavailable" | null
   >(null);
+  const [dirty, setDirty] = useState(false);
   const accept = (next: ObservabilityState) => {
+    setDirty(false);
     setState(next);
     setPluginId(next.pluginId ?? "");
     setEnabled(next.enabled);
@@ -45,6 +49,7 @@ export function ObservabilityView({
       abort.abort();
     };
   }, [fetchRequest]);
+  useFormDraft(dirty);
   const plugin = state?.plugins.find((p) => p.id === pluginId);
   const perform = async (operation: "save" | "test" | "read" | "retry", revision = 0) => {
     setBusy(true);
@@ -62,7 +67,9 @@ export function ObservabilityView({
       const response = await observabilityRequest(fetchRequest, body, new AbortController().signal);
       if (operation === "test") setMessage("tested");
       else {
-        accept(ObservabilityResponse.parse(await response.json()));
+        const next = ObservabilityResponse.parse(await response.json());
+        if (operation === "save" || !dirty) accept(next);
+        else setState(next);
         if (operation === "save") setMessage("saved");
       }
     } catch (error) {
@@ -80,6 +87,11 @@ export function ObservabilityView({
       <p>{m.privacy}</p>
       {state !== null && (
         <form
+          data-dirty={dirty}
+          onChange={() => {
+            setDirty(true);
+            setMessage(null);
+          }}
           onSubmit={(e) => {
             e.preventDefault();
             void perform("save", state.revision);
@@ -116,33 +128,36 @@ export function ObservabilityView({
                 ))}
               </select>
             </label>
-            {plugin?.descriptor.fields.map((field) => (
-              <label key={field.key}>
-                {field.label[locale]}
-                <input
-                  type={
-                    field.kind === "secret" ? "password" : field.kind === "url" ? "url" : "text"
-                  }
-                  autoComplete="off"
-                  value={values[field.key] ?? ""}
-                  placeholder={plugin.secrets.includes(field.key) ? m.secret : undefined}
-                  required={field.required && !plugin.secrets.includes(field.key)}
-                  onChange={(e) => {
-                    const next = { ...values };
-                    if (field.kind === "secret" && e.currentTarget.value === "")
-                      setValues(
-                        Object.fromEntries(
-                          Object.entries(next).filter(([key]) => key !== field.key),
-                        ),
-                      );
-                    else {
-                      next[field.key] = e.currentTarget.value;
-                      setValues(next);
-                    }
-                  }}
-                />
-              </label>
-            ))}
+            {plugin?.descriptor.fields.map((field) => {
+              const attributes = {
+                autoComplete: "off",
+                value: values[field.key] ?? "",
+                placeholder: plugin.secrets.includes(field.key) ? m.secret : undefined,
+                required: field.required && !plugin.secrets.includes(field.key),
+                onChange: (event: import("react").ChangeEvent<HTMLInputElement>) => {
+                  const next = { ...values };
+                  if (field.kind === "secret" && event.currentTarget.value === "")
+                    Reflect.deleteProperty(next, field.key);
+                  else next[field.key] = event.currentTarget.value;
+                  setValues(next);
+                },
+              };
+              return (
+                <label key={field.key}>
+                  {field.label[locale]}
+                  {field.kind === "secret" ? (
+                    <SecretInput
+                      {...attributes}
+                      label={field.label[locale]}
+                      locale={locale}
+                      saved={plugin.secrets.includes(field.key)}
+                    />
+                  ) : (
+                    <input {...attributes} type={field.kind === "url" ? "url" : "text"} />
+                  )}
+                </label>
+              );
+            })}
             <label>
               <input
                 type="checkbox"
@@ -154,7 +169,7 @@ export function ObservabilityView({
               />
               {m.enabled}
             </label>
-            <button type="submit" disabled={!pluginId}>
+            <button type="submit" disabled={!pluginId || !dirty}>
               {m.save}
             </button>
             <button
@@ -166,6 +181,17 @@ export function ObservabilityView({
             >
               {m.test}
             </button>
+            <button
+              type="button"
+              disabled={!dirty}
+              onClick={() => {
+                accept(state);
+                setMessage(null);
+              }}
+            >
+              {m.discard}
+            </button>
+            {dirty && <p role="status">{m.unsaved}</p>}
           </fieldset>
         </form>
       )}

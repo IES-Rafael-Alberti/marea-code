@@ -12,6 +12,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   configureIdentityProviders,
+  identityConnectionValues,
   providerSettingsValues,
   readIdentityProviderSettings,
   systemIdentityRuntime,
@@ -176,5 +177,28 @@ describe("identity provider composition", () => {
     expect(systemIdentityRuntime.now()).toBeGreaterThanOrEqual(before);
     const response = await systemIdentityRuntime.fetch(new Request("data:text/plain,ok"));
     expect(await response.text()).toBe("ok");
+  });
+});
+
+it("imports only installed identity settings and leaves removed plugin paths unread", () => {
+  expect(identityConnectionValues([], undefined)).toEqual({});
+  expect(
+    identityConnectionValues(
+      [entry([])],
+      [{ pluginId: "org.example.gone", settingsPath: "/must-not-read" }],
+    ),
+  ).toEqual({});
+  const root = mkdtempSync(join(tmpdir(), "marea-identity-import-"));
+  directories.push(root);
+  const file = join(root, "settings.json");
+  writeFileSync(file, JSON.stringify({ clientId: "public", clientSecret: "synthetic-secret" }));
+  expect(
+    identityConnectionValues([entry([])], [{ pluginId: "org.example.idp", settingsPath: file }]),
+  ).toEqual({
+    "org.example.idp": {
+      clientId: "public",
+      clientSecret: "synthetic-secret",
+      endpoint: "https://idp.test/token",
+    },
   });
 });

@@ -120,7 +120,7 @@ export async function runBrowserOnboarding(options: {
         renameSync(temporary, join(root, "preview.json"));
         renameSync(owner.stage, installation);
         rmSync(join(root, onboardingMarker));
-        const dashboardUrl = `${validated.origin}/dashboard/`;
+        const dashboardUrl = `${validated.origin}/dashboard/?class=class%3Amain&welcome=1`;
         configured.resolve({ dashboardUrl, allowHttp: input.access === "lan" });
         await hostReady.promise;
         const cookie = await onboardingSignIn(input);

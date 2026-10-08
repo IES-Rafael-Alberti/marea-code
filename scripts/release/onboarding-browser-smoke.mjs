@@ -1,3 +1,6 @@
+import process from "node:process";
+import { verifyIdentitySettings } from "./identity-settings-browser-smoke.mjs";
+import { verifySettingsValidation } from "./settings-validation-browser-smoke.mjs";
 import assert from "node:assert/strict";
 import { launchReleaseBrowser } from "../../apps/dashboard/browser/release-browser-runtime.mjs";
 import { openSettings } from "../../apps/dashboard/browser/workspace-navigation.mjs";
@@ -13,7 +16,21 @@ export async function finishSetupInBrowser(url, input) {
       Reflect.deleteProperty(globalThis.URL, "parse");
     });
     await page.goto(url);
+    if (process.env.MAREA_UX_SHOTS)
+      await page.screenshot({ path: "/tmp/marea-ux-class.png", fullPage: true });
     assert.equal(await page.evaluate(() => typeof globalThis.URL.parse), "undefined");
+    const password = page.getByLabel("Password", { exact: true });
+    const repeated = page.getByLabel("Repeat the password", { exact: true });
+    await password.fill("short");
+    await repeated.focus();
+    assert.equal(await password.getAttribute("aria-invalid"), "true");
+    assert.ok(await page.locator("#setup-password-error").isVisible());
+    await password.fill(input.password);
+    await repeated.fill("different-password");
+    await password.focus();
+    assert.equal(await repeated.getAttribute("aria-invalid"), "true");
+    await page.getByRole("button", { name: "Show or hide: Password", exact: true }).click();
+    assert.equal(await password.getAttribute("type"), "text");
     for (const [label, value] of [
       ["School name", input.center],
       ["First class", input.classroom],
@@ -25,38 +42,49 @@ export async function finishSetupInBrowser(url, input) {
       await page.getByLabel(label, { exact: true }).fill(value);
     const next = () => page.getByRole("button", { name: "Continue", exact: true }).click();
     await next();
+    assert.equal(await page.getByText("Usage limits", { exact: true }).count(), 0);
     await page
       .getByLabel("API key", { exact: true })
       .fill(input.connections[input.route.providerId].apiKey);
-    await page.locator(".server-settings select").first().selectOption(input.route.providerId);
     await page.locator("datalist option").first().waitFor({ state: "attached" });
     await page.locator(".server-settings input[list]").first().fill(input.route.model);
+    if (process.env.MAREA_UX_SHOTS)
+      await page.screenshot({ path: "/tmp/marea-ux-model.png", fullPage: true });
     await next();
+    await page.getByText("Connection options", { exact: true }).click();
     await page.getByLabel("Server port", { exact: true }).fill(String(input.port));
     await page.getByLabel("The classroom local network (HTTP)", { exact: true }).check();
+    await next();
     await page
-      .getByLabel("Enable the example skill for learning to write tests (optional)", {
+      .getByLabel("Example skill: learning to write tests", {
         exact: true,
       })
       .setChecked(input.testingSkill);
+    for (const [key, label] of [
+      ["map", "Attention map"],
+      ["reports", "Class reports"],
+      ["automaticEvaluation", "Automatic evaluation"],
+    ])
+      await page.getByLabel(label, { exact: true }).setChecked(input.features?.[key] === true);
     await next();
+    if (process.env.MAREA_UX_SHOTS)
+      await page.screenshot({ path: "/tmp/marea-ux-review.png", fullPage: true });
     const finishing = page.waitForResponse(
       (response) =>
         response.url().endsWith("/setup/api") &&
         response.request().postDataJSON().operation === "finish",
       { timeout: 120000 },
     );
-    await page
-      .getByRole("button", { name: "Create school and open dashboard", exact: true })
-      .click();
+    await page.getByRole("button", { name: "Open my class", exact: true }).click();
     const response = await finishing;
     assert.equal(response.status(), 200);
     const cookie = await response.headerValue("set-cookie");
-    await page.waitForURL(`http://127.0.0.1:${input.port}/dashboard/`);
+    await page.waitForURL(`http://127.0.0.1:${input.port}/dashboard/?class=class%3Amain&welcome=1`);
     const completed = { dashboardUrl: page.url() };
     await page.locator(".workspace-navigation").waitFor();
     assert.equal(await page.locator('input[name="username"]').count(), 0);
     await openSettings(page, "server");
+    await page.getByRole("button", { name: "Network and installation", exact: true }).click();
     const panel = page.locator(".preview-install");
     await panel.waitFor();
     const addresses = await panel
@@ -70,8 +98,11 @@ export async function finishSetupInBrowser(url, input) {
     await page.reload();
     await page.locator(".workspace-navigation").waitFor();
     await openSettings(page, "server");
+    await page.getByRole("button", { name: "Network and installation", exact: true }).click();
     await page.locator(".preview-install").waitFor();
     assert.equal(await page.evaluate(() => typeof globalThis.URL.parse), "undefined");
+    await verifyIdentitySettings(page);
+    await verifySettingsValidation(page);
     assert.deepEqual(errors, []);
     return { completed, cookie };
   } finally {

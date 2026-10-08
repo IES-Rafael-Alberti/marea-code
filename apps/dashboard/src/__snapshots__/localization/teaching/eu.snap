@@ -10,6 +10,7 @@
   "classesHeading": "Ikasgelak",
   "classesLoading": "Ikasgelak kargatzen…",
   "currentValues": "Gordetako balioak (irakurtzeko soilik)",
+  "customizeInstructions": "Pertsonalizatu argibideak",
   "description": "Deskribapena",
   "didacticCap": "Gehienez 64 skill didaktiko hauta daitezke.",
   "didacticLegend": "Skill didaktikoak",
@@ -68,5 +69,6 @@
   "switchCancel": "Utzi",
   "switchDiscard": "Baztertu zirriborroa eta aldatu",
   "switchPrompt": [Function],
+  "technicalDetails": "Xehetasun teknikoak",
   "tutoringInstructions": "Modu gidatuaren argibideak",
 }

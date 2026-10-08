@@ -1,3 +1,4 @@
+import { SecretInput } from "../../forms/secret-input.js";
 import type { DashboardLocale } from "../../messages.js";
 import type { EditableSettings } from "./client.boundary.js";
 import { serverSettingsMessages } from "./messages.js";
@@ -16,7 +17,9 @@ export function ProviderConnections({
   change,
   catalogs = {},
   refresh,
+  onboarding = false,
 }: {
+  onboarding?: boolean;
   catalogs?: ModelCatalogs;
   refresh?: () => void;
   state: EditableSettings;
@@ -28,12 +31,17 @@ export function ProviderConnections({
   const used = providersInUse(state);
   return (
     <>
-      <h3>{m.connectionsStep}</h3>
-      <p className="server-help">{m.connectionsHelp}</p>
+      {!onboarding && (
+        <>
+          <h3>{m.connectionsStep}</h3>
+          <p className="server-help">{m.connectionsHelp}</p>
+        </>
+      )}
       {state.providers.length === 0 && <p>{m.missing}</p>}
       {state.providers.map((provider) => (
         <ProviderConnection
           key={provider.id}
+          onboarding={onboarding}
           provider={provider}
           catalog={catalogs[provider.id]}
           refresh={refresh}
@@ -54,6 +62,7 @@ export function ProviderConnections({
 }
 
 function ProviderConnection({
+  onboarding,
   provider,
   catalog,
   refresh,
@@ -63,6 +72,7 @@ function ProviderConnection({
   locale,
   change,
 }: {
+  onboarding: boolean;
   provider: Provider;
   catalog: ModelCatalog | undefined;
   refresh: (() => void) | undefined;
@@ -73,50 +83,45 @@ function ProviderConnection({
   change: (values: Values | undefined) => void;
 }) {
   const connected = values !== undefined;
+  const Container = onboarding ? "section" : "details";
+  const name = provider.descriptor?.name[locale] ?? provider.id;
   return (
-    <details className="workspace-advanced" open={connected}>
-      <summary>{provider.descriptor?.name[locale] ?? provider.id}</summary>
+    <Container className="workspace-advanced" open={onboarding ? undefined : connected}>
+      {onboarding ? <h2>{name}</h2> : <summary>{name}</summary>}
       {provider.descriptor === null ? (
         <p>{m.unavailable}</p>
       ) : (
         <>
-          <label>
-            <input
-              type="checkbox"
-              checked={connected}
-              disabled={connected && locked}
-              onChange={(event) => {
-                change(event.currentTarget.checked ? { ...provider.values } : undefined);
-              }}
+          {!onboarding && (
+            <label>
+              <input
+                type="checkbox"
+                checked={connected}
+                disabled={connected && locked}
+                onChange={(event) => {
+                  change(event.currentTarget.checked ? { ...provider.values } : undefined);
+                }}
+              />
+              {m.connect}
+            </label>
+          )}
+          {!onboarding && connected && locked && <p className="server-help">{m.inUse}</p>}
+          {values && (
+            <ConnectionFields
+              fields={provider.descriptor.fields}
+              values={values}
+              secrets={provider.secrets}
+              onboarding={onboarding}
+              m={m}
+              locale={locale}
+              change={change}
             />
-            {m.connect}
-          </label>
-          {connected && locked && <p className="server-help">{m.inUse}</p>}
-          {values &&
-            provider.descriptor.fields.map((field) => {
-              // A saved secret is never sent back: an empty field keeps the stored value.
-              const saved = provider.secrets.includes(field.key);
-              return (
-                <label className="server-field" key={field.key}>
-                  {field.label[locale]}
-                  <input
-                    type={inputTypes[field.kind]}
-                    autoComplete="off"
-                    required={field.required && !saved}
-                    placeholder={saved ? m.configured : field.defaultValue}
-                    value={values[field.key] ?? ""}
-                    onChange={(event) => {
-                      const next = { ...values };
-                      if (event.currentTarget.value === "") Reflect.deleteProperty(next, field.key);
-                      else next[field.key] = event.currentTarget.value;
-                      change(next);
-                    }}
-                  />
-                </label>
-              );
-            })}
+          )}
           {connected && catalog && (
-            <p role="status">
+            <div
+              role={catalog.status === "invalid" ? "alert" : "status"}
+              className="connection-status"
+            >
               {
                 m[
                   catalog.status === "ready"
@@ -134,11 +139,11 @@ function ProviderConnection({
                   {m.modelsRefresh}
                 </button>
               )}
-            </p>
+            </div>
           )}
         </>
       )}
-    </details>
+    </Container>
   );
 }
 
@@ -151,4 +156,73 @@ function providersInUse(state: EditableSettings): ReadonlySet<string> {
     .filter((task) => task !== undefined)
     .map((task) => task.providerId);
   return new Set([...routes, ...tasks]);
+}
+
+function fieldInput(
+  field: NonNullable<Provider["descriptor"]>["fields"][number],
+  values: Values,
+  saved: boolean,
+  m: Messages,
+  change: (values: Values) => void,
+) {
+  return {
+    autoComplete: "off",
+    required: field.required && !saved,
+    placeholder: saved ? m.configured : field.defaultValue,
+    value: values[field.key] ?? "",
+    onChange: (event: import("react").ChangeEvent<HTMLInputElement>) => {
+      const next = { ...values };
+      if (event.currentTarget.value === "") Reflect.deleteProperty(next, field.key);
+      else next[field.key] = event.currentTarget.value;
+      change(next);
+    },
+  };
+}
+
+function ConnectionFields({
+  fields,
+  values,
+  secrets,
+  onboarding,
+  m,
+  locale,
+  change,
+}: {
+  fields: NonNullable<Provider["descriptor"]>["fields"];
+  values: Values;
+  secrets: readonly string[];
+  onboarding: boolean;
+  m: Messages;
+  locale: DashboardLocale;
+  change: (values: Values) => void;
+}) {
+  const render = (field: (typeof fields)[number]) => {
+    const saved = secrets.includes(field.key);
+    return (
+      <label className="server-field" key={field.key}>
+        {field.label[locale]}
+        {field.kind === "secret" ? (
+          <SecretInput
+            label={field.label[locale]}
+            locale={locale}
+            saved={saved}
+            {...fieldInput(field, values, saved, m, change)}
+          />
+        ) : (
+          <input type={inputTypes[field.kind]} {...fieldInput(field, values, saved, m, change)} />
+        )}
+      </label>
+    );
+  };
+  return (
+    <>
+      {fields.filter((field) => !onboarding || field.required).map(render)}
+      {onboarding && fields.some((field) => !field.required) && (
+        <details className="connection-options">
+          <summary>{m.connectionOptions}</summary>
+          {fields.filter((field) => !field.required).map(render)}
+        </details>
+      )}
+    </>
+  );
 }

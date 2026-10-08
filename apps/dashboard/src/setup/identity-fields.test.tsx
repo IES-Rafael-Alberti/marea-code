@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { change, control, tree } from "../modules/server-settings/forms.fixture.js";
+import { change, control, tree, text } from "../modules/server-settings/forms.fixture.js";
 import { IdentityFields } from "./identity-fields.js";
 import { setupIdentity, present } from "./setup.fixture.js";
 import { setupMessages } from "./messages.js";
@@ -50,6 +50,7 @@ it("shows nothing without installed plugins and offers only their declared local
   const html = renderToStaticMarkup(enabled);
   expect(tree(enabled).filter((node) => node.type === "input")).toHaveLength(5);
   expect(tree(enabled).filter((node) => node.type === "textarea")).toHaveLength(1);
+  expect(html).toMatchSnapshot("enabled identity fields");
   expect(html).toContain('type="password"');
   expect(html).toContain('type="url"');
   expect(html).toContain('maxLength="16384"');
@@ -73,4 +74,58 @@ it("shows nothing without installed plugins and offers only their declared local
   expect(renderToStaticMarkup(render({ [provider.id]: {} }, [setupIdentity]))).not.toContain(
     setupMessages("en").advanced,
   );
+});
+
+it("groups optional credentials with plugin help and can explicitly clear stored group secrets", () => {
+  const m = setupMessages("en");
+  const edit = vi.fn();
+  const grouped = {
+    ...provider,
+    descriptor: {
+      ...provider.descriptor,
+      fields: [
+        ...provider.descriptor.fields,
+        { key: "note", label, kind: "text" as const, multiline: true, required: false },
+      ],
+      guides: [
+        { id: "setup", title: label, steps: [{ text: label }] },
+        {
+          id: "group",
+          title: { ...label, en: "Group setup" },
+          steps: [{ text: label }],
+          fields: ["key", "endpoint"],
+        },
+        { id: "notes", title: label, steps: [{ text: label }], fields: ["note"] },
+      ],
+    },
+  };
+  const values = { [provider.id]: { clientId: "keep", endpoint: "https://idp.test" } };
+  const node = (
+    <IdentityFields
+      providers={[grouped]}
+      values={values}
+      secrets={{ [provider.id]: ["key", "clientSecret"] }}
+      change={edit}
+      locale="en"
+      m={m}
+    />
+  );
+  expect(renderToStaticMarkup(node)).toMatchSnapshot("grouped optional credentials");
+  const nodes = tree(node);
+  expect(text(nodes)).toContain("Group setup");
+  expect(
+    nodes.filter((n) => n.type === "details" && n.props.className === "identity-options"),
+  ).toHaveLength(2);
+  const clear = nodes.find((n) => n.type === "button" && text(n) === m.clearOptional);
+  (present(clear).props.onClick as () => void)();
+  expect(edit).toHaveBeenLastCalledWith({
+    [provider.id]: { clientId: "keep", endpoint: "", key: "" },
+  });
+  const textarea = nodes.filter((n) => n.type === "textarea")[1];
+  (present(textarea).props.onChange as (event: object) => void)({
+    currentTarget: { value: "multiline public note" },
+  });
+  expect(edit).toHaveBeenLastCalledWith({
+    [provider.id]: { ...values[provider.id], note: "multiline public note" },
+  });
 });

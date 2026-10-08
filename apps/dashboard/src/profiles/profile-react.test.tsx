@@ -1,3 +1,4 @@
+import { confirmDiscardWindow } from "./profile.fixture.js";
 import { dashboardThemeLoaders } from "@marea/plugin-runtime/browser";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, it, vi } from "vitest";
@@ -246,12 +247,7 @@ it("guards class/scope changes and keeps profile drafts while choosing class sco
   await c.read();
   const session = new SessionsController(runtime.sessions, runtime.notices, vi.fn());
   const pending = vi.spyOn(session, "hasUnsavedDrafts", "get").mockReturnValue(true);
-  const confirm = vi.fn().mockReturnValue(false);
-  vi.stubGlobal("window", {
-    confirm,
-    location: { href: "http://localhost/dashboard/" },
-    history: { replaceState: vi.fn() },
-  });
+  const confirm = confirmDiscardWindow();
   const select = vi.spyOn(c, "select").mockResolvedValue();
   let controls = elements(shell(c, "class:a", session)).filter((item) => item.type === "select");
   for (const item of controls) item.props.onChange?.({ currentTarget: { value: "class:b" } });

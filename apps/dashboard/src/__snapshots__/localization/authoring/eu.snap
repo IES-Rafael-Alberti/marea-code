@@ -16,6 +16,7 @@
   "copyBlocked": "Kopiatu skill pertsonalera (blokeatuta)",
   "copyHint": "Kopiak fitxategi erlatibo kanoniko guztiak mantentzen ditu eta slug pertsonal berria erabiltzen du.",
   "copySource": [Function],
+  "creationHelp": "Hasi skill bat ikusiz, adibidez testing adibidea. Kopiatu moldatzeko edo sortu berri bat izen laburrarekin. Gehitu argibideak eta irizpideak, gorde eta aktibatu Tutorea eta skill aktiboak atalean.",
   "destinationSlug": "Helmugako slug-a",
   "didactic": "Didaktikoa",
   "digest": "Kargatutako digest-a",
@@ -81,6 +82,7 @@
     "missing": "Falta",
     "stale": "Zaharkitua",
   },
+  "technicalDetails": "Xehetasun teknikoak",
   "validate": "Balidatu zirriborroa",
   "validationSuccess": "Zirriborroa baliozkoa da eta ez da argitaratu.",
 }

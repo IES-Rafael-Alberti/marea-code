@@ -65,6 +65,7 @@ const click = (caption: string) => {
 };
 const submit = () => {
   const form = render().find((n) => n.type === "form");
+  (form?.props.onChange as () => void)();
   const handler = form?.props.onSubmit as (e: object) => void;
   const preventDefault = vi.fn();
   handler({ preventDefault });
@@ -73,7 +74,7 @@ const submit = () => {
 const load = async (value = state) => {
   fetchRequest.mockImplementation(() => Promise.resolve(Response.json(value)));
   render();
-  expect(hooks.dependencies).toEqual([[fetchRequest]]);
+  expect(hooks.dependencies).toEqual([[fetchRequest], [false]]);
   hooks.effects[0]?.();
   sentBody({ operation: "read" });
   await vi.waitFor(() => {
@@ -297,4 +298,52 @@ it("retains selected public fields and exposes accurate action availability and 
       .map((n) => n.props.role);
     expect(roles).toEqual([message === "saved" || message === "tested" ? "status" : "alert"]);
   }
+});
+
+it("refreshes delivery status without overwriting an edited destination and can discard it", async () => {
+  await load({ ...state, pluginId: "test" });
+  change(control(render(), "URL"), { value: "https://draft.test" });
+  (render().find((node) => node.type === "form")?.props.onChange as () => void)();
+  fetchRequest.mockResolvedValue(
+    Response.json({ ...state, pluginId: "test", status: { ...state.status, pending: 7 } }),
+  );
+  click("Refresh status");
+  await vi.waitFor(() => {
+    expect(hooks.values[4]).toBe(false);
+  });
+  expect(control(render(), "URL").value).toBe("https://draft.test");
+  expect(hooks.values[0]).toMatchObject({ status: { pending: 7 } });
+  expect(hooks.values[6]).toBe(true);
+  hooks.values[5] = "error";
+  click("Discard changes");
+  expect(hooks.values[5]).toBeNull();
+  expect(control(render(), "URL").value).toBe("");
+  expect(hooks.values[6]).toBe(false);
+});
+
+it("enables delivery saving only for a selected edited destination and clears feedback on edits", async () => {
+  await load();
+  const save = () =>
+    render().find((node) => node.type === "button" && node.props.type === "submit")?.props.disabled;
+  expect(save()).toBe(true);
+  (render().find((node) => node.type === "form")?.props.onChange as () => void)();
+  expect(save()).toBe(true);
+  change(control(render(), "Destination"), { value: "test" });
+  expect(save()).toBe(false);
+  expect(
+    render().find((node) => node.type === "input" && node.props.type === "url")?.props.autoComplete,
+  ).toBe("off");
+  hooks.values[5] = "saved";
+  (render().find((node) => node.type === "form")?.props.onChange as () => void)();
+  expect(hooks.values[5]).toBeNull();
+  hooks.index = 0;
+  expect(
+    renderToStaticMarkup(<ObservabilityView locale="en" fetchRequest={fetchRequest} />),
+  ).toMatchSnapshot("pending destination draft");
+  submit();
+  await vi.waitFor(() => {
+    expect(hooks.values[5]).toBe("saved");
+  });
+  expect(hooks.values[6]).toBe(false);
+  expect(hooks.values[1]).toBe("");
 });

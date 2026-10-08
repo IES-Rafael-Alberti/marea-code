@@ -34,7 +34,7 @@ import {
 } from "@marea/plugin-runtime";
 import {
   configureIdentityProviders,
-  readIdentityProviderSettings,
+  identityConnectionValues,
   systemIdentityRuntime,
 } from "./identity-provider-composition.js";
 
@@ -270,12 +270,20 @@ async function composeHostServices(
   const { host, operator } = ports.loaded();
   const database = required(ports.state.handle).database as SqliteApplicationDatabase;
   const settings = serverSettingsStore(options.installationRoot);
+  const activeIdentityConnections =
+    settings.read()?.identityConnections ??
+    identityConnectionValues(identityProviderCatalog, host.identityProviders);
   return composeTeacherServices({
     observability: { catalog: telemetryExporterCatalog, release: host.serverVersion },
     serverSettings: {
       store: settings,
       catalog: inferenceProviderCatalog,
       connectionOrigins: studentConnectionOrigins(host),
+      identities: {
+        catalog: identityProviderCatalog,
+        active: activeIdentityConnections,
+        runtime: systemIdentityRuntime,
+      },
     },
     profiles:
       options.profiles ?? (ports.state.profiles ? composeBundledDashboardProfiles : undefined),
@@ -312,8 +320,11 @@ async function composeHostServices(
     ),
     identityProviders: configureIdentityProviders(
       identityProviderCatalog,
-      host.identityProviders,
-      readIdentityProviderSettings,
+      Object.keys(activeIdentityConnections).map((pluginId) => ({
+        pluginId,
+        settingsPath: pluginId,
+      })),
+      (id) => activeIdentityConnections[id],
       systemIdentityRuntime,
     ),
     evaluationIntervalMs: host.evaluationIntervalMs,

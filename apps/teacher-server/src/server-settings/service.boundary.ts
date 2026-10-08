@@ -1,3 +1,4 @@
+import { IdentitySettings, type IdentitySettingsOptions } from "./identity-settings.js";
 import { prepareConnections, projectConnection } from "./connections.js";
 import { providerModels } from "./models.js";
 import { usesCommonRoute } from "./operator.js";
@@ -12,6 +13,15 @@ import {
 } from "./contracts.js";
 
 const Input = z.discriminatedUnion("operation", [
+  z.object({ operation: z.literal("identity-status") }).strict(),
+  z.object({ operation: z.literal("identity-read") }).strict(),
+  z
+    .object({
+      operation: z.literal("identity-save"),
+      expectedRevision: z.number().int().nonnegative(),
+      connections: ServerSettingsSchema.shape.identityConnections.unwrap(),
+    })
+    .strict(),
   z.object({ operation: z.literal("read") }).strict(),
   z
     .object({
@@ -38,6 +48,7 @@ export class ServerSettingsService {
     readonly catalog: readonly InferenceProviderCatalogEntry[],
     readonly changed?: (settings: ServerSettings) => void,
     readonly connectionOrigins: readonly string[] = [],
+    readonly identities?: IdentitySettingsOptions,
   ) {}
   execute(
     identity: AuthenticatedIdentity,
@@ -49,6 +60,14 @@ export class ServerSettingsService {
     if (!parsed.success) throw new ServerSettingsError(400);
     const current = this.store.read();
     const administrator = current?.administrators.includes(identity.userId) === true;
+    if (isIdentityOperation(parsed.data))
+      return executeIdentityOperation(
+        this.store,
+        this.identities,
+        current,
+        identity.userId,
+        parsed.data,
+      );
     if (!administrator) {
       if (parsed.data.operation !== "read") throw new ServerSettingsError(403);
       return { administrator: false, initialized: current !== null };
@@ -123,4 +142,24 @@ function decodeJson(input: Uint8Array) {
     // Left undefined.
   }
   return decoded;
+}
+
+type IdentityOperation = Extract<z.infer<typeof Input>, { operation: `identity-${string}` }>;
+function isIdentityOperation(input: z.infer<typeof Input>): input is IdentityOperation {
+  return input.operation.startsWith("identity-");
+}
+function executeIdentityOperation(
+  store: ServerSettingsStore,
+  options: IdentitySettingsOptions | undefined,
+  current: ServerSettings | null,
+  userId: string,
+  input: IdentityOperation,
+): object {
+  const service = options === undefined ? undefined : new IdentitySettings(store, options);
+  if (input.operation === "identity-status") return service?.status() ?? { providers: [] };
+  if (!current?.administrators.includes(userId)) throw new ServerSettingsError(403);
+  if (service === undefined) throw new ServerSettingsError(404);
+  return input.operation === "identity-read"
+    ? service.read(current)
+    : service.save(current, input.expectedRevision, input.connections);
 }

@@ -85,17 +85,20 @@ function CatalogEntry({
       >
         {entry.name}
       </button>
-      <dl>
-        <dt>{m.source}</dt>
-        <dd>{entry.source}</dd>
-        <dt>{m.kind}</dt>
-        <dd>{entry.kind === "didactic" ? m.didactic : m.evaluation}</dd>
-        <dt>{m.digest}</dt>
-        <dd>
-          <code>{entry.digest}</code>
-        </dd>
-      </dl>
       <p>{entry.description}</p>
+      <details>
+        <summary>{m.technicalDetails}</summary>
+        <dl>
+          <dt>{m.source}</dt>
+          <dd>{entry.source}</dd>
+          <dt>{m.kind}</dt>
+          <dd>{entry.kind === "didactic" ? m.didactic : m.evaluation}</dd>
+          <dt>{m.digest}</dt>
+          <dd>
+            <code>{entry.digest}</code>
+          </dd>
+        </dl>
+      </details>
     </li>
   );
 }
@@ -188,6 +191,7 @@ function ClassNavigation({
           </ul>
           <form className="skill-authoring-personal-form" onSubmit={submitPersonal}>
             <h4>{m.personalHeading}</h4>
+            <p>{m.creationHelp}</p>
             <label htmlFor="skill-authoring-personal-slug">{m.personalSlug}</label>
             <input
               id="skill-authoring-personal-slug"

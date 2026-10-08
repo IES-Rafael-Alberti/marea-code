@@ -1,3 +1,6 @@
+import { ProviderHelp } from "../../forms/provider-help.js";
+import { IdentityStatusResponse, identityRequest } from "../server-settings/identity-client.js";
+import type { z } from "zod";
 import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
   MAX_EXTERNAL_RULE_VALUES_PER_CHANGE,
@@ -43,10 +46,26 @@ export function ExternalAccessView({
   const [saved, setSaved] = useState(false);
   const [drafts, setDrafts] = useState<Readonly<Record<string, string>>>({});
   const [attempt, setAttempt] = useState(0);
+  const [readiness, setReadiness] = useState<z.infer<typeof IdentityStatusResponse> | null>(null);
   useEffect(() => {
     if (classId === null) return;
     const controller = new AbortController();
     setState(null);
+    setDrafts({});
+    setSaved(false);
+    void identityRequest(
+      fetchRequest,
+      { operation: "identity-status" },
+      IdentityStatusResponse,
+      controller.signal,
+    ).then(
+      (value) => {
+        if (!controller.signal.aborted) setReadiness(value);
+      },
+      () => {
+        if (!controller.signal.aborted) setReadiness(null);
+      },
+    );
     setProblem(null);
     setBusy(true);
     void externalAccess(
@@ -102,7 +121,11 @@ export function ExternalAccessView({
     });
   };
   return (
-    <section className="dashboard-module external-access" aria-busy={busy}>
+    <section
+      className="dashboard-module external-access"
+      aria-busy={busy}
+      data-dirty={Object.values(drafts).some((value) => value.trim().length > 0)}
+    >
       <h2>{m.title}</h2>
       <p>{m.intro}</p>
       {state === null ? (
@@ -128,6 +151,11 @@ export function ExternalAccessView({
               <legend>{provider.displayName[locale]}</legend>
               {provider.ruleKinds.map((ruleKind) => {
                 const key = `${provider.providerId}/${ruleKind.kind}`;
+                const status = readiness?.providers.find(
+                  (entry) => entry.id === provider.providerId,
+                );
+                const ready =
+                  status?.kinds.find((entry) => entry.kind === ruleKind.kind)?.ready !== false;
                 const rules = state.rules.filter(
                   (rule) => rule.providerId === provider.providerId && rule.kind === ruleKind.kind,
                 );
@@ -154,27 +182,36 @@ export function ExternalAccessView({
                         ))}
                       </ul>
                     )}
-                    <form
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        const values = entriesOf(drafts[key] ?? "");
-                        if (values.length > 0)
-                          change(provider.providerId, ruleKind.kind, "add", values);
-                      }}
-                    >
-                      <label>
-                        {`${ruleKind.label[locale]} · ${m.values}`}
-                        <textarea
-                          rows={3}
-                          value={drafts[key] ?? ""}
-                          onChange={(event) => {
-                            setDrafts({ ...drafts, [key]: event.target.value });
-                            setSaved(false);
-                          }}
-                        />
-                      </label>
-                      <button type="submit">{m.add}</button>
-                    </form>
+                    {!ready && (
+                      <div className="access-prerequisite">
+                        <p>{m.needsSetup}</p>
+                        <a href="?view=settings&settings=server&server=identities">{m.configure}</a>
+                        <ProviderHelp guides={status.guides} locale={locale} />
+                      </div>
+                    )}
+                    {ready && (
+                      <form
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          const values = entriesOf(drafts[key] ?? "");
+                          if (values.length > 0)
+                            change(provider.providerId, ruleKind.kind, "add", values);
+                        }}
+                      >
+                        <label>
+                          {`${ruleKind.label[locale]} · ${m.values}`}
+                          <textarea
+                            rows={3}
+                            value={drafts[key] ?? ""}
+                            onChange={(event) => {
+                              setDrafts({ ...drafts, [key]: event.target.value });
+                              setSaved(false);
+                            }}
+                          />
+                        </label>
+                        <button type="submit">{m.add}</button>
+                      </form>
+                    )}
                   </div>
                 );
               })}

@@ -535,6 +535,8 @@ body {
   button:not(
     .workspace-navigation button,
     .settings-navigation button,
+    .settings-subnavigation button,
+    .secret-control button,
     .session-list li button,
     .skill-authoring-catalog-entry button,
     .report-list button
@@ -553,6 +555,8 @@ body {
   button:not(
     .workspace-navigation button,
     .settings-navigation button,
+    .settings-subnavigation button,
+    .secret-control button,
     .session-list li button,
     .skill-authoring-catalog-entry button,
     .report-list button

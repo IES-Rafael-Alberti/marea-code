@@ -1,0 +1,20 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`keeps secret values local, preserves multiline keys and toggles visibility without submitting 1`] = `"<span class="secret-control"><input type="password" aria-label="Token" value="new-value"/><button type="button" aria-label="Show or hide: Token" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg></button></span>"`;
+
+exports[`keeps secret values local, preserves multiline keys and toggles visibility without submitting 2`] = `
+"<details class="saved-secret"><summary>Key saved · Change</summary><span class="secret-control"><textarea aria-label="Key" class="secret-textarea">line1
+line2</textarea><button type="button" aria-label="Show or hide: Key" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg></button></span></details>"
+`;
+
+exports[`renders localized visibility and saved-key controls without stored values > en 1`] = `"<details class="saved-secret"><summary>Key saved · Change</summary><span class="secret-control"><input type="password" aria-label="API" value=""/><button type="button" aria-label="Show or hide: API" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg></button></span></details>"`;
+
+exports[`renders localized visibility and saved-key controls without stored values > es 1`] = `"<details class="saved-secret"><summary>Clave guardada · Cambiar</summary><span class="secret-control"><input type="password" aria-label="API" value=""/><button type="button" aria-label="Mostrar u ocultar: API" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg></button></span></details>"`;
+
+exports[`renders localized visibility and saved-key controls without stored values > eu 1`] = `"<details class="saved-secret"><summary>Gakoa gordeta · Aldatu</summary><span class="secret-control"><input type="password" aria-label="API" value=""/><button type="button" aria-label="Erakutsi edo ezkutatu: API" aria-pressed="false"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path><circle cx="12" cy="12" r="3"></circle></svg></button></span></details>"`;
+
+exports[`renders plugin help only when present and keeps links separate from ordinary steps > help en 1`] = `"<details class="provider-help"><summary>Help</summary><ol><li>Help</li><li><a href="https://example.test/help" target="_blank" rel="noreferrer">Help</a></li></ol></details>"`;
+
+exports[`renders plugin help only when present and keeps links separate from ordinary steps > help es 1`] = `"<details class="provider-help"><summary>Ayuda</summary><ol><li>Ayuda</li><li><a href="https://example.test/help" target="_blank" rel="noreferrer">Ayuda</a></li></ol></details>"`;
+
+exports[`renders plugin help only when present and keeps links separate from ordinary steps > help eu 1`] = `"<details class="provider-help"><summary>Laguntza</summary><ol><li>Laguntza</li><li><a href="https://example.test/help" target="_blank" rel="noreferrer">Laguntza</a></li></ol></details>"`;

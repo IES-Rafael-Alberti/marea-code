@@ -1,3 +1,4 @@
+import { useFormDraft } from "../../forms/use-form-draft.js";
 import { useEffect, useRef, useState } from "react";
 import * as z from "zod";
 import { InsightsSettingsSchema } from "@marea/protocol";
@@ -27,6 +28,9 @@ function SettingsContent({ classId, locale, fetchRequest }: SettingsProps & { cl
   const [value, setValue] = useState<z.infer<typeof schema> | null>(null);
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [original, setOriginal] = useState<z.infer<typeof schema> | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [saved, setSaved] = useState(false);
   useEffect(() => {
     const abort = new AbortController();
     pending.current = abort;
@@ -34,7 +38,11 @@ function SettingsContent({ classId, locale, fetchRequest }: SettingsProps & { cl
     setError(false);
     void insightsClient(fetchRequest)(classId, { kind: "settings" }, schema, abort.signal)
       .then((v) => {
-        if (!abort.signal.aborted) setValue(v);
+        if (!abort.signal.aborted) {
+          setValue(v);
+          setOriginal(v);
+          setDirty(false);
+        }
       })
       .catch(() => {
         if (!abort.signal.aborted) setError(true);
@@ -43,15 +51,19 @@ function SettingsContent({ classId, locale, fetchRequest }: SettingsProps & { cl
       abort.abort();
     };
   }, [classId, fetchRequest]);
+  useFormDraft(dirty);
   return (
-    <details className="educational-settings">
-      <summary>{m.settings}</summary>
+    <section className="educational-settings">
+      <h2>{m.settings}</h2>
       {error && <p role="alert">{m.error}</p>}
       {value !== null && (
         <form
+          data-dirty={dirty}
           onSubmit={(event) => {
             event.preventDefault();
+            if (busy) return;
             setBusy(true);
+            setSaved(false);
             setError(false);
             void insightsClient(fetchRequest)(
               classId,
@@ -60,7 +72,12 @@ function SettingsContent({ classId, locale, fetchRequest }: SettingsProps & { cl
               pending.current?.signal ?? AbortSignal.abort(),
             )
               .then((v) => {
-                if (!pending.current?.signal.aborted) setValue(v);
+                if (!pending.current?.signal.aborted) {
+                  setValue(v);
+                  setOriginal(v);
+                  setDirty(false);
+                  setSaved(true);
+                }
               })
               .catch(() => {
                 setError(true);
@@ -76,6 +93,8 @@ function SettingsContent({ classId, locale, fetchRequest }: SettingsProps & { cl
               checked={value.settings.map}
               disabled={busy}
               onChange={(e) => {
+                setDirty(true);
+                setSaved(false);
                 setValue({
                   ...value,
                   settings: { ...value.settings, map: e.currentTarget.checked },
@@ -90,6 +109,8 @@ function SettingsContent({ classId, locale, fetchRequest }: SettingsProps & { cl
               checked={value.settings.adaptive}
               disabled={busy}
               onChange={(e) => {
+                setDirty(true);
+                setSaved(false);
                 setValue({
                   ...value,
                   settings: { ...value.settings, adaptive: e.currentTarget.checked },
@@ -99,10 +120,34 @@ function SettingsContent({ classId, locale, fetchRequest }: SettingsProps & { cl
             {m.enableAdaptive}
           </label>
           <p>{m.adaptationNote}</p>
-          {value.mapConfigured === false && <p>{m.unconfigured}</p>}
-          <button disabled={busy}>{m.save}</button>
+          {value.mapConfigured === false && (
+            <p>
+              {m.unconfigured}{" "}
+              <a href="?view=settings&settings=server&server=features">{m.configureServer}</a>
+            </p>
+          )}
+          <p>
+            {value.reportsConfigured ? m.reportsReady : m.reportsMissing}{" "}
+            <a href="?view=settings&settings=server&server=features">{m.configureServer}</a>
+          </p>
+          <div className="server-actions">
+            <button disabled={busy || !dirty}>{m.save}</button>
+            <button
+              type="button"
+              disabled={busy || !dirty}
+              onClick={() => {
+                setValue(original);
+                setDirty(false);
+                setSaved(false);
+              }}
+            >
+              {m.discard}
+            </button>
+            {saved && <span role="status">{m.saved}</span>}
+            {dirty && <span role="status">{m.unsaved}</span>}
+          </div>
         </form>
       )}
-    </details>
+    </section>
   );
 }

@@ -58,48 +58,53 @@ export function CompositionEditor({
                 >
                   {m.down}
                 </button>
-                <label>
-                  {m.slot}
-                  <select
-                    value={module.placement.slot}
-                    onChange={(event) => {
-                      const placement = descriptor?.supportedPlacements.find(
-                        (item) => item.slot === event.currentTarget.value,
-                      );
-                      if (placement !== undefined) replace({ ...module, placement });
-                    }}
-                  >
-                    {[...new Set(descriptor?.supportedPlacements.map((item) => item.slot))].map(
-                      (slot) => (
-                        <option key={slot} value={slot}>
-                          {m[slot]}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </label>
-                <label>
-                  {m.size}
-                  <select
-                    value={module.placement.size}
-                    onChange={(event) => {
-                      const placement = descriptor?.supportedPlacements.find(
-                        (item) =>
-                          item.slot === module.placement.slot &&
-                          item.size === event.currentTarget.value,
-                      );
-                      if (placement !== undefined) replace({ ...module, placement });
-                    }}
-                  >
-                    {descriptor?.supportedPlacements
-                      .filter((item) => item.slot === module.placement.slot)
-                      .map((item) => (
-                        <option key={item.size} value={item.size}>
-                          {m[item.size]}
-                        </option>
-                      ))}
-                  </select>
-                </label>
+                <details className="view-layout-options">
+                  <summary>
+                    {m.slot} · {m.size}
+                  </summary>
+                  <label>
+                    {m.slot}
+                    <select
+                      value={module.placement.slot}
+                      onChange={(event) => {
+                        const placement = descriptor?.supportedPlacements.find(
+                          (item) => item.slot === event.currentTarget.value,
+                        );
+                        if (placement !== undefined) replace({ ...module, placement });
+                      }}
+                    >
+                      {[...new Set(descriptor?.supportedPlacements.map((item) => item.slot))].map(
+                        (slot) => (
+                          <option key={slot} value={slot}>
+                            {m[slot]}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </label>
+                  <label>
+                    {m.size}
+                    <select
+                      value={module.placement.size}
+                      onChange={(event) => {
+                        const placement = descriptor?.supportedPlacements.find(
+                          (item) =>
+                            item.slot === module.placement.slot &&
+                            item.size === event.currentTarget.value,
+                        );
+                        if (placement !== undefined) replace({ ...module, placement });
+                      }}
+                    >
+                      {descriptor?.supportedPlacements
+                        .filter((item) => item.slot === module.placement.slot)
+                        .map((item) => (
+                          <option key={item.size} value={item.size}>
+                            {m[item.size]}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                </details>
               </fieldset>
             </li>
           );

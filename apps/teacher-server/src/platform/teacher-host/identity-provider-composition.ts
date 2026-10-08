@@ -78,3 +78,27 @@ export function configureIdentityProviders(
     ];
   });
 }
+
+/** Import only installed provider files; a removed plugin never causes a private-file read. */
+export function identityConnectionValues(
+  catalog: readonly IdentityProviderCatalogEntry[],
+  configured: readonly IdentityProviderConfiguration[] | undefined,
+): Record<string, Record<string, string>> {
+  if (configured === undefined) return {};
+  return Object.fromEntries(
+    configured.flatMap((configuration) => {
+      const raw = catalog.find((entry) => entry.manifest.id === configuration.pluginId);
+      if (!raw) return [];
+      const entry = parseIdentityProviderEntry(raw);
+      return [
+        [
+          configuration.pluginId,
+          providerSettingsValues(
+            entry.settings,
+            readIdentityProviderSettings(configuration.settingsPath),
+          ),
+        ],
+      ];
+    }),
+  );
+}

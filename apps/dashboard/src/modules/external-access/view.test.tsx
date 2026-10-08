@@ -99,6 +99,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals();
   client.externalAccess.mockReset();
+  fetchRequest.mockReset();
 });
 
 it("splits pasted entries on whitespace, commas and semicolons", () => {
@@ -113,6 +114,7 @@ it("splits pasted entries on whitespace, commas and semicolons", () => {
 
 it("renders nothing without a class and loads the selected class otherwise", async () => {
   expect(render(null)).toEqual([]);
+  expect(hooks.values[3]).toBe(false);
   expect(hooks.effects[0]?.()).toBeUndefined();
   expect(client.externalAccess).not.toHaveBeenCalled();
   expect(render()).toEqual([]);
@@ -254,4 +256,115 @@ it("explains refused, failed and oversized changes without sending empty ones", 
   await settle();
   expect(page()).toContain(m.error);
   expect(handlers("textarea").value).not.toBe("");
+});
+
+it("explains unavailable group access using the installed plugin's guide", async () => {
+  const metadata = {
+    providers: [
+      {
+        id: "org.example.idp",
+        kinds: [
+          { kind: "email", ready: true },
+          { kind: "group", ready: false },
+        ],
+        guides: [
+          {
+            id: "groups",
+            title: { es: "Grupos", en: "Groups setup", eu: "Taldeak" },
+            steps: [{ text: { es: "Delegar", en: "Enable delegation", eu: "Gaitu" } }],
+          },
+        ],
+      },
+    ],
+  };
+  fetchRequest.mockResolvedValue(Response.json(metadata));
+  await load(ok());
+  await vi.waitFor(() => {
+    expect(hooks.values[6]).toEqual(metadata);
+  });
+  expect(page()).toContain(m.needsSetup);
+  expect(page()).toContain("Enable delegation");
+  expect(
+    render().some((node) => node.type === "label" && text(node) === `Email · ${m.values}`),
+  ).toBe(true);
+  expect(
+    render().some((node) => node.type === "label" && text(node) === `Group · ${m.values}`),
+  ).toBe(false);
+  expect(render().filter((node) => node.type === "textarea")).toHaveLength(1);
+  expect(render().find((node) => node.type === "a")?.props.href).toBe(
+    "?view=settings&settings=server&server=identities",
+  );
+});
+it("ignores identity readiness loaded after leaving the class", async () => {
+  const pending = Promise.withResolvers<Response>();
+  fetchRequest.mockReturnValue(pending.promise);
+  const dispose = await load(ok());
+  dispose?.();
+  pending.resolve(Response.json({ providers: [] }));
+  await pending.promise;
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(hooks.values[6]).toBeNull();
+});
+
+it("marks admission drafts accurately and clears success and drafts when the class changes", async () => {
+  await load(ok());
+  const dirty = () => render().find((node) => node.type === "section")?.props["data-dirty"];
+  expect(dirty()).toBe(false);
+  type("  ");
+  expect(dirty()).toBe(false);
+  type("a@school.test");
+  expect(dirty()).toBe(true);
+  type("b@school.test", 1);
+  expect(dirty()).toBe(true);
+  hooks.values[3] = true;
+  await load(ok());
+  expect(dirty()).toBe(false);
+  expect(hooks.values[3]).toBe(false);
+});
+it("uses exact readiness kinds and provider IDs, with legacy fallback for missing kinds", async () => {
+  fetchRequest.mockResolvedValue(
+    Response.json({
+      providers: [
+        { id: "other", guides: [], kinds: [{ kind: "group", ready: true }] },
+        { id: "org.example.idp", guides: [], kinds: [{ kind: "group", ready: false }] },
+      ],
+    }),
+  );
+  await load(ok());
+  await vi.waitFor(() => {
+    expect(hooks.values[6]).not.toBeNull();
+  });
+  expect(
+    render().some((node) => node.type === "label" && text(node) === `Email · ${m.values}`),
+  ).toBe(true);
+  expect(
+    render().some((node) => node.type === "label" && text(node) === `Group · ${m.values}`),
+  ).toBe(false);
+  expect(fetchRequest).toHaveBeenCalledWith(
+    "/api/v1/dashboard/server-settings",
+    expect.objectContaining({
+      body: '{"operation":"identity-status"}',
+      signal: expect.any(AbortSignal) as AbortSignal,
+    }),
+  );
+  fetchRequest.mockRejectedValue(new Error("unavailable"));
+  await load(ok());
+  await vi.waitFor(() => {
+    expect(hooks.values[6]).toBeNull();
+  });
+  expect(
+    render().some((node) => node.type === "label" && text(node) === `Group · ${m.values}`),
+  ).toBe(true);
+});
+it("does not erase current readiness with an abandoned failure", async () => {
+  const pending = Promise.withResolvers<Response>();
+  fetchRequest.mockReturnValue(pending.promise);
+  const dispose = await load(ok());
+  dispose?.();
+  const current = { providers: [] };
+  hooks.values[6] = current;
+  pending.reject(new Error("late"));
+  await pending.promise.catch(() => undefined);
+  await settle();
+  expect(hooks.values[6]).toBe(current);
 });

@@ -18,6 +18,9 @@ export function skillAuthoringMessages(locale: Locale) {
         reloadCatalog: "Reload catalog",
         chooseSkill: "Choose a catalog skill or start a personal draft.",
         personalHeading: "Personal skill",
+        technicalDetails: "Technical details",
+        creationHelp:
+          "Start by viewing a skill such as the testing example. Copy it to adapt it, or create a new one with a short name. Add instructions and assessment criteria, save, then activate it in Tutor and active skills.",
         personalSlug: "Personal slug",
         startPersonal: "Open personal skill",
         newPersonal: "Create or open personal skill",
@@ -102,6 +105,9 @@ export function skillAuthoringMessages(locale: Locale) {
           reloadCatalog: "Birkargatu katalogoa",
           chooseSkill: "Aukeratu katalogoko skill bat edo hasi zirriborro pertsonal bat.",
           personalHeading: "Skill pertsonala",
+          technicalDetails: "Xehetasun teknikoak",
+          creationHelp:
+            "Hasi skill bat ikusiz, adibidez testing adibidea. Kopiatu moldatzeko edo sortu berri bat izen laburrarekin. Gehitu argibideak eta irizpideak, gorde eta aktibatu Tutorea eta skill aktiboak atalean.",
           personalSlug: "Slug pertsonala",
           startPersonal: "Ireki skill pertsonala",
           newPersonal: "Sortu edo ireki skill pertsonala",
@@ -186,6 +192,9 @@ export function skillAuthoringMessages(locale: Locale) {
           reloadCatalog: "Recargar catálogo",
           chooseSkill: "Elige una skill del catálogo o inicia un borrador personal.",
           personalHeading: "Skill personal",
+          technicalDetails: "Detalles técnicos",
+          creationHelp:
+            "Empieza viendo una skill, por ejemplo la de testing. Cópiala para adaptarla o crea una nueva con un nombre corto. Añade instrucciones y criterios, guarda y actívala en Tutor y skills activas.",
           personalSlug: "Slug personal",
           startPersonal: "Abrir skill personal",
           newPersonal: "Crear o abrir skill personal",

@@ -39,10 +39,11 @@ try {
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.locator(".workspace-navigation").waitFor();
   await openSettings(page, "server");
+  await page.getByRole("button", { name: "External traces", exact: true }).click();
   const panel = page.locator(".observability-settings");
   await panel.locator("select").first().selectOption("org.marea.otlp");
   await panel.getByLabel("Collector base URL").fill(endpoint);
-  await panel.getByLabel("Authorization header").fill("Bearer synthetic-only");
+  await panel.getByLabel("Authorization header", { exact: true }).fill("Bearer synthetic-only");
   await panel.getByRole("button", { name: "Test connection", exact: true }).click();
   await panel.getByRole("status").filter({ hasText: "Destination accepted" }).waitFor();
   assert.equal(received.length, 1);
@@ -52,10 +53,11 @@ try {
   await panel.getByLabel("Enable delivery with content").check();
   await panel.getByRole("button", { name: "Save observability", exact: true }).click();
   await panel.getByRole("status").filter({ hasText: "Settings saved." }).waitFor();
-  assert.equal(await panel.getByLabel("Authorization header").inputValue(), "");
+  assert.equal(await panel.getByLabel("Authorization header", { exact: true }).inputValue(), "");
   await page.reload();
   await page.locator(".workspace-navigation").waitFor();
   await openSettings(page, "server");
+  await page.getByRole("button", { name: "External traces", exact: true }).click();
   await panel.getByLabel("Enable delivery with content").waitFor();
   assert.equal(await panel.getByLabel("Enable delivery with content").isChecked(), true);
   await page.screenshot({ path: join(artifacts, "observability.png"), fullPage: true });

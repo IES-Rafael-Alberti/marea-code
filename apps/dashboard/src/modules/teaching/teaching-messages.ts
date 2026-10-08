@@ -5,6 +5,8 @@ export function teachingMessages(locale: Locale) {
   return locale === "en"
     ? {
         heading: "Class teaching configuration",
+        customizeInstructions: "Customize instructions",
+        technicalDetails: "Technical details",
         busy: "Working…",
         classesHeading: "Classes",
         classesLoading: "Loading classes…",
@@ -79,6 +81,8 @@ export function teachingMessages(locale: Locale) {
     : locale === "eu"
       ? {
           heading: "Ikasgelako irakaskuntza-konfigurazioa",
+          customizeInstructions: "Pertsonalizatu argibideak",
+          technicalDetails: "Xehetasun teknikoak",
           busy: "Lanean…",
           classesHeading: "Ikasgelak",
           classesLoading: "Ikasgelak kargatzen…",
@@ -156,6 +160,8 @@ export function teachingMessages(locale: Locale) {
         }
       : {
           heading: "Configuración docente de la clase",
+          customizeInstructions: "Personalizar instrucciones",
+          technicalDetails: "Detalles técnicos",
           busy: "Procesando…",
           classesHeading: "Clases",
           classesLoading: "Cargando clases…",

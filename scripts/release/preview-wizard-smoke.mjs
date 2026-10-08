@@ -139,7 +139,11 @@ try {
   await new Promise((done) => listener.listen(0, "127.0.0.1", done));
   const port = listener.address().port;
   await new Promise((done) => listener.close(done));
-  const input = setupInput({ port, testingSkill: true });
+  const input = setupInput({
+    port,
+    testingSkill: true,
+    features: { map: true, reports: true, automaticEvaluation: true },
+  });
   const models = await api({
     operation: "models",
     providerId: input.route.providerId,
@@ -164,7 +168,10 @@ try {
     completed = await done.json();
     cookie = done.headers.get("set-cookie");
   }
-  assert.equal(completed.dashboardUrl, `http://127.0.0.1:${port}/dashboard/`);
+  assert.equal(
+    completed.dashboardUrl,
+    `http://127.0.0.1:${port}/dashboard/?class=class%3Amain&welcome=1`,
+  );
   assert.ok(cookie?.includes("HttpOnly"));
   assert.ok(!cookie.includes("Secure"));
   assert.equal((await globalThis.fetch(completed.dashboardUrl)).status, 200);
@@ -199,8 +206,18 @@ try {
   const teaching = await configuration.json();
   assert.equal(teaching.operatorReady, true);
   assert.equal(teaching.configuration.settings.agentMode, "tutoring");
-  assert.equal(teaching.configuration.settings.automaticEvaluation, false);
+  assert.equal(teaching.configuration.settings.automaticEvaluation, true);
   assert.equal(teaching.configuration.settings.selection.didactic[0].id, "marea/testing");
+  const insights = await globalThis.fetch(
+    `${schoolOrigin}/api/v1/dashboard/educational-insights`,
+    authenticated({ kind: "settings", classId: "class:main" }),
+  );
+  assert.equal(insights.status, 200);
+  const features = (await insights.json()).data;
+  assert.equal(features.settings.map, true);
+  assert.equal(features.mapConfigured, true);
+  assert.equal(features.reportsConfigured, true);
+  assert.equal(teaching.configuration.settings.selection.evaluation[0].id, "marea/evaluate");
   await stop(child);
   assert.equal(existingOnboarding(root), null);
   assert.equal(fs.existsSync(join(root, "onboarding-owner.json")), false);

@@ -1,6 +1,11 @@
 import type { DashboardLocale } from "../../messages.js";
 const messages = {
   es: {
+    connectionOptions: "Opciones de la conexión",
+    discard: "Descartar cambios",
+    automaticPrices: "Precios del proveedor",
+    manualPrices: "Precios personalizados o sin comprobar",
+    restorePrices: "Restablecer precios del proveedor",
     costUsd: "Límite de coste (USD)",
     unlimited: "Sin límites de uso",
     modelsLoading: "Comprobando conexión y obteniendo modelos…",
@@ -12,19 +17,19 @@ const messages = {
     inputPriceUsd: "USD por millón de tokens de entrada",
     outputPriceUsd: "USD por millón de tokens de salida",
 
-    connectionsStep: "1. Conexiones con proveedores",
+    connectionsStep: "Conexiones con proveedores",
     connectionsHelp:
       "Las credenciales pertenecen al servidor y nunca se muestran después de guardarlas. Al introducir la clave se comprueba la conexión y se consultan los modelos disponibles.",
-    routeStep: "2. Modelo para las sesiones",
+    routeStep: "Modelo para las sesiones",
     routeHelp: "El modelo principal atiende la tutoría y, salvo que indiques otro, la evaluación.",
-    limitsStep: "3. Límites y precios",
+    limitsStep: "Límites y precios",
     roleAdmin: "Administras este servidor. Los cambios afectan a todas sus clases.",
     legacyTitle: "Modelo actual de cada clase",
     inUse: "En uso por una ruta configurada: no se puede deshabilitar.",
     commonOn: "Las sesiones nuevas de todas las clases usarán este modelo.",
     commonOff: "Cada clase conserva su modelo actual hasta que actives esta opción.",
     pending: "Cambios sin guardar",
-    title: "Este servidor · Conexiones y modelos",
+    title: "Ajustes del servidor",
     access:
       "Las conexiones y los modelos de este servidor los gestiona el docente que lo administra. Tus clases los usan automáticamente; pídele los cambios que necesites.",
     setup:
@@ -72,6 +77,11 @@ const messages = {
     unsaved: "Hay cambios sin guardar. ¿Quieres descartarlos?",
   },
   en: {
+    connectionOptions: "Connection options",
+    discard: "Discard changes",
+    automaticPrices: "Provider prices",
+    manualPrices: "Custom or unchecked prices",
+    restorePrices: "Restore provider prices",
     costUsd: "Cost ceiling (USD)",
     unlimited: "Unlimited usage",
     modelsLoading: "Checking connection and loading models…",
@@ -82,19 +92,19 @@ const messages = {
     inputPriceUsd: "USD per million input tokens",
     outputPriceUsd: "USD per million output tokens",
 
-    connectionsStep: "1. Provider connections",
+    connectionsStep: "Provider connections",
     connectionsHelp:
       "Credentials belong to the server and are never shown again after saving. Entering a key checks the connection and loads available models.",
-    routeStep: "2. Model for sessions",
+    routeStep: "Model for sessions",
     routeHelp: "The main model serves tutoring and, unless you choose another, evaluation.",
-    limitsStep: "3. Limits and prices",
+    limitsStep: "Limits and prices",
     roleAdmin: "You administer this server. Changes affect all of its classes.",
     legacyTitle: "Current model of each class",
     inUse: "Used by a configured route: it cannot be disabled.",
     commonOn: "New sessions in every class will use this model.",
     commonOff: "Each class keeps its current model until you enable this option.",
     pending: "Unsaved changes",
-    title: "This server · Connections and models",
+    title: "Server settings",
     access:
       "This server's connections and models are managed by the teacher who administers it. Your classes use them automatically; ask that teacher for any change you need.",
     setup:
@@ -140,6 +150,11 @@ const messages = {
     unsaved: "Discard unsaved changes?",
   },
   eu: {
+    connectionOptions: "Konexio-aukerak",
+    discard: "Baztertu aldaketak",
+    automaticPrices: "Hornitzailearen prezioak",
+    manualPrices: "Prezioen egiaztapenik ez edo pertsonalizatuak",
+    restorePrices: "Leheneratu hornitzailearen prezioak",
     costUsd: "Kostu muga (USD)",
     unlimited: "Erabilera mugagabea",
     modelsLoading: "Konexioa egiaztatzen eta ereduak kargatzen…",
@@ -150,12 +165,12 @@ const messages = {
     inputPriceUsd: "USD milioi bat sarrera-tokeneko",
     outputPriceUsd: "USD milioi bat irteera-tokeneko",
 
-    connectionsStep: "1. Hornitzaileekiko konexioak",
+    connectionsStep: "Hornitzaileekiko konexioak",
     connectionsHelp:
       "Kredentzialak zerbitzariarenak dira eta gorde ondoren ez dira berriro erakusten. Gakoa sartzean konexioa egiaztatu eta erabilgarri dauden ereduak kargatzen dira.",
-    routeStep: "2. Saioetarako eredua",
+    routeStep: "Saioetarako eredua",
     routeHelp: "Eredu nagusiak tutoretza eta, beste bat aukeratu ezean, ebaluazioa egiten ditu.",
-    limitsStep: "3. Mugak eta prezioak",
+    limitsStep: "Mugak eta prezioak",
     roleAdmin:
       "Zerbitzari hau zuk administratzen duzu. Aldaketek bere ikasgela guztiei eragiten diete.",
     legacyTitle: "Ikasgela bakoitzaren uneko eredua",
@@ -163,7 +178,7 @@ const messages = {
     commonOn: "Ikasgela guztietako saio berriek eredu hau erabiliko dute.",
     commonOff: "Ikasgela bakoitzak bere uneko eredua mantentzen du aukera hau aktibatu arte.",
     pending: "Gorde gabeko aldaketak",
-    title: "Zerbitzari hau · Konexioak eta ereduak",
+    title: "Zerbitzariaren ezarpenak",
     access:
       "Zerbitzari honen konexioak eta ereduak administratzen duen irakasleak kudeatzen ditu. Zure ikasgelek automatikoki erabiltzen dituzte; eskatu irakasle horri behar dituzun aldaketak.",
     setup:

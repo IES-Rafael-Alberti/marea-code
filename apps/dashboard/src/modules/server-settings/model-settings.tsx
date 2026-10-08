@@ -19,6 +19,12 @@ const newBudget = (): Budget => ({
   evaluation: emptyBudget(),
 });
 
+export const initialModelRoute = (providerId: string): Route => ({
+  providerId,
+  model: "",
+  budget: newBudget(),
+});
+
 export function ModelSettings({
   state,
   connections,
@@ -26,7 +32,11 @@ export function ModelSettings({
   edit,
   classNames = {},
   catalogs = {},
+  onboarding = false,
+  section = "all",
 }: {
+  section?: "all" | "models" | "limits" | "features";
+  onboarding?: boolean;
   catalogs?: ModelCatalogs;
   state: EditableSettings;
   connections: Record<string, Record<string, string>>;
@@ -39,30 +49,38 @@ export function ModelSettings({
   const route = state.route;
   return (
     <>
-      <h3>{m.routeStep}</h3>
-      <p className="server-help">{m.routeHelp}</p>
-      <ProviderSelect
-        m={m}
-        locale={locale}
-        providers={available}
-        value={route?.providerId ?? ""}
-        placeholder
-        change={(providerId) => {
-          edit({
-            ...state,
-            useCommonRoute: state.legacyRoutes.length === 0 || state.useCommonRoute,
-            route: {
-              ...route,
-              providerId,
-              model: route?.model ?? "",
-              budget: route?.budget ?? newBudget(),
-            },
-          });
-        }}
-      />
+      {(section === "all" || section === "models") && !onboarding && (
+        <>
+          <h3>{m.routeStep}</h3>
+          <p className="server-help">{m.routeHelp}</p>
+        </>
+      )}
+      {(section === "all" || section === "models") && !onboarding && (
+        <ProviderSelect
+          m={m}
+          locale={locale}
+          providers={available}
+          value={route?.providerId ?? ""}
+          placeholder
+          change={(providerId) => {
+            edit({
+              ...state,
+              useCommonRoute: state.legacyRoutes.length === 0 || state.useCommonRoute,
+              route: {
+                ...route,
+                providerId,
+                model: route?.model ?? "",
+                budget: route?.budget ?? newBudget(),
+              },
+            });
+          }}
+        />
+      )}
       {route && (
         <RouteDetails
           state={state}
+          onboarding={onboarding}
+          section={section}
           route={route}
           catalogs={catalogs}
           m={m}
@@ -77,6 +95,8 @@ export function ModelSettings({
 }
 
 function RouteDetails({
+  onboarding,
+  section,
   state,
   route,
   m,
@@ -86,6 +106,8 @@ function RouteDetails({
   catalogs,
   edit,
 }: {
+  onboarding: boolean;
+  section: "all" | "models" | "limits" | "features";
   state: EditableSettings;
   route: Route;
   catalogs: ModelCatalogs;
@@ -102,126 +124,151 @@ function RouteDetails({
   const evaluation = route.evaluation ?? { providerId: route.providerId, model: route.model };
   return (
     <>
-      <ModelInput
-        id="models-tutoring"
-        label={m.model}
-        value={route.model}
-        providerId={route.providerId}
-        catalogs={catalogs}
-        change={(model, pricing) => {
-          set({
-            model,
-            budget: {
-              ...budget,
-              tutoring: pricedBudget(budget.tutoring, pricing),
-              evaluation: route.evaluation
-                ? budget.evaluation
-                : pricedBudget(budget.evaluation, pricing),
-            },
-          });
-        }}
-      />
-      <div className="server-common" data-active={state.useCommonRoute}>
-        {state.legacyRoutes.length > 0 && (
-          <label>
-            <input
-              type="checkbox"
-              checked={state.useCommonRoute}
-              onChange={(event) => {
-                edit({ ...state, useCommonRoute: event.currentTarget.checked });
-              }}
-            />
-            {m.common}
-          </label>
-        )}
-        <p>{state.useCommonRoute || state.legacyRoutes.length === 0 ? m.commonOn : m.commonOff}</p>
-        {state.legacyRoutes.length > 0 && <p>{m.commonNote}</p>}
-        {state.legacyRoutes.length > 0 && (
-          <details>
-            <summary>
-              {m.legacyTitle} ({state.legacyRoutes.length})
-            </summary>
-            <ul>
-              {state.legacyRoutes.map((item) => (
-                <li key={item.classId}>
-                  <strong>{classNames[item.classId] ?? item.classId}</strong> ·{" "}
-                  {providerName(state.providers, item.route.providerId, locale)} ·{" "}
-                  <code>{item.route.model}</code>
-                </li>
-              ))}
-            </ul>
-          </details>
+      <div data-settings-section="models" hidden={section !== "all" && section !== "models"}>
+        <ModelInput
+          id="models-tutoring"
+          label={m.model}
+          value={route.model}
+          providerId={route.providerId}
+          catalogs={catalogs}
+          change={(model, pricing) => {
+            set({
+              model,
+              budget: {
+                ...budget,
+                tutoring: pricedBudget(budget.tutoring, pricing),
+                evaluation: route.evaluation
+                  ? budget.evaluation
+                  : pricedBudget(budget.evaluation, pricing),
+              },
+            });
+          }}
+        />
+        {!onboarding && (
+          <div className="server-common" data-active={state.useCommonRoute}>
+            {state.legacyRoutes.length > 0 && (
+              <label>
+                <input
+                  type="checkbox"
+                  checked={state.useCommonRoute}
+                  onChange={(event) => {
+                    edit({ ...state, useCommonRoute: event.currentTarget.checked });
+                  }}
+                />
+                {m.common}
+              </label>
+            )}
+            <p>
+              {state.useCommonRoute || state.legacyRoutes.length === 0 ? m.commonOn : m.commonOff}
+            </p>
+            {state.legacyRoutes.length > 0 && <p>{m.commonNote}</p>}
+            {state.legacyRoutes.length > 0 && (
+              <details>
+                <summary>
+                  {m.legacyTitle} ({state.legacyRoutes.length})
+                </summary>
+                <ul>
+                  {state.legacyRoutes.map((item) => (
+                    <li key={item.classId}>
+                      <strong>{classNames[item.classId] ?? item.classId}</strong> ·{" "}
+                      {providerName(state.providers, item.route.providerId, locale)} ·{" "}
+                      <code>{item.route.model}</code>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
         )}
       </div>
-      <h3>{m.limitsStep}</h3>
-      <p className="server-help">{m.budgetNote}</p>
-      {(["tutoring", "evaluation"] as const).map((purpose) => (
-        <details className="workspace-advanced" key={purpose}>
-          <summary>
-            {m[purpose]} · {m.limits}
-          </summary>
-          <BudgetFields
-            m={m}
-            value={budget[purpose]}
-            change={(next) => {
-              const other = budget[purpose === "tutoring" ? "evaluation" : "tutoring"];
-              set({
-                budget: {
-                  ...budget,
-                  [purpose]: next,
-                  inputTokenCeiling: Math.min(next.maxInputTokens, other.maxInputTokens),
-                },
-              });
-            }}
-          />
-        </details>
-      ))}
-      <details className="workspace-advanced">
-        <summary>{m.advanced}</summary>
-        <fieldset>
-          <legend>{m.evaluation}</legend>
-          <ModelInput
-            id="models-evaluation"
-            label={m.model}
-            value={evaluation.model}
-            providerId={evaluation.providerId}
-            catalogs={catalogs}
-            change={(model, pricing) => {
-              set({
-                evaluation: { ...evaluation, model },
-                budget: { ...budget, evaluation: pricedBudget(budget.evaluation, pricing) },
-              });
-            }}
-          />
-          <ProviderSelect
-            m={m}
-            locale={locale}
-            providers={providers}
-            value={evaluation.providerId}
-            change={(providerId) => {
-              set({ evaluation: { ...evaluation, providerId } });
-            }}
-          />
-        </fieldset>
-        {(["map", "reports"] as const).map((purpose) => (
-          <TaskRoute
-            key={purpose}
-            purpose={purpose}
-            catalogs={catalogs}
-            state={state}
-            seed={{
-              providerId: route.providerId,
-              model: route.model,
-              inputTokenCeiling: budget.inputTokenCeiling,
-              budget: budget.evaluation,
-            }}
-            m={m}
-            locale={locale}
-            providers={providers}
-            edit={edit}
-          />
-        ))}
-      </details>
+      {!onboarding && (
+        <>
+          <div data-settings-section="limits" hidden={section !== "all" && section !== "limits"}>
+            <h3>{m.limitsStep}</h3>
+            <p className="server-help">{m.budgetNote}</p>
+            {(["tutoring", "evaluation"] as const).map((purpose) => (
+              <details className="workspace-advanced" key={purpose}>
+                <summary>
+                  {m[purpose]} · {m.limits}
+                </summary>
+                <BudgetFields
+                  m={m}
+                  value={budget[purpose]}
+                  pricing={
+                    catalogs[
+                      purpose === "evaluation" ? evaluation.providerId : route.providerId
+                    ]?.models.find(
+                      (item) =>
+                        item.id === (purpose === "evaluation" ? evaluation.model : route.model),
+                    )?.pricing
+                  }
+                  change={(next) => {
+                    const other = budget[purpose === "tutoring" ? "evaluation" : "tutoring"];
+                    set({
+                      budget: {
+                        ...budget,
+                        [purpose]: next,
+                        inputTokenCeiling: Math.min(next.maxInputTokens, other.maxInputTokens),
+                      },
+                    });
+                  }}
+                />
+              </details>
+            ))}
+          </div>
+          <details
+            data-settings-section="features"
+            className="workspace-advanced"
+            hidden={section !== "all" && section !== "features"}
+            open={section === "features"}
+          >
+            <summary>{m.advanced}</summary>
+            <fieldset>
+              <legend>{m.evaluation}</legend>
+              <ModelInput
+                id="models-evaluation"
+                label={m.model}
+                value={evaluation.model}
+                providerId={evaluation.providerId}
+                catalogs={catalogs}
+                change={(model, pricing) => {
+                  set({
+                    evaluation: { ...evaluation, model },
+                    budget: { ...budget, evaluation: pricedBudget(budget.evaluation, pricing) },
+                  });
+                }}
+              />
+              <ProviderSelect
+                m={m}
+                locale={locale}
+                providers={providers}
+                value={evaluation.providerId}
+                change={(providerId) => {
+                  set({ evaluation: { ...evaluation, providerId } });
+                }}
+              />
+            </fieldset>
+            {(["map", "reports"] as const).map((purpose) => (
+              <TaskRoute
+                key={purpose}
+                purpose={purpose}
+                catalogs={catalogs}
+                state={state}
+                seed={{
+                  providerId: route.providerId,
+                  model: route.model,
+                  inputTokenCeiling: budget.inputTokenCeiling,
+                  budget: budget.evaluation,
+                }}
+                m={m}
+                locale={locale}
+                providers={providers}
+                edit={edit}
+              />
+            ))}
+          </details>
+        </>
+      )}
     </>
   );
 }
@@ -290,6 +337,9 @@ function TaskRoute({
           <BudgetFields
             m={m}
             value={task.budget}
+            pricing={
+              catalogs[task.providerId]?.models.find((item) => item.id === task.model)?.pricing
+            }
             change={(budget) => {
               setTask({ ...task, budget, inputTokenCeiling: budget.maxInputTokens });
             }}
@@ -315,6 +365,9 @@ function ProviderSelect({
   placeholder?: boolean;
   change: (providerId: string) => void;
 }) {
+  const [first, second] = providers;
+  if (first?.id === value && second === undefined)
+    return <p className="server-provider-name">{providerName(providers, value, locale)}</p>;
   return (
     <label className="server-field">
       {m.provider}

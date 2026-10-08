@@ -98,3 +98,17 @@ it("keeps identity providers optional with bounded IDs, settings and count", () 
       ),
     ).toBe(count === 8);
 });
+
+it("validates every optional feature without silently dropping it", () => {
+  const features = { map: true, reports: false, automaticEvaluation: true };
+  expect(ServerSetupRequestSchema.parse({ ...input, features }).features).toEqual(features);
+  expect(
+    ServerSetupRequestSchema.safeParse({ ...input, features: { ...features, extra: true } })
+      .success,
+  ).toBe(false);
+  for (const key of Object.keys(features)) {
+    const partial = { ...features };
+    Reflect.deleteProperty(partial, key);
+    expect(ServerSetupRequestSchema.safeParse({ ...input, features: partial }).success).toBe(false);
+  }
+});

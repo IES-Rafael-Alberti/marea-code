@@ -20,6 +20,12 @@ const p = vi.hoisted(() => ({
   readTeacherHostConfig: vi.fn(),
   writeFileSync: vi.fn(),
   configureIdentityProviders: vi.fn(),
+  configureInsights: vi.fn(),
+}));
+vi.mock("../../apps/teacher-server/src/educational-insights/progress.js", () => ({
+  LearningProgress: class {
+    configure = p.configureInsights;
+  },
 }));
 vi.mock("node:fs", () => ({ writeFileSync: p.writeFileSync }));
 vi.mock("@marea/sqlite-storage", () => ({ initializeSqliteStorage: p.initializeSqliteStorage }));
@@ -129,6 +135,7 @@ it.each([false, true])(
     expect(p.write).toHaveBeenCalledWith(data.settings, 0);
     expect(p.skills).toHaveBeenCalledWith("/stage/core");
     expect(p.forClass).toHaveBeenCalledWith("class:main");
+    expect(p.configureInsights).not.toHaveBeenCalled();
     expect(p.configureIdentityProviders).toHaveBeenCalledOnce();
     if (example) expect(p.list).toHaveBeenCalledWith("didactic");
     const configuration = p.service.mock.calls[0]?.[0] as {
@@ -257,3 +264,43 @@ it.each([undefined, [], [{ pluginId: "google", settingsPath: "/stage/state/googl
     ]);
   },
 );
+
+it("activates optional analysis and a real evaluation method, refusing incomplete provisioning", async () => {
+  const data = input(true);
+  data.request = {
+    ...data.request,
+    features: { map: true, reports: true, automaticEvaluation: true },
+  };
+  p.list.mockImplementation((kind: string) =>
+    Promise.resolve(
+      kind === "evaluation"
+        ? [
+            { id: "other", digest: "other" },
+            { id: "marea/evaluate", digest: "sha256:method" },
+          ]
+        : [{ id: "marea/testing", digest: "sha256:example" }],
+    ),
+  );
+  await provisionOnboarding("/stage", "/release", "0.1.0-preview.24", data, vi.fn());
+  expect(p.configureInsights).toHaveBeenCalledExactlyOnceWith(
+    "class:main",
+    { map: true, adaptive: false },
+    "initial",
+  );
+  expect(p.save).toHaveBeenCalledWith(
+    setupTeacher,
+    expect.objectContaining({
+      automaticEvaluation: true,
+      selection: {
+        didactic: [{ id: "marea/testing", digest: "sha256:example" }],
+        evaluation: [{ id: "marea/evaluate", digest: "sha256:method" }],
+      },
+    }),
+  );
+  p.list.mockResolvedValue([{ id: "marea/testing", digest: "sha256:example" }]);
+  await expect(
+    provisionOnboarding("/stage", "/release", "0.1.0-preview.24", data, vi.fn()),
+  ).rejects.toThrow("missing-evaluation-method");
+  expect(p.close).toHaveBeenCalledTimes(2);
+  expect(p.release).toHaveBeenCalledTimes(2);
+});

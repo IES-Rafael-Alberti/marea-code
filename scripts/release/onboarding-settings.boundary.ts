@@ -1,3 +1,4 @@
+import { localHttpHosts } from "../../apps/teacher-server/src/platform/teacher-host/http-access.boundary.js";
 import { ServerSetupRequestSchema, type ServerSetupRequest } from "@marea/protocol";
 import { inferenceProviderCatalog, identityProviderCatalog } from "@marea/plugin-runtime";
 import {
@@ -54,6 +55,9 @@ export function onboardingSettings(
   const encode = (value: object) => new TextEncoder().encode(JSON.stringify(value));
   return {
     read: async () => ({
+      addresses: localHttpHosts().filter(
+        (host) => host !== "localhost" && !host.startsWith("127."),
+      ),
       settings: await service.execute(setupTeacher, encode({ operation: "read" })),
       identityProviders: identities.map((entry) => ({
         id: entry.manifest.id,
@@ -95,7 +99,7 @@ export function onboardingSettings(
           expectedRevision: settings.revision,
           connections: request.connections,
           route: request.route,
-          education: {},
+          education: setupTaskRoutes(request),
           useCommonRoute: true,
         }),
       );
@@ -108,5 +112,20 @@ export function onboardingSettings(
         await providerModels(catalog, settings, request.route.providerId, {}, signal);
       return { request, settings, origin };
     },
+  };
+}
+
+/** Optional tasks start with the same verified connection, model and unlimited budget. */
+function setupTaskRoutes(request: ServerSetupRequest): ServerSettings["education"] {
+  const budget = request.route.budget;
+  const task = {
+    providerId: request.route.providerId,
+    model: request.route.model,
+    inputTokenCeiling: budget.inputTokenCeiling,
+    budget: budget.evaluation,
+  };
+  return {
+    ...(request.features?.map ? { map: task } : {}),
+    ...(request.features?.reports ? { reports: task } : {}),
   };
 }

@@ -1,3 +1,4 @@
+import { ModulePlugin } from "./module-plugin.js";
 import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi, type Mock } from "vitest";
 import * as educational from "../modules/educational-insights/adapter.js";
@@ -70,6 +71,7 @@ const window = {
   location: { href: "http://localhost/dashboard/?class=class:b" },
   history: { state: null, replaceState: vi.fn() },
   confirm: vi.fn(),
+  dispatchEvent: vi.fn(),
   addEventListener: vi.fn(),
   removeEventListener: vi.fn(),
 };
@@ -191,16 +193,9 @@ it("shows one settings page at a time and center administration only when provid
   expect(fallback.some((node) => label(node) === w.administration)).toBe(false);
   const nav = shell(state("classroom"), { settings: administration });
   expect(nav.some((node) => node.type === "button" && label(node) === w.administration)).toBe(true);
-  // Keys reset the class settings per class; React escapes ":" as "=2".
-  expect(shell(state("panel")).some((node) => node.key === ".$education=2class=2a")).toBe(true);
-  expect(
-    shell([controller, 0, false, 0, null, "settings", "panel"]).some(
-      (node) => node.key === ".$education=2none",
-    ),
-  ).toBe(true);
 });
 
-it("mounts panel diagnostics only while that page is open", async () => {
+it("mounts service diagnostics only in server settings", async () => {
   const controller = await ready();
   const usage = { ...selection, moduleId: "org.marea.module.usage" };
   const descriptor = catalog().modules[0];
@@ -219,7 +214,7 @@ it("mounts panel diagnostics only while that page is open", async () => {
     modules("settings", "panel"),
     modules("sessions", "panel"),
     modules("settings", "server"),
-  ]).toEqual([1, 0, 0]);
+  ]).toEqual([0, 0, 1]);
 });
 
 it("shows loading or an empty view only where they apply", async () => {
@@ -328,4 +323,61 @@ it("returns to sessions after opening evidence and to server settings to configu
   configured.mock.lastCall?.[2]?.();
   expect(hooks.setters[SECTION]).toHaveBeenLastCalledWith("settings");
   expect(hooks.setters[SUBSECTION]).toHaveBeenLastCalledWith("server");
+  expect(window.dispatchEvent).toHaveBeenCalledWith(
+    expect.objectContaining({ type: "marea:server-features" }),
+  );
+});
+
+it("shows the first-class handoff and protects drafts owned by class subpanels", async () => {
+  window.location.href = "http://localhost/dashboard/?welcome=1";
+  const controller = await ready();
+  const querySelector = vi.fn().mockReturnValue({});
+  vi.stubGlobal("document", { querySelector });
+  const nodes = shell([controller, 0, false, 0, "class:a", "settings", "classroom"]);
+  expect(byClass(nodes, "welcome-class")).toHaveLength(1);
+  expect(nodes.some((node) => label(node) === w.installStudents)).toBe(true);
+  const changeClass = nodes.find((node) => node.type === "select")?.props.onChange;
+  window.confirm.mockReturnValue(false);
+  changeClass?.({ currentTarget: { value: "class:b" } });
+  expect(querySelector).toHaveBeenCalledWith('.class-settings [data-dirty="true"]');
+  expect(window.confirm).toHaveBeenCalledWith(w.discard);
+  expect(hooks.setters[CLASS]).not.toHaveBeenCalled();
+  querySelector.mockReturnValue(null);
+  changeClass?.({ currentTarget: { value: "class:b" } });
+  expect(hooks.setters[CLASS]).toHaveBeenCalledWith("class:b");
+});
+
+it("separates service diagnostics from custom personal modules without mounting hidden settings pages", async () => {
+  const controller = await ready();
+  const descriptor = catalog().modules[0];
+  if (!descriptor) throw new Error("missing descriptor");
+  const modules = [
+    {
+      ...selection,
+      moduleId: "org.marea.module.health",
+      placement: { slot: "aside" as const, size: "wide" as const },
+    },
+    { ...selection, moduleId: "org.marea.module.usage" },
+    { ...selection, moduleId: "synthetic.settings" },
+  ];
+  controller.catalog = {
+    ...catalog(),
+    modules: modules.map((module) => ({ ...descriptor, id: module.moduleId })),
+  };
+  controller.edit({ ...value, modules });
+  for (const [section, part, expected] of [
+    ["settings", "server", ["org.marea.module.usage", "org.marea.module.health"]],
+    ["settings", "panel", ["synthetic.settings"]],
+    ["sessions", "server", []],
+    ["map", "panel", []],
+    ["settings", "classroom", []],
+  ] as const) {
+    const nodes = shell([controller, 0, false, 0, "class:a", section, part]);
+    const rendered = nodes
+      .filter((node) => node.type === ModulePlugin)
+      .map(
+        (node) => (node as ReactElement<{ module: { moduleId: string } }>).props.module.moduleId,
+      );
+    expect(rendered).toEqual(expected);
+  }
 });

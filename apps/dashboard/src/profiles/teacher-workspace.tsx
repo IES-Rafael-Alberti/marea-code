@@ -1,6 +1,7 @@
 import type { DashboardLocale } from "../messages.js";
 import { ProfileShell, type ProfileRuntime } from "./profile-shell.js";
-import { workspaceMessages } from "./workspace-navigation.js";
+import { ClassSettings } from "./class-settings.js";
+import { EducationalSettings } from "../modules/educational-insights/settings.js";
 import { ServerSettingsView } from "../modules/server-settings/view.js";
 import { ExternalAccessView } from "../modules/external-access/view.js";
 import { TeachingModule } from "../modules/teaching/teaching-module.js";
@@ -24,7 +25,7 @@ export function TeacherWorkspace({
   readonly authoring: Omit<SkillAuthoringModuleProperties, "locale"> | undefined;
   readonly governance: Omit<GovernanceModuleProperties, "locale"> | undefined;
 }) {
-  const w = workspaceMessages(locale);
+  const selectedClassId = teaching?.state.classId ?? null;
   return (
     <ProfileShell
       locale={locale}
@@ -40,22 +41,32 @@ export function TeacherWorkspace({
       }}
       settings={{
         classroom: (
-          <>
-            {teaching !== undefined && (
-              <TeachingModule locale={locale} {...teaching} classSelection={false} />
-            )}
-            <ExternalAccessView
-              locale={locale}
-              fetchRequest={profiles.fetch}
-              classId={teaching?.state.classId ?? null}
-            />
-            {authoring !== undefined && (
-              <details className="workspace-advanced">
-                <summary>{w.skills}</summary>
+          <ClassSettings
+            locale={locale}
+            content={{
+              tutor: teaching && (
+                <TeachingModule locale={locale} {...teaching} classSelection={false} />
+              ),
+              access: (
+                <ExternalAccessView
+                  locale={locale}
+                  fetchRequest={profiles.fetch}
+                  classId={selectedClassId}
+                />
+              ),
+              features: (
+                <EducationalSettings
+                  key={`education:${selectedClassId ?? "none"}`}
+                  classId={selectedClassId}
+                  locale={locale}
+                  fetchRequest={profiles.fetch}
+                />
+              ),
+              library: authoring && (
                 <SkillAuthoringModule locale={locale} {...authoring} classSelection={false} />
-              </details>
-            )}
-          </>
+              ),
+            }}
+          />
         ),
         server: (
           <ServerSettingsView

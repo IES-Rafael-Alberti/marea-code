@@ -20,8 +20,11 @@ export function stateHooks(hooks: StateHooks) {
       if (!(index in hooks.values)) hooks.values[index] = initial;
       return [
         hooks.values[index],
-        (value: HookValue) => {
-          hooks.values[index] = value;
+        (value: HookValue | ((previous: HookValue) => HookValue)) => {
+          hooks.values[index] =
+            typeof value === "function"
+              ? (value as (previous: HookValue) => HookValue)(hooks.values[index] ?? null)
+              : value;
         },
       ];
     },

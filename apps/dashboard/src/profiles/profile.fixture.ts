@@ -72,3 +72,14 @@ export function clientFixture() {
     reset: vi.fn<ProfileClient["reset"]>().mockResolvedValue(state()),
   };
 }
+
+export function confirmDiscardWindow() {
+  const confirm = vi.fn().mockReturnValue(false);
+  vi.stubGlobal("window", {
+    confirm,
+    dispatchEvent: vi.fn(),
+    location: { href: "http://localhost/dashboard/" },
+    history: { replaceState: vi.fn() },
+  });
+  return confirm;
+}

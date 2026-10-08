@@ -97,6 +97,8 @@ export interface IdentityAuthorizationResponse {
 }
 
 export interface IdentityProvider {
+  /** Configuration readiness only, not proof that an external administrator granted access. */
+  supportsRule?(kind: string): boolean;
   /** The provider page that asks the person to sign in, bound to this state and challenge. */
   authorizationUrl(request: IdentityAuthorizationRequest): string;
   /** Exchanges the code and verifies the answer; it rejects anything it cannot verify. */

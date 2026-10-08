@@ -41,7 +41,9 @@ bun run catalog:check
 
 Identity and inference setup forms use installed plugin descriptors. The local web
 setup accepts generic identity settings, validates them with the selected plugin,
-and stores them in separate private files. Removed plugins are ignored before their
+and stores them in separate private files. The administrator can subsequently manage
+them in the web settings; saved changes use the existing private atomic settings
+store and apply after restart. See [Setup and settings](SETUP-UX.md). Removed plugins are ignored before their
 credential files are read; configuration on disk is retained. Model routes pointing
 to an absent provider still need an administrator to select an installed replacement.
 Removal takes effect after regenerating the catalog and rebuilding/reinstalling the

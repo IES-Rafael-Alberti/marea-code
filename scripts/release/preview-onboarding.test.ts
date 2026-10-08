@@ -193,7 +193,9 @@ it.each([false, true])(
     expect([process.listenerCount("SIGINT"), process.listenerCount("SIGTERM")]).toEqual(listeners);
     ready.resolve(undefined);
     expect(await finished).toStrictEqual({
-      dashboardUrl: https ? "https://school.test/dashboard/" : "http://127.0.0.1:18793/dashboard/",
+      dashboardUrl: https
+        ? "https://school.test/dashboard/?class=class%3Amain&welcome=1"
+        : "http://127.0.0.1:18793/dashboard/?class=class%3Amain&welcome=1",
       ...(https ? {} : { cookie: "session=cookie" }),
     });
     expect(p.provisionOnboarding).toHaveBeenCalledWith(

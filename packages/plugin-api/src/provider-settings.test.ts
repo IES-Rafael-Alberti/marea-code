@@ -30,3 +30,65 @@ it("rejects duplicate keys and any secret with a default, with one explanation",
       }),
     ]);
 });
+
+it("validates plugin guides, HTTPS help links and optional field groups", () => {
+  const base = {
+    ...descriptor([key, endpoint, region]),
+    guides: [
+      {
+        id: "connection",
+        title: label,
+        steps: [{ text: label }, { text: label, href: "https://example.test/help" }],
+        fields: ["endpoint"],
+      },
+    ],
+  };
+  expect(ProviderSettingsDescriptorSchema.parse(base)).toEqual(base);
+  expect(
+    ProviderSettingsDescriptorSchema.safeParse({
+      ...base,
+      guides: [{ ...base.guides[0], fields: undefined }],
+    }).success,
+  ).toBe(true);
+  for (const fields of [["apiKey"], ["unknown"], ["endpoint", "endpoint"]])
+    expect(
+      ProviderSettingsDescriptorSchema.safeParse({
+        ...base,
+        guides: [{ ...base.guides[0], fields }],
+      }).success,
+    ).toBe(false);
+  expect(
+    ProviderSettingsDescriptorSchema.safeParse({
+      ...base,
+      guides: [base.guides[0], base.guides[0]],
+    }).success,
+  ).toBe(false);
+  for (const href of ["javascript:alert(1)", "http://example.test", "invalid"])
+    expect(
+      ProviderSettingsDescriptorSchema.safeParse({
+        ...base,
+        guides: [{ ...base.guides[0], steps: [{ text: label, href }] }],
+      }).success,
+    ).toBe(false);
+});
+
+it("keeps guide IDs unique independently of field groups and anchors help metadata", () => {
+  const guide = { id: "connection", title: label, steps: [{ text: label }] };
+  const read = (guides: object[]) =>
+    ProviderSettingsDescriptorSchema.safeParse({ ...descriptor([key, endpoint, region]), guides });
+  expect(read([guide, guide]).error?.issues).toEqual([
+    {
+      path: [],
+      code: "custom",
+      message: "Guide fields must name distinct optional settings and guide IDs must be unique.",
+    },
+  ]);
+  for (const id of ["!connection", "connection!"])
+    expect(read([{ ...guide, id }]).success).toBe(false);
+  for (const href of ["xhttps://example.test", "httpsx://example.test"])
+    expect(read([{ ...guide, steps: [{ text: label, href }] }]).success).toBe(false);
+  expect(read([{ ...guide, fields: [] }]).success).toBe(false);
+  expect(read([{ ...guide, fields: ["endpoint", "region_2"] }]).success).toBe(true);
+  expect(read([]).success).toBe(true);
+  expect(read([guide, { ...guide, id: "groups" }]).success).toBe(true);
+});

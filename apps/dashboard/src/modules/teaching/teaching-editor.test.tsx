@@ -71,10 +71,7 @@ describe("teaching editor", () => {
     const { edit, elements } = editor();
     const selects = elements.filter((item) => item.type === "select");
     const texts = elements.filter((item) => item.type === "textarea");
-    expect(texts.map((item) => item.props.value)).toEqual([
-      base.classInstructions.tutoring,
-      base.classInstructions.free,
-    ]);
+    expect(texts.map((item) => item.props.value)).toEqual([base.classInstructions.tutoring]);
     selects[0]?.props.onChange?.({ currentTarget: { value: "free" } });
     expect(edit).toHaveBeenLastCalledWith({ ...base, agentMode: "free" });
     selects[0]?.props.onChange?.({ currentTarget: { value: "tutoring" } });
@@ -84,9 +81,12 @@ describe("teaching editor", () => {
       ...base,
       classInstructions: { ...base.classInstructions, tutoring: "New guided plan" },
     });
-    texts[1]?.props.onChange?.({ currentTarget: { value: "New free plan" } });
+    editor({ ...base, agentMode: "free" }, edit)
+      .elements.find((item) => item.type === "textarea")
+      ?.props.onChange?.({ currentTarget: { value: "New free plan" } });
     expect(edit).toHaveBeenLastCalledWith({
       ...base,
+      agentMode: "free",
       classInstructions: { ...base.classInstructions, free: "New free plan" },
     });
     const html = renderToStaticMarkup(
@@ -99,6 +99,8 @@ describe("teaching editor", () => {
       />,
     );
     expect(html).toContain(m.freeModeNote);
+    expect(html).toContain(m.freeInstructions);
+    expect(html).not.toContain(m.tutoringInstructions);
   });
 
   it("labels groups and capability notes exactly once per group", () => {
@@ -319,10 +321,7 @@ it("shows effective legacy text and converts both modes only on an explicit edit
   };
   const { elements, edit } = editor(legacy);
   const texts = elements.filter((item) => item.type === "textarea");
-  expect(texts.map((item) => item.props.value)).toEqual([
-    TUTORING_INSTRUCTIONS,
-    `${FREE_INSTRUCTIONS}\n\nKeep this.`,
-  ]);
+  expect(texts.map((item) => item.props.value)).toEqual([TUTORING_INSTRUCTIONS]);
   expect(edit).not.toHaveBeenCalled();
   texts[0]?.props.onChange?.({ currentTarget: { value: "My complete tutor." } });
   expect(edit).toHaveBeenLastCalledWith({
@@ -350,9 +349,12 @@ it("restores each mode in the draft without overwriting the other mode", () => {
     ...base,
     classInstructions: { ...base.classInstructions, tutoring: TUTORING_INSTRUCTIONS },
   });
-  buttons.find((item) => item.props.children === m.restoreFree)?.props.onClick?.();
+  editor({ ...base, agentMode: "free" }, edit)
+    .elements.find((item) => item.type === "button" && item.props.children === m.restoreFree)
+    ?.props.onClick?.();
   expect(edit).toHaveBeenLastCalledWith({
     ...base,
+    agentMode: "free",
     classInstructions: { ...base.classInstructions, free: FREE_INSTRUCTIONS },
   });
 });

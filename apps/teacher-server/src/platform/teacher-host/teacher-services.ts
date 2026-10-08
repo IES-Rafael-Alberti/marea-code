@@ -86,6 +86,7 @@ export interface TeacherHostServiceDependencies {
     readonly store: ServerSettingsStore;
     readonly catalog: readonly InferenceProviderCatalogEntry[];
     readonly connectionOrigins?: readonly string[];
+    readonly identities?: import("../../server-settings/identity-settings.js").IdentitySettingsOptions;
   };
   /** Activate after validating the matched production dashboard release. */
   readonly profiles?:
@@ -244,6 +245,7 @@ export async function composeTeacherServices(
                 insights.configureRoutes(settings.education);
               },
           dependencies.serverSettings.connectionOrigins,
+          dependencies.serverSettings.identities,
         );
   const identity = new IdentityService({
     clock,

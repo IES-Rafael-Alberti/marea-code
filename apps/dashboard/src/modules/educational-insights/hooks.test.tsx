@@ -18,8 +18,8 @@ it("loads, edits and saves educational settings", async () => {
   expect(EducationalSettings({ ...props, classId: null })).toBeNull();
   mocked.client.mockResolvedValue(settings);
   expect(renderToStaticMarkup(render(settingsView))).not.toContain('role="alert"');
-  expect(hooks.values).toEqual([null, false, false]);
-  expect(hooks.dependencies).toEqual([[props.classId, props.fetchRequest]]);
+  expect(hooks.values).toEqual([null, false, false, null, false, false]);
+  expect(hooks.dependencies).toEqual([[props.classId, props.fetchRequest], [false]]);
   const dispose = hooks.effects[0]?.();
   expect(mocked.client.mock.lastCall?.[1]).toEqual({ kind: "settings" });
   await vi.advanceTimersByTimeAsync(1);
@@ -46,7 +46,7 @@ it("loads, edits and saves educational settings", async () => {
   });
   expect(button(render(settingsView), model().m.save).disabled).toBe(true);
   await vi.advanceTimersByTimeAsync(1);
-  expect(button(render(settingsView), model().m.save).disabled).toBe(false);
+  expect(button(render(settingsView), model().m.save).disabled).toBe(true);
   expect(hooks.values[0]).toEqual({ ...settings, revision: "v2" });
   if (typeof dispose === "function") dispose();
 });
@@ -125,4 +125,62 @@ it("clears the previous class settings while loading a new class", () => {
   hooks.effects[0]?.();
   expect(hooks.values[0]).toBeNull();
   expect(hooks.values[1]).toBe(false);
+});
+
+it("discards feature changes, reports configured reports and blocks a duplicate save", async () => {
+  const loaded = { ...settings, reportsConfigured: true };
+  mocked.client.mockResolvedValue(loaded);
+  void render(settingsView);
+  hooks.effects[0]?.();
+  await vi.advanceTimersByTimeAsync(1);
+  expect(renderToStaticMarkup(render(settingsView))).toContain(model().m.reportsReady);
+  elements(render(settingsView))
+    .find((e) => e.type === "input")
+    ?.props.onChange?.({ currentTarget: { checked: true, value: "" } });
+  expect(hooks.values[4]).toBe(true);
+  button(render(settingsView), model().m.discard).onClick?.();
+  expect(hooks.values).toMatchObject({ 0: loaded, 4: false, 5: false });
+  hooks.values[2] = true;
+  mocked.client.mockClear();
+  elements(render(settingsView))
+    .find((e) => e.type === "form")
+    ?.props.onSubmit?.({ preventDefault: vi.fn() });
+  expect(mocked.client).not.toHaveBeenCalled();
+});
+
+it("keeps feature save, discard and feedback in sync throughout editing and saving", async () => {
+  mocked.client.mockResolvedValue(settings);
+  void render(settingsView);
+  hooks.values[4] = true;
+  hooks.effects[0]?.();
+  await vi.advanceTimersByTimeAsync(1);
+  expect(hooks.values[4]).toBe(false);
+  const snapshot = (name: string) => {
+    expect(renderToStaticMarkup(render(settingsView))).toMatchSnapshot(name);
+  };
+  snapshot("clean features");
+  for (const index of [0, 1]) {
+    hooks.values[5] = true;
+    const input = elements(render(settingsView)).filter((e) => e.type === "input")[index];
+    input?.props.onChange?.({ currentTarget: { checked: true, value: "" } });
+    expect(hooks.values).toMatchObject({ 4: true, 5: false });
+  }
+  snapshot("dirty features");
+  for (const busy of [true, false]) {
+    hooks.values[2] = busy;
+    expect(button(render(settingsView), model().m.discard).disabled).toBe(busy);
+  }
+  const pending = Promise.withResolvers<object>();
+  mocked.client.mockReturnValue(pending.promise);
+  hooks.values[5] = true;
+  elements(render(settingsView))
+    .find((e) => e.type === "form")
+    ?.props.onSubmit?.({ preventDefault: vi.fn() });
+  expect(hooks.values[5]).toBe(false);
+  const updated = { ...settings, revision: "saved", settings: { map: true, adaptive: true } };
+  pending.resolve(updated);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(hooks.values).toMatchObject({ 3: updated, 4: false, 5: true });
+  snapshot("saved features");
+  expect(button(render(settingsView), model().m.discard).disabled).toBe(true);
 });

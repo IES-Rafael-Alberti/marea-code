@@ -1,3 +1,4 @@
+import type { ProviderModel } from "@marea/plugin-api";
 import type { UsagePolicy } from "@marea/protocol";
 import type { serverSettingsMessages } from "./messages.js";
 const unlimitedBudget: UsagePolicy = {
@@ -30,7 +31,9 @@ export function BudgetFields({
   value,
   change,
   m,
+  pricing,
 }: {
+  pricing?: ProviderModel["pricing"] | undefined;
   value: UsagePolicy;
   change: (value: UsagePolicy) => void;
   m: ReturnType<typeof serverSettingsMessages>;
@@ -67,6 +70,25 @@ export function BudgetFields({
             </label>
           );
         })}
+      <div className="price-source">
+        <p>
+          {value.costUnit === pricing?.costUnit &&
+          value.inputCostUnitsPerToken === pricing.inputCostUnitsPerToken &&
+          value.outputCostUnitsPerToken === pricing.outputCostUnitsPerToken
+            ? m.automaticPrices
+            : m.manualPrices}
+        </p>
+        {pricing && (
+          <button
+            type="button"
+            onClick={() => {
+              change({ ...value, ...pricing });
+            }}
+          >
+            {m.restorePrices}
+          </button>
+        )}
+      </div>
       {(["input", "output"] as const).map((direction) => {
         const key = direction === "input" ? "inputCostUnitsPerToken" : "outputCostUnitsPerToken";
         const factor = value.costUnit === "nanoUSD" ? 1000 : 1;

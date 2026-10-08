@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { EditableSettings } from "../modules/server-settings/client.boundary.js";
 import { change, control, text, tree } from "../modules/server-settings/forms.fixture.js";
 import { present, setupInput, setupIdentity } from "./setup.fixture.js";
@@ -70,7 +70,7 @@ function render() {
 }
 const page = () => render().map(text).join("|");
 function submit() {
-  const event = { preventDefault: vi.fn() };
+  const event = { preventDefault: vi.fn(), currentTarget: { checkValidity: () => true } };
   (present(render().find((n) => n.type === "form")).props.onSubmit as (e: object) => void)(event);
   expect(event.preventDefault).toHaveBeenCalledOnce();
 }
@@ -96,7 +96,7 @@ beforeEach(() => {
   hooks.catalogs = { "org.marea.openrouter": { status: "ready", models: [] } };
   client.finish.mockResolvedValue("http://127.0.0.1:18793/dashboard/");
 });
-it("guides a school through all four steps and preserves edits when navigating back", async () => {
+it("guides a school through all five steps and preserves edits when navigating back", async () => {
   expect(page()).toContain(m.loading);
   await load();
   for (const key of ["center", "classroom", "teacher", "login", "password"] as const)
@@ -123,11 +123,14 @@ it("guides a school through all four steps and preserves edits when navigating b
     ["clientSecret", "synthetic-secret"],
   ] as const)
     change(control(render(), key), { value });
+  submit();
   change(control(render(), m.testing), { checked: true });
   submit();
   expect(page()).toContain("Synthetic school");
   click(m.back);
+  click(m.back);
   expect(control(render(), m.port).value).toBe(19876);
+  submit();
   submit();
   const pending = Promise.withResolvers<string>();
   client.finish.mockReturnValueOnce(pending.promise);
@@ -170,11 +173,11 @@ it("requires a configured model and completed key check before advancing or fini
   };
   submit();
   expect(hooks.values[1]).toBe(1);
-  hooks.values[1] = 3;
+  hooks.values[1] = 4;
   hooks.values[2] = { settings: { ...settings, route: null }, identityProviders: [setupIdentity] };
   submit();
   expect(hooks.values[1]).toBe(1);
-  hooks.values[1] = 3;
+  hooks.values[1] = 4;
   hooks.values[2] = { settings: settings, identityProviders: [setupIdentity] };
   submit();
   expect(hooks.values[1]).toBe(1);
@@ -187,7 +190,7 @@ it("supports providers without model catalogs and retries completion without dis
       providers: settings.providers.map((provider) => ({ ...provider, supportsModels: false })),
     }),
   );
-  hooks.values[1] = 3;
+  hooks.values[1] = 4;
   hooks.values[4] = setupInput();
   client.finish.mockRejectedValueOnce(new Error("private"));
   submit();
@@ -235,7 +238,7 @@ it("renders complete localized forms and keeps browser validation attributes", a
   await load();
   for (const locale of ["es", "en", "eu"]) {
     hooks.values[0] = locale;
-    for (const step of [0, 1, 2, 3]) {
+    for (const step of [0, 1, 2, 3, 4]) {
       hooks.values[1] = step;
       hooks.index = 0;
       expect(
@@ -265,7 +268,7 @@ it("clears stale errors when reloading, advancing or going back", async () => {
   hooks.values[7] = "modelRequired";
   click(m.back);
   expect(hooks.values[7]).toBeNull();
-  hooks.values[1] = 3;
+  hooks.values[1] = 4;
   hooks.values[2] = { settings: { ...settings, route: null }, identityProviders: [setupIdentity] };
   submit();
   expect(hooks.values[7]).toBe("modelRequired");
@@ -299,4 +302,69 @@ it("feeds the loaded provider settings into model discovery", async () => {
   expect(hooks.models).toHaveBeenLastCalledWith(client.fetch, settings, {
     "org.marea.openrouter": {},
   });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+it("initializes the only provider's unlimited model route when setup has no route", async () => {
+  await load(Promise.resolve({ ...settings, route: null }));
+  expect(hooks.values[2]).toMatchObject({
+    settings: {
+      route: { providerId: "org.marea.openrouter", budget: { tutoring: { unlimited: true } } },
+    },
+  });
+});
+it("allows skipping all optional features without retaining their earlier selections", async () => {
+  await load();
+  hooks.values[1] = 3;
+  hooks.values[4] = setupInput({
+    testingSkill: true,
+    features: { map: true, reports: true, automaticEvaluation: true },
+  });
+  click(m.skip);
+  expect(hooks.values[1]).toBe(4);
+  expect(hooks.values[4]).toMatchObject({
+    testingSkill: false,
+    features: { map: false, reports: false, automaticEvaluation: false },
+  });
+});
+it("reports invalid fields inline and does not advance an invalid form", async () => {
+  class Input {
+    dataset: Record<string, string> = {};
+    validity = { valid: false };
+    validationMessage = "Required";
+    setAttribute = vi.fn();
+    closest = () => null;
+  }
+  vi.stubGlobal("HTMLInputElement", Input);
+  await load();
+  const form = present(render().find((node) => node.type === "form"));
+  const invalid = form.props.onInvalid as (event: object) => void;
+  const preventDefault = vi.fn();
+  invalid({ target: {}, preventDefault });
+  const input = new Input();
+  invalid({ target: input, preventDefault });
+  expect(preventDefault).toHaveBeenCalledTimes(2);
+  expect(input.setAttribute).toHaveBeenCalledWith("aria-invalid", "true");
+  const focus = vi.fn();
+  (form.props.onSubmit as (event: object) => void)({
+    preventDefault,
+    currentTarget: { checkValidity: () => false, querySelector: () => ({ focus }) },
+  });
+  expect(focus).toHaveBeenCalledOnce();
+  expect(hooks.values[1]).toBe(0);
+});
+
+it("preserves detected addresses and renders an empty review model until one exists", async () => {
+  const addresses = ["192.168.1.20", "10.0.0.3"];
+  client.read.mockResolvedValue({ settings, identityProviders: [], addresses });
+  render();
+  hooks.effects[0]?.();
+  await Promise.resolve();
+  expect(hooks.values[2]).toMatchObject({ addresses });
+  hooks.values[1] = 4;
+  hooks.values[2] = { settings: { ...settings, route: null }, identityProviders: [] };
+  const result = render().filter((node) => node.type === "dd")[4];
+  expect(text(result)).toBe("");
 });

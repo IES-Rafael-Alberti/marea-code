@@ -13,6 +13,7 @@ exports[`teaching messages > provides complete English and Spanish copies for ev
   "classesHeading": "Classes",
   "classesLoading": "Loading classes…",
   "currentValues": "Persisted values (read-only)",
+  "customizeInstructions": "Customize instructions",
   "description": "Description",
   "didacticCap": "Up to 64 didactic skills can be selected.",
   "didacticLegend": "Didactic skills",
@@ -67,6 +68,7 @@ exports[`teaching messages > provides complete English and Spanish copies for ev
   "switchCancel": "Cancel",
   "switchDiscard": "Discard draft and switch",
   "switchPrompt": [Function],
+  "technicalDetails": "Technical details",
   "tutoringInstructions": "Guided mode instructions",
 }
 `;
@@ -84,6 +86,7 @@ exports[`teaching messages > provides complete English and Spanish copies for ev
   "classesHeading": "Clases",
   "classesLoading": "Cargando clases…",
   "currentValues": "Valores persistidos (solo lectura)",
+  "customizeInstructions": "Personalizar instrucciones",
   "description": "Descripción",
   "didacticCap": "Se pueden seleccionar hasta 64 skills didácticas.",
   "didacticLegend": "Skills didácticas",
@@ -138,6 +141,7 @@ exports[`teaching messages > provides complete English and Spanish copies for ev
   "switchCancel": "Cancelar",
   "switchDiscard": "Descartar el borrador y cambiar",
   "switchPrompt": [Function],
+  "technicalDetails": "Detalles técnicos",
   "tutoringInstructions": "Instrucciones del modo guiado",
 }
 `;

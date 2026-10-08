@@ -3,6 +3,8 @@ import { expect, it, vi } from "vitest";
 import { sessionPorts } from "../../browser/typed-host-data.fixture.js";
 import { ServerSettingsView } from "../modules/server-settings/view.js";
 import { ExternalAccessView } from "../modules/external-access/view.js";
+import { SkillAuthoringModule } from "../modules/skill-authoring/skill-authoring-module.js";
+import { EducationalSettings } from "../modules/educational-insights/settings.js";
 import { TeachingModule } from "../modules/teaching/teaching-module.js";
 import type { WorkspaceSettings } from "./profile-shell.js";
 import { TeacherWorkspace } from "./teacher-workspace.js";
@@ -27,9 +29,11 @@ function workspace(props: Partial<Parameters<typeof TeacherWorkspace>[0]> = {}) 
   if (!isValidElement(element)) throw new Error("Expected the profile shell");
   return element.props;
 }
+const content = (node: ReactNode) =>
+  (node as ReactElement<{ content: Record<string, ReactNode> }>).props.content;
 const types = (node: ReactNode) =>
-  Children.toArray(isValidElement<{ children?: ReactNode }>(node) ? node.props.children : null).map(
-    (child) => (isValidElement(child) ? child.type : null),
+  Children.toArray(Object.values(content(node))).map((child) =>
+    isValidElement(child) ? child.type : null,
   );
 const teaching = (busy: boolean, dirty: boolean, calls: string[] = []) =>
   ({
@@ -78,11 +82,20 @@ it("drives teaching and skill editing from the shared selector, discarding after
     "authoring.select:class:a",
     "authoring.confirm:true",
   ]);
-  expect(types(shell.settings.classroom)).toEqual([TeachingModule, ExternalAccessView, "details"]);
-  const access = Children.toArray(
-    (shell.settings.classroom as ReactElement<{ children: ReactNode }>).props.children,
-  )[1] as ReactElement<{ classId: string | null; fetchRequest: object }>;
+  expect(types(shell.settings.classroom)).toEqual([
+    TeachingModule,
+    ExternalAccessView,
+    EducationalSettings,
+    SkillAuthoringModule,
+  ]);
+  const access = content(shell.settings.classroom).access as ReactElement<{
+    classId: string | null;
+    fetchRequest: object;
+  }>;
   expect(access.props).toMatchObject({ classId: "class:a", fetchRequest: profiles.fetch });
+  expect((content(shell.settings.classroom).features as ReactElement).key).toBe(
+    "education:class:a",
+  );
   const server = shell.settings.server as ReactElement<{ classNames: object }>;
   expect(server.type).toBe(ServerSettingsView);
   expect(server.props.classNames).toEqual({ "class:a": "Physics" });
@@ -110,13 +123,11 @@ it("adds center administration only for confirmed administrators", async () => {
   const shell = workspace({ governance: governance(true) });
   expect(shell.settings.administration).toBeDefined();
   expect(shell).toMatchObject({ classes: [], classBusy: false, hasClassDrafts: false });
-  expect(types(shell.settings.classroom)).toEqual([ExternalAccessView]);
+  expect(types(shell.settings.classroom)).toEqual([ExternalAccessView, EducationalSettings]);
+  expect((content(shell.settings.classroom).features as ReactElement).key).toBe("education:none");
   expect(
-    (
-      Children.toArray(
-        (shell.settings.classroom as ReactElement<{ children: ReactNode }>).props.children,
-      )[0] as ReactElement<{ classId: string | null }>
-    ).props.classId,
+    (content(shell.settings.classroom).access as ReactElement<{ classId: string | null }>).props
+      .classId,
   ).toBeNull();
   expect(
     (shell.settings.server as ReactElement<{ classNames: object }>).props.classNames,

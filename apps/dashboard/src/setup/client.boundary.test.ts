@@ -119,3 +119,22 @@ it("routes model discovery through the same local capability", async () => {
     headers: { ...init.headers, authorization: "Bearer models-token" },
   });
 });
+
+it("accepts bounded local address hints and rejects oversized discovery results", async () => {
+  const fetch = vi.fn<DashboardFetch>();
+  const client = createSetupClient("token", fetch);
+  const read = (addresses: string[]) => {
+    fetch.mockResolvedValueOnce(
+      Response.json({
+        settings: { administrator: false, initialized: false },
+        identityProviders: [],
+        addresses,
+      }),
+    );
+    return client.read(new AbortController().signal);
+  };
+  await expect(read(["192.168.1.20"])).resolves.toHaveProperty("addresses", ["192.168.1.20"]);
+  await expect(read(Array.from({ length: 128 }, () => "x".repeat(253)))).resolves.toBeDefined();
+  await expect(read(["x".repeat(254)])).rejects.toThrow();
+  await expect(read(Array.from({ length: 129 }, () => "192.168.1.20"))).rejects.toThrow();
+});

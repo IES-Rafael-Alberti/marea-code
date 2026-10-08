@@ -8,6 +8,7 @@ exports[`preserves the full-content delivery explanation and status copy in en 1
   "description": "Send new turns with content: conversation, model calls, tools, questions and approvals. Only the server sends data. Configuration secrets are masked.",
   "destination": "Destination",
   "disabled": "Delivery disabled",
+  "discard": "Discard changes",
   "dropped": "Dropped at queue limit",
   "enabled": "Enable delivery with content",
   "error": "Operation failed. Check connection and keys.",
@@ -29,6 +30,7 @@ exports[`preserves the full-content delivery explanation and status copy in en 1
   "tested": "Destination accepted a synthetic trace without student data.",
   "title": "Observability",
   "unavailable": "Observability unavailable. Update the server and its database.",
+  "unsaved": "Unsaved changes.",
   "working": "Working…",
 }
 `;
@@ -41,6 +43,7 @@ exports[`preserves the full-content delivery explanation and status copy in es 1
   "description": "Envía el contenido de los turnos nuevos: conversación, llamadas al modelo, herramientas, preguntas y aprobaciones. Solo el servidor realiza el envío. Las claves de configuración se ocultan.",
   "destination": "Destino",
   "disabled": "Envío desactivado",
+  "discard": "Descartar cambios",
   "dropped": "Descartados por límite de cola",
   "enabled": "Activar el envío con contenido",
   "error": "No se pudo completar la operación. Revisa la conexión y las claves.",
@@ -62,6 +65,7 @@ exports[`preserves the full-content delivery explanation and status copy in es 1
   "tested": "El destino ha aceptado la traza de prueba, sin datos del alumnado.",
   "title": "Observabilidad",
   "unavailable": "Observabilidad no disponible. Actualiza el servidor y su base de datos.",
+  "unsaved": "Cambios sin guardar.",
   "working": "Procesando…",
 }
 `;
@@ -74,6 +78,7 @@ exports[`preserves the full-content delivery explanation and status copy in eu 1
   "description": "Bidali txanda berrien edukia: elkarrizketa, modelo-deiak, tresnak, galderak eta onarpenak. Zerbitzariak bakarrik bidaltzen ditu datuak. Konfigurazio-gakoak ezkutatzen dira.",
   "destination": "Helmuga",
   "disabled": "Bidalketa desaktibatuta",
+  "discard": "Baztertu aldaketak",
   "dropped": "Ilararen mugagatik baztertuak",
   "enabled": "Aktibatu edukia bidaltzea",
   "error": "Eragiketak huts egin du. Egiaztatu konexioa eta gakoak.",
@@ -95,6 +100,7 @@ exports[`preserves the full-content delivery explanation and status copy in eu 1
   "tested": "Helmugak ikasleen daturik gabeko proba-traza onartu du.",
   "title": "Behatzea",
   "unavailable": "Behatzea ez dago erabilgarri. Eguneratu zerbitzaria eta datu-basea.",
+  "unsaved": "Gorde gabeko aldaketak.",
   "working": "Prozesatzen…",
 }
 `;

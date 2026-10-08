@@ -44,7 +44,7 @@ export function TeachingEditor({
   };
   return (
     <fieldset className="teaching-editor" disabled={disabled}>
-      <legend>{m.modeLabel}</legend>
+      <legend className="sr-only">{m.modeLabel}</legend>
       <label>
         {m.modeLabel}
         <select
@@ -78,45 +78,32 @@ export function TeachingEditor({
         </label>
       )}
       {settings.agentMode === "free" && <p className="teaching-note">{m.freeModeNote}</p>}
-      <p className="teaching-note">{m.instructionsNote}</p>
-      <label>
-        {m.tutoringInstructions}
-        <textarea
-          rows={6}
-          maxLength={262_144}
-          value={instructions.tutoring}
-          onChange={(event) => {
-            changeInstruction("tutoring", event.currentTarget.value);
+      <details className="teaching-instructions">
+        <summary>{m.customizeInstructions}</summary>
+        <p className="teaching-note">{m.instructionsNote}</p>
+        <label>
+          {settings.agentMode === "tutoring" ? m.tutoringInstructions : m.freeInstructions}
+          <textarea
+            rows={10}
+            maxLength={262_144}
+            value={instructions[settings.agentMode]}
+            onChange={(event) => {
+              changeInstruction(settings.agentMode, event.currentTarget.value);
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() => {
+            changeInstruction(
+              settings.agentMode,
+              settings.agentMode === "tutoring" ? TUTORING_INSTRUCTIONS : FREE_INSTRUCTIONS,
+            );
           }}
-        />
-      </label>
-      <button
-        type="button"
-        onClick={() => {
-          changeInstruction("tutoring", TUTORING_INSTRUCTIONS);
-        }}
-      >
-        {m.restoreTutoring}
-      </button>
-      <label>
-        {m.freeInstructions}
-        <textarea
-          rows={6}
-          maxLength={262_144}
-          value={instructions.free}
-          onChange={(event) => {
-            changeInstruction("free", event.currentTarget.value);
-          }}
-        />
-      </label>
-      <button
-        type="button"
-        onClick={() => {
-          changeInstruction("free", FREE_INSTRUCTIONS);
-        }}
-      >
-        {m.restoreFree}
-      </button>
+        >
+          {settings.agentMode === "tutoring" ? m.restoreTutoring : m.restoreFree}
+        </button>
+      </details>
       <TeachingSkillGroup
         kind="didactic"
         settings={settings}
@@ -256,12 +243,11 @@ function TeachingSkillGroup({
               />
               {entry.name}
             </label>
-            <p className="teaching-skill-description">
-              {m.description}: {entry.description}
-            </p>
-            <p className="teaching-skill-meta">
+            <p className="teaching-skill-description">{entry.description}</p>
+            <details className="teaching-skill-meta">
+              <summary>{m.technicalDetails}</summary>
               {m.source}: {entry.source} · {m.digest}: <code>{entry.digest}</code>
-            </p>
+            </details>
           </div>
         );
       })}

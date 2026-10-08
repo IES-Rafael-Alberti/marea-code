@@ -3,7 +3,7 @@ import * as z from "zod";
 import { CredentialLoginSchema, CredentialPasswordSchema } from "./auth.js";
 import { SafeDisplayNameSchema } from "./technical.js";
 import { IdentityProviderIdSchema } from "./external-identity.js";
-import { PrivateProviderRouteSchema } from "./server-model-route.js";
+import { PrivateProviderRouteSchema, RouteBudgetSchema } from "./server-model-route.js";
 
 /** Local first-run setup only. This is not an extension of the student wire protocol. */
 export const ServerSetupRequestSchema = z
@@ -21,8 +21,12 @@ export const ServerSetupRequestSchema = z
       .refine((value) => Object.keys(value).length <= 8)
       .optional(),
     connections: z.record(z.string().max(128), z.record(z.string().max(64), z.string().max(2048))),
-    route: PrivateProviderRouteSchema.refine((route) => route.budget !== undefined),
+    route: PrivateProviderRouteSchema.unwrap().extend({ budget: RouteBudgetSchema }).readonly(),
     testingSkill: z.boolean(),
+    features: z
+      .object({ map: z.boolean(), reports: z.boolean(), automaticEvaluation: z.boolean() })
+      .strict()
+      .optional(),
   })
   .strict();
 

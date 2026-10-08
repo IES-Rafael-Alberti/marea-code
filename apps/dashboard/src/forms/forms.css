@@ -1,0 +1,238 @@
+.secret-control {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  min-width: 0;
+}
+.secret-control > input,
+.secret-control > textarea {
+  flex: 1;
+  padding-right: 3.2rem !important;
+  min-width: 0;
+}
+.secret-control > button {
+  position: absolute;
+  right: 0.2rem;
+  top: 0.2rem;
+  min-width: 40px;
+  min-height: 40px;
+  border: 0;
+  color: var(--color-text);
+  background: transparent;
+  display: grid;
+  place-items: center;
+}
+.secret-control > button[aria-pressed="true"] {
+  background: var(--color-shoal);
+}
+.secret-textarea {
+  -webkit-text-security: disc;
+}
+.field-error {
+  color: var(--color-danger, #b42318);
+  font-size: 0.9rem;
+}
+.field-error:empty {
+  display: none;
+}
+input[aria-invalid="true"],
+textarea[aria-invalid="true"],
+select[aria-invalid="true"] {
+  border: 2px solid var(--color-danger, #b42318) !important;
+}
+[role="alert"] {
+  color: var(--color-danger, #b42318);
+}
+:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.saved-secret > summary {
+  cursor: pointer;
+  padding-block: 0.4rem;
+}
+.saved-secret[open] > summary {
+  margin-bottom: 0.5rem;
+}
+.provider-help {
+  grid-column: 1 / -1;
+  padding-block: 0.5rem;
+}
+.provider-help summary {
+  cursor: pointer;
+  color: var(--color-accent);
+}
+.provider-help li {
+  margin-block: 0.8rem;
+  max-width: 75ch;
+  overflow-wrap: anywhere;
+}
+.connection-status {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-block: 1rem;
+}
+.connection-status button {
+  min-height: 40px;
+}
+.settings-subnavigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 1.5rem;
+}
+.workspace-settings .settings-subnavigation button {
+  font: inherit;
+  text-transform: none;
+  letter-spacing: normal;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  padding: 0.7rem 0.15rem;
+  min-height: 44px;
+  color: var(--color-muted);
+  background: transparent;
+}
+.workspace-settings .settings-subnavigation button[aria-current="page"] {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+.workspace-settings .dashboard-module {
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+}
+.workspace-settings fieldset {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0 0 1.5rem;
+}
+.workspace-settings legend {
+  padding: 0;
+  margin-block: 1rem;
+  font-weight: 650;
+}
+.workspace-settings .workspace-advanced {
+  border: 0;
+  background: transparent;
+  padding: 1rem 0;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+}
+.workspace-settings input:not([type="checkbox"]):not([type="radio"]),
+.workspace-settings select,
+.workspace-settings textarea {
+  min-height: 44px;
+  font: inherit;
+  padding: 0.6rem;
+  max-width: 100%;
+}
+.workspace-settings button {
+  min-height: 40px;
+}
+.workspace-settings details > summary {
+  cursor: pointer;
+}
+.teaching-instructions {
+  margin-block: 1.5rem 2rem;
+}
+.teaching-skill {
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.teaching-skill-description {
+  margin: 0.5rem 0;
+  max-width: 75ch;
+}
+.teaching-skill-meta {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.teaching-skill-meta code {
+  overflow-wrap: anywhere;
+}
+.identity-connection + .identity-connection {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+}
+.identity-settings > form > fieldset > fieldset > legend {
+  display: none;
+}
+.identity-settings .server-actions {
+  margin: 1.5rem 0 0;
+}
+.price-source {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+.server-settings .server-common {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.server-actions [role="alert"] {
+  color: var(--color-danger, #b42318);
+}
+.view-layout-options {
+  padding-block: 0.75rem;
+  color: var(--color-muted);
+}
+.skill-authoring-catalog-entry details {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+}
+.welcome-class {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+[hidden] {
+  display: none !important;
+}
+.workspace-settings input:user-invalid,
+.workspace-settings textarea:user-invalid,
+.workspace-settings select:user-invalid {
+  border-color: var(--color-danger, #b42318);
+  border-width: 2px;
+}
+
+.workspace-settings .secret-control > button {
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  padding: 0;
+}
+.workspace-settings .secret-control > button[aria-pressed="true"] {
+  background: var(--color-shoal);
+}
+.identity-settings > form > fieldset > fieldset > p {
+  display: none;
+}
+.workspace-settings .setup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.2rem 1.5rem;
+}
+.workspace-settings .setup-grid > label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.workspace-settings .setup-grid > details {
+  grid-column: 1 / -1;
+}
+@media (max-width: 720px) {
+  .workspace-settings .setup-grid {
+    grid-template-columns: 1fr;
+  }
+}

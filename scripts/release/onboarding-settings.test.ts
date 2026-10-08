@@ -2,6 +2,9 @@ import { afterEach, expect, it, vi } from "vitest";
 import { inferenceProviderCatalog } from "@marea/plugin-runtime";
 import { onboardingSettings, emptySetupSettings } from "./onboarding-settings.boundary.js";
 import { present, setupInput } from "./onboarding.fixture.js";
+vi.mock("../../apps/teacher-server/src/platform/teacher-host/http-access.boundary.js", () => ({
+  localHttpHosts: () => ["localhost", "127.0.0.1", "127.0.0.2", "192.168.1.20", "10.0.0.3"],
+}));
 const signal = new AbortController().signal;
 afterEach(() => vi.unstubAllGlobals());
 it("starts with one administrator and publishes descriptors without secrets", async () => {
@@ -15,6 +18,7 @@ it("starts with one administrator and publishes descriptors without secrets", as
     education: {},
     useCommonRoute: false,
   });
+  expect((await onboardingSettings().read()).addresses).toEqual(["192.168.1.20", "10.0.0.3"]);
   expect((await onboardingSettings().read()).settings).toMatchObject({
     administrator: true,
     route: null,
@@ -198,3 +202,22 @@ it("uses an installed identity plugin's descriptor, defaults and validation", as
   });
   await expect(setup.validate(input, signal)).rejects.toThrow("invalid provider settings");
 });
+
+it.each([false, true])(
+  "gives enabled educational tasks the verified main model, enabled=%s",
+  async (enabled) => {
+    const base = present(inferenceProviderCatalog[0]);
+    const service = onboardingSettings([{ ...base, listModels: () => Promise.resolve([]) }]);
+    const input = setupInput({
+      features: { map: enabled, reports: enabled, automaticEvaluation: enabled },
+    });
+    const result = await service.validate(input, signal);
+    const task = {
+      providerId: input.route.providerId,
+      model: input.route.model,
+      inputTokenCeiling: input.route.budget.inputTokenCeiling,
+      budget: input.route.budget.evaluation,
+    };
+    expect(result.settings.education).toEqual(enabled ? { map: task, reports: task } : {});
+  },
+);

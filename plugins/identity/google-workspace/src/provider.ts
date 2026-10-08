@@ -24,7 +24,10 @@ export function createGoogleWorkspaceProvider(
   const keys = new GoogleSigningKeys(runtime);
   const groups =
     settings.groups === undefined ? undefined : new GoogleGroups(settings.groups, runtime);
+  const supportsRule = (kind: string) =>
+    kind === "email" || (kind === "group" && groups !== undefined);
   const provider: IdentityProvider = {
+    supportsRule,
     authorizationUrl: (request) => googleAuthorizationUrl(settings, request),
     async complete(response) {
       const token = await exchangeGoogleCode(settings, runtime, response);
@@ -34,7 +37,7 @@ export function createGoogleWorkspaceProvider(
     normalizeRule(kind: string, value: string) {
       const address = value.trim().toLowerCase();
       const domain = ADDRESS.exec(address)?.[1];
-      const supported = kind === "email" || (kind === "group" && groups !== undefined);
+      const supported = supportsRule(kind);
       return supported && domain === settings.domain ? address : undefined;
     },
     async admits(identity: ExternalIdentity, rules: readonly AdmissionRule[], signal: AbortSignal) {

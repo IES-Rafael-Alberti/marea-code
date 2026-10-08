@@ -2,6 +2,8 @@ import type { DashboardLocale } from "../../messages.js";
 
 const messages = {
   es: {
+    needsSetup: "Falta configurar este tipo de acceso en el servidor.",
+    configure: "Configurar cuentas del centro",
     title: "Esta clase · Acceso con cuentas externas",
     intro:
       "El alumnado que coincida con alguna de estas entradas puede entrar en esta clase con su cuenta del proveedor. La primera vez Marea le crea la cuenta; si quitas la entrada, pierde el acceso en su siguiente inicio de sesión.",
@@ -19,6 +21,8 @@ const messages = {
     retry: "Volver a intentar",
   },
   en: {
+    needsSetup: "This sign-in method needs server setup.",
+    configure: "Configure school accounts",
     title: "This class · Access with external accounts",
     intro:
       "Students who match any of these entries can join this class with their provider account. Marea creates their account the first time; removing the entry ends their access at their next sign-in.",
@@ -36,6 +40,8 @@ const messages = {
     retry: "Try again",
   },
   eu: {
+    needsSetup: "Sarbide mota hau zerbitzarian konfiguratu behar da.",
+    configure: "Konfiguratu ikastetxeko kontuak",
     title: "Ikasgela hau · Kanpoko kontuekin sartzea",
     intro:
       "Sarrera hauetako batekin bat datozen ikasleak hornitzailearen kontuarekin sar daitezke ikasgela honetan. Lehen aldian Mareak kontua sortzen die; sarrera kentzen baduzu, hurrengo saio-hasieran galduko dute sarbidea.",

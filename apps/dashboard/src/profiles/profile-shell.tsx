@@ -1,3 +1,4 @@
+import { SERVER_FEATURES_EVENT } from "../modules/server-settings/sections.js";
 import {
   workspaceMessages,
   workspaceSections,
@@ -11,7 +12,6 @@ import {
 import type { SettingsSection, WorkspaceSection } from "./workspace-navigation.js";
 import type { ReactNode } from "react";
 import { createEducationalAdapters } from "../modules/educational-insights/adapter.js";
-import { EducationalSettings } from "../modules/educational-insights/settings.js";
 import "../modules/educational-insights/insights.css";
 import { ModulePlugin, type ModuleAdapter } from "./module-plugin.js";
 import { PreviewPanel } from "../telemetry/preview-panel.js";
@@ -95,13 +95,15 @@ export function ProfileShell({
     () =>
       createEducationalAdapters(runtime.fetch, openSession, () => {
         navigate("settings", "server");
+        window.dispatchEvent(new Event(SERVER_FEATURES_EVENT));
       }),
     [runtime, m.confirm],
   );
   // Profile drafts are cached per scope and reconciled on return, so only session notices and the
   // class teaching and skill drafts, which a class change discards, need a decision.
   const canChange = () =>
-    !(session.current?.hasUnsavedDrafts === true || hasClassDrafts) || window.confirm(w.discard);
+    !(session.current?.hasUnsavedDrafts === true || hasClassDrafts || classSettingsDirty()) ||
+    window.confirm(w.discard);
   const canChangeProfile = () => !session.current?.hasUnsavedDrafts || window.confirm(m.confirm);
   const changeClass = async (next: string) => {
     if (
@@ -194,6 +196,14 @@ export function ProfileShell({
   );
   return (
     <section className="profile-shell">
+      {rememberedNavigation("welcome") === "1" && (
+        <aside className="welcome-class">
+          <p>{w.ready}</p>
+          <a href="?view=settings&settings=server&server=network&class=class%3Amain">
+            {w.installStudents}
+          </a>
+        </aside>
+      )}
       <div className="workspace-toolbar">
         <label className="workspace-class">
           <span>{m.selectClass}</span>
@@ -260,19 +270,28 @@ export function ProfileShell({
           <div hidden={shownPart !== "classroom"} className="settings-page">
             <p className="settings-intro">{w.classroomNote}</p>
             {settings.classroom}
-            <EducationalSettings
-              key={`education:${classId ?? "none"}`}
-              classId={classId}
-              locale={locale}
-              fetchRequest={runtime.fetch}
-            />
           </div>
           <div hidden={shownPart !== "server"} className="settings-page">
             <p className="settings-intro">{w.serverNote}</p>
             {settings.server}
+            <details className="workspace-advanced">
+              <summary>{w.diagnostics}</summary>
+              <PreviewPanel
+                key={classId}
+                classId={classId}
+                locale={locale}
+                fetchRequest={runtime.fetch}
+              />
+              <div className="settings-modules">
+                {section === "settings" &&
+                  shownPart === "server" &&
+                  renderModules("settings", true)}
+              </div>
+            </details>
           </div>
           <div hidden={shownPart !== "panel"} className="settings-page">
             <p className="settings-intro">{w.panelNote}</p>
+            {section === "settings" && shownPart === "panel" && renderModules("settings")}
             {controller === null ? (
               <p role="status">{m.loading}</p>
             ) : (
@@ -310,20 +329,8 @@ export function ProfileShell({
                     />
                   )}
                 </details>
-                <details className="workspace-advanced">
-                  <summary>{w.diagnostics}</summary>
-                  <PreviewPanel
-                    key={classId}
-                    classId={classId}
-                    locale={locale}
-                    fetchRequest={runtime.fetch}
-                  />
-                </details>
               </>
             )}
-            <div className="settings-modules">
-              {section === "settings" && shownPart === "panel" && renderModules("settings")}
-            </div>
           </div>
           {settings.administration !== undefined && (
             <div hidden={shownPart !== "administration"} className="settings-page">
@@ -362,11 +369,16 @@ export function ProfileShell({
       )}
     </section>
   );
-  function renderModules(target: WorkspaceSection) {
+  function renderModules(target: WorkspaceSection, diagnostics = false) {
     return modules
       .filter((module) => module.placement.slot === "main")
       .concat(modules.filter((module) => module.placement.slot === "aside"))
       .filter((module) => moduleSection(module.moduleId) === target)
+      .filter(
+        (module) =>
+          ["org.marea.module.health", "org.marea.module.usage"].includes(module.moduleId) ===
+          diagnostics,
+      )
       .map((module) =>
         module.moduleId === "org.marea.module.sessions" ? (
           <SessionPlugin
@@ -437,3 +449,10 @@ const legacySession: ProfileSelection = {
   placement: { slot: "main", size: "wide" },
   settings: {},
 };
+
+function classSettingsDirty(): boolean {
+  return (
+    typeof document !== "undefined" &&
+    document.querySelector('.class-settings [data-dirty="true"]') !== null
+  );
+}

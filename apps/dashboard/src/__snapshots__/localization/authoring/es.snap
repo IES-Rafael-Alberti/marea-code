@@ -16,6 +16,7 @@
   "copyBlocked": "Copiar a skill personal (bloqueado)",
   "copyHint": "La copia conserva todos los archivos relativos canónicos y usa un slug personal nuevo.",
   "copySource": [Function],
+  "creationHelp": "Empieza viendo una skill, por ejemplo la de testing. Cópiala para adaptarla o crea una nueva con un nombre corto. Añade instrucciones y criterios, guarda y actívala en Tutor y skills activas.",
   "destinationSlug": "Slug de destino",
   "didactic": "Didáctica",
   "digest": "Digest cargado",
@@ -81,6 +82,7 @@
     "missing": "Ausente",
     "stale": "Desactualizada",
   },
+  "technicalDetails": "Detalles técnicos",
   "validate": "Validar borrador",
   "validationSuccess": "El borrador es válido y todavía no se ha publicado.",
 }

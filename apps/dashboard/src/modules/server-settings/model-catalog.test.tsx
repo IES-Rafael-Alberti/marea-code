@@ -96,8 +96,7 @@ it("applies catalog prices to the chosen purpose, leaving explicit evaluation ov
   change(control(render(separate), m.model), { value: "org/model" });
   expect(edit.mock.lastCall?.[0].route?.budget?.evaluation).toEqual(budget.evaluation);
   expect(nodes.filter((node) => node.type === "label" && text(node) === m.common)).toHaveLength(0);
-  change(control(nodes, m.provider), { value: "p" });
-  expect(edit.mock.lastCall?.[0].useCommonRoute).toBe(true);
+  expect(nodes.filter((node) => node.type === "select")).toHaveLength(0);
 });
 it("shows editable USD per million prices and hides usage ceilings until enabled", () => {
   const changed = vi.fn();
@@ -128,7 +127,9 @@ it.each(["loading", "ready", "invalid", "unavailable"] as const)(
         refresh={refresh}
       />,
     );
-    const message = nodes.find((node) => node.props.role === "status");
+    const message = nodes.find(
+      (node) => node.props.role === (status === "invalid" ? "alert" : "status"),
+    );
     expect(text(message)).toBe(
       status === "ready"
         ? `${m.modelsReady} (1)${m.modelsRefresh}`
@@ -220,4 +221,50 @@ it("edits token counts independently of the selected price currency", () => {
   const prices = tree(<BudgetFields m={m} value={generic} change={changed} />);
   change(control(prices, m.inputPrice), { valueAsNumber: 5 });
   expect(changed).toHaveBeenLastCalledWith({ ...generic, inputCostUnitsPerToken: 5 });
+});
+
+it("restores each purpose's own catalogue price, including a different evaluation provider and a task", () => {
+  const edit = vi.fn<(next: EditableSettings) => void>();
+  const judge = { costUnit: "nanoUSD", inputCostUnitsPerToken: 7, outputCostUnitsPerToken: 11 };
+  const task = { ...pricing, inputCostUnitsPerToken: 23 };
+  const value = {
+    ...state,
+    route: {
+      providerId: "p",
+      model: "org/model",
+      budget,
+      evaluation: { providerId: "judge", model: "judge/model" },
+    },
+  };
+  const catalogs = {
+    ...catalog,
+    p: { ...catalog.p, models: [...catalog.p.models, { id: "map", name: "Map", pricing: task }] },
+    judge: {
+      status: "ready" as const,
+      models: [
+        { id: "other", name: "Other", pricing },
+        { id: "judge/model", name: "Judge", pricing: judge },
+      ],
+    },
+  };
+  const nodes = tree(
+    <ModelSettings
+      state={value}
+      connections={{ p: {} }}
+      locale="en"
+      edit={edit}
+      catalogs={catalogs}
+    />,
+  );
+  const buttons = nodes.filter((node) => node.type === "button" && text(node) === m.restorePrices);
+  expect(buttons).toHaveLength(3);
+  for (const [index, prices] of [pricing, judge, task].entries()) {
+    (buttons[index]?.props.onClick as () => void)();
+    const next = edit.mock.lastCall?.[0];
+    const result =
+      index === 2
+        ? next?.education.map?.budget
+        : next?.route?.budget?.[index === 0 ? "tutoring" : "evaluation"];
+    expect(result).toMatchObject(prices);
+  }
 });

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("bun:sqlite", () => import("../operator-cli/bun-sqlite.fixture.js"));
 
 import { Sha256DigestSchema } from "@marea/protocol";
-import { openSqliteDatabaseFile } from "@marea/sqlite-storage";
+import { initializeSqliteStorage, openSqliteDatabaseFile } from "@marea/sqlite-storage";
 
 import { nativeOpens } from "../operator-cli/bun-sqlite.fixture.js";
 import { acquireInstallation } from "../operator-cli/installation-lock.js";
@@ -98,6 +98,7 @@ describe("production teacher host", () => {
 
   it("serves LAN HTTP with exact host/origin checks and reverts on the next ordinary start", async () => {
     const f = installation();
+    initializeSqliteStorage({ databasePath: f.databasePath, schema: "observability" }).close();
     writeFileSync(
       join(f.root, "config/server-settings.json"),
       JSON.stringify({
@@ -105,6 +106,13 @@ describe("production teacher host", () => {
         revision: 0,
         administrators: ["user:teacher"],
         connections: {},
+        identityConnections: {
+          "org.marea.google-workspace": {
+            clientId: "synthetic-client",
+            clientSecret: "synthetic-secret",
+            domain: "school.test",
+          },
+        },
         route: null,
         education: {},
         legacyRoutes: [],
@@ -147,20 +155,52 @@ describe("production teacher host", () => {
       expect(login.status).toBe(200);
       expect(login.headers.get("set-cookie")).toContain("HttpOnly");
       expect(login.headers.get("set-cookie")).not.toContain("Secure");
-      const settings = await fetch(
-        new Request(`${origin}/api/v1/dashboard/server-settings`, {
-          method: "POST",
-          headers: {
-            origin,
-            host: "192.168.1.20:18787",
-            "content-type": "application/json",
-            cookie: login.headers.get("set-cookie")?.split(";")[0] ?? "",
-          },
-          body: JSON.stringify({ operation: "read" }),
-        }),
-      );
+      const dashboardSettings = (operation: string) =>
+        fetch(
+          new Request(`${origin}/api/v1/dashboard/server-settings`, {
+            method: "POST",
+            headers: {
+              origin,
+              host: "192.168.1.20:18787",
+              "content-type": "application/json",
+              cookie: login.headers.get("set-cookie")?.split(";")[0] ?? "",
+            },
+            body: JSON.stringify({ operation }),
+          }),
+        );
+      const settings = await dashboardSettings("read");
       expect(settings.status).toBe(200);
       expect(await settings.json()).toMatchObject({ connectionOrigins: [origin] });
+      const identity = await dashboardSettings("identity-status");
+      expect(identity.status).toBe(200);
+      expect(await identity.json()).toMatchObject({
+        providers: [
+          {
+            id: "org.marea.google-workspace",
+            kinds: [
+              { kind: "email", ready: true },
+              { kind: "group", ready: false },
+            ],
+          },
+        ],
+      });
+
+      const providers = await fetch(
+        new Request(`${origin}/v1/auth/external/providers`, {
+          method: "POST",
+          headers: { origin, host: "192.168.1.20:18787", "content-type": "application/json" },
+          body: JSON.stringify({
+            kind: "external-auth-providers-query",
+            protocolVersion: "0.1",
+            requestId: "request:providers",
+          }),
+        }),
+      );
+      expect(providers.status).toBe(200);
+      expect(await providers.json()).toMatchObject({
+        providers: [{ providerId: "org.marea.google-workspace" }],
+      });
+
       expect(
         (
           await fetch(

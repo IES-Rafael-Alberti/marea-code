@@ -1,3 +1,5 @@
+import { ProviderHelp, GuideSteps } from "../forms/provider-help.js";
+import { SecretInput, SecretTextarea } from "../forms/secret-input.js";
 import type { ProviderSettingsDescriptor } from "@marea/plugin-api";
 import type { DashboardLocale } from "../messages.js";
 import type { setupMessages } from "./messages.js";
@@ -12,7 +14,9 @@ export function IdentityFields({
   change,
   locale,
   m,
+  secrets = {},
 }: {
+  secrets?: Readonly<Record<string, readonly string[]>>;
   providers: readonly { id: string; descriptor: ProviderSettingsDescriptor }[];
   values: Record<string, Values>;
   change: (next: Record<string, Values>) => void;
@@ -32,25 +36,24 @@ export function IdentityFields({
           else next[id] = fields;
           change(next);
         };
-        const fields = (required: boolean, current: Values) =>
-          descriptor.fields
-            .filter((field) => field.required === required)
-            .map((field) => (
-              <IdentityField
-                key={field.key}
-                field={field}
-                locale={locale}
-                value={current[field.key] ?? field.defaultValue ?? ""}
-                change={(value) => {
-                  const next = { ...current };
-                  if (value === "") Reflect.deleteProperty(next, field.key);
-                  else next[field.key] = value;
-                  edit(next);
-                }}
-              />
-            ));
+        const fields = (selectedFields: readonly Field[], current: Values) =>
+          selectedFields.map((field) => (
+            <IdentityField
+              key={field.key}
+              field={field}
+              saved={secrets[id]?.includes(field.key) === true}
+              locale={locale}
+              value={current[field.key] ?? field.defaultValue ?? ""}
+              change={(value) => {
+                const next = { ...current };
+                if (value === "") Reflect.deleteProperty(next, field.key);
+                else next[field.key] = value;
+                edit(next);
+              }}
+            />
+          ));
         return (
-          <div key={id}>
+          <section key={id} className="identity-connection">
             <label className="setup-choice">
               <input
                 type="checkbox"
@@ -63,16 +66,27 @@ export function IdentityFields({
             </label>
             {selected !== undefined && (
               <div className="setup-grid">
-                {fields(true, selected)}
-                {descriptor.fields.some((field) => !field.required) && (
-                  <details>
-                    <summary>{m.advanced}</summary>
-                    {fields(false, selected)}
-                  </details>
+                <ProviderHelp
+                  guides={descriptor.guides?.filter((guide) => guide.fields === undefined)}
+                  locale={locale}
+                />
+                {fields(
+                  descriptor.fields.filter((field) => field.required),
+                  selected,
                 )}
+                <IdentityOptions
+                  descriptor={descriptor}
+                  locale={locale}
+                  label={m.advanced}
+                  clearLabel={m.clearOptional}
+                  clear={(keys) => {
+                    edit({ ...selected, ...Object.fromEntries(keys.map((key) => [key, ""])) });
+                  }}
+                  render={(entries) => fields(entries, selected)}
+                />
               </div>
             )}
-          </div>
+          </section>
         );
       })}
     </fieldset>
@@ -80,21 +94,48 @@ export function IdentityFields({
 }
 
 function IdentityField({
+  saved,
   field,
   value,
   change,
   locale,
 }: {
+  saved: boolean;
   field: Field;
   value: string;
   change: (value: string) => void;
   locale: DashboardLocale;
 }) {
-  const common = { required: field.required, autoComplete: "off", maxLength: 16_384, value };
+  const common = {
+    required: field.required && !saved,
+    autoComplete: "off",
+    maxLength: 16_384,
+    value,
+  };
   return (
     <label>
       {field.label[locale]}
-      {field.multiline ? (
+      {field.kind === "secret" && field.multiline ? (
+        <SecretTextarea
+          {...common}
+          label={field.label[locale]}
+          locale={locale}
+          saved={saved}
+          onChange={(event) => {
+            change(event.currentTarget.value);
+          }}
+        />
+      ) : field.kind === "secret" ? (
+        <SecretInput
+          {...common}
+          label={field.label[locale]}
+          locale={locale}
+          saved={saved}
+          onChange={(event) => {
+            change(event.currentTarget.value);
+          }}
+        />
+      ) : field.multiline ? (
         <textarea
           {...common}
           onChange={(event) => {
@@ -104,12 +145,61 @@ function IdentityField({
       ) : (
         <input
           {...common}
-          type={field.kind === "secret" ? "password" : field.kind === "url" ? "url" : "text"}
+          type={field.kind === "url" ? "url" : "text"}
           onChange={(event) => {
             change(event.currentTarget.value);
           }}
         />
       )}
     </label>
+  );
+}
+
+/** Optional field groups and their prerequisites are declared by the plugin. */
+function IdentityOptions({
+  descriptor,
+  locale,
+  label,
+  clearLabel,
+  clear,
+  render,
+}: {
+  descriptor: ProviderSettingsDescriptor;
+  locale: DashboardLocale;
+  label: string;
+  clearLabel: string;
+  clear: (fields: readonly string[]) => void;
+  render: (fields: readonly Field[]) => import("react").ReactNode;
+}) {
+  const groups = descriptor.guides?.flatMap(({ fields, ...guide }) =>
+    fields === undefined ? [] : [{ ...guide, fields }],
+  );
+  const extra = descriptor.fields.filter(
+    (field) => !field.required && !groups?.some((group) => group.fields.includes(field.key)),
+  );
+  return (
+    <>
+      {groups?.map((group) => (
+        <details key={group.id} className="identity-options">
+          <summary>{group.title[locale]}</summary>
+          <GuideSteps steps={group.steps} locale={locale} />
+          {render(descriptor.fields.filter((field) => group.fields.includes(field.key)))}
+          <button
+            type="button"
+            onClick={() => {
+              clear(group.fields);
+            }}
+          >
+            {clearLabel}
+          </button>
+        </details>
+      ))}
+      {extra.length > 0 && (
+        <details>
+          <summary>{label}</summary>
+          {render(extra)}
+        </details>
+      )}
+    </>
   );
 }

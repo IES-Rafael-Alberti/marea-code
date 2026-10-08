@@ -24,6 +24,10 @@ async function installationPanel(page) {
     .locator(".settings-navigation button")
     .filter({ hasText: /^(Server|Servidor|Zerbitzaria)$/u })
     .click();
+  await page
+    .locator(".server-settings .settings-subnavigation button")
+    .filter({ hasText: /^(Network and installation|Red e instalación|Sarea eta instalazioa)$/u })
+    .click();
   const panel = page.locator(".preview-install");
   await panel.locator("select").waitFor();
   return panel;
