@@ -11,6 +11,7 @@ import {
   statSync,
   existsSync,
 } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -164,7 +165,11 @@ it("requires a complete matching matrix and produces content-addressed files and
     preparePreviewPublication(roots, output, "school/marea", version);
   }).toThrow();
   expect(statSync(output).isDirectory()).toBe(true);
-  expect(names.filter((name) => name.startsWith("sha256-"))).toHaveLength(5);
+  expect(names.filter((name) => name.startsWith("sha256-"))).toHaveLength(10);
+  for (const name of names.filter((name) => name.endsWith(".gz")))
+    expect(gunzipSync(readFileSync(join(output, name)))).toEqual(
+      readFileSync(join(output, name.slice(0, -3))),
+    );
   expect(readFileSync(join(output, "install.sh"), "utf8")).toContain("--repository 'school/marea'");
   expect(readFileSync(join(output, "install.ps1"), "utf8")).toContain("Get-FileHash");
   expect(spawnSync("sh", ["-n", join(output, "install.sh")]).status).toBe(0);

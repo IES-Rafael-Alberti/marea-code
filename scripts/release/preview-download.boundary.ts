@@ -1,5 +1,7 @@
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { gunzipSync } from "node:zlib";
+import { verifiedCachedFile } from "./preview-cache.boundary.js";
 import {
   CapabilitiesResponseSchema,
   CURRENT_PROTOCOL_VERSION,
@@ -22,6 +24,7 @@ import { DownloadResponseError, retryReleaseDownload } from "./preview-retry.bou
 export type PreviewFetch = (url: string, init?: RequestInit) => Promise<Response>;
 export interface DownloadPorts {
   readonly fetch: PreviewFetch;
+  readonly reuseDirectory?: string;
   readonly verify: (manifest: string, bundle: string, identity: string) => void;
   readonly progress?: Pick<InstallationProgress, "stage" | "update">;
 }
@@ -127,12 +130,18 @@ export async function downloadPreview(
   ports: DownloadPorts,
 ): Promise<ReleaseManifest> {
   const asset = manifestAsset(settings.component, platform);
-  const get = (name: string, limit: number, progress?: (bytes: number) => void, label = name) =>
+  const get = (
+    name: string,
+    limit: number,
+    progress?: (bytes: number) => void,
+    label = name,
+    fetcher = ports.fetch,
+  ) =>
     retryReleaseDownload(
       label,
       () =>
         boundedDownload(
-          ports.fetch,
+          fetcher,
           releaseUrl(settings.repository, version, name),
           limit,
           {},
@@ -159,14 +168,45 @@ export async function downloadPreview(
     platform,
   );
   let totalBytes = 0;
+  let receivedBytes = 0;
+  let reused = 0;
   ports.progress?.stage(`Descargando ${String(manifest.files.length)} archivos de Marea...`);
   for (const [index, file] of manifest.files.entries()) {
-    const report = (bytes: number) =>
+    let transferred = 0;
+    const report = (bytes: number) => {
+      transferred = bytes;
       ports.progress?.update(
-        `Descargando archivo ${String(index + 1)}/${String(manifest.files.length)}: ${((totalBytes + bytes) / 1_048_576).toFixed(1)} MiB recibidos en total`,
+        `Descargando archivo ${String(index + 1)}/${String(manifest.files.length)}: ${((receivedBytes + bytes) / 1_048_576).toFixed(1)} MiB recibidos en total`,
       );
+    };
     report(0);
-    const bytes = await get(`sha256-${file.sha256}`, 512_000_000, report, file.path);
+    let bytes = verifiedCachedFile(ports.reuseDirectory, file);
+    if (bytes === undefined) {
+      const transfer: { compressed?: boolean } = {};
+      const fetchArtifact: PreviewFetch = async (url, init) => {
+        const response = await ports.fetch(`${url}.gz`, init);
+        if (response.status === 404) {
+          await response.body?.cancel();
+          transfer.compressed = false;
+          return ports.fetch(url, init);
+        }
+        transfer.compressed = true;
+        return response;
+      };
+      const downloaded = await get(
+        `sha256-${file.sha256}`,
+        512_000_000,
+        report,
+        file.path,
+        fetchArtifact,
+      );
+      bytes = transfer.compressed
+        ? gunzipSync(downloaded, { maxOutputLength: 512_000_000 })
+        : downloaded;
+      receivedBytes += transferred;
+    } else {
+      reused += 1;
+    }
     totalBytes += bytes.length;
     if (totalBytes > 2_000_000_000 || sha256(bytes) !== file.sha256)
       throw new Error("Release checksum or total size mismatch");
@@ -175,6 +215,10 @@ export async function downloadPreview(
     writeFileSync(path, bytes, { flag: "wx", mode: 0o600 });
     if (file.executable) chmodSync(path, 0o700);
   }
+  if (reused > 0)
+    ports.progress?.stage(
+      `Reutilizados ${String(reused)} archivos verificados, sin descargarlos de nuevo.`,
+    );
   ports.progress?.stage(`Descarga verificada: ${String(manifest.files.length)} archivos.`);
   return manifest;
 }

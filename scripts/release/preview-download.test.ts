@@ -92,15 +92,17 @@ it("reports signature verification, per-file streamed totals and authenticated c
   const progress = { stage: vi.fn(), update: vi.fn() };
   const fetcher = (url: string) =>
     Promise.resolve(
-      url.endsWith(".manifest.json")
-        ? Response.json(inventory)
-        : new Response(
-            url.endsWith(".sigstore.json")
-              ? "bundle"
-              : url.endsWith(sha256(binary))
-                ? binary
-                : license,
-          ),
+      url.endsWith(".gz")
+        ? new Response(null, { status: 404 })
+        : url.endsWith(".manifest.json")
+          ? Response.json(inventory)
+          : new Response(
+              url.endsWith(".sigstore.json")
+                ? "bundle"
+                : url.endsWith(sha256(binary))
+                  ? binary
+                  : license,
+            ),
     );
   const verify = vi.fn(() => {
     expect(progress.stage).toHaveBeenLastCalledWith("Verificando la firma de la versión...");
@@ -207,6 +209,7 @@ it("authenticates the inventory before downloading any selected path and checks 
   const root = directory();
   let verified = false;
   const fetcher = vi.fn((url: string) => {
+    if (url.endsWith(".gz")) return Promise.resolve(new Response(null, { status: 404 }));
     if (url.endsWith(".sigstore.json")) return Promise.resolve(new Response("bundle"));
     if (url.endsWith(".manifest.json")) return Promise.resolve(Response.json(manifest));
     expect(verified).toBe(true);
@@ -247,7 +250,11 @@ it("authenticates the inventory before downloading any selected path and checks 
     downloadPreview(settings, version, "linux-x64", directory(), {
       fetch: (url) =>
         Promise.resolve(
-          url.endsWith(".manifest.json") ? Response.json(manifest) : new Response("tampered"),
+          url.endsWith(".gz")
+            ? new Response(null, { status: 404 })
+            : url.endsWith(".manifest.json")
+              ? Response.json(manifest)
+              : new Response("tampered"),
         ),
       verify,
     }),
@@ -322,6 +329,7 @@ it.each([false, true])(
     const progress = { stage: vi.fn(), update: vi.fn() };
     let failures = 0;
     const fetcher = (url: string) => {
+      if (url.endsWith(".gz")) return Promise.resolve(new Response(null, { status: 404 }));
       if (url.endsWith(".manifest.json")) return Promise.resolve(Response.json(manifest));
       if (url.endsWith(".sigstore.json")) return Promise.resolve(new Response("bundle"));
       if (url.endsWith(sha256(Buffer.from("binary")))) {

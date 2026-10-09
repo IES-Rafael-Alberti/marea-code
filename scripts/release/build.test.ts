@@ -165,6 +165,7 @@ it("binds reproducible output metadata to actual commands, source bytes and nati
         "build",
         "apps/teacher-server/teacher-host-entry.ts",
         "--compile",
+        "--minify",
         "--outfile",
         `${root}/marea-teacher`,
       ],
@@ -176,6 +177,7 @@ it("binds reproducible output metadata to actual commands, source bytes and nati
         "build",
         "apps/teacher-server/cli-entry.ts",
         "--compile",
+        "--minify",
         "--outfile",
         `${root}/marea-admin`,
       ],
@@ -187,6 +189,7 @@ it("binds reproducible output metadata to actual commands, source bytes and nati
         "build",
         "apps/teacher-server/operations-entry.ts",
         "--compile",
+        "--minify",
         "--outfile",
         `${root}/marea-operations`,
       ],
@@ -194,7 +197,14 @@ it("binds reproducible output metadata to actual commands, source bytes and nati
     ],
     [
       "bun",
-      ["build", "scripts/release/install.mjs", "--compile", "--outfile", `${root}/marea-install`],
+      [
+        "build",
+        "scripts/release/install.mjs",
+        "--compile",
+        "--minify",
+        "--outfile",
+        `${root}/marea-install`,
+      ],
       buildOptions,
     ],
     [
@@ -386,7 +396,7 @@ it("records dirty and clean source distinctly, normalizes git whitespace and ret
         "-NoProfile",
         "-NonInteractive",
         "-Command",
-        `& 'bun' 'build' 'apps/student/src/marea-entry.boundary.ts' '--compile' '--outfile' '${root}/marea.exe'; exit $LASTEXITCODE`,
+        `& 'bun' 'build' 'apps/student/src/marea-entry.boundary.ts' '--compile' '--minify' '--outfile' '${root}/marea.exe'; exit $LASTEXITCODE`,
       ],
       { cwd: "/isolated", encoding: "utf8" },
     );

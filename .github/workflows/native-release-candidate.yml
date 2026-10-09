@@ -133,7 +133,7 @@ jobs:
         run: |
           go install github.com/anchore/syft/cmd/syft@v1.33.0
           if ($LASTEXITCODE -ne 0) { throw 'Syft build failed' }
-          go install github.com/sigstore/cosign/v3/cmd/cosign@v3.0.2
+          go install -ldflags="-s -w" github.com/sigstore/cosign/v3/cmd/cosign@v3.0.2
           if ($LASTEXITCODE -ne 0) { throw 'Cosign build failed' }
           (Join-Path (go env GOPATH) 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Build reviewable native candidate
@@ -185,6 +185,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Installer signing failed' }
           # Installer signature is distributed separately: closed inventory excludes transport metadata.
           Move-Item "$($installer.FullName).sigstore.json" reports/phase5/installer.sigstore.json
+      - name: Compressed native downloads, bootstrap reuse and verified update cache
+        run: |
+          $manifest = Get-ChildItem reports/phase5/candidates -Recurse -Filter manifest.json | Select-Object -First 1
+          bun scripts/release/preview-transfer-smoke.mjs $manifest.DirectoryName
+          if ($LASTEXITCODE -ne 0) { throw 'Native download optimization failed' }
       - name: Native install, update, uninstall and server recovery
         run: |
           $manifest = Get-ChildItem reports/phase5/candidates -Recurse -Filter manifest.json | Select-Object -First 1
@@ -334,7 +339,7 @@ jobs:
         env:
           CGO_ENABLED: "0"
         run: |
-          go install github.com/sigstore/cosign/v3/cmd/cosign@v3.0.2
+          go install -ldflags="-s -w" github.com/sigstore/cosign/v3/cmd/cosign@v3.0.2
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - name: Download and verify the complete published release
         run: |

@@ -1,5 +1,6 @@
 """Read-only verification of every asset in an already published native preview."""
 
+import gzip
 import hashlib
 import json
 import pathlib
@@ -72,6 +73,17 @@ for key in sorted(matrix):
         require(re.fullmatch(r"[0-9a-f]{64}", checksum), "Invalid signed checksum")
         asset_name = "sha256-" + checksum
         expected.add(asset_name)
+        compressed_name = asset_name + ".gz"
+        if compressed_name in assets:
+            expected.add(compressed_name)
+            with gzip.open(root / compressed_name, "rb") as stream:
+                hasher = hashlib.sha256()
+                size = 0
+                while chunk := stream.read(1024 * 1024):
+                    size += len(chunk)
+                    require(size <= 512_000_000, "Compressed asset exceeds size limit")
+                    hasher.update(chunk)
+                require(hasher.hexdigest() == checksum, "Compressed signed checksum mismatch")
         require(assets[asset_name]["digest"] == "sha256:" + checksum, "Signed checksum mismatch")
 require(set(assets) == expected, "Signed inventory differs from published assets")
 subprocess.run(["sh", "-n", str(root / "install.sh")], check=True)

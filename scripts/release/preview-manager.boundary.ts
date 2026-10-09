@@ -5,7 +5,7 @@ import { installPreviewAtomically } from "./preview-install-transaction.boundary
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { component, manifestSchema } from "./manifest.js";
 import {
   installRelease,
@@ -110,6 +110,7 @@ async function fetchAndInstall(
   try {
     await downloadPreview(settings, version, `${process.platform}-${process.arch}`, source, {
       fetch: globalThis.fetch,
+      reuseDirectory: dirname(cosign),
       verify,
       progress,
     });

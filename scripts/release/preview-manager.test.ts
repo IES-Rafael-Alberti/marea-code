@@ -83,6 +83,7 @@ it("installs a student, verifies through the supplied bootstrap tool and writes 
     expect.any(Object),
   );
   const downloadPorts = ports.downloadPreview.mock.calls[0]?.[4] as DownloadPorts;
+  expect(downloadPorts.reuseDirectory).toBe("/verified");
   downloadPorts.verify("manifest", "bundle", "identity");
   expect(ports.verifySignature).toHaveBeenCalledWith(
     "manifest",
@@ -374,6 +375,7 @@ it("uses native Windows binaries for accepted updates", async () => {
   ports.acceptUpdate.mockResolvedValue(true);
   await previewMain(run());
   const downloadPorts = ports.downloadPreview.mock.calls[0]?.[4] as DownloadPorts;
+  expect(downloadPorts.reuseDirectory).toBe("/private/programs/student-0.1.0-preview.1");
   downloadPorts.verify("manifest", "bundle", "identity");
   expect(ports.verifySignature).toHaveBeenCalledWith(
     "manifest",

@@ -1,4 +1,5 @@
 import { cpSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
 import { join } from "node:path";
 import { manifestSchema, sha256, type ReleaseManifest } from "./manifest.js";
 import { ordinaryFiles, verifyFiles } from "./files.boundary.js";
@@ -78,7 +79,12 @@ New-Item -ItemType Directory -Path $temp | Out-Null
 try {
   foreach ($entry in @(@('marea-install.exe',$installerHash),@('cosign.exe',$cosignHash))) {
     $path=Join-Path $temp $entry[0]
-    Invoke-WebRequest -UseBasicParsing -Uri (${powershellLiteral(base)}+'sha256-'+$entry[1]) -OutFile $path
+    Invoke-WebRequest -UseBasicParsing -Uri (${powershellLiteral(base)}+'sha256-'+$entry[1]+'.gz') -OutFile "$path.gz"
+    $inputStream=[System.IO.File]::OpenRead("$path.gz")
+    $gzip=[System.IO.Compression.GZipStream]::new($inputStream,[System.IO.Compression.CompressionMode]::Decompress)
+    $outputStream=[System.IO.File]::Create($path)
+    try { $gzip.CopyTo($outputStream) } finally { $outputStream.Dispose(); $gzip.Dispose(); $inputStream.Dispose() }
+    Remove-Item -LiteralPath "$path.gz"
     if ((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant() -cne $entry[1]) { throw 'Bootstrap checksum mismatch' }
   }
   $arguments=@('preview','install',$Component,'--repository',${powershellLiteral(repository)},'--cosign',(Join-Path $temp 'cosign.exe'))
@@ -102,7 +108,9 @@ esac
 temp=$(mktemp -d)
 trap 'rm -rf "$temp"' EXIT HUP INT TERM
 download() {
-  curl --fail --location --proto '=https' --tlsv1.2 --retry 2 ${shellLiteral(base)}"sha256-$2" -o "$temp/$1"
+  curl --fail --location --proto '=https' --tlsv1.2 --retry 2 ${shellLiteral(base)}"sha256-$2.gz" -o "$temp/$1.gz"
+  gzip -dc "$temp/$1.gz" > "$temp/$1"
+  rm "$temp/$1.gz"
   if command -v sha256sum >/dev/null 2>&1; then actual=$(sha256sum "$temp/$1" | cut -d ' ' -f 1); else actual=$(shasum -a 256 "$temp/$1" | cut -d ' ' -f 1); fi
   [ "$actual" = "$2" ] || { echo 'Bootstrap checksum mismatch' >&2; exit 1; }
   chmod 700 "$temp/$1"
@@ -153,6 +161,10 @@ export function preparePreviewPublication(
     for (const file of manifest.files) {
       if (copied.has(file.sha256)) continue;
       cpSync(join(root, file.path), join(output, `sha256-${file.sha256}`));
+      writeFileSync(
+        join(output, `sha256-${file.sha256}.gz`),
+        gzipSync(readFileSync(join(root, file.path))),
+      );
       copied.add(file.sha256);
     }
   }

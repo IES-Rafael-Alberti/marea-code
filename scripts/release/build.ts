@@ -63,7 +63,15 @@ export function buildCandidate(argv: readonly string[]): string {
           };
     for (const [name, entry] of Object.entries(entries)) {
       run(
-        ["bun", "build", entry, "--compile", "--outfile", join(root, `${name}${suffix}`)],
+        [
+          "bun",
+          "build",
+          entry,
+          "--compile",
+          "--minify",
+          "--outfile",
+          join(root, `${name}${suffix}`),
+        ],
         workspace,
       );
     }
@@ -73,6 +81,7 @@ export function buildCandidate(argv: readonly string[]): string {
         "build",
         "scripts/release/install.mjs",
         "--compile",
+        "--minify",
         "--outfile",
         join(root, `marea-install${suffix}`),
       ],

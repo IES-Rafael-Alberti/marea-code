@@ -37,7 +37,10 @@ it("accepts the exact total byte budget and refuses the next authenticated file 
     Object.defineProperty(bytes, "length", { value: 500_000_000 });
     return bytes;
   });
-  const fetcher = () => Promise.resolve(new Response("part"));
+  const fetcher = (url: string) =>
+    Promise.resolve(
+      url.endsWith(".gz") ? new Response(null, { status: 404 }) : new Response("part"),
+    );
   const settings = {
     format: 1,
     component: "student",
