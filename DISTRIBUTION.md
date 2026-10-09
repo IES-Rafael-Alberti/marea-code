@@ -1,17 +1,22 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.26`. This preview fixes dashboard modules
-that failed after setup in Safari 17.1, including class progress once students have
-criteria. The browser handoff now verifies Sessions, Map, Progress and Reports,
-both immediately after setup and after reloading. The Marea Code heading uses its
-serif face and accent color again.
+The commands below target `0.1.0-preview.27`. Downloads are now compressed,
+and initial installations reuse the installer and signature verifier already
+fetched by the bootstrap script. Updates reuse installed files only after their
+bytes match the newly signed inventory; damaged or changed files are downloaded.
+The signature verifier ships without debugging symbols, and application code is
+minified. Every platform still includes its native runtime and works without a
+separate Bun or Node installation.
 
-First installations are staged before activation. Interrupted downloads no longer
-occupy the final installation directory, and older download-only leftovers can
-be removed with explicit confirmation. Uninstall can recover abandoned locks;
-live-process warnings and confirmation remain in place. Setup also clarifies the
-first class name, keeps password fields in place during validation, and removes
-the redundant automatic-evaluation method label.
+Existing updaters remain compatible: releases also retain the original raw assets
+and manifest format. Updating from preview 26 or earlier uses the old downloader
+once; subsequent updates use compression and verified reuse. New installations
+benefit immediately. Download sizes differ by platform and by the files changed
+between releases.
+
+This preview retains the Safari 17.1 dashboard fixes, interrupted-install recovery,
+abandoned-lock recovery, stable password validation layout and restored Marea Code
+heading from preview 26.
 
 Fresh teacher installations open a browser setup wizard on their first launch.
 Existing schools retain their data and settings. Earlier features remain available:
@@ -26,13 +31,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.26/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.27/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.26/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.27/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -168,13 +173,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.26/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.27/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.26/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.27/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Run `marea` from the project directory. The managed installation keeps student
@@ -188,7 +193,7 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
 - `status` (or `--status`): managed installation details, with no credentials.
 - `update` (or `--update`): check the latest **published** preview and ask to install
   it, without starting the application. Publishing alone does not notify everyone.
-- `update --version 0.1.0-preview.26`: try a specific published preview.
+- `update --version 0.1.0-preview.27`: try a specific published preview.
 - Ordinary startup offers only a **recommended** version for this component and
   wire protocol. Declining keeps the installed version. A noninteractive start
   never accepts updates; discovery failures leave the current installation usable.
@@ -203,8 +208,8 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
   student version or a required protocol repair may select an older signed client.
   Server downgrades require backup recovery; they cannot open migrated data.
 
-For a fresh pilot install before recommendation, append `--version 0.1.0-preview.26`
-to the POSIX command, or `-Version 0.1.0-preview.26` on PowerShell. With no explicit
+For a fresh pilot install before recommendation, append `--version 0.1.0-preview.27`
+to the POSIX command, or `-Version 0.1.0-preview.27` on PowerShell. With no explicit
 version and no recommendation, installation stops with a useful message.
 
 Stop the server before accepting an update. Its existing exclusive installation
@@ -296,7 +301,7 @@ the empty root allows the same installation command to run again. Do not delete
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.26`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.27`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
@@ -321,7 +326,7 @@ Run the **Recommend preview** workflow on `main`, choosing the published version
 and `student`, `server`, or `both`. From a maintainer terminal:
 
 ```sh
-gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.26 -f component=both
+gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.27 -f component=both
 ```
 
 Promotion requires a successful native publication workflow for the exact source,
