@@ -18,7 +18,9 @@ it("treats missing, changed, linked, nonregular and oversized cached files as mi
   const path = join(root, "program");
   const bytes = Buffer.from("verified program");
   const file = { path: "program", executable: true, sha256: sha256(bytes) };
+  const realpaths = vi.spyOn(fs, "realpathSync").mockClear();
   expect(verifiedCachedFile(undefined, file)).toBeUndefined();
+  expect(realpaths).not.toHaveBeenCalled();
   expect(verifiedCachedFile(root, file)).toBeUndefined();
   fs.mkdirSync(path);
   expect(verifiedCachedFile(root, file)).toBeUndefined();
@@ -32,7 +34,8 @@ it("treats missing, changed, linked, nonregular and oversized cached files as mi
   fs.symlinkSync(path, join(root, "link"));
   expect(verifiedCachedFile(root, { ...file, path: "link" })).toBeUndefined();
   fs.symlinkSync(root, join(root, "linked-directory"), "dir");
-  expect(verifiedCachedFile(join(root, "linked-directory"), file)).toBeUndefined();
+  expect(verifiedCachedFile(join(root, "linked-directory"), file)).toEqual(bytes);
+  expect(verifiedCachedFile(root, { ...file, path: "linked-directory/program" })).toBeUndefined();
   const status = fs.lstatSync(path);
   const stat = vi.spyOn(fs, "lstatSync");
   stat.mockReturnValueOnce(Object.assign(status, { size: 512_000_000 }));

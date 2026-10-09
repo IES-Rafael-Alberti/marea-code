@@ -8,8 +8,9 @@ export function verifiedCachedFile(
   file: ReleaseManifest["files"][number],
 ): Uint8Array | undefined {
   if (directory === undefined) return undefined;
-  const path = join(directory, file.path);
   try {
+    // macOS exposes its temporary base through /var; links inside that base remain forbidden.
+    const path = join(realpathSync(directory), file.path);
     if (realpathSync(path) !== resolve(path)) return undefined;
     const status = lstatSync(path);
     if (!status.isFile() || status.nlink !== 1 || status.size > 512_000_000) return undefined;

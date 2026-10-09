@@ -9,7 +9,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import process from "node:process";
 import { gzipSync } from "node:zlib";
 import { downloadPreview } from "./preview-download.boundary.ts";
@@ -57,7 +57,8 @@ async function download(name, reuseDirectory) {
   return destination;
 }
 try {
-  const bootstrap = join(scratch, "bootstrap");
+  // Preserve the platform's original temporary base, including macOS's /var alias.
+  const bootstrap = join(tmpdir(), basename(scratch), "bootstrap");
   mkdirSync(bootstrap);
   for (const name of programs) {
     cpSync(join(source, name), join(bootstrap, name));
