@@ -1,19 +1,23 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.25`. This preview simplifies first-run
-setup and organizes settings by task. It adds inline password validation, optional
-educational features, web-managed school accounts and clearer Google group setup.
-Drafts survive section changes, saved keys remain private, and saving reveals any
-invalid field. It also fixes the blank dashboard on browsers without `URL.parse`.
+The commands below target `0.1.0-preview.26`. This preview fixes dashboard modules
+that failed after setup in Safari 17.1, including class progress once students have
+criteria. The browser handoff now verifies Sessions, Map, Progress and Reports,
+both immediately after setup and after reloading. The Marea Code heading uses its
+serif face and accent color again.
+
+First installations are staged before activation. Interrupted downloads no longer
+occupy the final installation directory, and older download-only leftovers can
+be removed with explicit confirmation. Uninstall can recover abandoned locks;
+live-process warnings and confirmation remain in place. Setup also clarifies the
+first class name, keeps password fields in place during validation, and removes
+the redundant automatic-evaluation method label.
+
 Fresh teacher installations open a browser setup wizard on their first launch.
-The wizard collects the school,
-teacher account, model connection and classroom access, then saves a usable first
-class and opens the dashboard. Existing schools retain their data and settings.
-This version adds authorized session ZIP exports and optional full-content
-observability through Langfuse or an OTLP collector. Delivery is off by default
-and configured by a server administrator. Existing teaching choices and the
-configurable tutor writing gate are preserved. Earlier installation, LAN HTTP,
-model catalog, unlimited usage defaults and plugin-driven setup are included.
+Existing schools retain their data and settings. Earlier features remain available:
+LAN HTTP, Google sign-in, provider model discovery, unlimited usage defaults,
+the tutor writing gate, the example testing skill, session ZIP exports and optional
+full-content observability through Langfuse or an OTLP collector.
 
 Published installers and tags remain immutable.
 
@@ -22,13 +26,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.25/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.26/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.25/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.26/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -164,13 +168,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.25/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.26/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.25/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.26/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Run `marea` from the project directory. The managed installation keeps student
@@ -184,7 +188,7 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
 - `status` (or `--status`): managed installation details, with no credentials.
 - `update` (or `--update`): check the latest **published** preview and ask to install
   it, without starting the application. Publishing alone does not notify everyone.
-- `update --version 0.1.0-preview.25`: try a specific published preview.
+- `update --version 0.1.0-preview.26`: try a specific published preview.
 - Ordinary startup offers only a **recommended** version for this component and
   wire protocol. Declining keeps the installed version. A noninteractive start
   never accepts updates; discovery failures leave the current installation usable.
@@ -199,8 +203,8 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
   student version or a required protocol repair may select an older signed client.
   Server downgrades require backup recovery; they cannot open migrated data.
 
-For a fresh pilot install before recommendation, append `--version 0.1.0-preview.25`
-to the POSIX command, or `-Version 0.1.0-preview.25` on PowerShell. With no explicit
+For a fresh pilot install before recommendation, append `--version 0.1.0-preview.26`
+to the POSIX command, or `-Version 0.1.0-preview.26` on PowerShell. With no explicit
 version and no recommendation, installation stops with a useful message.
 
 Stop the server before accepting an update. Its existing exclusive installation
@@ -261,7 +265,7 @@ once more after upgrading the owned launcher. Customized launchers are not
 silently rewritten. Unknown files in the managed root are preserved. Linked or
 otherwise unsafe shell profiles are preserved and reported for manual PATH cleanup.
 
-## Installer recovery (next preview, not yet published)
+## Installer recovery
 
 First installation now prepares the verified programs, activation pointer, launchers,
 preview settings and first-run marker in a private sibling scratch directory. The
@@ -274,7 +278,7 @@ An installation created concurrently is never overwritten. A shell-profile or
 Windows PATH failure leaves the complete installation usable at its printed path.
 
 For older previews, an interrupted download can leave a root containing only
-`.download-XXXXXX` directories, without a launcher or school data. The next installer
+`.download-XXXXXX` directories, without a launcher or school data. This installer
 recognizes this specific case and asks to remove the downloads before retrying.
 Close other installers first. Declining, encountering a linked directory, or entries
 changing while confirmation is open prevents cleanup. Roots containing programs,
@@ -292,7 +296,7 @@ the empty root allows the same installation command to run again. Do not delete
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.25`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.26`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
@@ -317,7 +321,7 @@ Run the **Recommend preview** workflow on `main`, choosing the published version
 and `student`, `server`, or `both`. From a maintainer terminal:
 
 ```sh
-gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.25 -f component=both
+gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.26 -f component=both
 ```
 
 Promotion requires a successful native publication workflow for the exact source,
