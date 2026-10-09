@@ -261,6 +261,33 @@ once more after upgrading the owned launcher. Customized launchers are not
 silently rewritten. Unknown files in the managed root are preserved. Linked or
 otherwise unsafe shell profiles are preserved and reported for manual PATH cleanup.
 
+## Installer recovery (next preview, not yet published)
+
+First installation now prepares the verified programs, activation pointer, launchers,
+preview settings and first-run marker in a private sibling scratch directory. The
+launchers and settings refer to the final location. A single directory rename makes
+the complete installation available before configuring PATH or reporting success.
+Caught download, verification or write failures remove their scratch tree; a killed
+process can leave a hidden sibling scratch directory, but it does not occupy or
+block the installation path. Repeating installation starts a separate attempt.
+An installation created concurrently is never overwritten. A shell-profile or
+Windows PATH failure leaves the complete installation usable at its printed path.
+
+For older previews, an interrupted download can leave a root containing only
+`.download-XXXXXX` directories, without a launcher or school data. The next installer
+recognizes this specific case and asks to remove the downloads before retrying.
+Close other installers first. Declining, encountering a linked directory, or entries
+changing while confirmation is open prevents cleanup. Roots containing programs,
+school data, student state or unknown entries are not treated as disposable downloads.
+Uninstall also removes recognized download scratch directories within its managed
+root, so an old interrupted update does not leave an otherwise uninstalled root blocked.
+
+On published preview 25, inspect the directory before manual cleanup. If the launcher
+exists, run it by its full path to distinguish a PATH issue from missing programs.
+If only download scratch directories remain, removing those directories and then
+the empty root allows the same installation command to run again. Do not delete
+`installation/` or `student-state/` as download residue.
+
 ## Publish a version
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.

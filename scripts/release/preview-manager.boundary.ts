@@ -1,11 +1,11 @@
 import { parseServerArguments } from "../../apps/student/src/server-arguments.js";
 import { uninstallPreview } from "./preview-uninstall.boundary.js";
 import { preparePreviewRoot } from "./preview-existing.boundary.js";
+import { installPreviewAtomically } from "./preview-install-transaction.boundary.js";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
-import { securePrivatePath } from "@marea/private-filesystem";
 import { component, manifestSchema } from "./manifest.js";
 import {
   installRelease,
@@ -141,8 +141,8 @@ async function fetchAndInstall(
   }
 }
 
-function writeLaunchers(root: string, selected: string): void {
-  const bin = join(root, "bin");
+function writeLaunchers(stage: string, root: string, selected: string): void {
+  const bin = join(stage, "bin");
   mkdirSync(bin, { mode: 0o700 });
   const name = selected === "student" ? "marea" : "marea-teacher";
   if (process.platform === "win32") {
@@ -155,13 +155,22 @@ function writeLaunchers(root: string, selected: string): void {
       `@echo off\r\npowershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0${name}.ps1" %*\r\n`,
       { flag: "wx", mode: 0o600 },
     );
+  } else {
+    writeFileSync(join(bin, name), posixLauncher(root, selected), { flag: "wx", mode: 0o700 });
+  }
+}
+
+function configureInstalledPath(root: string, selected: string): void {
+  const bin = join(root, "bin");
+  const name = selected === "student" ? "marea" : "marea-teacher";
+  process.stdout.write(`Instalado: ${join(bin, name)}.\n`);
+  if (process.platform === "win32") {
     runPrivateCommand("powershell.exe", [
       "-NoProfile",
       "-Command",
       `$p=[Environment]::GetEnvironmentVariable('Path','User'); [Environment]::SetEnvironmentVariable('Path',(${powershellLiteral(bin)}+';'+$p),'User')`,
     ]);
   } else {
-    writeFileSync(join(bin, name), posixLauncher(root, selected), { flag: "wx", mode: 0o700 });
     if (configurePosixPath(homedir(), process.env.SHELL ?? "/bin/sh", bin))
       process.stdout.write(
         "La ruta de Marea se ha añadido a tu perfil. Abre una terminal nueva para usar el nombre corto.\n",
@@ -170,7 +179,6 @@ function writeLaunchers(root: string, selected: string): void {
       `Para usar el nombre corto en esta terminal: export PATH=${shellLiteral(bin)}:"$PATH"\n`,
     );
   }
-  process.stdout.write(`Instalado: ${join(bin, name)}.\n`);
 }
 
 async function initialInstall(
@@ -201,19 +209,27 @@ async function initialInstall(
   const cosign = flags.get("--cosign");
   if (cosign === undefined)
     throw new Error("Initial install needs the verified bootstrap signature tool");
-  mkdirSync(root, { recursive: true, mode: 0o700 });
-  securePrivatePath(root, 0o700);
-  privateDirectory(root);
-  // Binary installation is separate from the browser's first-run school configuration.
-  await fetchAndInstall(root, settings, version, resolve(cosign));
+  await installPreviewAtomically(root, async (stage) => {
+    await fetchAndInstall(stage, settings, version, resolve(cosign));
+    if (selected === "server") markOnboardingPending(stage);
+    writeFileSync(join(stage, "preview.json"), JSON.stringify(settings), {
+      flag: "wx",
+      mode: 0o600,
+    });
+    writeLaunchers(stage, root, selected);
+  });
   if (selected === "server") {
-    markOnboardingPending(root);
     process.stdout.write(
       "Ejecuta marea-teacher: se abrirá un asistente en tu navegador para dejar la primera clase lista.\n",
     );
   }
-  writeLaunchers(root, selected);
-  writeFileSync(join(root, "preview.json"), JSON.stringify(settings), { flag: "wx", mode: 0o600 });
+  try {
+    configureInstalledPath(root, selected);
+  } catch {
+    process.stderr.write(
+      `Marea está instalado, pero no se ha podido añadir el comando al PATH. Puedes ejecutarlo desde ${join(root, "bin")} o añadir esa carpeta al PATH manualmente.\n`,
+    );
+  }
 }
 
 function managedEnvironment(root: string, settings: PreviewSettings): NodeJS.ProcessEnv {

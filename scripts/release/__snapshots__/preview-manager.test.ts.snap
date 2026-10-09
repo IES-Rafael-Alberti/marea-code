@@ -7,11 +7,11 @@ exports[`defers school provisioning to the first browser launch and binds the of
 ",
   ],
   [
-    "Para usar el nombre corto en esta terminal: export PATH='/private/bin':"$PATH"
+    "Instalado: /private/bin/marea-teacher.
 ",
   ],
   [
-    "Instalado: /private/bin/marea-teacher.
+    "Para usar el nombre corto en esta terminal: export PATH='/private/bin':"$PATH"
 ",
   ],
 ]
@@ -20,15 +20,15 @@ exports[`defers school provisioning to the first browser launch and binds the of
 exports[`installs a student, verifies through the supplied bootstrap tool and writes launchers only after activation > student installation instructions 1`] = `
 [
   [
+    "Instalado: /private/bin/marea.
+",
+  ],
+  [
     "La ruta de Marea se ha añadido a tu perfil. Abre una terminal nueva para usar el nombre corto.
 ",
   ],
   [
     "Para usar el nombre corto en esta terminal: export PATH='/private/bin':"$PATH"
-",
-  ],
-  [
-    "Instalado: /private/bin/marea.
 ",
   ],
 ]
@@ -37,7 +37,15 @@ exports[`installs a student, verifies through the supplied bootstrap tool and wr
 exports[`installs per-user Windows launchers and PATH without a shell profile > Windows launcher files 1`] = `
 [
   [
-    "/private/bin/marea.ps1",
+    "/staging/preview.json",
+    "{"format":1,"repository":"school/marea","component":"student","channel":"preview","serverUrl":"https://school.test"}",
+    {
+      "flag": "wx",
+      "mode": 384,
+    },
+  ],
+  [
+    "/staging/bin/marea.ps1",
     "﻿$ErrorActionPreference = 'Stop'
 $env:PSModulePath = [IO.Path]::Combine($PSHOME, 'Modules')
 $root = '/private'
@@ -63,18 +71,10 @@ exit $LASTEXITCODE
     },
   ],
   [
-    "/private/bin/marea.cmd",
+    "/staging/bin/marea.cmd",
     "@echo off
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0marea.ps1" %*
 ",
-    {
-      "flag": "wx",
-      "mode": 384,
-    },
-  ],
-  [
-    "/private/preview.json",
-    "{"format":1,"repository":"school/marea","component":"student","channel":"preview","serverUrl":"https://school.test"}",
     {
       "flag": "wx",
       "mode": 384,

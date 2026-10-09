@@ -20,6 +20,7 @@ import type { PreviewSettings } from "./preview-channel.js";
 import { powershellLiteral, windowsLauncher } from "./preview-launchers.js";
 import { removePosixPath } from "./preview-path.boundary.js";
 import { question } from "./preview-terminal.boundary.js";
+import { isPreviewDownloadScratch } from "./preview-scratch.js";
 import {
   existingOnboarding,
   onboardingPending,
@@ -149,6 +150,7 @@ export async function uninstallPreview(
       "preview.json",
       onboardingMarker,
       "onboarding-owner.json",
+      ...readdirSync(root).filter(isPreviewDownloadScratch),
     ];
     for (const name of paths) {
       const path = join(root, name);

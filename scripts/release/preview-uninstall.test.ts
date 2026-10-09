@@ -86,6 +86,28 @@ it("requires explicit consent and preserves projects and unowned root entries", 
   expect(ports.acquireInstallation).not.toHaveBeenCalled();
   expect(ports.removePosixPath).toHaveBeenCalledWith(expect.any(String), join(root, "bin"));
 });
+
+it("removes abandoned downloads along with programs without deleting similarly named user files", async () => {
+  const download = join(root, ".download-cdGkCc");
+  mkdirSync(download);
+  writeFileSync(join(download, "partial"), "abandoned download");
+  for (const name of [".download-not-marea", "download-cdGkCc", ".download-cdGkCc-more"])
+    writeFileSync(join(root, name), "keep");
+  await uninstallPreview(root, server(), ["--yes", "--purge-data"]);
+  expect(existsSync(download)).toBe(false);
+  for (const name of [".download-not-marea", "download-cdGkCc", ".download-cdGkCc-more"])
+    expect(readFileSync(join(root, name), "utf8")).toBe("keep");
+});
+
+it("refuses a replaced temporary download before removing programs or data", async () => {
+  symlinkSync(scratch, join(root, ".download-ABC123"));
+  await expect(uninstallPreview(root, server(), ["--yes", "--purge-data"])).rejects.toThrow(
+    "replaced with a link",
+  );
+  expect(existsSync(join(root, "programs"))).toBe(true);
+  expect(existsSync(join(root, "installation", "data"))).toBe(true);
+  expect(ports.removePosixPath).not.toHaveBeenCalled();
+});
 it("preserves server data by default, and purges only after taking the exclusive lock", async () => {
   await uninstallPreview(root, server(), ["--yes"]);
   expect(readFileSync(join(root, "installation", "data"), "utf8")).toBe("private school data");

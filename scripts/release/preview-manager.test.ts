@@ -92,7 +92,7 @@ it("installs a student, verifies through the supplied bootstrap tool and writes 
   );
   expect(ports.installRelease).toHaveBeenCalledWith(
     expect.objectContaining({
-      root: "/private/programs",
+      root: "/staging/programs",
       ref: "refs/tags/v0.1.0-preview.1",
       reuseVerifiedStudent: true,
     }),
@@ -103,12 +103,12 @@ it("installs a student, verifies through the supplied bootstrap tool and writes 
     "Missing server installation",
   );
   expect(ports.writeFileSync).toHaveBeenCalledWith(
-    "/private/bin/marea",
+    "/staging/bin/marea",
     expect.stringContaining("preview run student"),
     { flag: "wx", mode: 0o700 },
   );
-  expect(ports.writeFileSync).toHaveBeenLastCalledWith(
-    "/private/preview.json",
+  expect(ports.writeFileSync).toHaveBeenCalledWith(
+    "/staging/preview.json",
     JSON.stringify({
       format: 1,
       repository: "school/marea",
@@ -119,17 +119,19 @@ it("installs a student, verifies through the supplied bootstrap tool and writes 
     { flag: "wx", mode: 0o600 },
   );
   expect(ports.provisionServer).not.toHaveBeenCalled();
+  expect(ports.markOnboardingPending).not.toHaveBeenCalled();
   expect(ports.rmSync).toHaveBeenCalledWith("/private/.download-stage", {
     recursive: true,
     force: true,
   });
   expect(output.mock.calls).toMatchSnapshot("student installation instructions");
-  expect(ports.mkdirSync.mock.calls).toEqual([
-    ["/private", { recursive: true, mode: 0o700 }],
-    ["/private/bin", { mode: 0o700 }],
-  ]);
-  expect(ports.securePrivatePath).toHaveBeenCalledWith("/private", 0o700);
-  expect(ports.privateDirectory).toHaveBeenCalledWith("/private");
+  expect(ports.installPreviewAtomically).toHaveBeenCalledWith("/private", expect.any(Function));
+  expect(ports.mkdirSync.mock.calls).toEqual([["/staging/bin", { mode: 0o700 }]]);
+  expect(ports.writeFileSync).toHaveBeenCalledWith(
+    "/staging/bin/marea",
+    expect.stringContaining("root='/private'"),
+    expect.any(Object),
+  );
 });
 
 it("does not overwrite existing state or mark a failed setup as complete", async () => {
@@ -148,7 +150,7 @@ it("defers school provisioning to the first browser launch and binds the offline
   const output = vi.spyOn(process.stdout, "write").mockReturnValue(true);
   vi.stubEnv("SHELL", undefined);
   await previewMain(install("server"));
-  expect(ports.markOnboardingPending).toHaveBeenCalledExactlyOnceWith("/private");
+  expect(ports.markOnboardingPending).toHaveBeenCalledExactlyOnceWith("/staging");
   expect(ports.scaffoldServer).not.toHaveBeenCalled();
   expect(ports.provisionServer).not.toHaveBeenCalled();
   const installPorts = ports.installRelease.mock.calls[0]?.[1] as InstallPorts;
@@ -156,12 +158,12 @@ it("defers school provisioning to the first browser launch and binds the offline
   await installPorts.withOfflineBackup(activate);
   expect(ports.activatePreviewServer).toHaveBeenCalledWith(
     "/private/installation",
-    "/private/programs/server-0.1.0-preview.1",
+    "/staging/programs/server-0.1.0-preview.1",
     "0.1.0-preview.1",
     activate,
   );
   expect(ports.writeFileSync).toHaveBeenCalledWith(
-    "/private/bin/marea-teacher",
+    "/staging/bin/marea-teacher",
     expect.any(String),
     expect.any(Object),
   );
@@ -174,12 +176,12 @@ it("installs per-user Windows launchers and PATH without a shell profile", async
   Object.defineProperty(process, "platform", { value: "win32" });
   await previewMain(install("student", ["--server", "https://school.test"]));
   expect(ports.writeFileSync).toHaveBeenCalledWith(
-    "/private/bin/marea.ps1",
+    "/staging/bin/marea.ps1",
     expect.stringContaining("marea-install.exe"),
     expect.any(Object),
   );
   expect(ports.writeFileSync).toHaveBeenCalledWith(
-    "/private/bin/marea.cmd",
+    "/staging/bin/marea.cmd",
     expect.stringContaining("-ExecutionPolicy Bypass"),
     expect.any(Object),
   );
@@ -424,7 +426,7 @@ it("supports direct update commands and keeps explicit school origins without pr
     expect.any(String),
     expect.any(Object),
   );
-  expect(ports.mkdtempSync).toHaveBeenCalledWith("/private/.download-");
+  expect(ports.mkdtempSync).toHaveBeenCalledWith("/staging/.download-");
   await previewMain(run("student", ["--version"]));
   expect(ports.readActivation).toHaveBeenCalledWith("/private/programs");
   expect(output).toHaveBeenCalled();

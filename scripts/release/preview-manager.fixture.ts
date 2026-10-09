@@ -6,6 +6,7 @@ const ports = vi.hoisted(() => ({
   onboardingPending: vi.fn(),
   runBrowserOnboarding: vi.fn(),
   preparePreviewRoot: vi.fn(),
+  installPreviewAtomically: vi.fn(),
   mkdirSync: vi.fn(),
   mkdtempSync: vi.fn(),
   readFileSync: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock("./onboarding-state.boundary.js", () => ports);
 vi.mock("./preview-onboarding.boundary.js", () => ports);
 vi.mock("./preview-uninstall.boundary.js", () => ports);
 vi.mock("./preview-existing.boundary.js", () => ports);
+vi.mock("./preview-install-transaction.boundary.js", () => ports);
 vi.mock("node:fs", () => ports);
 vi.mock("node:child_process", () => ports);
 vi.mock("node:os", () => ({ homedir: () => "/home/test" }));
@@ -109,6 +111,9 @@ beforeEach(() => {
   ports.question.mockResolvedValue("https://school.test");
   ports.serverQuestions.mockResolvedValue({ answers, password: "private-password" });
   ports.preparePreviewRoot.mockResolvedValue(true);
+  ports.installPreviewAtomically.mockImplementation(
+    (_root: string, prepare: (stage: string) => Promise<void>) => prepare("/staging"),
+  );
   ports.onboardingPending.mockReturnValue(false);
   ports.runBrowserOnboarding.mockResolvedValue(0);
 });
