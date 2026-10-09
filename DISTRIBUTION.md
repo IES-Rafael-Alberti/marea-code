@@ -235,10 +235,17 @@ are preserved. An explicit external `MAREA_STATE_HOME` is not owned or deleted.
 and backups, then requires typing `DESINSTALAR` to confirm the displayed scope.
 Answer `s` to remove everything managed by Marea, or `n` (the default) to keep
 the data under `~/.marea-preview/server/installation`. `--purge-data` selects
-complete removal explicitly. `--yes` skips questions and **preserves** center
+complete removal explicitly. `--yes` skips these confirmations and **preserves** center
 data unless combined with `--purge-data`.
-The server must be stopped; its exclusive installation lock prevents deletion
-while it is running.
+The server must be stopped; uninstall takes its exclusive installation lock before
+removing files.
+
+A forced shutdown can leave installation lock files even after reboot. Interactive
+uninstall offers the same abandoned-lock recovery as server startup, before removing
+any programs or data. Answer `y` only after checking that no Marea process is using
+this installation; an existing recorded process is reported in the prompt. Declining,
+interrupting, running without a terminal, or a lock changing while the prompt is open
+leaves the installation in place. `--yes` does not authorize breaking a lock.
 
 If only preserved server data remains, running the installer again explains the
 previous uninstall and offers a fresh installation. Type `BORRAR` to permanently

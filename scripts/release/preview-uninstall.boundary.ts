@@ -10,6 +10,8 @@ import {
 import { homedir } from "node:os";
 import { join, sep } from "node:path";
 import { spawnSync } from "node:child_process";
+import { acquireWithLockRecovery } from "../../apps/teacher-server/src/platform/installation/abandoned-lock-recovery.js";
+import { processLockRecovery } from "../../apps/teacher-server/src/platform/installation/lock-recovery-terminal.boundary.js";
 import {
   acquireInstallation,
   type OwnedInstallation,
@@ -104,10 +106,10 @@ function unfinishedSetup(root: string, settings: UninstallSettings): boolean {
   return pending && !existsSync(join(root, "installation"));
 }
 
-function lockExisting(root: string, settings: UninstallSettings) {
+async function lockExisting(root: string, settings: UninstallSettings) {
   const installation = join(root, "installation");
   return settings.component === "server" && existsSync(installation)
-    ? acquireInstallation(installation)
+    ? acquireWithLockRecovery(acquireInstallation, processLockRecovery())(installation)
     : undefined;
 }
 
@@ -136,7 +138,7 @@ export async function uninstallPreview(
     (await question("¿Desinstalar Marea? Escribe DESINSTALAR", "no")) !== "DESINSTALAR"
   )
     return;
-  const owner = lockExisting(root, settings);
+  const owner = await lockExisting(root, settings);
   let removedData: string | undefined;
   try {
     // Inspect before removing anything; do not traverse replaced top-level directories.
