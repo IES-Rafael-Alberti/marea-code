@@ -53,8 +53,21 @@
 }
 .setup-shell label:not(.setup-choice) {
   display: grid;
+  align-content: start;
   gap: 0.5rem;
   margin: 0.5rem 0;
+}
+.setup-shell .field-error {
+  min-height: 1.3em;
+  line-height: 1.3;
+}
+.setup-shell .field-error:empty {
+  display: block;
+}
+@media (max-width: 720px) {
+  .setup-shell .field-error {
+    min-height: 2.6em;
+  }
 }
 .setup-shell input:not([type="checkbox"]):not([type="radio"]),
 .setup-shell select,
@@ -140,9 +153,6 @@
   margin: 0.5rem 0 0 1.85rem;
   max-width: 65ch;
   color: var(--color-muted);
-}
-.feature-choice .feature-prerequisite {
-  color: var(--color-text);
 }
 .setup-features > .server-help {
   margin-top: 1.5rem;

@@ -13,7 +13,6 @@ const es = {
   reportsHelp: "Resume evidencias y dificultades de las sesiones para preparar tu revisión.",
   evaluation: "Evaluación automática",
   evaluationHelp: "Al cerrar una sesión, prepara un borrador que tú revisas antes de compartirlo.",
-  method: "Método: revisión de la sesión",
   testingHelp:
     "Incluye un ejemplo con objetivos y criterios para aprender a probar código. Podrás verlo y adaptarlo después.",
   usageHelp:
@@ -33,7 +32,7 @@ const es = {
     "Revisa y empieza",
   ] as const,
   center: "Nombre del centro",
-  classroom: "Primera clase",
+  classroom: "Nombre de tu primera clase",
   teacher: "Tu nombre",
   login: "Usuario para entrar al panel",
   password: "Contraseña",
@@ -90,7 +89,6 @@ const en: Copy = {
   reportsHelp: "Summarizes session evidence and difficulties for your review.",
   evaluation: "Automatic evaluation",
   evaluationHelp: "When a session closes, prepares a draft for you to review before sharing.",
-  method: "Method: session review",
   testingHelp:
     "Includes example goals and criteria for learning to test code. You can inspect and adapt it later.",
   usageHelp:
@@ -110,7 +108,7 @@ const en: Copy = {
     "Review and start",
   ],
   center: "School name",
-  classroom: "First class",
+  classroom: "Name of your first class",
   teacher: "Your name",
   login: "Dashboard username",
   password: "Password",
@@ -161,7 +159,6 @@ const eu: Copy = {
   reportsHelp: "Saioetako ebidentziak eta zailtasunak laburbiltzen ditu zure berrikuspenerako.",
   evaluation: "Ebaluazio automatikoa",
   evaluationHelp: "Saioa ixtean, partekatu aurretik berrikusiko duzun zirriborroa prestatzen du.",
-  method: "Metodoa: saioaren berrikuspena",
   testingHelp:
     "Kodea probatzen ikasteko helburu eta irizpideen adibidea dakar. Gero ikusi eta molda dezakezu.",
   usageHelp:
@@ -181,7 +178,7 @@ const eu: Copy = {
     "Berrikusi eta hasi",
   ],
   center: "Ikastetxearen izena",
-  classroom: "Lehen klasea",
+  classroom: "Zure lehen klasearen izena",
   teacher: "Zure izena",
   login: "Paneleko erabiltzaile-izena",
   password: "Pasahitza",

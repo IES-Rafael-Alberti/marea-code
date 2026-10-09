@@ -3,7 +3,9 @@
 The first local server launch opens a five-step web setup: school and teacher,
 model connection, student access, optional educational features, and review.
 Password constraints and confirmation errors appear beside their fields on blur
-and on submission. Secret visibility controls only reveal newly entered text.
+and on submission. Feedback has reserved space, including two lines on narrow
+screens; invalid styling does not change input dimensions or alignment. Secret
+visibility controls only reveal newly entered text.
 A stored key is represented by its presence; its value is never returned to the
 browser. Multiline private keys retain their line breaks.
 

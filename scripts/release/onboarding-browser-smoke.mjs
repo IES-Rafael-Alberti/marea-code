@@ -1,6 +1,7 @@
 import process from "node:process";
 import { verifyIdentitySettings } from "./identity-settings-browser-smoke.mjs";
 import { verifySettingsValidation } from "./settings-validation-browser-smoke.mjs";
+import { verifySetupPasswordLayout } from "./onboarding-layout-browser-smoke.mjs";
 import assert from "node:assert/strict";
 import { launchReleaseBrowser } from "../../apps/dashboard/browser/release-browser-runtime.mjs";
 import { openSettings } from "../../apps/dashboard/browser/workspace-navigation.mjs";
@@ -19,6 +20,7 @@ export async function finishSetupInBrowser(url, input) {
     if (process.env.MAREA_UX_SHOTS)
       await page.screenshot({ path: "/tmp/marea-ux-class.png", fullPage: true });
     assert.equal(await page.evaluate(() => typeof globalThis.URL.parse), "undefined");
+    await verifySetupPasswordLayout(page, input.password);
     const password = page.getByLabel("Password", { exact: true });
     const repeated = page.getByLabel("Repeat the password", { exact: true });
     await password.fill("short");
@@ -33,7 +35,7 @@ export async function finishSetupInBrowser(url, input) {
     assert.equal(await password.getAttribute("type"), "text");
     for (const [label, value] of [
       ["School name", input.center],
-      ["First class", input.classroom],
+      ["Name of your first class", input.classroom],
       ["Your name", input.teacher],
       ["Dashboard username", input.login],
       ["Password", input.password],

@@ -35,9 +35,6 @@ export function SetupFeatures({
               {m[label]}
             </label>
             <p>{m[`${label}Help`]}</p>
-            {key === "automaticEvaluation" && checked && (
-              <p className="feature-prerequisite">{m.method}</p>
-            )}
           </section>
         );
       })}
