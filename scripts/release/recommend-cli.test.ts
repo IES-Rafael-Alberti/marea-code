@@ -18,9 +18,13 @@ let state: ReturnType<typeof initialState>;
 const version = "0.1.0-preview.7";
 function initialState() {
   return {
-    release: { tag_name: `v${version}`, draft: false, prerelease: true },
+    release: { body: "", tag_name: `v${version}`, draft: false, prerelease: true },
     runs: [{ id: 2, head_sha: "a".repeat(40), conclusion: "success" }],
-    jobs: [{ name: "publish", conclusion: "success" }],
+    jobs: [{ name: "publish", conclusion: "success" }] as {
+      name: string;
+      conclusion: string;
+      steps?: { name: string; conclusion: string }[];
+    }[],
     calls: [] as { command: string; args: string[]; input?: Record<string, unknown> }[],
     rejectSignature: false,
     rejectWrite: false,
@@ -199,6 +203,40 @@ it(
       expect(run("both", true).stderr).toContain("Only a published preview");
     }
     expect(writes()).toHaveLength(0);
+  },
+  commandTestTimeout,
+);
+
+it(
+  "handles release API responses larger than one MiB",
+  () => {
+    state.release.body = "published asset metadata".repeat(60_000);
+    expect(run("both", true).status).toBe(0);
+    expect(state.channel?.available).toBe(version);
+  },
+  commandTestTimeout,
+);
+it(
+  "repairs only metadata advertisement after successful native publication and public installs",
+  () => {
+    state.runs = [{ id: 2, head_sha: "a".repeat(40), conclusion: "failure" }];
+    state.jobs.push({
+      name: "available-channel",
+      conclusion: "failure",
+      steps: [
+        {
+          name: "Verify public student and server installs, retained data and clean reinstall",
+          conclusion: "success",
+        },
+        {
+          name: "Make the tested publication available without recommending it",
+          conclusion: "failure",
+        },
+      ],
+    });
+    const result = run();
+    expect(result.status, result.stderr).toBe(0);
+    expect(state.channel?.recommended).toEqual({ "0.1": { student: version, server: version } });
   },
   commandTestTimeout,
 );

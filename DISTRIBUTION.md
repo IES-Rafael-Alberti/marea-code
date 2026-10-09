@@ -317,6 +317,9 @@ the empty root allows the same installation command to run again. Do not delete
    checks the new teacher credentials, and uninstalls completely. It must pass
    before the separate job updates the small static availability index.
    If this metadata job fails, rerun that job; it never replaces signed assets.
+   If its tooling needs a fix, run the corrected `publish-preview-channel.mjs`
+   with the repository and existing version from `main` after the public-download
+   test has passed. This repairs the availability index without rebuilding binaries.
 7. Ask pilot users to run `update` (or install the explicit version). After classroom
    testing, recommend it separately; publication never recommends automatically.
 
@@ -329,11 +332,18 @@ and `student`, `server`, or `both`. From a maintainer terminal:
 gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.28 -f component=both
 ```
 
-Promotion requires a successful native publication workflow for the exact source,
+Promotion requires successful native publication for the exact source,
 downloads and verifies the complete signed publication, checks its protocol metadata,
 and updates `preview.json` on the dedicated `marea-preview-channel` branch. It
 preserves assets, tags and release notes. Recommendations are forward only and
 idempotent; older protocols keep their previous recommendations.
+
+A completed run whose only failed step in the availability job was advertising
+the metadata can be recovered after its publisher and public-install test succeeded.
+Failed or skipped installation tests, other failed availability steps and incomplete
+runs do not qualify. The independent signature and full-asset verification still runs
+before every recommendation. GitHub JSON responses have a bounded 16 MiB command
+buffer to accommodate releases with both raw and compressed assets.
 
 The metadata-only branch is maintained by the workflows, with compare-and-swap
 writes and readback to prevent lost promotions. Clients fetch its small JSON file

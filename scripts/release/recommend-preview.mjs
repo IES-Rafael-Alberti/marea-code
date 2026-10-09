@@ -2,6 +2,7 @@ import process from "node:process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { hasVerifiedPublication } from "./preview-publication-evidence.ts";
 import { recommendPreview } from "./preview-recommend.ts";
 import { updatePreviewChannel } from "./preview-channel-store.mjs";
 import { previewVersion, repositoryName } from "./preview-channel.ts";
@@ -14,6 +15,7 @@ if (!["student", "server", "both"].includes(selected))
 function run(command, args, input) {
   const result = spawnSync(command, args, {
     encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
     input,
     stdio: ["pipe", "pipe", "inherit"],
   });
@@ -23,15 +25,15 @@ function run(command, args, input) {
 // Promotion always verifies every published asset and its immutable workflow/tag signature first.
 run("python3", ["scripts/release/verify-published.py", repository, version, directory, verifier]);
 const api = (path) => JSON.parse(run("gh", ["api", path]));
-// A signature is emitted before some native acceptance steps. Require the successful publishing run as well.
+// Require native publication and public installation evidence, even when advertising metadata needs repair.
 const commit = run("git", ["rev-parse", `v${version}^{commit}`]).trim();
 const runs = api(
-  `repos/${repository}/actions/workflows/native-release-candidate.yml/runs?head_sha=${commit}&status=success&per_page=100`,
+  `repos/${repository}/actions/workflows/native-release-candidate.yml/runs?head_sha=${commit}&per_page=100`,
 ).workflow_runs;
 const publishedWithGates = runs.some((candidate) => {
-  if (candidate.head_sha !== commit || candidate.conclusion !== "success") return false;
+  if (candidate.head_sha !== commit) return false;
   const jobs = api(`repos/${repository}/actions/runs/${candidate.id}/jobs?per_page=100`).jobs;
-  return jobs.some((job) => job.name === "publish" && job.conclusion === "success");
+  return hasVerifiedPublication(candidate, commit, jobs);
 });
 if (!publishedWithGates)
   throw new Error("No successful native publication workflow for this exact source");

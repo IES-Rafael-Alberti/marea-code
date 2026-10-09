@@ -9,11 +9,13 @@ export function githubJson(repository, endpoint, method = "GET", input, allowMis
   if (input !== undefined) args.push("--input", "-");
   const result = spawnSync("gh", args, {
     encoding: "utf8",
+    maxBuffer: 16 * 1024 * 1024,
     input: input === undefined ? undefined : JSON.stringify(input),
   });
   if (result.status !== 0) {
     if (allowMissing && result.stdout.includes('"status":"404"')) return undefined;
-    throw new Error(`GitHub channel request failed: ${endpoint}`);
+    const reason = result.error?.code ?? `exit ${String(result.status)}`;
+    throw new Error(`GitHub channel request failed: ${endpoint} (${reason})`);
   }
   return JSON.parse(result.stdout);
 }
