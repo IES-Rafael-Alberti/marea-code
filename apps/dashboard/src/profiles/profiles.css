@@ -147,6 +147,8 @@ body {
   font-size: 0.7rem;
 }
 .masthead h1 {
+  color: var(--color-accent);
+  font-family: ui-serif, "Iowan Old Style", "Source Serif 4", Palatino, Georgia, serif;
   font-size: 1.3rem;
 }
 .workspace-toolbar {

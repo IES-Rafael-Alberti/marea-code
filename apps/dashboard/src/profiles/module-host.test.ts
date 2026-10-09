@@ -53,7 +53,13 @@ it("cancels public reads, subscriptions and rendering before class/disable/signo
   const stop = await mountDashboardModule(f.element, f.load, f.context, f.failed);
   const context = f.mount.mock.calls[0]?.[1];
   if (context === undefined) throw new Error("no mount");
-  expect(await context.ports.read(context.signal)).toBe("data");
+  const request = new AbortController();
+  const remove = vi.spyOn(request.signal, "removeEventListener");
+  expect(await context.ports.read(request.signal)).toBe("data");
+  expect(remove).toHaveBeenCalledOnce();
+  f.read.mockRejectedValueOnce(new Error("read failed"));
+  await expect(context.ports.read(request.signal)).rejects.toThrow("read failed");
+  expect(remove).toHaveBeenCalledTimes(2);
   const receive = vi.fn();
   const unsubscribe = context.ports.subscribe?.(context.signal, receive);
   f.receive("first");
@@ -159,8 +165,36 @@ it("unregisters a manually stopped subscription from later host disposal", async
   const stop = await mountDashboardModule(f.element, f.load, f.context, f.failed);
   const context = f.mount.mock.lastCall?.[1];
   if (context === undefined) throw new Error("missing context");
-  const unsubscribe = context.ports.subscribe?.(context.signal, vi.fn());
+  const request = new AbortController();
+  const remove = vi.spyOn(request.signal, "removeEventListener");
+  const unsubscribe = context.ports.subscribe?.(request.signal, vi.fn());
   unsubscribe?.();
+  expect(remove).toHaveBeenCalledOnce();
   stop();
   expect(f.unsubscribe).toHaveBeenCalledOnce();
+});
+
+it("releases cancellation listeners when a subscription transport throws", async () => {
+  const f = setup();
+  const broken = new Error("subscription unavailable");
+  const stop = await mountDashboardModule(
+    f.element,
+    f.load,
+    {
+      ...f.context,
+      ports: {
+        ...f.context.ports,
+        subscribe: () => {
+          throw broken;
+        },
+      },
+    },
+    f.failed,
+  );
+  const context = f.mount.mock.lastCall?.[1];
+  const request = new AbortController();
+  const remove = vi.spyOn(request.signal, "removeEventListener");
+  expect(() => context?.ports.subscribe?.(request.signal, vi.fn())).toThrow(broken);
+  expect(remove).toHaveBeenCalledOnce();
+  stop();
 });

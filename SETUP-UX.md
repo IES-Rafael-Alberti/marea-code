@@ -61,7 +61,13 @@ removes its help; restoring it requires the usual catalog rebuild and restart.
 
 The native browser setup smoke covers password errors, visibility, model discovery,
 all five steps, optional feature persistence, identity draft retention and discard,
-secret replacement, automatic sign-in and reload with
-`URL.parse` removed. Focused tests cover secret projections, optimistic revisions,
+secret replacement, automatic sign-in and reload with `URL.parse`, `AbortSignal.any`,
+`Map.groupBy`, `Object.groupBy` and `Promise.withResolvers` removed to exercise the
+Safari 17.1 API baseline. The handoff must load Sessions, Map, Progress and Reports
+with successful class data, both immediately after setup and after reloading;
+the presence of navigation or working settings alone is insufficient. Module
+requests, subscriptions and navigation retain cancellation on class changes and
+release listeners on completion without relying on `AbortSignal.any`.
+Focused tests cover secret projections, optimistic revisions,
 removed plugins, explicit group credential removal and retained drafts. Release
 checks use the built native dashboard and executable, not a standalone mock UI.

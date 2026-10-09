@@ -35,6 +35,9 @@ function render(state: ReturnType<typeof model>, value = student) {
 }
 
 it("keeps the adjustment reason and level per student and resets a whole skill after confirming", () => {
+  vi.spyOn(Map, "groupBy").mockImplementation(() => {
+    throw new Error("Unavailable in Safari 17.1");
+  });
   const state = model();
   const empty = elements(render(state, { ...student, entries: [] }));
   expect(empty.at(-1)?.props.children).toBe(state.m.noProgress);
@@ -74,4 +77,22 @@ it("keeps the adjustment reason and level per student and resets a whole skill a
   state.busy = true;
   expect(button(render(state), state.m.setLevel).disabled).toBe(true);
   expect(button(render(state), state.m.resetSkill).disabled).toBe(true);
+});
+
+it("groups every criterion by skill in encounter order without Map.groupBy", () => {
+  const state = model();
+  const sections = elements(render(state)).filter((element) => element.type === "section");
+  expect(sections).toHaveLength(2);
+  const headings = elements(render(state)).filter((element) => element.type === "h3");
+  expect(headings.map((element) => element.props.children)).toEqual([criterion.skillId, "other"]);
+  const reset = elements(render(state)).filter(
+    (element) => element.type === "button" && element.props.children === state.m.resetSkill,
+  );
+  vi.stubGlobal("window", { confirm: () => true });
+  for (const control of reset) control.props.onClick?.();
+  expect(state.action).toHaveBeenNthCalledWith(
+    1,
+    expect.objectContaining({ keys: ["key", "next"] }),
+  );
+  expect(state.action).toHaveBeenNthCalledWith(2, expect.objectContaining({ keys: ["other"] }));
 });

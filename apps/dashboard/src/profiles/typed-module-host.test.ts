@@ -75,7 +75,10 @@ it("pairs unrelated typed data, capabilities and object navigation without sessi
   expect(context.capabilities).toEqual({ canRead: true });
   expect(context.message("library")).toBe("library");
   expect(await context.data.read(context.signal)).toEqual({ titles: ["Synthetic book"] });
-  expect(await context.navigation.navigate({ shelf: 3 }, context.signal)).toBe(true);
+  const request = new AbortController();
+  const remove = vi.spyOn(request.signal, "removeEventListener");
+  expect(await context.navigation.navigate({ shelf: 3 }, request.signal)).toBe(true);
+  expect(remove).toHaveBeenCalledOnce();
   expect(f.navigate).toHaveBeenCalledWith({ shelf: 3 }, expect.any(AbortSignal));
   const receive = vi.fn();
   const sub = new AbortController();
@@ -128,6 +131,13 @@ it("preserves absent subscriptions and false navigation, and cancels before invo
   const cancelled = AbortSignal.abort();
   await expect(context.navigation.navigate({ shelf: 0 }, cancelled)).rejects.toThrow();
   expect(f.navigate).toHaveBeenCalledOnce();
+  const failedRequest = new AbortController();
+  const remove = vi.spyOn(failedRequest.signal, "removeEventListener");
+  f.navigate.mockRejectedValueOnce(new Error("navigation failed"));
+  await expect(context.navigation.navigate({ shelf: 1 }, failedRequest.signal)).rejects.toThrow(
+    "navigation failed",
+  );
+  expect(remove).toHaveBeenCalledOnce();
   f.abort.abort();
 });
 it("disposes a module aborting synchronously inside mount", async () => {

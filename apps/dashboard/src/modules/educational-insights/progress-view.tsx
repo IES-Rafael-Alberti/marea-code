@@ -91,7 +91,12 @@ export function StudentProgress({
       reason,
       expectedRevision: student.revision,
     });
-  const skills = Map.groupBy(student.entries, (entry) => entry.skillId);
+  const skills = new Map<string, Entry[]>();
+  for (const entry of student.entries) {
+    const entries = skills.get(entry.skillId) ?? [];
+    entries.push(entry);
+    skills.set(entry.skillId, entries);
+  }
   const consolidated = student.entries.filter((entry) => entry.level === 4).length;
   return (
     <details className="progress-student" open={open}>

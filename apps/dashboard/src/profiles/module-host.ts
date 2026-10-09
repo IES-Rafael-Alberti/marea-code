@@ -2,6 +2,7 @@ import type {
   DashboardModuleBrowserEntry,
   DashboardModuleContext,
 } from "@marea/plugin-api/browser";
+import { abortScope } from "./abort-scope.js";
 
 /** One mounted module owns every request/subscription and cannot deliver after disposal. */
 export async function mountDashboardModule<Settings extends object, Data>(
@@ -29,26 +30,38 @@ export async function mountDashboardModule<Settings extends object, Data>(
   const ports: DashboardModuleContext<Settings, Data>["ports"] = {
     ...context.ports,
     async read(signal) {
-      const combined = AbortSignal.any([signal, lifetime.signal]);
-      combined.throwIfAborted();
-      const data = await context.ports.read(combined);
-      combined.throwIfAborted();
-      return data;
+      const scope = abortScope([signal, lifetime.signal]);
+      try {
+        scope.signal.throwIfAborted();
+        const data = await context.ports.read(scope.signal);
+        scope.signal.throwIfAborted();
+        return data;
+      } finally {
+        scope.dispose();
+      }
     },
     ...(subscribe === undefined
       ? {}
       : {
           subscribe(signal: AbortSignal, receive: (data: Data) => void) {
-            const combined = AbortSignal.any([signal, lifetime.signal]);
+            const scope = abortScope([signal, lifetime.signal]);
+            const combined = scope.signal;
             combined.throwIfAborted();
             let active = true;
-            const unsubscribe = subscribe(combined, (data) => {
-              if (active && !combined.aborted) receive(data);
-            });
+            let unsubscribe: () => void;
+            try {
+              unsubscribe = subscribe(combined, (data) => {
+                if (active && !combined.aborted) receive(data);
+              });
+            } catch (error) {
+              scope.dispose();
+              throw error;
+            }
             const stop = () => {
               if (!active) return;
               active = false;
               combined.removeEventListener("abort", stop);
+              scope.dispose();
               unsubscribe();
             };
             combined.addEventListener("abort", stop);

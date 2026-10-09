@@ -5,8 +5,9 @@ import { verifySetupPasswordLayout } from "./onboarding-layout-browser-smoke.mjs
 import assert from "node:assert/strict";
 import { launchReleaseBrowser } from "../../apps/dashboard/browser/release-browser-runtime.mjs";
 import { openSettings } from "../../apps/dashboard/browser/workspace-navigation.mjs";
+import { verifyOnboardingModules } from "./onboarding-modules-browser-smoke.mjs";
 
-/** Complete the real wizard and its authenticated redirect without the newer URL.parse API. */
+/** Complete the real wizard without APIs absent in Safari 17.1. */
 export async function finishSetupInBrowser(url, input) {
   const browser = await launchReleaseBrowser();
   try {
@@ -15,6 +16,10 @@ export async function finishSetupInBrowser(url, input) {
     page.on("pageerror", (error) => errors.push(error.message));
     await page.addInitScript(() => {
       Reflect.deleteProperty(globalThis.URL, "parse");
+      Reflect.deleteProperty(globalThis.AbortSignal, "any");
+      Reflect.deleteProperty(globalThis.Map, "groupBy");
+      Reflect.deleteProperty(globalThis.Object, "groupBy");
+      Reflect.deleteProperty(globalThis.Promise, "withResolvers");
     });
     await page.goto(url);
     if (process.env.MAREA_UX_SHOTS)
@@ -85,6 +90,9 @@ export async function finishSetupInBrowser(url, input) {
     const completed = { dashboardUrl: page.url() };
     await page.locator(".workspace-navigation").waitFor();
     assert.equal(await page.locator('input[name="username"]').count(), 0);
+    await verifyOnboardingModules(page, input.classroom);
+    if (process.env.MAREA_UX_SHOTS)
+      await page.screenshot({ path: "/tmp/marea-ux-dashboard.png", fullPage: true });
     await openSettings(page, "server");
     await page.getByRole("button", { name: "Network and installation", exact: true }).click();
     const panel = page.locator(".preview-install");
@@ -99,6 +107,7 @@ export async function finishSetupInBrowser(url, input) {
     );
     await page.reload();
     await page.locator(".workspace-navigation").waitFor();
+    await verifyOnboardingModules(page, input.classroom);
     await openSettings(page, "server");
     await page.getByRole("button", { name: "Network and installation", exact: true }).click();
     await page.locator(".preview-install").waitFor();

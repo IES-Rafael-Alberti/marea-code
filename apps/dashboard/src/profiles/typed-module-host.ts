@@ -5,6 +5,7 @@ import type {
   TypedDashboardModuleContext,
 } from "@marea/plugin-api/browser";
 import { mountDashboardModule } from "./module-host.js";
+import { abortScope } from "./abort-scope.js";
 
 /** Domain types are paired here, never erased with a cast in the module registry. */
 export function bindDashboardModule<
@@ -41,11 +42,18 @@ export function bindDashboardModule<
                   },
                   navigation: {
                     async navigate(destination, signal) {
-                      const combined = AbortSignal.any([signal, legacy.signal]);
-                      combined.throwIfAborted();
-                      const navigated = await source.navigation.navigate(destination, combined);
-                      combined.throwIfAborted();
-                      return navigated;
+                      const scope = abortScope([signal, legacy.signal]);
+                      try {
+                        scope.signal.throwIfAborted();
+                        const navigated = await source.navigation.navigate(
+                          destination,
+                          scope.signal,
+                        );
+                        scope.signal.throwIfAborted();
+                        return navigated;
+                      } finally {
+                        scope.dispose();
+                      }
                     },
                   },
                 });
