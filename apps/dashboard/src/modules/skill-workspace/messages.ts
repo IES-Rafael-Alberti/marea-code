@@ -1,6 +1,110 @@
 import type { DashboardLocale } from "../../messages.js";
 
 const labels = {
+  guide: ["Cómo escribir una skill", "How to write a skill", "Nola idatzi skill bat"],
+  guideHeader: [
+    "La cabecera entre --- identifica la skill: name, description y, opcionalmente, metadata.title. Debajo escribes las instrucciones completas en Markdown.",
+    "The header between --- identifies the skill: name, description and optional metadata.title. Write the complete Markdown instructions below it.",
+    "--- marken arteko goiburuak skilla identifikatzen du: name, description eta aukerako metadata.title. Idatzi jarraian Markdown argibide osoak.",
+  ],
+  guideDidactic: [
+    "Como en Testing: explica qué debe dominar el alumno y en qué orden, cómo plantear ejercicios sobre su proyecto, qué preguntas y ayudas ofrecer, qué no resolver por él y cómo reconocer que lo ha entendido.",
+    "Like Testing: explain what the learner should master and in what order, exercises in their project, questions and scaffolding, what not to solve for them, and evidence of understanding.",
+    "Testing bezala: azaldu zer menperatu behar duen ikasleak eta zein ordenatan, bere proiektuko ariketak, galderak eta laguntzak, zer ez ebatzi haren ordez eta ulermenaren ebidentziak.",
+  ],
+  guideEvaluation: [
+    "Una skill de evaluación describe el método, las evidencias y el formato del feedback para revisión docente. Los criterios los aportan las skills didácticas; no añadas criterios a este archivo.",
+    "An assessment skill describes the method, evidence and feedback format for teacher review. Didactic skills supply the criteria; do not add criterios to this file.",
+    "Ebaluazio-skill batek metodoa, ebidentziak eta irakasleak berrikusteko feedback-formatua azaltzen ditu. Skill didaktikoek ematen dituzte irizpideak; ez gehitu criterios fitxategi honetan.",
+  ],
+  guideCriteria: [
+    "En las skills didácticas, criterios es opcional: cada entrada tiene codigo y enunciado; niveles, si se incluye, contiene exactamente cuatro descripciones de progreso. Conserva los códigos curriculares que tengas; para criterios propios usa códigos locales.",
+    "In didactic skills, criterios is optional: each entry has codigo and enunciado; optional niveles contains exactly four progress descriptions. Keep supplied curriculum codes; use local codes for your own criteria.",
+    "Skill didaktikoetan criterios aukerakoa da: sarrera bakoitzak codigo eta enunciado ditu; aukerako niveles eremuak lau aurrerapen-deskribapen zehatz ditu. Mantendu curriculumeko kodeak; erabili tokiko kodeak irizpide propioentzat.",
+  ],
+  guideName: [
+    "name es un identificador de hasta 64 caracteres: minúsculas, números y guiones. Puedes elegirlo al crear; para renombrar una skill guardada cambia metadata.title.",
+    "name is an identifier of up to 64 lowercase letters, digits and hyphens. Choose it when creating; change metadata.title to rename a saved skill.",
+    "name gehienez 64 karaktereko identifikatzailea da: letra xeheak, zenbakiak eta marratxoak. Aukeratu sortzean; aldatu metadata.title gordetako skillaren izena aldatzeko.",
+  ],
+  retainedFiles: [
+    "Esta skill ya tiene materiales adicionales. Se conservan al guardar el Markdown.",
+    "This skill already has companion materials. Saving the Markdown preserves them.",
+    "Skill honek material osagarriak ditu. Markdown gordetzean mantentzen dira.",
+  ],
+  generationTitle: ["Ayúdame a redactarla", "Help me draft it", "Lagundu idazten"],
+  generationNotes: [
+    "¿Qué quieres trabajar y con qué criterios?",
+    "What should students learn, and what are your criteria?",
+    "Zer ikasi behar dute eta zein dira zure irizpideak?",
+  ],
+  generate: ["Generar borrador", "Generate draft", "Sortu zirriborroa"],
+  generating: ["Generando borrador…", "Generating draft…", "Zirriborroa sortzen…"],
+  generationHelp: [
+    "Usa el modelo configurado para esta clase. El texto generado queda pendiente de tu revisión.",
+    "Uses the model configured for this class. Generated text awaits your review.",
+    "Ikasgela honetarako konfiguratutako modeloa erabiltzen du. Sortutako testua zuk berrikusi behar duzu.",
+  ],
+  generatedTitle: ["Propuesta del modelo", "Model proposal", "Modeloaren proposamena"],
+  generationReplace: [
+    "Al usar esta propuesta se sustituye el Markdown del editor. Después puedes editarlo antes de guardar.",
+    "Using this proposal replaces the editor Markdown. You can then edit it before saving.",
+    "Proposamena erabiltzeak editoreko Markdown ordezkatzen du. Ondoren editatu dezakezu gorde aurretik.",
+  ],
+  useGenerated: ["Usar este borrador", "Use this draft", "Erabili zirriborro hau"],
+  discardGenerated: ["Descartar propuesta", "Discard proposal", "Baztertu proposamena"],
+  generationProblem: [
+    "No se ha podido generar una skill válida. Comprueba el modelo y la conexión en Ajustes, o revisa las indicaciones y reintenta. Tu texto se conserva.",
+    "A valid skill could not be generated. Check the model and connection in Settings, or revise your notes and retry. Your text is preserved.",
+    "Ezin izan da baliozko skill bat sortu. Egiaztatu modeloa eta konexioa Ezarpenetan, edo berrikusi oharrak eta saiatu berriro. Zure testua mantendu da.",
+  ],
+  invalidYaml: [
+    "Revisa la cabecera YAML entre ---: campos admitidos, sangría y comillas. metadata.title debe ser texto. No se admiten module ni allowed-tools.",
+    "Check the YAML header between ---: supported fields, indentation and quotes. metadata.title must be text. module and allowed-tools are not supported.",
+    "Berrikusi --- arteko YAML goiburua: eremuak, koska eta komatxoak. metadata.title testua izan behar da. module eta allowed-tools ez dira onartzen.",
+  ],
+  invalidName: [
+    "name debe coincidir con el identificador de esta skill. Para cambiar el nombre visible, edita metadata.title.",
+    "name must match this skill identifier. Edit metadata.title to change the visible name.",
+    "name skillaren identifikatzailearekin bat etorri behar da. Aldatu metadata.title ikusgai den izena aldatzeko.",
+  ],
+  invalidDescription: [
+    "Completa description en la cabecera, con un máximo de 1024 caracteres.",
+    "Complete description in the header, up to 1024 characters.",
+    "Bete description goiburuan, gehienez 1024 karaktererekin.",
+  ],
+  invalidCriteria: [
+    "Revisa criterios: códigos únicos, textos de hasta 1024 caracteres y exactamente cuatro niveles si los incluyes. Las skills de evaluación no llevan criterios.",
+    "Check criterios: unique codes, texts up to 1024 characters, and exactly four niveles when supplied. Assessment skills do not contain criterios.",
+    "Berrikusi criterios: kode bakarrak, gehienez 1024 karaktereko testuak eta lau niveles zehatz ematen badituzu. Ebaluazio-skillek ez dute criterios eremurik.",
+  ],
+  invalidBody: [
+    "Escribe las instrucciones en Markdown debajo de la cabecera.",
+    "Write Markdown instructions below the header.",
+    "Idatzi Markdown argibideak goiburuaren azpian.",
+  ],
+  invalidSize: [
+    "El contenido supera el tamaño permitido o contiene caracteres no válidos.",
+    "The content exceeds the size limit or contains invalid characters.",
+    "Edukiak tamaina-muga gainditzen du edo karaktere baliogabeak ditu.",
+  ],
+  deleteTitle: ["Eliminar skill", "Delete skill", "Ezabatu skilla"],
+  deleteHelp: [
+    "Se eliminará de tu biblioteca y de las asignaciones indicadas arriba. Si es el método de evaluación de una clase, se desactivará su evaluación automática.",
+    "It will be deleted from your library and the assignments listed above. If it is a class assessment method, automatic assessment will be disabled.",
+    "Zure liburutegitik eta goian adierazitako esleipenetatik ezabatuko da. Ikasgela baten ebaluazio-metodoa bada, ebaluazio automatikoa desaktibatuko da.",
+  ],
+  confirmDelete: [
+    "Eliminar y retirar de las asignaciones",
+    "Delete and remove from assignments",
+    "Ezabatu eta kendu esleipenetatik",
+  ],
+  deleted: [
+    "Skill eliminada y retirada de las asignaciones.",
+    "Skill deleted and removed from assignments.",
+    "Skilla ezabatu eta esleipenetatik kendu da.",
+  ],
+
   classroom: ["Esta clase", "This class", "Ikasgela hau"],
   students: ["Por alumno", "By student", "Ikasleka"],
   library: ["Biblioteca", "Library", "Liburutegia"],
@@ -156,6 +260,7 @@ export function skillWorkspaceMessages(locale: DashboardLocale) {
   ) as Record<keyof typeof labels, string>;
   return {
     ...text,
+    locale,
     impact: (classes: number, students: number) =>
       locale === "es"
         ? `Se actualizará en ${String(classes)} clases y ${String(students)} selecciones individuales.`

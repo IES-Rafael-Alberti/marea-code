@@ -6,7 +6,7 @@ import type {
   SkillWorkspaceUsage,
   TeachingConfiguration,
 } from "@marea/protocol";
-import { copySkillDraft, newSkillDraft } from "./draft.boundary.js";
+import { copySkillDraft, newSkillDraft, editSkillMarkdown } from "./draft.boundary.js";
 
 interface WorkspaceEditor {
   readonly key: string;
@@ -22,7 +22,9 @@ export class SkillWorkspaceState {
   busy = false;
   loaded = false;
   problem: string | null = null;
-  notice: "saved" | "assigned" | null = null;
+  notice: "saved" | "assigned" | "deleted" | null = null;
+  generated: string | null = null;
+  deleting = false;
   catalog: readonly SkillLibraryEntry[] = [];
   students: readonly SkillWorkspaceStudent[] = [];
   configuration: TeachingConfiguration | null = null;
@@ -32,11 +34,13 @@ export class SkillWorkspaceState {
   readonly drafts = new Map<string, WorkspaceEditor>();
   constructor(readonly changed: () => void) {}
   closeDetail() {
+    this.deleting = false;
     this.detail = null;
     this.usage = null;
     this.changed();
   }
   create(kind: SkillAuthoringDraft["kind"]) {
+    this.generated = null;
     this.editor = this.drafts.get(`new:${kind}`) ?? {
       key: `new:${kind}`,
       draft: newSkillDraft(kind),
@@ -49,6 +53,7 @@ export class SkillWorkspaceState {
     this.changed();
   }
   editDetail(copy = false) {
+    this.generated = null;
     const detail = this.detail;
     if (detail === null) return;
     const bundle = detail.skill;
@@ -92,12 +97,27 @@ export class SkillWorkspaceState {
     this.changed();
   }
   closeEditor() {
+    this.generated = null;
     this.editor = null;
     this.changed();
   }
   discardEditor() {
+    this.generated = null;
     if (this.editor) this.drafts.delete(this.editor.key);
     this.editor = null;
+    this.changed();
+  }
+  acceptGenerated() {
+    if (!this.editor || this.generated === null || this.busy || this.editor.applyPending) return;
+    this.edit(editSkillMarkdown(this.editor.draft, this.generated, false));
+    this.discardGenerated();
+  }
+  discardGenerated() {
+    this.generated = null;
+    this.changed();
+  }
+  cancelDeletion() {
+    this.deleting = false;
     this.changed();
   }
 }

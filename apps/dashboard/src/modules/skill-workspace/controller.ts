@@ -4,6 +4,7 @@ import { createSkillAuthoringClient } from "../skill-authoring/skill-authoring-c
 import { createSkillWorkspaceClient } from "./client.boundary.js";
 import { loadSkillWorkspace } from "./load-workspace.js";
 import { SkillWorkspaceState } from "./state.js";
+import type { DashboardLocale } from "../../messages.js";
 import type {
   SkillAuthoringReadResponse,
   SkillWorkspaceUsage,
@@ -86,7 +87,60 @@ export class SkillWorkspaceController extends SkillWorkspaceState {
       );
 
       this.detail = detail;
+      this.deleting = false;
       this.usage = usage;
+    });
+  }
+
+  generate(instructions: string, locale: DashboardLocale) {
+    return this.perform(async () => {
+      const editor = this.editor;
+      if (!editor || editor.applyPending) return;
+      const result = await this.request(
+        this.classId,
+        {
+          kind: "generate",
+          instructions,
+          locale,
+          slug: editor.draft.slug,
+          skillKind: editor.draft.kind,
+        },
+        this.abort.signal,
+      );
+      if (this.editor === editor && !this.disposed()) this.generated = result.content;
+    });
+  }
+  reviewDeletion() {
+    return this.perform(async () => {
+      const detail = this.detail;
+      if (!detail?.editable || !detail.skill) return;
+      this.usage = await this.request(
+        this.classId,
+        { kind: "usage", skillId: detail.skill.id },
+        this.abort.signal,
+      );
+      this.deleting = true;
+    });
+  }
+  deleteSkill() {
+    return this.perform(async () => {
+      const detail = this.detail;
+      if (!this.deleting || !detail?.editable || !detail.skill || !this.usage) return;
+      await this.request(
+        this.classId,
+        {
+          kind: "delete",
+          skillId: detail.skill.id,
+          digest: detail.skill.digest,
+          expectedUsage: this.usage.version,
+        },
+        this.abort.signal,
+      );
+      this.drafts.delete(detail.skill.id);
+      this.closeDetail();
+      await this.refresh();
+      await this.teachingChanged();
+      this.notice = "deleted";
     });
   }
 

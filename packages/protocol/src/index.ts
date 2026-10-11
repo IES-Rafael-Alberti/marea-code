@@ -36,3 +36,5 @@ export * from "./server-setup.js";
 export * from "./session-export.js";
 
 export * from "./skill-workspace.js";
+
+export { SkillFrontmatterSchema } from "./skill-markdown.js";

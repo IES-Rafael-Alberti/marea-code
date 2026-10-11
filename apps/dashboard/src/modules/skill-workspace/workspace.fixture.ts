@@ -101,6 +101,14 @@ export function workspaceFixture() {
               uses,
               version: `sha256:${"c".repeat(64)}`,
             });
+          case "generate":
+            return Response.json({
+              ...envelope,
+              kind: "generate",
+              content: `---\nname: ${input.slug}\ndescription: Generated practice\n---\n# Practice\nAsk for evidence.`,
+            });
+          case "delete":
+            return Response.json({ ...envelope, kind: "delete" });
           case "apply":
             return Response.json({ ...envelope, kind: "applied" });
           case "assign": {

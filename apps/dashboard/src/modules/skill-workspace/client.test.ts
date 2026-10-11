@@ -34,6 +34,7 @@ it("uses same-origin authenticated POST with a correlated, strictly validated re
   );
 });
 it.each([
+  [422, "generationProblem"],
   [409, "conflict"],
   [403, "forbidden"],
   [401, "unavailable"],

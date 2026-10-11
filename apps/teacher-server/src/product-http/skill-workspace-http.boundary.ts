@@ -13,12 +13,14 @@ import {
   parseSkillAuthoringJson,
 } from "./skill-authoring-http.boundary.js";
 import { protocolError } from "./response.js";
+import { SkillGenerationError } from "../teaching/skills/generate-skill.js";
+import { SkillAuthoringError } from "../teaching/authoring/errors.js";
 
 export function registerSkillWorkspaceRoutes(options: {
   readonly app: Hono;
   readonly policy: MiddlewareHandler;
   readonly authenticate: (request: Request) => AuthenticatedIdentity;
-  readonly service: SkillWorkspaceService | undefined;
+  readonly service: Pick<SkillWorkspaceService, "execute"> | undefined;
 }): void {
   options.app.post(SKILL_WORKSPACE_PATH, options.policy, async (context) => {
     try {
@@ -30,13 +32,17 @@ export function registerSkillWorkspaceRoutes(options: {
         131072,
       );
       if (!parsed.ok) return parsed.response;
-      const result = await options.service.execute(identity, parsed.value);
+      const result = await options.service.execute(identity, parsed.value, context.req.raw.signal);
       return boundedSkillAuthoringJson(
         SkillWorkspaceResponseSchema,
         result,
         parsed.value.requestId,
       );
     } catch (error) {
+      if (error instanceof SkillGenerationError)
+        return protocolError(422, "request.invalid", false);
+      if (error instanceof SkillAuthoringError && error.code === "STALE_SKILL_DIGEST")
+        return protocolError(409, "request.invalid", false);
       if (error instanceof TeacherDomainError) {
         if (error.code === "request.conflict") return protocolError(409, "request.invalid", false);
         return protocolError(error.code === "auth.invalid" ? 401 : 403, "auth.invalid", false);

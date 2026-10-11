@@ -273,3 +273,38 @@
     grid-template-columns: 1fr;
   }
 }
+
+.skills-workspace .skills-markdown {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  tab-size: 2;
+}
+.skills-detail .skills-markdown {
+  max-height: 60vh;
+  overflow: auto;
+}
+.skills-guide,
+.skills-generation {
+  margin-block: 1rem;
+}
+.skills-generation textarea {
+  display: block;
+  width: 100%;
+  margin-block: 0.5rem;
+}
+.skills-generation section {
+  margin-block: 1rem;
+}
+.skills-generation pre {
+  max-height: 30rem;
+  overflow: auto;
+}
+.skills-workspace .skills-danger {
+  color: #a31835;
+  border-color: currentColor;
+}

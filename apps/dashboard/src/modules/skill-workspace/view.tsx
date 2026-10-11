@@ -320,9 +320,11 @@ function InheritSelection({
 }
 
 function problemMessage(problem: string, messages: SkillWorkspaceMessages) {
-  return problem === "apply"
-    ? messages.applyProblem
-    : problem === "conflict"
-      ? messages.conflict
-      : messages.unavailable;
+  return problem === "generationProblem"
+    ? messages.generationProblem
+    : problem === "apply"
+      ? messages.applyProblem
+      : problem === "conflict"
+        ? messages.conflict
+        : messages.unavailable;
 }

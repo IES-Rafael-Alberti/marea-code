@@ -218,6 +218,71 @@ export class SqliteSkillAssignments {
     };
   }
 
+  withdraw(
+    identity: AuthenticatedIdentity,
+    classId: string,
+    skillId: string,
+    expectedUsage: string,
+  ): void {
+    this.database.transaction(() => {
+      this.require(identity, classId);
+      // An owner cannot silently leave assignments in classes they can no longer administer.
+      const destinations = this.database.readAll(
+        `SELECT current.class_id FROM marea_current_class_teaching current
+         JOIN marea_class_teaching_revisions revisions ON revisions.id = current.revision_id
+         WHERE EXISTS (SELECT 1 FROM json_each(revisions.configuration_json, '$.selection.didactic') WHERE json_extract(value, '$.id') = ?1)
+            OR EXISTS (SELECT 1 FROM json_each(revisions.configuration_json, '$.selection.evaluation') WHERE json_extract(value, '$.id') = ?1)
+         UNION SELECT class_id FROM marea_student_skill_assignments
+         WHERE EXISTS (SELECT 1 FROM json_each(skills_json) WHERE json_extract(value, '$.id') = ?1)`,
+        [skillId],
+      );
+      for (const destination of destinations)
+        this.requireClass(identity.userId, rowText(destination, "class_id"));
+      const uses = this.uses(identity.userId, skillId);
+      if (this.version(uses) !== expectedUsage) throw new TeacherDomainError("request.conflict");
+      const without = <T extends { readonly id: string }>(items: readonly T[]) =>
+        items.filter((item) => item.id !== skillId);
+      for (const item of uses) {
+        if (this.classUses(item, skillId)) {
+          const c = item.configuration;
+          const evaluation = without(c.content.evaluationSkills);
+          const configuration = replaceTeachingSkills(
+            {
+              ...c,
+              content: {
+                ...c.content,
+                automaticEvaluation: c.content.automaticEvaluation && evaluation.length > 0,
+              },
+            },
+            without(c.content.didacticSkills),
+            evaluation,
+            this.ids.createId("revision"),
+          );
+          commitTeachingRevision(this.database, {
+            classId: item.classId,
+            author: { kind: "teacher", userId: identity.userId },
+            expectedVersion: c.content.configurationVersion,
+            createdAt: this.clock.now(),
+            configuration: StoredTeachingConfigurationSchema.parse({
+              ...configuration,
+              selection: {
+                didactic: without(c.selection.didactic),
+                evaluation: without(c.selection.evaluation),
+              },
+            }),
+          });
+        }
+        for (const assignment of item.assignments)
+          this.write(
+            item.classId,
+            assignment.studentId,
+            without(assignment.skills),
+            identity.userId,
+          );
+      }
+    });
+  }
+
   apply(
     identity: AuthenticatedIdentity,
     classId: string,

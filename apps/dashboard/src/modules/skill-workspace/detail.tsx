@@ -1,8 +1,6 @@
 import type { SkillWorkspaceController } from "./controller.js";
 import type { SkillWorkspaceMessages } from "./messages.js";
 import { skillEditorFields } from "./draft.boundary.js";
-import { Markdown } from "../sessions/markdown.js";
-import { createBrowserSkillAuthoringFileExchange } from "../skill-authoring/skill-authoring-files.js";
 export function SkillDetail({
   controller: c,
   messages: m,
@@ -51,19 +49,9 @@ export function SkillDetail({
           {detail.editable ? m.edit : m.copy}
         </button>
       </div>
-      <Markdown text={fields?.instructions ?? ""} />
-      {bundle.criteria.length > 0 && (
-        <details>
-          <summary>{m.criteria}</summary>
-          <ul>
-            {bundle.criteria.map((criterion) => (
-              <li key={criterion.code}>
-                {criterion.code}: {criterion.statement}
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
+      <pre className="skills-markdown" aria-label="SKILL.md">
+        {bundle.files.find((file) => file.path === "SKILL.md")?.content}
+      </pre>
       <h4>{m.uses}</h4>
       {c.usage?.uses.length === 0 ? (
         <p>{m.unused}</p>
@@ -77,26 +65,41 @@ export function SkillDetail({
           ))}
         </ul>
       )}
-      <details>
-        <summary>{m.resources}</summary>
-        {bundle.files.map((file) => (
-          <p key={file.path}>
+      {detail.editable &&
+        (c.deleting ? (
+          <section role="alertdialog" aria-label={m.deleteTitle}>
+            <h4>{m.deleteTitle}</h4>
+            <p>{m.deleteHelp}</p>
+            <p>{m.future}</p>
             <button
+              disabled={c.busy}
               onClick={() => {
-                void c.perform(() =>
-                  createBrowserSkillAuthoringFileExchange().exportFile(
-                    file.path,
-                    file.content,
-                    true,
-                  ),
-                );
+                c.cancelDeletion();
               }}
             >
-              {m.exportFile}: {file.path}
+              {m.cancel}
             </button>
-          </p>
+            <button
+              className="skills-danger"
+              disabled={c.busy}
+              onClick={() => {
+                void c.deleteSkill();
+              }}
+            >
+              {m.confirmDelete}
+            </button>
+          </section>
+        ) : (
+          <button
+            className="skills-danger"
+            disabled={c.busy}
+            onClick={() => {
+              void c.reviewDeletion();
+            }}
+          >
+            {m.deleteTitle}
+          </button>
         ))}
-      </details>
     </aside>
   );
 }

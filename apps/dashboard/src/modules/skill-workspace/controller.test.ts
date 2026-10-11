@@ -346,3 +346,42 @@ async function pendingSave() {
   await c.save();
   return f;
 }
+
+it("requires an editable detail, reviewed destinations and explicit confirmation before deletion", async () => {
+  const f = workspaceFixture(),
+    c = f.controller;
+  await c.reviewDeletion();
+  await c.deleteSkill();
+  expect(f.request).not.toHaveBeenCalled();
+  await c.open(f.bundle.id);
+  const original = c.detail;
+  if (!original) throw new Error("detail");
+  for (const detail of [null, { ...original, editable: false }, { ...original, skill: null }]) {
+    c.detail = detail;
+    c.deleting = true;
+    f.request.mockClear();
+    await c.reviewDeletion();
+    await c.deleteSkill();
+    expect(f.request).not.toHaveBeenCalled();
+  }
+  c.detail = original;
+  c.usage = null;
+  await c.deleteSkill();
+  expect(f.request).not.toHaveBeenCalled();
+  c.deleting = false;
+  await c.deleteSkill();
+  expect(f.request).not.toHaveBeenCalled();
+  await c.reviewDeletion();
+  expect(c.deleting).toBe(true);
+  f.failures.set("delete", 409);
+  await c.deleteSkill();
+  expect(c.problem).toBe("conflict");
+  expect(c.detail).toEqual(original);
+  expect(c.deleting).toBe(true);
+  c.copyEditor();
+  c.create("didactic");
+  const editor = c.editor;
+  c.busy = true;
+  c.copyEditor();
+  expect(c.editor).toBe(editor);
+});

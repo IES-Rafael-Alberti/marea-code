@@ -9,13 +9,25 @@ import { TeacherDomainError } from "../../identity/errors.js";
 import type { SqliteSkillAssignments } from "../../platform/persistence/sqlite-skill-assignments.js";
 import { materializeTeachingSkills } from "./materialize-skills.js";
 import type { SkillSource, SkillBundle, SkillSummary } from "./skill-source.js";
+import type { SkillGenerator } from "./generate-skill.js";
+import type { SkillAuthoringStore } from "../authoring/skill-authoring-store.boundary.js";
+
+export interface SkillWorkspaceTools {
+  readonly generator: Pick<SkillGenerator, "generate">;
+  readonly writerForTeacher: (teacherId: string) => Pick<SkillAuthoringStore, "remove">;
+}
 
 export class SkillWorkspaceService {
   constructor(
     readonly repository: SqliteSkillAssignments,
     readonly source: (teacherId: string, classId: string) => SkillSource,
+    readonly tools?: SkillWorkspaceTools,
   ) {}
-  async execute(identity: AuthenticatedIdentity, input: SkillWorkspaceRequest) {
+  async execute(
+    identity: AuthenticatedIdentity,
+    input: SkillWorkspaceRequest,
+    signal = new AbortController().signal,
+  ) {
     const request = SkillWorkspaceRequestSchema.parse(input);
     this.repository.require(identity, request.classId);
     const envelope = {
@@ -24,6 +36,28 @@ export class SkillWorkspaceService {
       classId: request.classId,
     };
     switch (request.kind) {
+      case "generate": {
+        if (!this.tools) throw new Error("unavailable");
+        const content = await this.tools.generator.generate(identity.userId, request, signal);
+        this.repository.require(identity, request.classId);
+        return SkillWorkspaceResponseSchema.parse({ ...envelope, kind: "generate", content });
+      }
+      case "delete": {
+        if (!request.skillId.startsWith(`teacher/${identity.userId}/`))
+          throw new TeacherDomainError("dashboard.forbidden");
+        if (!this.tools) throw new Error("unavailable");
+        await this.tools
+          .writerForTeacher(identity.userId)
+          .remove(request.skillId, request.digest, () => {
+            this.repository.withdraw(
+              identity,
+              request.classId,
+              request.skillId,
+              request.expectedUsage,
+            );
+          });
+        return SkillWorkspaceResponseSchema.parse({ ...envelope, kind: "delete" });
+      }
       case "library": {
         const source = this.source(identity.userId, request.classId);
         const catalog = new Map(

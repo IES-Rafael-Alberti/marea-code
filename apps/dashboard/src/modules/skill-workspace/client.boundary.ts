@@ -46,11 +46,13 @@ export function createSkillWorkspaceClient(fetch: DashboardFetch) {
     if (!response.ok) {
       await response.body?.cancel();
       throw new Error(
-        response.status === 409
-          ? "conflict"
-          : response.status === 403
-            ? "forbidden"
-            : "unavailable",
+        response.status === 422
+          ? "generationProblem"
+          : response.status === 409
+            ? "conflict"
+            : response.status === 403
+              ? "forbidden"
+              : "unavailable",
       );
     }
     const parsed = SkillWorkspaceResponseSchema.parse(

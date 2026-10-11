@@ -72,13 +72,12 @@ try {
   await workspace.locator(".skills-open").filter({ hasText: "testing" }).click();
   await button(workspace.locator(".skills-detail"), "Create my version").click();
   const editor = workspace.locator(".skills-editor");
-  await editor.getByRole("textbox", { name: "Name", exact: true }).fill("Testing foundations");
-  await editor
-    .getByRole("textbox", { name: "Short description", exact: true })
-    .fill("Practice one focused test at a time.");
-  await editor
-    .getByRole("textbox", { name: "Tutor instructions", exact: true })
-    .fill("Ask the learner to explain one test before writing code.");
+  const markdown = editor.getByRole("textbox", { name: "SKILL.md", exact: true });
+  const copied = await markdown.inputValue();
+  const name = /^name: (.+)$/mu.exec(copied)[1];
+  await markdown.fill(
+    `---\nname: ${name}\ndescription: Practice one focused test at a time.\nmetadata:\n  title: Testing foundations\ncriterios:\n  - codigo: local-1\n    enunciado: Chooses a useful test\n    niveles: [Guided, Supported, Independent, Novel]\n---\n# Practice\nAsk the learner to explain one test before writing code.`,
+  );
   await page.screenshot({ path: join(artifacts, "editor.png"), fullPage: true });
   await button(editor, "Save to library").click();
   await workspace.getByText("Changes saved.", { exact: true }).waitFor();
@@ -91,9 +90,12 @@ try {
   await saved();
   await workspace.locator(".skills-open").filter({ hasText: "Testing foundations" }).click();
   await button(workspace.locator(".skills-detail"), "Edit").click();
-  await editor
-    .getByRole("textbox", { name: "Tutor instructions", exact: true })
-    .fill("Ask for a normal case, an empty case and a boundary case.");
+  await markdown.fill(
+    (await markdown.inputValue()).replace(
+      "Ask the learner to explain one test before writing code.",
+      "Ask for a normal case, an empty case and a boundary case.",
+    ),
+  );
   await editor
     .getByText("Will update 1 classes and 0 individual selections.", { exact: true })
     .waitFor();
@@ -111,12 +113,32 @@ try {
   await workspace.locator(".skills-open").filter({ hasText: "Testing foundations" }).click();
   await workspace
     .locator(".skills-detail")
-    .getByText("Ask for a normal case, an empty case and a boundary case.", { exact: true })
+    .getByText(/Ask for a normal case, an empty case and a boundary case./u)
     .waitFor();
   await page.screenshot({ path: join(artifacts, "library.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({ path: join(artifacts, "mobile-detail.png"), fullPage: true });
-  await button(workspace.locator(".skills-detail"), "Close").click();
+  assert.ok(
+    (await workspace.locator(".skills-detail pre").innerText()).includes(
+      "niveles: [Guided, Supported, Independent, Novel]",
+    ),
+  );
+  await button(workspace.locator(".skills-detail"), "Delete skill").click();
+  await workspace.getByRole("alertdialog").waitFor();
+  await button(workspace.getByRole("alertdialog"), "Cancel").click();
+  await button(workspace.locator(".skills-detail"), "Delete skill").click();
+  await button(workspace.getByRole("alertdialog"), "Delete and remove from assignments").click();
+  await workspace
+    .getByText("Skill deleted and removed from assignments.", { exact: true })
+    .waitFor();
+  await page.reload();
+  await page.locator(".workspace-navigation").waitFor();
+  await openView(page, "skills");
+  await tab("Library");
+  assert.equal(
+    await workspace.locator(".skills-open").filter({ hasText: "Testing foundations" }).count(),
+    0,
+  );
   assert.deepEqual(errors, []);
   console.log(
     "Skills browser acceptance passed: class, individual and bulk assignments, inheritance, copy, editing and reload.",

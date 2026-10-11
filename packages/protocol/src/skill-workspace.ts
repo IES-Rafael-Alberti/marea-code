@@ -4,6 +4,7 @@ import { RevisionIdSchema, SafeDisplayNameSchema } from "./technical.js";
 import { Sha256DigestSchema } from "./runs.js";
 import { CurrentProtocolVersionSchema } from "./version.js";
 import { TeachingSelectionSchema, TeachingCatalogEntrySchema } from "./teaching-configuration.js";
+import { SkillAuthoringDraftSchema } from "./skill-authoring.js";
 
 export const SKILL_WORKSPACE_PATH = "/api/v1/dashboard/skill-workspace";
 const selection = TeachingSelectionSchema.unwrap().shape.didactic.refine(
@@ -18,6 +19,25 @@ const target = z
   .object({ studentId: RevisionIdSchema, expectedVersion: RevisionIdSchema.nullable() })
   .strict();
 export const SkillWorkspaceRequestSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      ...envelope,
+      kind: z.literal("generate"),
+      slug: SkillAuthoringDraftSchema.unwrap().shape.slug,
+      skillKind: z.enum(["didactic", "evaluation"]),
+      instructions: z.string().trim().min(1).max(16000),
+      locale: z.enum(["es", "en", "eu"]),
+    })
+    .strict(),
+  z
+    .object({
+      ...envelope,
+      kind: z.literal("delete"),
+      skillId: SkillIdSchema,
+      digest: Sha256DigestSchema,
+      expectedUsage: Sha256DigestSchema,
+    })
+    .strict(),
   z.object({ ...envelope, kind: z.literal("library"), after: SkillIdSchema.nullable() }).strict(),
   z
     .object({ ...envelope, kind: z.literal("students"), after: RevisionIdSchema.nullable() })
@@ -67,6 +87,10 @@ export const SkillLibraryEntrySchema = TeachingCatalogEntrySchema.unwrap()
   .strict();
 export type SkillLibraryEntry = z.infer<typeof SkillLibraryEntrySchema>;
 export const SkillWorkspaceResponseSchema = z.discriminatedUnion("kind", [
+  z
+    .object({ ...envelope, kind: z.literal("generate"), content: z.string().min(1).max(65536) })
+    .strict(),
+  z.object({ ...envelope, kind: z.literal("delete") }).strict(),
   z
     .object({
       ...envelope,

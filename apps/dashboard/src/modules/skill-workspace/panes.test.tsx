@@ -299,9 +299,7 @@ it("renders a mixed individual selection and disables detail actions during save
   ).toBe(true);
   if (!c.detail) throw new Error("detail");
   c.detail = { ...c.detail, skill: { ...f.bundle, files: [] } };
-  expect(render().find((node) => node.props.className === "message-text")?.props.children).toEqual(
-    [],
-  );
+  expect(render().find((node) => node.type === "pre")?.props.children).toBeUndefined();
 });
 
 function studentList(c: ReturnType<typeof workspaceFixture>["controller"]) {

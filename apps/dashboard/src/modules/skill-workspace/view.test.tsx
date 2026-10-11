@@ -407,3 +407,10 @@ it("returns from editing to an unfiltered library so the saved personal copy sta
   expect(control(f.render(), m.library).value).toBe("all");
   expect(f.render().filter((node) => node.props.className === "skills-open")).toHaveLength(1);
 });
+it("explains a failed generation while retaining the teacher's editor", () => {
+  const f = fixture();
+  f.c.create("didactic");
+  f.c.problem = "generationProblem";
+  expect(f.render().some((node) => text(node) === m.generationProblem)).toBe(true);
+  expect(f.c.editor).not.toBeNull();
+});

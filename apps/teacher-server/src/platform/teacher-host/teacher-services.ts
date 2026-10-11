@@ -1,5 +1,11 @@
+import { coordinateSkillChanges } from "./skill-change-coordination.js";
 import { SqliteSkillAssignments } from "../persistence/sqlite-skill-assignments.js";
-import { SkillWorkspaceService } from "../../teaching/skills/workspace-service.boundary.js";
+import {
+  SkillWorkspaceService,
+  type SkillWorkspaceTools,
+} from "../../teaching/skills/workspace-service.boundary.js";
+import { SkillGenerator } from "../../teaching/skills/generate-skill.js";
+import { EducationalInference } from "../../educational-insights/inference.js";
 import { ServerSettingsService } from "../../server-settings/service.boundary.js";
 import { SessionExportService } from "../../session-export/service.boundary.js";
 import { SqliteSessionExportRepository } from "../persistence/sqlite-session-export.js";
@@ -168,6 +174,11 @@ export async function composeTeacherServices(
   );
   const centers = await ownedSkills(skills.centers, "center");
   const teachers = await ownedSkills(skills.teachers, "teacher");
+  const writerForTeacher = (teacherId: string) => {
+    const store = teachers.stores.get(teacherId);
+    if (store === undefined) throw new TeacherDomainError("dashboard.forbidden");
+    return store;
+  };
   const configurations = new SqliteTeachingConfigurationRepository(database);
   // Both consumers authorize the teacher's class membership before resolving its sources.
   const sourceForTeacherClass = (teacherId: string, classId: string): SkillSource => {
@@ -270,7 +281,14 @@ export async function composeTeacherServices(
     dependencies.identities,
   );
   const services: TeacherProductServices = {
-    ...skillWorkspaceEndpoint(database, configurations, ids, clock, sourceForTeacherClass),
+    ...skillWorkspaceEndpoint(database, configurations, ids, clock, sourceForTeacherClass, {
+      writerForTeacher,
+      generator: new SkillGenerator(
+        new EducationalInference(database, dependencies.providers, clock),
+        operator,
+        skills.core,
+      ),
+    }),
     sessionExport: new SessionExportService(new SqliteSessionExportRepository(database)),
     ...observabilityEndpoint(observability),
     ...(identityProviders.length === 0
@@ -308,11 +326,7 @@ export async function composeTeacherServices(
     skillAuthoring: createProductSkillAuthoringService({
       membership: configurations,
       sourceForTeacherClass,
-      writerForTeacher: (teacherId) => {
-        const store = teachers.stores.get(teacherId);
-        if (store === undefined) throw new TeacherDomainError("dashboard.forbidden");
-        return store;
-      },
+      writerForTeacher,
     }),
     evaluations: evaluations.service,
     modelUsage: new RunInferenceService({
@@ -355,7 +369,10 @@ export async function composeTeacherServices(
     }),
   };
   return Object.freeze({
-    services,
+    services: {
+      ...services,
+      ...coordinateSkillChanges(services.teachingConfiguration, services.skillWorkspace),
+    },
     governance: {
       service: createGovernanceService(governanceDependencies),
       sessions: new SqliteGovernanceSessionResolver(database, governanceRepository),
@@ -387,6 +404,7 @@ function skillWorkspaceEndpoint(
   ids: IdGenerator,
   clock: Clock,
   sourceForTeacherClass: (teacherId: string, classId: string) => SkillSource,
+  tools: SkillWorkspaceTools,
 ) {
   if (
     database.readOne(
@@ -403,6 +421,7 @@ function skillWorkspaceEndpoint(
         clock,
       ),
       sourceForTeacherClass,
+      tools,
     ),
   };
 }

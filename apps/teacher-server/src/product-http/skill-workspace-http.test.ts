@@ -88,3 +88,19 @@ it("sanitizes authorization, stale assignment and unexpected failures", async ()
     error: { code: "request.invalid", retryable: false },
   });
 });
+
+import { SkillGenerationError } from "../teaching/skills/generate-skill.js";
+import { SkillAuthoringError } from "../teaching/authoring/errors.js";
+it.each([
+  [new SkillGenerationError(), 422],
+  [new SkillAuthoringError("STALE_SKILL_DIGEST", "private", "private details"), 409],
+  [new SkillAuthoringError("AUTHORING_WRITE_FAILED", "private", "private details"), 500],
+] as const)("sanitizes authoring failures without returning source text", async (error, status) => {
+  const f = fixture();
+  f.authenticate.mockImplementationOnce(() => {
+    throw error;
+  });
+  const response = await f.request({});
+  expect(response.status).toBe(status);
+  expect(await response.text()).not.toContain("private");
+});

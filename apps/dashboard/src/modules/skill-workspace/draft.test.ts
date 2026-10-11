@@ -86,8 +86,6 @@ it("enforces exact field and criterion bounds, including whitespace and duplicat
     /^skill-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u,
   );
   for (const update of [
-    { title: " " },
-    { title: "a".repeat(257) },
     { description: " " },
     { description: "a".repeat(1025) },
     { instructions: "\n " },
@@ -150,4 +148,70 @@ it("rejects misplaced or ambiguous frontmatter, and accepts a closing delimiter 
       files: [{ path: "SKILL.md", content: "---\nname: x\ndescription: valid\n---" }],
     }),
   ).toMatchObject({ title: "x", instructions: "" });
+});
+
+import { editSkillMarkdown, skillDraftProblem } from "./draft.boundary.js";
+it("edits exact Markdown without rewriting it and reports actionable validation categories", () => {
+  const text = "---\nname: testing\ndescription: Practice\n---\n# Practice\nTry a boundary.";
+  const draft = {
+    slug: "testing",
+    kind: "didactic" as const,
+    files: [
+      { path: "SKILL.md", content: text },
+      { path: "resources/a.txt", content: "keep" },
+    ],
+  };
+  expect(skillDraftProblem(draft)).toBeNull();
+  const changed = editSkillMarkdown(draft, text.replace("name: testing", "name: boundaries"), true);
+  expect(changed.slug).toBe("boundaries");
+  expect(changed.files[1]).toEqual(draft.files[1]);
+  expect(changed.files[0]?.content).toBe(text.replace("name: testing", "name: boundaries"));
+  const problems = [
+    ["broken", "invalidYaml"],
+    [text.replace("description: Practice", "description: ''"), "invalidDescription"],
+    [text.replace("name: testing", "name: other"), "invalidName"],
+    [text.replace("description: Practice", "description: Practice\nmodule: code"), "invalidYaml"],
+    [
+      text.replace("description: Practice", "description: Practice\nallowed-tools: execute"),
+      "invalidYaml",
+    ],
+    [
+      text.replace(
+        "description: Practice",
+        "description: Practice\ncriterios: [{codigo: x, niveles: [one]}]",
+      ),
+      "invalidCriteria",
+    ],
+    [
+      text.replace(
+        "description: Practice",
+        "description: Practice\ncriterios: [{codigo: x}, {codigo: x}]",
+      ),
+      "invalidCriteria",
+    ],
+    [`${text.split("# Practice")[0] ?? ""} \n`, "invalidBody"],
+    [text + "\0", "invalidSize"],
+  ] as const;
+  for (const [content, problem] of problems) {
+    const next = editSkillMarkdown(draft, content, false);
+    expect(skillDraftProblem(next)).toBe(problem);
+    expect(next.files[0]?.content).toBe(content);
+  }
+  const badCriteria = text.replace(
+    "description: Practice",
+    "description: Practice\ncriterios: [{codigo: ' ' }]",
+  );
+  expect(skillDraftProblem(editSkillMarkdown(draft, badCriteria, false))).toBe("invalidCriteria");
+  const badSlug = editSkillMarkdown(draft, text.replace("name: testing", "name: UPPER"), true);
+  expect(badSlug.slug).toBe("testing");
+  const evaluation = { ...draft, kind: "evaluation" as const };
+  expect(
+    skillDraftProblem(
+      editSkillMarkdown(
+        evaluation,
+        text.replace("description: Practice", "description: Practice\ncriterios: []"),
+        false,
+      ),
+    ),
+  ).toBe("invalidCriteria");
 });

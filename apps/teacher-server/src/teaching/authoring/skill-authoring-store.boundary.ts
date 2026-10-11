@@ -1,4 +1,5 @@
 import { dirname, join, resolve } from "node:path";
+import { renameSync } from "node:fs";
 import { lstat, mkdir, rename, rm, writeFile } from "node:fs/promises";
 
 import { SkillIdSchema } from "@marea/protocol";
@@ -170,6 +171,29 @@ export class SkillAuthoringStore {
 
   recover(): Promise<void> {
     return this.#run(() => this.#recover());
+  }
+
+  /** Withdraw assignments before atomically removing the catalog entry. Interrupted cleanup
+   * is a normal unpublished stage, so startup recovery finishes it without reviving the skill.
+   * A failed rename leaves the skill readable and the withdrawal safely retryable.
+   */
+  remove(id: string, expectedDigest: string, beforeRemove: () => void): Promise<void> {
+    const skillId = SkillIdSchema.parse(id);
+    return this.#run(async () => {
+      await this.#recover();
+      const bundle = await this.#reader.load(skillId);
+      if (bundle?.digest !== expectedDigest) throw staleDigestError(skillId);
+      const { kind, name } = bundle;
+      const stage = this.#transactionDirectory(kind, name);
+      try {
+        await this.#prepareStage(stage, kind, name, []);
+        // No async boundary between the final authorization/SQL withdrawal and publication.
+        beforeRemove();
+        renameSync(join(this.#root, kind, name), join(stage, kind, name));
+      } finally {
+        await this.#recoverTarget(kind, name);
+      }
+    });
   }
 
   async #save(

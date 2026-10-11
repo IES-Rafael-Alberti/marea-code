@@ -125,3 +125,49 @@ it("accepts each correlated operation and exposes bounded, nonnegative usage sum
       SkillWorkspaceResponseSchema.safeParse({ ...usage, uses: [{ ...use, students }] }).success,
     ).toBe(false);
 });
+it("bounds generation notes and returned Markdown and requires a reviewed deletion", () => {
+  const generation = {
+    ...envelope,
+    kind: "generate",
+    slug: "testing",
+    skillKind: "didactic",
+    instructions: "Test boundaries",
+    locale: "es",
+  };
+  expect(SkillWorkspaceRequestSchema.parse(generation)).toEqual(generation);
+  for (const patch of [
+    { instructions: " " },
+    { instructions: "a".repeat(16001) },
+    { slug: "../escape" },
+    { skillKind: "other" },
+    { locale: "fr" },
+    { apiKey: "never" },
+  ])
+    expect(SkillWorkspaceRequestSchema.safeParse({ ...generation, ...patch }).success).toBe(false);
+  expect(
+    SkillWorkspaceRequestSchema.safeParse({
+      ...generation,
+      instructions: "a".repeat(16000),
+      skillKind: "evaluation",
+    }).success,
+  ).toBe(true);
+  const response = { ...envelope, kind: "generate", content: "x".repeat(65536) };
+  expect(SkillWorkspaceResponseSchema.parse(response)).toEqual(response);
+  for (const content of ["", "a".repeat(65537)])
+    expect(SkillWorkspaceResponseSchema.safeParse({ ...response, content }).success).toBe(false);
+  const remove = {
+    ...envelope,
+    kind: "delete",
+    skillId: "teacher/t1/testing",
+    digest,
+    expectedUsage: digest,
+  };
+  expect(SkillWorkspaceRequestSchema.parse(remove)).toEqual(remove);
+  expect(SkillWorkspaceRequestSchema.safeParse({ ...remove, expectedUsage: null }).success).toBe(
+    false,
+  );
+  expect(SkillWorkspaceResponseSchema.parse({ ...envelope, kind: "delete" })).toEqual({
+    ...envelope,
+    kind: "delete",
+  });
+});

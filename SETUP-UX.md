@@ -46,11 +46,32 @@ methods and other tutor policies remain class-wide. Personalization is scoped to
 student and class, never inferred from a browser name or a session ID.
 
 The library shows human names, descriptions and provenance. Built-in and school skills
-are read-only; **Create my version** creates a personal draft. The editor exposes name,
-description and instructions first, with optional criteria and text resources. Advanced
-file editing preserves YAML metadata, comments and companion files. IDs are generated,
-so changing a displayed name does not change the skill's identity. Importing resources
-does not require importing a new `SKILL.md`.
+are read-only; **Create my version** creates a personal draft. Both details and the
+editor show the complete `SKILL.md`, including YAML, criteria and all four levels.
+The teacher writes Markdown directly, with a commented template and an expandable
+guide based on Testing. YAML validation shares the server's frontmatter contract.
+The new UI does not add or manage companion files; existing files are preserved.
+A new skill can choose its `name`; saved identities remain stable, while `metadata.title`
+controls the displayed title.
+
+**Help me draft it** accepts free-form topics, goals and criteria. The server uses the
+current configured class model through the installed provider, with the complete
+Testing example (and the assessment example for an assessment skill). It validates
+its Markdown before returning a proposal. Teachers explicitly move that proposal
+into the editor, review it and save; generation never publishes or assigns a skill.
+No student conversation is sent. Usage is recorded in the independent educational
+ledger under the teacher, using the configured tutoring limits and prices. Requests
+have a two-minute timeout, propagate cancellation and allow one in flight per teacher.
+
+Owners can delete personal skills after reviewing where they are used. Deletion checks
+both the skill digest and assignment revision, withdraws class and individual selections,
+and disables automatic evaluation if its method is removed. Historical revisions and
+started sessions remain frozen. An assignment outside the owner's current authority
+blocks deletion. Dashboard selection writes and deletions share a queue, preventing
+an in-flight selection from reviving a deleted skill. Source removal uses an atomic
+rename into an unpublished stage; interrupted cleanup finishes on recovery. If the
+filesystem rejects removal after SQL withdrawal, the source remains readable and
+can be deleted again after reloading its destinations.
 
 Drafts remain in memory in the authenticated browser tab while navigating between
 classes and sections; closing or reloading with unfinished work raises the browser's

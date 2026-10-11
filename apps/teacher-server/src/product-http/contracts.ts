@@ -91,7 +91,10 @@ export interface TeacherProductServices {
   readonly profiles?: DashboardProfileEndpoint;
   readonly teachingConfiguration: ProductTeachingConfigurationService;
   readonly skillAuthoring: ProductSkillAuthoringService;
-  readonly skillWorkspace?: import("../teaching/skills/workspace-service.boundary.js").SkillWorkspaceService;
+  readonly skillWorkspace?: Pick<
+    import("../teaching/skills/workspace-service.boundary.js").SkillWorkspaceService,
+    "execute"
+  >;
   readonly evaluations: Pick<EvaluationService, "query" | "generate" | "approve">;
   readonly modelUsage: Pick<RunInferenceService, "providerFor">;
   readonly notices: Pick<NoticeService, "publish" | "pending" | "acknowledge" | "lookup">;

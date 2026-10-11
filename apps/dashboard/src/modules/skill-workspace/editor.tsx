@@ -1,10 +1,9 @@
 import { useState } from "react";
-import type { SkillAuthoringDraft } from "@marea/protocol";
 import { Markdown } from "../sessions/markdown.js";
-import { importSkillFiles } from "./import-files.js";
-import { editSkillFields, skillEditorFields, validSkillDraft } from "./draft.boundary.js";
+import { editSkillMarkdown, skillEditorFields, skillDraftProblem } from "./draft.boundary.js";
 import type { SkillWorkspaceController } from "./controller.js";
 import type { SkillWorkspaceMessages } from "./messages.js";
+import { SkillGeneration } from "./generation.js";
 
 export function SkillEditor({
   controller: c,
@@ -15,27 +14,15 @@ export function SkillEditor({
   readonly messages: SkillWorkspaceMessages;
   readonly onReturn: () => void;
 }) {
-  const [advanced, showAdvanced] = useState(false);
   const [preview, showPreview] = useState(false);
-  const [touched, touch] = useState<ReadonlySet<string>>(new Set());
-  const [fileError, setFileError] = useState(false);
+  const [touched, touch] = useState(false);
   const editor = c.editor;
   if (!editor) return null;
   const draft = editor.draft;
   const fields = skillEditorFields(draft);
+  const markdown = draft.files.find((file) => file.path === "SKILL.md")?.content ?? "";
+  const problem = touched ? skillDraftProblem(draft) : null;
   const disabled = c.busy || editor.applyPending;
-  const change = (next: SkillAuthoringDraft) => {
-    c.edit(next);
-    setFileError(false);
-  };
-  const fieldError = (name: string, value: string) =>
-    touched.has(name) && value.trim().length === 0;
-  const updateFile = (index: number, content: string) => {
-    change({
-      ...draft,
-      files: draft.files.map((file, i) => (i === index ? { ...file, content } : file)),
-    });
-  };
   const finish = (work: Promise<void>) => {
     void work.then(() => {
       if (c.notice === "saved") onReturn();
@@ -58,195 +45,44 @@ export function SkillEditor({
         <span role="status">{m.draft}</span>
       </header>
       <h2>{editorHeading(fields?.title, m.newSkill)}</h2>
+      <details className="skills-guide">
+        <summary>{m.guide}</summary>
+        <p>{m.guideHeader}</p>
+        <p>{draft.kind === "didactic" ? m.guideDidactic : m.guideEvaluation}</p>
+        <p>{m.guideCriteria}</p>
+        <p>{m.guideName}</p>
+      </details>
+      <SkillGeneration c={c} m={m} />
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          touch(new Set(["title", "description", "instructions"]));
-          if (validSkillDraft(draft)) finish(c.save());
-          else setFileError(true);
+          touch(true);
+          if (skillDraftProblem(draft) === null) finish(c.save());
         }}
       >
         <fieldset disabled={disabled}>
-          {fields !== null && !advanced ? (
-            <>
-              {(["title", "description", "instructions"] as const).map((name) => {
-                const label =
-                  name === "title"
-                    ? m.name
-                    : name === "description"
-                      ? m.description
-                      : draft.kind === "didactic"
-                        ? m.instructions
-                        : m.evaluatorInstructions;
-                const invalid = fieldError(name, fields[name]);
-                const properties = {
-                  id: `skill-${name}`,
-                  value: fields[name],
-                  "aria-invalid": invalid,
-                  onBlur: () => {
-                    touch((previous) => new Set([...previous, name]));
-                  },
-                  onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-                    change(editSkillFields(draft, { [name]: event.currentTarget.value }));
-                  },
-                };
-                return (
-                  <label key={name} htmlFor={`skill-${name}`}>
-                    {label}
-                    {name === "title" ? (
-                      <input {...properties} maxLength={256} />
-                    ) : (
-                      <textarea
-                        {...properties}
-                        rows={name === "instructions" ? 14 : 2}
-                        maxLength={name === "instructions" ? 262144 : 1024}
-                      />
-                    )}
-                    <span className="skills-field-error">{invalid ? m.required : "\u00a0"}</span>
-                  </label>
-                );
-              })}
-              {draft.kind === "didactic" && (
-                <details>
-                  <summary>
-                    {m.criteria} ({fields.criteria.length})
-                  </summary>
-                  {fields.criteria.map((criterion, index) => (
-                    <div key={index} className="skills-criterion">
-                      <label>
-                        {m.code}
-                        <input
-                          value={criterion.codigo}
-                          maxLength={64}
-                          onChange={(event) => {
-                            change(
-                              editSkillFields(draft, {
-                                criteria: fields.criteria.map((item, i) =>
-                                  i === index
-                                    ? { ...item, codigo: event.currentTarget.value }
-                                    : item,
-                                ),
-                              }),
-                            );
-                          }}
-                        />
-                      </label>
-                      <label>
-                        {m.statement}
-                        <textarea
-                          value={criterion.enunciado}
-                          maxLength={1024}
-                          onChange={(event) => {
-                            change(
-                              editSkillFields(draft, {
-                                criteria: fields.criteria.map((item, i) =>
-                                  i === index
-                                    ? { ...item, enunciado: event.currentTarget.value }
-                                    : item,
-                                ),
-                              }),
-                            );
-                          }}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          change(
-                            editSkillFields(draft, {
-                              criteria: fields.criteria.filter((_, i) => i !== index),
-                            }),
-                          );
-                        }}
-                      >
-                        {m.remove}
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    disabled={fields.criteria.length >= 64}
-                    onClick={() => {
-                      change(
-                        editSkillFields(draft, {
-                          criteria: [...fields.criteria, { codigo: "", enunciado: "" }],
-                        }),
-                      );
-                    }}
-                  >
-                    {m.addCriterion}
-                  </button>
-                </details>
-              )}
-            </>
-          ) : (
-            <>
-              {fields === null && <p role="alert">{m.invalid}</p>}
-              {draft.files.map((file, index) => (
-                <label key={file.path}>
-                  {file.path}
-                  <textarea
-                    rows={file.path === "SKILL.md" ? 20 : 6}
-                    value={file.content}
-                    onChange={(event) => {
-                      updateFile(index, event.currentTarget.value);
-                    }}
-                  />
-                </label>
-              ))}
-            </>
-          )}
-          <details>
-            <summary>
-              {m.resources} ({draft.files.length - 1})
-            </summary>
-            {draft.files
-              .filter((file) => file.path !== "SKILL.md")
-              .map((file) => (
-                <div className="skills-resource" key={file.path}>
-                  <span>{file.path}</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      change({
-                        ...draft,
-                        files: draft.files.filter((item) => item.path !== file.path),
-                      });
-                    }}
-                  >
-                    {m.remove}
-                  </button>
-                </div>
-              ))}
-            <label>
-              {m.importFiles}
-              <input
-                type="file"
-                multiple
-                accept=".md,.txt,.json,.csv,.yaml,.yml"
-                onChange={(event) => {
-                  const input = event.currentTarget;
-                  const selected = Array.from(input.files ?? [], (file) => ({
-                    file,
-                    path: file.webkitRelativePath || file.name,
-                  }));
-                  void importSkillFiles(draft, selected)
-                    .then(
-                      (imported) => {
-                        if (c.editor?.draft === draft) change(imported);
-                      },
-                      () => {
-                        if (c.editor?.draft === draft) setFileError(true);
-                      },
-                    )
-                    .finally(() => {
-                      input.value = "";
-                    });
-                }}
-              />
-            </label>
-          </details>
-          {fileError && <p role="alert">{m.invalid}</p>}
+          <label htmlFor="skill-markdown">SKILL.md</label>
+          <textarea
+            id="skill-markdown"
+            className="skills-markdown"
+            rows={26}
+            spellCheck={false}
+            value={markdown}
+            aria-invalid={problem !== null}
+            aria-describedby="skill-markdown-error"
+            onBlur={() => {
+              touch(true);
+            }}
+            onChange={(event) => {
+              c.edit(
+                editSkillMarkdown(draft, event.currentTarget.value, editor.expectedDigest === null),
+              );
+            }}
+          />
+          <p id="skill-markdown-error" className="skills-field-error" role="alert">
+            {problem === null ? "\u00a0" : m[problem]}
+          </p>
+          {draft.files.length > 1 && <p>{m.retainedFiles}</p>}
         </fieldset>
         <div className="skills-secondary">
           {c.problem === "conflict" && (
@@ -260,14 +96,6 @@ export function SkillEditor({
               {m.copyDraft}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              showAdvanced(!advanced);
-            }}
-          >
-            {advanced ? m.basics : m.advanced}
-          </button>
           <button
             type="button"
             onClick={() => {
@@ -288,7 +116,7 @@ export function SkillEditor({
         </div>
         {preview && fields && (
           <article className="skills-preview">
-            <Markdown text={fields.instructions} />
+            <Markdown text={markdown} />
           </article>
         )}
         <footer className="skills-save-bar">

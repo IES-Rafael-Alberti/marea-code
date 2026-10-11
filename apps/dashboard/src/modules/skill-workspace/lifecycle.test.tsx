@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SkillsWorkspace } from "./view.js";
 import { workspaceFixture } from "./workspace.fixture.js";
-import { tree, text, control, change } from "../server-settings/forms.fixture.js";
+import { tree, text, change } from "../server-settings/forms.fixture.js";
 const { hooks, refs, resetRender, mockReact, m } = await vi.hoisted(async () =>
   (await import("./view-hooks.fixture.js")).viewHooks(),
 );
@@ -58,7 +58,12 @@ it("retains controllers and drafts per class, guards unsaved work and disposes o
     expect(f.teachingChanged).toHaveBeenCalledOnce();
   });
   click(render("class:one"), m.newSkill);
-  const name = control(render("class:one"), m.name);
+  const markdown = () =>
+    render("class:one").find((node) => node.props.id === "skill-markdown")?.props as {
+      onChange: (event: object) => void;
+      value: string;
+    };
+  const name = markdown();
   change(name, { value: "My draft" });
   expect(add).toHaveBeenCalledWith("beforeunload", expect.any(Function));
   const unload = add.mock.calls[0]?.[1] as (event: object) => void;
@@ -71,7 +76,7 @@ it("retains controllers and drafts per class, guards unsaved work and disposes o
   unload({ preventDefault });
   expect(preventDefault).toHaveBeenCalledOnce();
   render("class:one");
-  expect(control(render("class:one"), m.name).value).toBe("My draft");
+  expect(markdown().value).toBe("My draft");
   click(render("class:one"), m.discard);
   preventDefault.mockClear();
   unload({ preventDefault });

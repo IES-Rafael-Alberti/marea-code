@@ -2,7 +2,7 @@ import { parseDocument } from "yaml";
 import * as z from "zod";
 import {
   SkillAuthoringDraftSchema,
-  SkillCriterionSchema,
+  SkillFrontmatterSchema,
   type SkillAuthoringDraft,
 } from "@marea/protocol";
 import { browserRandomUUID } from "../../browser-random-uuid.js";
@@ -40,14 +40,16 @@ function documentOf(draft: SkillAuthoringDraft) {
   const value: unknown = document.toJS({ maxAliasCount: 0 });
   return {
     document,
-    data: fields.parse(value),
+    data: value,
     instructions: file.content.slice(match[0].length),
   };
 }
 
 export function skillEditorFields(draft: SkillAuthoringDraft): SkillEditorFields | null {
   try {
-    const { data, instructions } = documentOf(draft);
+    const parsed = documentOf(draft);
+    const data = fields.parse(parsed.data);
+    const instructions = parsed.instructions;
     return {
       title: data.metadata?.title ?? data.name.replaceAll("-", " "),
       description: data.description,
@@ -83,10 +85,56 @@ export function newSkillDraft(kind: SkillAuthoringDraft["kind"]): SkillAuthoring
     files: [
       {
         path: "SKILL.md",
-        content: `---\nname: ${slug}\ndescription: ''\nmetadata:\n  title: ''\n---\n`,
+        content: `---\nname: ${slug}\ndescription: ''\nmetadata:\n  title: ''\n# Completa la descripción y el título. Conserva name al editar una skill existente.\n${kind === "didactic" ? "# Opcional: criterios con codigo, enunciado y exactamente cuatro niveles.\n# criterios:\n#   - codigo: local-1\n#     enunciado: Qué debe demostrar el alumno\n#     niveles: [Con guía, Con ayuda puntual, De forma autónoma, En situaciones nuevas]\n" : ""}---\n\n${kind === "didactic" ? "# Lo que tiene que dominar\n\n<!-- Objetivos y progresión del aprendizaje. -->\n\n## Cómo plantear el ejercicio\n\n<!-- Situación, preguntas y ayudas. -->\n\n## Qué no hacer\n\n<!-- Decisiones que debe tomar el alumno. -->\n\n## Cómo saber si lo ha entendido\n\n<!-- Evidencias observables y respuesta a las dificultades. -->" : "# Cómo evaluar\n\n<!-- Método para revisar la evidencia, sin inventar aprendizajes. -->\n\n## El borrador para revisar\n\n<!-- Formato del feedback para el alumno y las notas privadas del profesor. -->\n\n## Reglas\n\n<!-- Distingue falta de evidencia y aprendizaje no demostrado. -->"}\n`,
       },
     ],
   };
+}
+
+/** Keep the exact Markdown, comments, ordering and every pre-existing companion file. */
+export function editSkillMarkdown(
+  draft: SkillAuthoringDraft,
+  content: string,
+  allowRename: boolean,
+): SkillAuthoringDraft {
+  const next = {
+    ...draft,
+    files: draft.files.map((file) => (file.path === "SKILL.md" ? { ...file, content } : file)),
+  };
+  try {
+    const name: unknown = documentOf(next).document.get("name");
+    const slug = SkillAuthoringDraftSchema.unwrap().shape.slug.safeParse(name);
+    if (allowRename && slug.success) return { ...next, slug: slug.data };
+  } catch {
+    /* Keep incomplete Markdown editable. */
+  }
+  return next;
+}
+
+export function skillDraftProblem(draft: SkillAuthoringDraft) {
+  if (!SkillAuthoringDraftSchema.safeParse(draft).success) return "invalidSize";
+  try {
+    const { data, instructions, document } = documentOf(draft);
+    const parsed = SkillFrontmatterSchema.safeParse(data);
+    if (!parsed.success) {
+      const path = parsed.error.issues[0]?.path[0];
+      return path === "description"
+        ? "invalidDescription"
+        : path === "criterios"
+          ? "invalidCriteria"
+          : "invalidYaml";
+    }
+    if (parsed.data.name !== draft.slug) return "invalidName";
+    if (parsed.data.module !== undefined || parsed.data["allowed-tools"] !== undefined)
+      return "invalidYaml";
+    if (draft.kind === "evaluation" && document.has("criterios")) return "invalidCriteria";
+    if (instructions.trim().length === 0) return "invalidBody";
+    const codes = (parsed.data.criterios ?? []).map((criterion) => criterion.codigo);
+    if (new Set(codes).size !== codes.length) return "invalidCriteria";
+    return null;
+  } catch {
+    return "invalidYaml";
+  }
 }
 
 export function copySkillDraft(draft: SkillAuthoringDraft): SkillAuthoringDraft {
@@ -109,25 +157,5 @@ export function renameSkillDraft(draft: SkillAuthoringDraft, slug: string): Skil
 }
 
 export function validSkillDraft(draft: SkillAuthoringDraft): boolean {
-  const fields = skillEditorFields(draft);
-  return (
-    SkillAuthoringDraftSchema.safeParse(draft).success &&
-    fields !== null &&
-    fields.title.trim().length > 0 &&
-    fields.title.length <= 256 &&
-    fields.description.trim().length > 0 &&
-    fields.description.length <= 1024 &&
-    fields.instructions.trim().length > 0 &&
-    (draft.kind === "didactic" || fields.criteria.length === 0) &&
-    fields.criteria.length <= 64 &&
-    new Set(fields.criteria.map((item) => item.codigo.trim())).size === fields.criteria.length &&
-    fields.criteria.every(
-      (item) =>
-        SkillCriterionSchema.safeParse({
-          code: item.codigo.trim(),
-          statement: item.enunciado,
-          levels: item.niveles ?? null,
-        }).success,
-    )
-  );
+  return skillDraftProblem(draft) === null;
 }

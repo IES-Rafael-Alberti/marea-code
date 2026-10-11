@@ -1,13 +1,17 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.29`.
+The commands below target `0.1.0-preview.30`.
 
-This preview introduces the **Skills** workspace: class selections, persistent
-per-student selections and an editable personal library. Teachers can search and
-choose skills without moving rows, personalize several students at once, create a
-version of an included skill and edit its name, instructions and optional materials.
-Updated selections apply to new sessions; ongoing conversations retain their content.
-Managed server updates back up and migrate the database to schema 14.
+This preview makes `SKILL.md` the visible, editable source of every skill. Creation
+starts with a Markdown template and a guide. Teachers can generate a draft using the
+configured model, the complete Testing example and their own topics and criteria,
+then review and edit it before saving. Personal skills can be deleted after reviewing
+the class and individual assignments that will be withdrawn. Existing conversations
+retain their frozen content; existing companion files are preserved when editing.
+
+The Skills workspace retains class selections, persistent per-student selections,
+bulk personalization and the personal library from preview 29. The database remains
+at schema 14 and compatible students continue to connect.
 
 Download progress now distinguishes files received from verified files reused locally,
 and reports the transferred bytes. The counter covers the whole signed inventory;
@@ -44,13 +48,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.29/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.30/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.29/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.30/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -190,13 +194,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.29/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.30/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.29/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.30/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Run `marea` from the project directory. The managed installation keeps student
@@ -210,7 +214,7 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
 - `status` (or `--status`): managed installation details, with no credentials.
 - `update` (or `--update`): check the latest **published** preview and ask to install
   it, without starting the application. Publishing alone does not notify everyone.
-- `update --version 0.1.0-preview.29`: try a specific published preview.
+- `update --version 0.1.0-preview.30`: try a specific published preview.
 - Ordinary startup offers only a **recommended** version for this component and
   wire protocol. Declining keeps the installed version. A noninteractive start
   never accepts updates; discovery failures leave the current installation usable.
@@ -225,8 +229,8 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
   student version or a required protocol repair may select an older signed client.
   Server downgrades require backup recovery; they cannot open migrated data.
 
-For a fresh pilot install before recommendation, append `--version 0.1.0-preview.29`
-to the POSIX command, or `-Version 0.1.0-preview.29` on PowerShell. With no explicit
+For a fresh pilot install before recommendation, append `--version 0.1.0-preview.30`
+to the POSIX command, or `-Version 0.1.0-preview.30` on PowerShell. With no explicit
 version and no recommendation, installation stops with a useful message.
 
 Stop the server before accepting an update. Its existing exclusive installation
@@ -318,7 +322,7 @@ the empty root allows the same installation command to run again. Do not delete
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.29`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.30`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
@@ -346,7 +350,7 @@ Run the **Recommend preview** workflow on `main`, choosing the published version
 and `student`, `server`, or `both`. From a maintainer terminal:
 
 ```sh
-gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.29 -f component=both
+gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.30 -f component=both
 ```
 
 Promotion requires successful native publication for the exact source,
