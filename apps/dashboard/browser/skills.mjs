@@ -72,12 +72,12 @@ try {
   await workspace.locator(".skills-open").filter({ hasText: "testing" }).click();
   await button(workspace.locator(".skills-detail"), "Create my version").click();
   const editor = workspace.locator(".skills-editor");
-  await editor.getByLabel("Name", { exact: true }).fill("Testing foundations");
+  await editor.getByRole("textbox", { name: "Name", exact: true }).fill("Testing foundations");
   await editor
-    .getByLabel("Short description", { exact: true })
+    .getByRole("textbox", { name: "Short description", exact: true })
     .fill("Practice one focused test at a time.");
   await editor
-    .getByLabel("Tutor instructions", { exact: true })
+    .getByRole("textbox", { name: "Tutor instructions", exact: true })
     .fill("Ask the learner to explain one test before writing code.");
   await page.screenshot({ path: join(artifacts, "editor.png"), fullPage: true });
   await button(editor, "Save to library").click();
@@ -92,7 +92,7 @@ try {
   await workspace.locator(".skills-open").filter({ hasText: "Testing foundations" }).click();
   await button(workspace.locator(".skills-detail"), "Edit").click();
   await editor
-    .getByLabel("Tutor instructions", { exact: true })
+    .getByRole("textbox", { name: "Tutor instructions", exact: true })
     .fill("Ask for a normal case, an empty case and a boundary case.");
   await editor
     .getByText("Will update 1 classes and 0 individual selections.", { exact: true })
@@ -123,6 +123,7 @@ try {
   );
 } catch (error) {
   await page.screenshot({ path: join(artifacts, "failure.png"), fullPage: true });
+  console.error(await page.locator(".skills-workspace").ariaSnapshot());
   throw error;
 } finally {
   await browser.close();
