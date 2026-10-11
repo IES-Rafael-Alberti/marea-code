@@ -3,7 +3,8 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { SkillEditor } from "./editor.js";
 import { workspaceFixture } from "./workspace.fixture.js";
 import { skillWorkspaceMessages } from "./messages.js";
-import { tree, text } from "../server-settings/forms.fixture.js";
+import { text } from "../server-settings/forms.fixture.js";
+import { editorControls } from "./editor-controls.fixture.js";
 const { hooks, mockReact } = await vi.hoisted(async () =>
   (await import("../server-settings/state-hooks.fixture.js")).stateHarness(),
 );
@@ -17,18 +18,9 @@ function fixture(kind: "didactic" | "evaluation" = "didactic") {
   const c = f.controller;
   c.create(kind);
   const onReturn = vi.fn();
-  const render = () => {
-    hooks.index = 0;
-    return tree(<SkillEditor controller={c} messages={m} onReturn={onReturn} />);
-  };
-  const button = (caption: string) => {
-    const found = render().find((node) => node.type === "button" && text(node) === caption);
-    if (!found) throw new Error(caption);
-    return found;
-  };
-  const click = (caption: string) => {
-    (button(caption).props.onClick as () => void)();
-  };
+  const { render, button, click } = editorControls(hooks, () => (
+    <SkillEditor controller={c} messages={m} onReturn={onReturn} />
+  ));
   const field = () => render().find((node) => node.props.id === "skill-markdown");
   const change = (content: string) => {
     (field()?.props.onChange as (event: object) => void)({ currentTarget: { value: content } });

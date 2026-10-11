@@ -147,7 +147,7 @@ export function copySkillDraft(draft: SkillAuthoringDraft): SkillAuthoringDraft 
   return renameSkillDraft(draft, next.slug);
 }
 
-export function renameSkillDraft(draft: SkillAuthoringDraft, slug: string): SkillAuthoringDraft {
+function renameSkillDraft(draft: SkillAuthoringDraft, slug: string): SkillAuthoringDraft {
   const { document, instructions } = documentOf(draft);
   document.set("name", slug);
   return {

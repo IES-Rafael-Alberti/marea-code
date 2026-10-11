@@ -258,18 +258,9 @@ export class SqliteSkillAssignments {
             evaluation,
             this.ids.createId("revision"),
           );
-          commitTeachingRevision(this.database, {
-            classId: item.classId,
-            author: { kind: "teacher", userId: identity.userId },
-            expectedVersion: c.content.configurationVersion,
-            createdAt: this.clock.now(),
-            configuration: StoredTeachingConfigurationSchema.parse({
-              ...configuration,
-              selection: {
-                didactic: without(c.selection.didactic),
-                evaluation: without(c.selection.evaluation),
-              },
-            }),
+          this.commitClass(identity.userId, item, configuration, {
+            didactic: without(c.selection.didactic),
+            evaluation: without(c.selection.evaluation),
           });
         }
         for (const assignment of item.assignments)
@@ -280,6 +271,21 @@ export class SqliteSkillAssignments {
             identity.userId,
           );
       }
+    });
+  }
+
+  private commitClass(
+    teacherId: string,
+    item: ClassUse,
+    configuration: StoredTeachingConfiguration,
+    selection: StoredTeachingConfiguration["selection"],
+  ): void {
+    commitTeachingRevision(this.database, {
+      classId: item.classId,
+      author: { kind: "teacher", userId: teacherId },
+      expectedVersion: item.configuration.content.configurationVersion,
+      createdAt: this.clock.now(),
+      configuration: StoredTeachingConfigurationSchema.parse({ ...configuration, selection }),
     });
   }
 
@@ -305,20 +311,11 @@ export class SqliteSkillAssignments {
             replace(c.content.evaluationSkills, bundle),
             this.ids.createId("revision"),
           );
-          commitTeachingRevision(this.database, {
-            classId: item.classId,
-            author: { kind: "teacher", userId: identity.userId },
-            expectedVersion: c.content.configurationVersion,
-            createdAt: this.clock.now(),
-            configuration: StoredTeachingConfigurationSchema.parse({
-              ...configuration,
-              selection: {
-                didactic: replace(c.selection.didactic, { id: bundle.id, digest: bundle.digest }),
-                evaluation: replace(c.selection.evaluation, {
-                  id: bundle.id,
-                  digest: bundle.digest,
-                }),
-              },
+          this.commitClass(identity.userId, item, configuration, {
+            didactic: replace(c.selection.didactic, { id: bundle.id, digest: bundle.digest }),
+            evaluation: replace(c.selection.evaluation, {
+              id: bundle.id,
+              digest: bundle.digest,
             }),
           });
         }

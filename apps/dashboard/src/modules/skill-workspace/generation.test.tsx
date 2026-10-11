@@ -3,7 +3,7 @@ import { SkillWorkspaceRequestSchema } from "@marea/protocol";
 import { SkillGeneration } from "./generation.js";
 import { workspaceFixture } from "./workspace.fixture.js";
 import { skillWorkspaceMessages } from "./messages.js";
-import { tree, text } from "../server-settings/forms.fixture.js";
+import { editorControls } from "./editor-controls.fixture.js";
 const { hooks, mockReact } = await vi.hoisted(async () =>
   (await import("../server-settings/state-hooks.fixture.js")).stateHarness(),
 );
@@ -16,18 +16,7 @@ beforeEach(() => {
 it("generates a separate proposal from free text, preserves edits on failure and only replaces Markdown on explicit use", async () => {
   const f = workspaceFixture(),
     c = f.controller;
-  const render = () => {
-    hooks.index = 0;
-    return tree(<SkillGeneration c={c} m={m} />);
-  };
-  const button = (caption: string) => {
-    const found = render().find((node) => node.type === "button" && text(node) === caption);
-    if (!found) throw new Error(caption);
-    return found;
-  };
-  const click = (caption: string) => {
-    (button(caption).props.onClick as () => void)();
-  };
+  const { render, button, click } = editorControls(hooks, () => <SkillGeneration c={c} m={m} />);
   expect(render()).toEqual([]);
   c.create("didactic");
   expect(button(m.generate).props.disabled).toBe(true);
