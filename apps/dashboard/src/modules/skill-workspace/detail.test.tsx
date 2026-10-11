@@ -65,3 +65,24 @@ it("shows complete source, allows copying or authorized editing and confirms wit
   click(m.close);
   expect(c.detail).toBeNull();
 });
+it("shows the main file after companion resources and clears deletion confirmation on closing", async () => {
+  const f = workspaceFixture(),
+    c = f.controller;
+  await c.open(f.bundle.id);
+  if (!c.detail) throw new Error("detail");
+  c.detail = {
+    ...c.detail,
+    skill: {
+      ...f.bundle,
+      files: [{ path: "resources/a.txt", content: "resource", sizeBytes: 8 }, ...f.bundle.files],
+    },
+  };
+  const nodes = tree(<SkillDetail controller={c} messages={m} assign={vi.fn()} />);
+  expect(nodes.find((node) => node.type === "pre")?.props.children).toBe(
+    f.bundle.files[0]?.content,
+  );
+  await c.reviewDeletion();
+  expect(c.deleting).toBe(true);
+  c.closeDetail();
+  expect(c.deleting).toBe(false);
+});

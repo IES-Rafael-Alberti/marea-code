@@ -83,6 +83,7 @@ it("uses the configured modular model, full Testing example and teacher notes, w
     language: "es",
     teacherNotes: f.input.instructions,
   });
+  expect(material.examples).toHaveLength(1);
   expect(material.examples[0]).toContain("RA5.c");
   expect(material.examples[0]).toContain("## Vocabulario, si pregunta");
   expect(f.database.readAll("SELECT * FROM marea_usage_accounts")).toEqual([]);
@@ -111,10 +112,12 @@ it("rejects invalid Markdown, empty bodies, invalid criteria, missing examples a
       f.generator.generate("t1", f.input, new AbortController().signal),
     ).rejects.toBeInstanceOf(SkillGenerationError);
   }
+  const load = vi.spyOn(f.examples, "load");
   vi.spyOn(f.operator, "forClass").mockReturnValue(null as never);
   await expect(f.generator.generate("t1", f.input, new AbortController().signal)).rejects.toThrow(
     "skill-generation-unavailable",
   );
+  expect(load).not.toHaveBeenCalled();
   const absent = new SkillGenerator(
     f.inference,
     { forClass: () => policy },
@@ -154,4 +157,25 @@ it("propagates cancellation, limits simultaneous generation per teacher and rele
   expect(signal?.aborted).toBe(true);
   run.mockRestore();
   expect(await f.generator.generate("t1", f.input, new AbortController().signal)).toBe(content);
+});
+it("selects the actual SKILL.md after resources and preserves all text including CRLF", async () => {
+  const f = fixture();
+  const load = f.examples.load.bind(f.examples);
+  vi.spyOn(f.examples, "load").mockImplementation(async (id) => {
+    const bundle = await load(id);
+    if (!bundle) throw new Error("example");
+    return {
+      ...bundle,
+      files: [
+        { path: "resources/first.txt", content: "not an example", sizeBytes: 14 },
+        ...bundle.files,
+      ],
+    };
+  });
+  f.current.content = content.replaceAll("\n", "\r\n");
+  expect(await f.generator.generate("t1", f.input, new AbortController().signal)).toBe(
+    f.current.content,
+  );
+  expect(f.captured[0]?.messages[1]?.content).toContain("RA5.c");
+  expect(f.captured[0]?.messages[1]?.content).not.toContain("not an example");
 });

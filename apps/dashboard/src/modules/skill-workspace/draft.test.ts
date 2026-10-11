@@ -215,3 +215,36 @@ it("edits exact Markdown without rewriting it and reports actionable validation 
     ),
   ).toBe("invalidCriteria");
 });
+it("keeps complete creation templates and identifies SKILL.md independently of file order", () => {
+  for (const kind of ["didactic", "evaluation"] as const) {
+    const draft = newSkillDraft(kind);
+    expect(draft.files[0]?.content.replaceAll(draft.slug, "generated-identifier")).toMatchSnapshot(
+      kind,
+    );
+  }
+  const draft = {
+    slug: "testing",
+    kind: "didactic" as const,
+    files: [
+      {
+        path: "resources/first.md",
+        content: "---\nname: other\ndescription: Other\n---\nOther instructions.",
+      },
+      {
+        path: "SKILL.md",
+        content: "---\nname: testing\ndescription: Practice\n---\nActual instructions.",
+      },
+    ],
+  };
+  expect(skillEditorFields(draft)?.instructions).toBe("Actual instructions.");
+  expect(skillDraftProblem(draft)).toBeNull();
+  expect(
+    skillDraftProblem(
+      editSkillMarkdown(
+        draft,
+        "---\nname: testing\ndescription: Practice\nunrecognized: true\n---\nBody",
+        false,
+      ),
+    ),
+  ).toBe("invalidYaml");
+});

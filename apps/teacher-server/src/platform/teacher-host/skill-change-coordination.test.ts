@@ -4,7 +4,7 @@ import type { ProductTeachingConfigurationService } from "../../teaching/configu
 import { SkillWorkspaceRequestSchema } from "@marea/protocol";
 import { teacher } from "../../teaching/configuration/dashboard-module.fixture.js";
 it("serializes selection saves and deletion, releases failed work and lets drafting proceed independently", async () => {
-  let complete = () => {
+  let complete: () => void = () => {
     throw new Error("not started");
   };
   const save = vi.fn(

@@ -45,3 +45,22 @@ it("shares the full Markdown frontmatter contract, including optional four-level
         .success,
     ).toBe(false);
 });
+it("trims criterion statements and identifies disallowed control characters precisely", () => {
+  const base = { name: "testing", description: "Practice" };
+  expect(
+    SkillFrontmatterSchema.parse({
+      ...base,
+      criterios: [{ codigo: " local ", enunciado: " statement " }],
+    }).criterios,
+  ).toEqual([{ codigo: "local", enunciado: "statement" }]);
+  for (const criterion of [
+    { codigo: "x\ty" },
+    { codigo: "x", enunciado: "a\tb" },
+    { codigo: "x", niveles: ["a", "b", "c", "d\te"] },
+  ]) {
+    const result = SkillFrontmatterSchema.safeParse({ ...base, criterios: [criterion] });
+    expect(result.success).toBe(false);
+    if (result.success) throw new Error("invalid fixture");
+    expect(result.error.issues[0]?.message).toBe("Control characters are not allowed.");
+  }
+});

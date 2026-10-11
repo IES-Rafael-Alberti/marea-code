@@ -122,6 +122,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native privacy probe failed' }
           bun scripts/release/command-smoke.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Native project command probe failed' }
+      - name: Native skill removal and assignment retention
+        if: matrix.component == 'server'
+        run: |
+          bun run test -- apps/teacher-server/src/platform/persistence/skill-removal.integration.test.ts apps/teacher-server/src/platform/teacher-host/skill-workspace.integration.test.ts
+          if ($LASTEXITCODE -ne 0) { throw 'Native skill removal or assignment retention failed' }
       - name: Set up pinned native Go toolchain
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:

@@ -35,6 +35,7 @@ export class SkillGenerator {
     if (this.pending.has(teacherId)) throw new SkillGenerationError();
     this.pending.add(teacherId);
     try {
+      // Stryker disable next-line OptionalChaining: Missing routes are sanitized to the same generation error, including a property-access failure.
       const route = this.operator.forClass(request.classId)?.route.providerRoute;
       if (!route) throw new SkillGenerationError();
       const exampleIds =
@@ -44,7 +45,9 @@ export class SkillGenerator {
       const examples = await Promise.all(
         exampleIds.map(async (id) => {
           const bundle = await this.examples.load(SkillIdSchema.parse(id));
+          // Stryker disable next-line OptionalChaining: Missing example bundles and a property-access failure both become the same sanitized generation error.
           const main = bundle?.files.find((file) => file.path === "SKILL.md");
+          // Stryker disable next-line ConditionalExpression,BlockStatement,CallExpression: Reading content from an absent example also throws inside this same sanitized boundary.
           if (!main) throw new SkillGenerationError();
           return main.content;
         }),
@@ -68,8 +71,9 @@ export class SkillGenerator {
         output,
         AbortSignal.any([signal, AbortSignal.timeout(120000)]),
       );
+      // Stryker disable next-line StringLiteral: The location labels a private validator diagnostic; all failures return the same safe error.
       parseSkillFrontmatter(result.content, request.slug, request.skillKind, "SKILL.md");
-      const body = result.content.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/u, "");
+      const body = result.content.replace(/---\r?\n[\s\S]*?\r?\n---\r?\n/u, "");
       if (body.trim().length === 0 || result.content.includes("\0"))
         throw new SkillGenerationError();
       return result.content;

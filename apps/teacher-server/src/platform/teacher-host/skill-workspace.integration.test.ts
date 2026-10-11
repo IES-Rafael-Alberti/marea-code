@@ -73,7 +73,7 @@ it("creates, assigns and revises a personal skill through the production HTTP ho
     expect(response.status).toBe(200);
     return SkillWorkspaceResponseSchema.parse(await response.json());
   };
-  const save = async (instructions: string, digest: string | null) => {
+  const save = async (instructions: string, digest: string | null, slug = "testing") => {
     const response = await post(
       "/api/v1/dashboard/skill-authoring/save",
       {
@@ -81,12 +81,12 @@ it("creates, assigns and revises a personal skill through the production HTTP ho
         kind: "skill-authoring-save",
         expectedDigest: digest,
         draft: {
-          slug: "testing",
+          slug,
           kind: "didactic",
           files: [
             {
               path: "SKILL.md",
-              content: `---\nname: testing\ndescription: Practice testing\nmetadata:\n  title: Unit testing\n---\n${instructions}`,
+              content: `---\nname: ${slug}\ndescription: Practice testing\nmetadata:\n  title: Unit testing\n---\n${instructions}`,
             },
           ],
         },
@@ -124,6 +124,31 @@ it("creates, assigns and revises a personal skill through the production HTTP ho
         { studentId: "student:ana", selection: [{ id: updated.id, digest: updated.digest }] },
       ],
     });
+    const temporary = await save("Temporary exercise.", null, "temporary");
+    const temporaryUsage = await workspace({ kind: "usage", skillId: temporary.id });
+    if (temporaryUsage.kind !== "usage") throw new Error("usage");
+    await workspace({
+      kind: "delete",
+      skillId: temporary.id,
+      digest: temporary.digest,
+      expectedUsage: temporaryUsage.version,
+    });
+    const remaining = await workspace({ kind: "library", after: null });
+    if (remaining.kind !== "library") throw new Error("library");
+    expect(remaining.skills.some((entry) => entry.id === temporary.id)).toBe(false);
+    const unavailableGeneration = await post(
+      "/api/v1/dashboard/skill-workspace",
+      {
+        ...envelope,
+        kind: "generate",
+        slug: "new-draft",
+        skillKind: "didactic",
+        instructions: "Testing",
+        locale: "es",
+      },
+      cookie,
+    );
+    expect(unavailableGeneration.status).toBe(422);
     const forbidden = await post("/api/v1/dashboard/skill-workspace", {
       ...envelope,
       kind: "students",

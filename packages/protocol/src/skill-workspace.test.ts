@@ -171,3 +171,15 @@ it("bounds generation notes and returned Markdown and requires a reviewed deleti
     kind: "delete",
   });
 });
+it.each(["es", "en", "eu"])("accepts generation in %s", (locale) => {
+  expect(
+    SkillWorkspaceRequestSchema.parse({
+      ...envelope,
+      kind: "generate",
+      slug: "testing",
+      skillKind: "didactic",
+      instructions: "notes",
+      locale,
+    }),
+  ).toMatchObject({ locale });
+});

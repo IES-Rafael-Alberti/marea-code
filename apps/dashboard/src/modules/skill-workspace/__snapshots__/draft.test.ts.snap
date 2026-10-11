@@ -1,0 +1,56 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`keeps complete creation templates and identifies SKILL.md independently of file order > didactic 1`] = `
+"---
+name: generated-identifier
+description: ''
+metadata:
+  title: ''
+# Completa la descripción y el título. Conserva name al editar una skill existente.
+# Opcional: criterios con codigo, enunciado y exactamente cuatro niveles.
+# criterios:
+#   - codigo: local-1
+#     enunciado: Qué debe demostrar el alumno
+#     niveles: [Con guía, Con ayuda puntual, De forma autónoma, En situaciones nuevas]
+---
+
+# Lo que tiene que dominar
+
+<!-- Objetivos y progresión del aprendizaje. -->
+
+## Cómo plantear el ejercicio
+
+<!-- Situación, preguntas y ayudas. -->
+
+## Qué no hacer
+
+<!-- Decisiones que debe tomar el alumno. -->
+
+## Cómo saber si lo ha entendido
+
+<!-- Evidencias observables y respuesta a las dificultades. -->
+"
+`;
+
+exports[`keeps complete creation templates and identifies SKILL.md independently of file order > evaluation 1`] = `
+"---
+name: generated-identifier
+description: ''
+metadata:
+  title: ''
+# Completa la descripción y el título. Conserva name al editar una skill existente.
+---
+
+# Cómo evaluar
+
+<!-- Método para revisar la evidencia, sin inventar aprendizajes. -->
+
+## El borrador para revisar
+
+<!-- Formato del feedback para el alumno y las notas privadas del profesor. -->
+
+## Reglas
+
+<!-- Distingue falta de evidencia y aprendizaje no demostrado. -->
+"
+`;

@@ -174,3 +174,19 @@ it("keeps a damaged draft editable even if its main file is missing", () => {
   f.submit();
   expect(f.render().some((node) => text(node) === m.invalidSize)).toBe(true);
 });
+it("finds the main Markdown after resources and preserves the identity of a saved skill", async () => {
+  const f = fixture();
+  await f.c.open(f.bundle.id);
+  f.c.editDetail();
+  if (!f.c.editor) throw new Error("editor");
+  f.c.edit({
+    ...f.c.editor.draft,
+    files: [{ path: "resources/first.txt", content: "resource" }, ...f.c.editor.draft.files],
+  });
+  expect(f.field()?.props.value).toBe(f.bundle.files[0]?.content);
+  f.change("---\nname: renamed\ndescription: Good\n---\nBody");
+  expect(f.c.editor.draft.slug).toBe("testing");
+  (f.field()?.props.onBlur as () => void)();
+  expect(f.field()?.props["aria-invalid"]).toBe(true);
+  expect(f.render().some((node) => text(node) === m.invalidName)).toBe(true);
+});

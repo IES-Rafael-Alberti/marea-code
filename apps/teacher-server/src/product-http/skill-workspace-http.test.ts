@@ -102,5 +102,7 @@ it.each([
   });
   const response = await f.request({});
   expect(response.status).toBe(status);
-  expect(await response.text()).not.toContain("private");
+  const copy = response.clone();
+  expect(await response.json()).toMatchObject({ error: { retryable: false } });
+  expect(await copy.text()).not.toContain("private");
 });

@@ -167,3 +167,64 @@ it("withdraws a skill used only by an individual while retaining unrelated class
   expect(f.configurations.loadForTeacher("t1", "class:one")).toEqual(before);
   expect(f.assignments.students("class:one", null).students[0]?.selection).toEqual([]);
 });
+
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+it("retains unrelated skills and active evaluation, authorizes withdrawal itself and finishes filesystem cleanup", async () => {
+  const f = await fixture();
+  const other = await f.store.create(saveRequest("didactic", "other", skill("other")));
+  const original = f.configurations.loadForTeacher("t1", "class:one");
+  if (!original) throw new Error("configuration");
+  const config = replaceTeachingSkills(
+    { ...original, content: { ...original.content, automaticEvaluation: true } },
+    [f.bundle, other],
+    original.content.evaluationSkills,
+    "revision:two-skills",
+  );
+  f.configurations.saveRevision({
+    classId: "class:one",
+    teacherId: "t1",
+    expectedVersion: original.content.configurationVersion,
+    createdAt: "now",
+    configuration: config,
+  });
+  await expect(
+    f.service.execute(f.teacher, {
+      ...f.request(),
+      expectedUsage: `sha256:${"0".repeat(64)}`,
+    } as ReturnType<typeof f.request>),
+  ).rejects.toMatchObject({ code: "request.conflict" });
+  expect(() => {
+    f.assignments.withdraw(
+      f.student,
+      "class:one",
+      "teacher/t1/unused",
+      f.assignments.usage("t1", "teacher/t1/unused").version,
+    );
+  }).toThrow("dashboard.forbidden");
+  const ids = vi.spyOn(f.assignments.ids, "createId");
+  await f.service.execute(f.teacher, f.request());
+  expect(ids.mock.calls).toEqual([["revision"], ["revision"]]);
+  expect(f.configurations.loadForTeacher("t1", "class:one")?.selection.didactic).toEqual([
+    { id: other.id, digest: other.digest },
+  ]);
+  expect(f.configurations.loadForTeacher("t1", "class:one")?.content.automaticEvaluation).toBe(
+    true,
+  );
+  const transactions = join(f.store.coordinationKey, ".authoring-transactions", "didactic");
+  expect(readdirSync(transactions)).toEqual([]);
+  expect(existsSync(join(f.store.coordinationKey, "didactic", f.bundle.name))).toBe(false);
+  const beforeRemove = vi.fn();
+  await expect(f.store.remove(f.bundle.id, f.bundle.digest, beforeRemove)).rejects.toMatchObject({
+    code: "STALE_SKILL_DIGEST",
+  });
+  expect(beforeRemove).not.toHaveBeenCalled();
+});
+it("returns forbidden, rather than a missing-source error, for another owner's deletion", async () => {
+  const f = await fixture();
+  for (const skillId of ["teacher/t2/owned", "marea/testing"]) {
+    await expect(
+      f.service.execute(f.teacher, { ...f.request(), skillId } as ReturnType<typeof f.request>),
+    ).rejects.toMatchObject({ code: "dashboard.forbidden" });
+  }
+});

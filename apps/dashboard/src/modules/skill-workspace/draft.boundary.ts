@@ -117,6 +117,7 @@ export function skillDraftProblem(draft: SkillAuthoringDraft) {
     const { data, instructions, document } = documentOf(draft);
     const parsed = SkillFrontmatterSchema.safeParse(data);
     if (!parsed.success) {
+      // Stryker disable next-line OptionalChaining: A failed Zod parse always has an issue; optional access only satisfies indexed-access typing.
       const path = parsed.error.issues[0]?.path[0];
       return path === "description"
         ? "invalidDescription"
@@ -129,8 +130,12 @@ export function skillDraftProblem(draft: SkillAuthoringDraft) {
       return "invalidYaml";
     if (draft.kind === "evaluation" && document.has("criterios")) return "invalidCriteria";
     if (instructions.trim().length === 0) return "invalidBody";
-    const codes = (parsed.data.criterios ?? []).map((criterion) => criterion.codigo);
-    if (new Set(codes).size !== codes.length) return "invalidCriteria";
+    const criteria = parsed.data.criterios;
+    if (
+      criteria !== undefined &&
+      new Set(criteria.map((criterion) => criterion.codigo)).size !== criteria.length
+    )
+      return "invalidCriteria";
     return null;
   } catch {
     return "invalidYaml";

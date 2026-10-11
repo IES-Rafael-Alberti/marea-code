@@ -84,6 +84,7 @@ export class SkillWorkspaceState {
   copyEditor() {
     if (!this.editor || this.busy) return;
     const draft = copySkillDraft(this.editor.draft);
+    this.generated = null;
     this.editor = {
       key: `copy:${draft.slug}`,
       draft,
