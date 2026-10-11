@@ -57,3 +57,18 @@ it("shows localized section names and one selected server section", () => {
     }
   }
 });
+
+it("omits the former library tab and empty panels when skills have their own workspace", () => {
+  const nodes = tree(
+    <ClassSettings
+      locale="en"
+      content={{ tutor: <p>Tutor</p>, access: <p>Access</p>, features: <p>Features</p> }}
+    />,
+  );
+  expect(nodes.filter((node) => node.type === "button").map(text)).toEqual([
+    "Tutor",
+    "Student access",
+    "Educational features",
+  ]);
+  expect(nodes.filter((node) => node.type === "div" && "hidden" in node.props)).toHaveLength(3);
+});

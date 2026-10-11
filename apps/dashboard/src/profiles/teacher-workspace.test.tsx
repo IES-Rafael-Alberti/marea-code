@@ -92,6 +92,10 @@ it("drives teaching and skill editing from the shared selector, discarding after
     EducationalSettings,
   ]);
   expect((shell.settings.skills as ReactElement).type).toBe(SkillsWorkspace);
+  expect(
+    (content(shell.settings.classroom).tutor as ReactElement<{ showSkills: boolean }>).props
+      .showSkills,
+  ).toBe(false);
   const access = content(shell.settings.classroom).access as ReactElement<{
     classId: string | null;
     fetchRequest: object;

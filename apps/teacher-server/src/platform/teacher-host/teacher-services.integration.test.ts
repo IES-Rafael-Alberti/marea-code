@@ -44,6 +44,7 @@ describe("composed teacher host services", () => {
           for (const sql of migration.statements) database.executeScript(sql);
       const host = await composedHost(database);
       expect(host.composed.services).not.toHaveProperty("serverSettings");
+      expect(host.composed.services).not.toHaveProperty("skillWorkspace");
       const progress = host.composed.services.educationalInsights?.progress;
       const capture = progress === undefined ? undefined : vi.spyOn(progress, "capture");
       const student = await host.call("/v1/auth/login", login("student", "student-password"));

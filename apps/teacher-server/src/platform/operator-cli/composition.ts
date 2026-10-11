@@ -107,7 +107,7 @@ export function createOperatorCliApplication(
   capability.assertOwned();
   const version = inspectSqliteSchemaVersion({ databasePath: config.databasePath });
   const schema = operatorSchema(version);
-  const activated = schema !== undefined;
+  const activated = schema !== "application";
   // After OPERATIONS activation, account creation consults the deletion index of this installation.
   const authority = activated
     ? openDeletionAuthority(capability.installationRoot, config.databasePath)
@@ -116,7 +116,7 @@ export function createOperatorCliApplication(
   try {
     storage = initializeSqliteStorage({
       databasePath: config.databasePath,
-      ...(schema === undefined ? {} : { schema }),
+      schema,
     });
   } catch (error) {
     authority.close();
@@ -205,6 +205,6 @@ function operatorSchema(version: number) {
   if (version === createEducationalMigrationCatalog().length) return "educational-insights";
   if (version === createProfileMigrationCatalog().length) return "dashboard-profiles";
   if (version === createAuditMigrationCatalog().length) return "retention-audit";
-  if (version === createMigrationCatalog().length) return undefined;
+  if (version === createMigrationCatalog().length) return "application";
   throw unavailable();
 }

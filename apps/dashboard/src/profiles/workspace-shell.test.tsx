@@ -1,6 +1,6 @@
 import { ModulePlugin } from "./module-plugin.js";
 import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
-import { afterEach, beforeEach, expect, it, vi, type Mock } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import * as educational from "../modules/educational-insights/adapter.js";
 import * as evidence from "../modules/reviewed-evidence/adapter.js";
 import { openEvidenceSession } from "../modules/reviewed-evidence/navigation.js";
@@ -10,39 +10,12 @@ import { profileMessages } from "./profile-messages.js";
 import { catalog, clientFixture, release, selection, value } from "./profile.fixture.js";
 import { ProfileShell, type WorkspaceSettings } from "./profile-shell.js";
 import { workspaceMessages } from "./workspace-navigation.js";
+import type { WorkspaceShellValue as Value } from "./workspace-shell-hooks.fixture.js";
 
-type Value = object | string | number | boolean | null | undefined;
-type Effect = () => undefined | (() => void);
-const hooks = vi.hoisted(() => ({
-  state: [] as Value[],
-  initials: [] as Value[],
-  setters: [] as Mock[],
-  refs: [] as { current: Value }[],
-  effects: [] as Effect[],
-  effectDependencies: [] as (readonly Value[])[],
-  memoDependencies: [] as (readonly Value[])[],
-  index: 0,
-  refIndex: 0,
-}));
-vi.mock("react", async (original) => ({
-  ...(await original<typeof import("react")>()),
-  useMemo: (create: () => object, dependencies: readonly Value[]) => {
-    hooks.memoDependencies.push(dependencies);
-    return create();
-  },
-  useRef: (current: Value) => (hooks.refs[hooks.refIndex++] ??= { current }),
-  useEffect: (effect: Effect, dependencies: readonly Value[]) => {
-    hooks.effects.push(effect);
-    hooks.effectDependencies.push(dependencies);
-  },
-  useState: (initial: Value | (() => Value)) => {
-    const index = hooks.index++;
-    const value = typeof initial === "function" ? (initial as () => Value)() : initial;
-    hooks.initials[index] = value;
-    hooks.setters[index] ??= vi.fn();
-    return [index in hooks.state ? hooks.state[index] : value, hooks.setters[index]];
-  },
-}));
+const { hooks, mockReact } = await vi.hoisted(async () =>
+  (await import("./workspace-shell-hooks.fixture.js")).workspaceShellHarness(),
+);
+vi.mock("react", async (original) => mockReact(original));
 vi.mock("../modules/reviewed-evidence/navigation.js", () => ({
   openEvidenceSession: vi.fn().mockResolvedValue(true),
 }));
@@ -223,7 +196,7 @@ it("shows loading or an empty view only where they apply", async () => {
       (node) => node.props.role === "status" && label(node) === profileMessages("en").loading,
     ).length;
   // The hidden panel page always carries its own notice; other views add the shell's.
-  expect([loading("sessions"), loading("settings")]).toEqual([2, 1]);
+  expect([loading("sessions"), loading("settings"), loading("skills")]).toEqual([2, 1, 1]);
   expect(
     byClass(shell([null, 0, false, 0, "class:a", "map", "panel"]), "workspace-empty"),
   ).toHaveLength(0);
@@ -231,11 +204,27 @@ it("shows loading or an empty view only where they apply", async () => {
   expect(
     byClass(shell([controller, 0, false, 0, "class:a", "settings", "panel"]), "workspace-empty"),
   ).toHaveLength(0);
+  expect(
+    byClass(shell([controller, 0, false, 0, "class:a", "skills", "panel"]), "workspace-empty"),
+  ).toHaveLength(0);
   const nodes = shell([controller, 0, false, 0, "class:a", "map", "classroom"]);
   expect(byClass(nodes, "workspace-empty")).toHaveLength(1);
   button(nodes, w.configure).onClick?.();
   expect(hooks.setters[SECTION]).toHaveBeenLastCalledWith("settings");
   expect(hooks.setters[SUBSECTION]).toHaveBeenLastCalledWith("panel");
+});
+
+it("keeps the skills workspace mounted and reveals it only in its own view", async () => {
+  const skills = <p>Skills editor</p>;
+  const controller = await ready();
+  for (const section of ["sessions", "skills", "settings"]) {
+    const nodes = shell([controller, 0, false, 0, "class:a", section, "classroom"], {
+      settings: { skills },
+    });
+    expect(
+      nodes.filter((node) => node.props.children === skills).map((node) => node.props.hidden),
+    ).toEqual([section !== "skills"]);
+  }
 });
 
 it("restores the remembered class, or the only class, once the profile is ready", async () => {
