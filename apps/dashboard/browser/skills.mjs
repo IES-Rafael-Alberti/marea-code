@@ -44,6 +44,7 @@ try {
   const position = await testing.boundingBox();
   await testing.check();
   assert.ok(Math.abs((await testing.boundingBox()).y - position.y) < 1);
+  await page.screenshot({ path: join(artifacts, "selection.png"), fullPage: true });
   await button(dialog, "Save selection").click();
   await saved();
   await tab("By student");
@@ -66,7 +67,8 @@ try {
   await student("Ana").getByText("From the class", { exact: true }).waitFor();
   await page.screenshot({ path: join(artifacts, "students.png"), fullPage: true });
   await tab("Library");
-  await workspace.getByLabel("Library", { exact: true }).selectOption("marea");
+  const librarySource = workspace.getByRole("combobox", { name: "Library", exact: true });
+  await librarySource.selectOption("marea");
   await workspace.locator(".skills-open").filter({ hasText: "testing" }).click();
   await button(workspace.locator(".skills-detail"), "Create my version").click();
   const editor = workspace.locator(".skills-editor");
@@ -81,7 +83,7 @@ try {
   await button(editor, "Save to library").click();
   await workspace.getByText("Changes saved.", { exact: true }).waitFor();
   await workspace.locator(".skills-open").filter({ hasText: "Testing foundations" }).waitFor();
-  assert.equal(await workspace.getByLabel("Library", { exact: true }).inputValue(), "all");
+  assert.equal(await librarySource.inputValue(), "all");
   await tab("This class");
   await button(workspace, "Add skills").click();
   await dialog.getByRole("checkbox", { name: /Testing foundations/u }).check();

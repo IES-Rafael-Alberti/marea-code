@@ -47,7 +47,6 @@ jobs:
         run: bun run release:audit
 
   skills-browser:
-    needs: quality
     name: Skills browser journey
     runs-on: ubuntu-24.04
     timeout-minutes: 15
