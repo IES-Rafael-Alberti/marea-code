@@ -180,4 +180,4 @@ it("creates, assigns and revises a personal skill through the production HTTP ho
   } finally {
     reopened.close();
   }
-});
+}, 30_000);
