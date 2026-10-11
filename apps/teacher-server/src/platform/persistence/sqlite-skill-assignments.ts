@@ -257,13 +257,16 @@ export class SqliteSkillAssignments {
             }),
           });
         }
-        for (const assignment of item.assignments)
-          this.write(
-            item.classId,
-            assignment.studentId,
-            replace(assignment.skills, bundle),
-            identity.userId,
+        for (const assignment of item.assignments) {
+          const skills = replace(assignment.skills, bundle);
+          replaceTeachingSkills(
+            item.configuration,
+            skills,
+            item.configuration.content.evaluationSkills,
+            item.configuration.content.configurationVersion,
           );
+          this.write(item.classId, assignment.studentId, skills, identity.userId);
+        }
       }
     });
   }
