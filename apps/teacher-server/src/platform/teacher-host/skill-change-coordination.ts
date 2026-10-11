@@ -9,14 +9,14 @@ export function coordinateSkillChanges(
 ) {
   if (workspace === undefined) return { teachingConfiguration: teaching };
   let pending = Promise.resolve();
-  const serial = <T>(operation: () => Promise<T>): Promise<T> => {
+  function serial<T>(operation: () => Promise<T>): Promise<T> {
     const result = pending.then(operation);
     pending = result.then(
       () => undefined,
       () => undefined,
     );
     return result;
-  };
+  }
   return {
     teachingConfiguration: {
       classes: teaching.classes.bind(teaching),
