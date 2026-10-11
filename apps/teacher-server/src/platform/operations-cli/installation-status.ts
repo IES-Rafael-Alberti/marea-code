@@ -7,6 +7,7 @@ import {
   createEducationalMigrationCatalog,
   createStudentIdentityMigrationCatalog,
   createObservabilityMigrationCatalog,
+  createSkillAssignmentMigrationCatalog,
   inspectSqliteSchemaVersion,
 } from "@marea/sqlite-storage";
 
@@ -38,6 +39,7 @@ export async function readInstallationStatus(root: string): Promise<Summary> {
     [
       createStudentIdentityMigrationCatalog().length,
       createObservabilityMigrationCatalog().length,
+      createSkillAssignmentMigrationCatalog().length,
       createEducationalMigrationCatalog().length,
       createProfileMigrationCatalog().length,
     ].find((version) => version === schemaVersion) ?? createAuditMigrationCatalog().length;
@@ -66,15 +68,16 @@ export async function readInstallationStatus(root: string): Promise<Summary> {
     schemaVersion === 10 ||
     schemaVersion === 11 ||
     schemaVersion === 12 ||
-    schemaVersion === 13
+    schemaVersion === 13 ||
+    schemaVersion === 14
       ? {
           profileUpgrade: {
-            targetSchemaVersion: 13,
-            state: schemaVersion === 13 ? "active" : "available-offline",
+            targetSchemaVersion: 14,
+            state: schemaVersion === 14 ? "active" : "available-offline",
             release: profileReleaseReadiness(root, config.releaseId),
             command: "installation upgrade-profiles --input <private-json-with-new-backup-name>",
             recovery:
-              "After interruption inspect status: schema 9, 10, 11 or 12 requires a new backup name and retry; schema 13 is committed. Recover abandoned ownership through the existing lock workflow.",
+              "After interruption inspect status: schema 9, 10, 11, 12 or 13 requires a new backup name and retry; schema 14 is committed. Recover abandoned ownership through the existing lock workflow.",
             rollback:
               "Stop the host. Use backup restore into an isolated destination; reconcile against the current deletion index. Switch the restored database, matching previous binaries/assets/config together under installation ownership; retain the current deletion index. Never downgrade the live database or copy an old deletion index.",
           },

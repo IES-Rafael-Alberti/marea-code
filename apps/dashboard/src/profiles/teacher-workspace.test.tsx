@@ -3,7 +3,7 @@ import { expect, it, vi } from "vitest";
 import { sessionPorts } from "../../browser/typed-host-data.fixture.js";
 import { ServerSettingsView } from "../modules/server-settings/view.js";
 import { ExternalAccessView } from "../modules/external-access/view.js";
-import { SkillAuthoringModule } from "../modules/skill-authoring/skill-authoring-module.js";
+import { SkillsWorkspace } from "../modules/skill-workspace/view.js";
 import { EducationalSettings } from "../modules/educational-insights/settings.js";
 import { TeachingModule } from "../modules/teaching/teaching-module.js";
 import type { WorkspaceSettings } from "./profile-shell.js";
@@ -44,6 +44,10 @@ const teaching = (busy: boolean, dirty: boolean, calls: string[] = []) =>
       dirty,
     },
     controller: {
+      reload: () => {
+        calls.push("teaching.reload");
+        return Promise.resolve();
+      },
       selectClass: vi.fn((classId: string) => {
         calls.push(`teaching.select:${classId}`);
         return Promise.resolve();
@@ -86,8 +90,8 @@ it("drives teaching and skill editing from the shared selector, discarding after
     TeachingModule,
     ExternalAccessView,
     EducationalSettings,
-    SkillAuthoringModule,
   ]);
+  expect((shell.settings.skills as ReactElement).type).toBe(SkillsWorkspace);
   const access = content(shell.settings.classroom).access as ReactElement<{
     classId: string | null;
     fetchRequest: object;
@@ -133,4 +137,16 @@ it("adds center administration only for confirmed administrators", async () => {
     (shell.settings.server as ReactElement<{ classNames: object }>).props.classNames,
   ).toStrictEqual({});
   await expect(shell.onClassChange("class:a")).resolves.toBeUndefined();
+});
+
+it("refreshes the class tutor after skill assignment and tolerates a missing editor", async () => {
+  const calls: string[] = [];
+  const props = workspace({ teaching: teaching(false, false, calls) });
+  await (
+    props.settings.skills as ReactElement<{ teachingChanged: () => Promise<void> }>
+  ).props.teachingChanged();
+  expect(calls).toEqual(["teaching.reload"]);
+  await (
+    workspace().settings.skills as ReactElement<{ teachingChanged: () => Promise<void> }>
+  ).props.teachingChanged();
 });

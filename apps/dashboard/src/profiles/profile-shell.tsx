@@ -38,6 +38,7 @@ export interface ProfileRuntime extends SessionPluginPorts {
 /** Content owned by the teacher workspace; each part is shown in its own settings section. */
 export interface WorkspaceSettings {
   readonly classroom?: ReactNode;
+  readonly skills?: ReactNode;
   readonly server?: ReactNode;
   readonly administration?: ReactNode;
 }
@@ -251,6 +252,7 @@ export function ProfileShell({
           </button>
         </p>
       )}
+      <div hidden={section !== "skills"}>{settings.skills}</div>
       <div hidden={section !== "settings"} className="workspace-settings">
         <nav className="settings-navigation" aria-label={w.settingsNavigation}>
           {parts.map((id) => (
@@ -341,7 +343,7 @@ export function ProfileShell({
         </div>
       </div>
       {controller === null ? (
-        section !== "settings" && <p role="status">{m.loading}</p>
+        !["settings", "skills"].includes(section) && <p role="status">{m.loading}</p>
       ) : (
         <>
           {missing && (
@@ -424,7 +426,9 @@ function workspaceLayout(
     parts,
     shownPart: parts.includes(subsection) ? subsection : "classroom",
     missing:
-      section !== "settings" && !modules.some((item) => moduleSection(item.moduleId) === section),
+      section !== "settings" &&
+      section !== "skills" &&
+      !modules.some((item) => moduleSection(item.moduleId) === section),
   };
 }
 

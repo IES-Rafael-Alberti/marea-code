@@ -21,8 +21,7 @@ not rewritten by these defaults.
 
 Settings separate the selected class, shared server, personal dashboard and
 school membership administration. Class panels stay mounted during navigation,
-so switching between tutor, access, features and the skill library preserves
-edits. Class changes ask before losing an educational or admission draft as well
+so switching between tutor, access and features preserves edits. Class changes ask before losing an educational or admission draft as well
 as teaching and authoring drafts. Explicit saves and discard actions stay next
 to their status. Network failures retain drafts. Configuration changes still only
 affect new student sessions where that was already the contract.
@@ -30,6 +29,51 @@ Saving reveals and focuses invalid fields even inside a different section or a
 closed disclosure. Model and identity forms share successful revision advances
 only when they started from the same saved version, preserving both drafts and
 conflict detection for changes made elsewhere.
+
+## Skills workspace
+
+**Skills** is a top-level workspace with three views: **This class**, **By student**
+and **Library**. Practice skills and assessment methods are separate. The searchable
+selection dialog keeps items in catalog order while checkboxes change; it saves the
+whole selection once. Details open beside the list. Missing catalog entries can be
+removed without discarding the rest of a selection.
+
+Students inherit their class's didactic selection until a teacher chooses a personal
+selection. A personal selection replaces the class selection, including when it is
+empty, and persists across sessions. **Use the class selection** removes the override.
+Teachers can select up to 100 enrolled students for one atomic assignment. Assessment
+methods and other tutor policies remain class-wide. Personalization is scoped to the
+student and class, never inferred from a browser name or a session ID.
+
+The library shows human names, descriptions and provenance. Built-in and school skills
+are read-only; **Create my version** creates a personal draft. The editor exposes name,
+description and instructions first, with optional criteria and text resources. Advanced
+file editing preserves YAML metadata, comments and companion files. IDs are generated,
+so changing a displayed name does not change the skill's identity. Importing resources
+does not require importing a new `SKILL.md`.
+
+Drafts remain in memory in the authenticated browser tab while navigating between
+classes and sections; closing or reloading with unfinished work raises the browser's
+unsaved-work warning. They are not written to browser persistent storage. Discard is
+explicit. Closing the detail panel or editor does not discard the draft. A concurrent
+edit never overwrites a newer library revision: the teacher can save the retained
+draft as another skill, or explicitly discard it and reopen the current version.
+
+Saving an edited personal skill updates its selected references in classes the teacher
+currently teaches and in their students' personal selections. The editor displays the
+impact before saving. The server checks the reviewed usage revision and all current
+permissions again inside a transaction. Existing runs keep their frozen skill content;
+only new runs use updated assignments. If the file was saved but applying it failed,
+the editor retains that saved identity and offers destination review and application
+retry, without saving another copy of the file.
+
+Schema 14 adds `marea_student_skill_assignments`, storing frozen didactic bundles and
+an optimistic revision per `(class_id, student_id)`. Missing rows inherit; an empty JSON
+array explicitly selects no skills. Run creation composes this selection with the
+latest class policy inside its existing authorization path. Removing an account or
+class cascades to its assignments. Backups include the table. Migrations 1–13 retain
+their checksums. The new dashboard endpoint does not change baseline student protocol
+schemas or require a matching client release.
 
 ## Identity providers
 

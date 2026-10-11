@@ -35,6 +35,7 @@ it.each([
   ["educational-insights", 11],
   ["student-identities", 12],
   ["observability", 13],
+  ["skill-assignments", 14],
 ] as const)(
   "starts the production host on %s, authenticates, persists, reopens and restores profiles",
   async (schema, version) => {
@@ -82,8 +83,8 @@ it.each([
       { operation: "read" },
       cookie,
     );
-    expect(observability.status).toBe(version === 13 ? 200 : 503);
-    if (version === 13) {
+    expect(observability.status).toBe(version >= 13 ? 200 : 503);
+    if (version >= 13) {
       const value = z
         .object({ enabled: z.boolean(), plugins: z.array(z.object({ id: z.string() })) })
         .parse(await observability.json());
@@ -149,6 +150,7 @@ it.each([
   ["educational-insights", 11],
   ["student-identities", 12],
   ["observability", 13],
+  ["skill-assignments", 14],
 ] as const)(
   "includes %s in the authorized operations backup and restore workflow",
   async (schema, version) => {

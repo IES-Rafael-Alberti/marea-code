@@ -50,39 +50,40 @@ describe("SQLite storage files", () => {
     );
   });
 
-  it.each(["retention-audit", "observability"] as const)(
-    "opens, reopens and restores activated installations with %s",
-    (schema) => {
-      const root = directory();
-      const databasePath = join(root, "application.sqlite");
-      const activated = initializeSqliteStorage({ databasePath, schema });
-      expect(activated.schema.version).toBe(schema === "observability" ? 13 : 9);
-      expect(tables(activated.database)).toContain("marea_retention_operations");
-      const backup = activated.createBackup();
-      activated.close();
+  it.each([
+    ["retention-audit", 9],
+    ["observability", 13],
+    ["skill-assignments", 14],
+  ] as const)("opens, reopens and restores activated installations with %s", (schema, version) => {
+    const root = directory();
+    const databasePath = join(root, "application.sqlite");
+    const activated = initializeSqliteStorage({ databasePath, schema });
+    expect(activated.schema.version).toBe(version);
+    expect(tables(activated.database)).toContain("marea_retention_operations");
+    const backup = activated.createBackup();
+    activated.close();
 
-      expect(() => initializeSqliteStorage({ databasePath })).toThrow(SqliteStorageError);
-      const reopened = initializeSqliteStorage({ databasePath, schema });
-      expect(reopened.schema.version).toBe(backup.schemaVersion);
-      reopened.close();
+    expect(() => initializeSqliteStorage({ databasePath })).toThrow(SqliteStorageError);
+    const reopened = initializeSqliteStorage({ databasePath, schema });
+    expect(reopened.schema.version).toBe(backup.schemaVersion);
+    reopened.close();
 
-      expect(() =>
-        restoreSqliteBackup({ databasePath: join(root, "rejected.sqlite"), backup }),
-      ).toThrow(SqliteStorageError);
-      const restored = restoreSqliteBackup({
-        databasePath: join(root, "restored.sqlite"),
-        backup,
-        schema,
-      });
-      expect(restored.schema.version).toBe(backup.schemaVersion);
-      restored.close();
+    expect(() =>
+      restoreSqliteBackup({ databasePath: join(root, "rejected.sqlite"), backup }),
+    ).toThrow(SqliteStorageError);
+    const restored = restoreSqliteBackup({
+      databasePath: join(root, "restored.sqlite"),
+      backup,
+      schema,
+    });
+    expect(restored.schema.version).toBe(backup.schemaVersion);
+    restored.close();
 
-      const application = initializeSqliteStorage({ databasePath: join(root, "plain.sqlite") });
-      expect(application.schema.version).toBe(createMigrationCatalog().length);
-      expect(tables(application.database)).not.toContain("marea_retention_operations");
-      application.close();
-    },
-  );
+    const application = initializeSqliteStorage({ databasePath: join(root, "plain.sqlite") });
+    expect(application.schema.version).toBe(createMigrationCatalog().length);
+    expect(tables(application.database)).not.toContain("marea_retention_operations");
+    application.close();
+  });
 
   it("opens an unmigrated file with durable settings for a deletion index", () => {
     const root = directory();

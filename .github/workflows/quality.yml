@@ -46,6 +46,40 @@ jobs:
       - name: Audit dependencies and verify local mitigation
         run: bun run release:audit
 
+  skills-browser:
+    needs: quality
+    name: Skills browser journey
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - name: Build dashboard and isolated browser harness
+        run: |
+          bun run --cwd apps/dashboard build
+          bun build apps/teacher-server/smoke/skill-workspace-host.ts --compile --outfile "$RUNNER_TEMP/marea-skills-host"
+          mkdir -p "$RUNNER_TEMP/skills-browser"
+          printf '%s' '{"private":true,"dependencies":{"playwright":"1.63.0"}}' > "$RUNNER_TEMP/skills-browser/package.json"
+          bun install --cwd "$RUNNER_TEMP/skills-browser" --ignore-scripts
+          bun "$RUNNER_TEMP/skills-browser/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Exercise the skills workspace
+        env:
+          PLAYWRIGHT_PACKAGE: ${{ runner.temp }}/skills-browser/package.json
+          MAREA_PROFILE_HOST: ${{ runner.temp }}/marea-skills-host
+        run: node apps/dashboard/browser/skills.mjs
+      - name: Retain synthetic UX screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: skills-browser
+          path: reports/skills-browser
+          retention-days: 7
+
   mutation:
     needs: quality
     name: Mutation (${{ matrix.workspace }}, ${{ matrix.partition || 'all' }})

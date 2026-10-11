@@ -12,6 +12,7 @@ import {
   createEducationalMigrationCatalog,
   createStudentIdentityMigrationCatalog,
   createObservabilityMigrationCatalog,
+  createSkillAssignmentMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
   type SqliteStorage,
@@ -105,34 +106,18 @@ export function createOperatorCliApplication(
 ): ComposedInstallation {
   capability.assertOwned();
   const version = inspectSqliteSchemaVersion({ databasePath: config.databasePath });
-  const observability = version === createObservabilityMigrationCatalog().length;
-  const identities = observability || version === createStudentIdentityMigrationCatalog().length;
-  const educational = identities || version === createEducationalMigrationCatalog().length;
-  const profiles = educational || version === createProfileMigrationCatalog().length;
-  const activated = version === createAuditMigrationCatalog().length || profiles;
-  if (!activated && version !== createMigrationCatalog().length) throw unavailable();
+  const schema = operatorSchema(version);
+  const activated = schema !== undefined;
   // After OPERATIONS activation, account creation consults the deletion index of this installation.
   const authority = activated
     ? openDeletionAuthority(capability.installationRoot, config.databasePath)
     : { guard: withoutDeletionAuthority(), reserved: [], close: () => undefined };
   let storage: SqliteStorage;
   try {
-    storage = initializeSqliteStorage(
-      activated
-        ? {
-            databasePath: config.databasePath,
-            schema: observability
-              ? "observability"
-              : identities
-                ? "student-identities"
-                : educational
-                  ? "educational-insights"
-                  : profiles
-                    ? "dashboard-profiles"
-                    : "retention-audit",
-          }
-        : { databasePath: config.databasePath },
-    );
+    storage = initializeSqliteStorage({
+      databasePath: config.databasePath,
+      ...(schema === undefined ? {} : { schema }),
+    });
   } catch (error) {
     authority.close();
     throw error;
@@ -211,4 +196,15 @@ export function composeInstallation(capability: InstallationCapability): Compose
     if (error instanceof OperatorCliError) throw error;
     throw unavailable();
   }
+}
+
+function operatorSchema(version: number) {
+  if (version === createSkillAssignmentMigrationCatalog().length) return "skill-assignments";
+  if (version === createObservabilityMigrationCatalog().length) return "observability";
+  if (version === createStudentIdentityMigrationCatalog().length) return "student-identities";
+  if (version === createEducationalMigrationCatalog().length) return "educational-insights";
+  if (version === createProfileMigrationCatalog().length) return "dashboard-profiles";
+  if (version === createAuditMigrationCatalog().length) return "retention-audit";
+  if (version === createMigrationCatalog().length) return undefined;
+  throw unavailable();
 }

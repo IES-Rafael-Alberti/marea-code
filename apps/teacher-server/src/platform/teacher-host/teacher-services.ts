@@ -1,3 +1,5 @@
+import { SqliteSkillAssignments } from "../persistence/sqlite-skill-assignments.js";
+import { SkillWorkspaceService } from "../../teaching/skills/workspace-service.boundary.js";
 import { ServerSettingsService } from "../../server-settings/service.boundary.js";
 import { SessionExportService } from "../../session-export/service.boundary.js";
 import { SqliteSessionExportRepository } from "../persistence/sqlite-session-export.js";
@@ -268,6 +270,7 @@ export async function composeTeacherServices(
     dependencies.identities,
   );
   const services: TeacherProductServices = {
+    ...skillWorkspaceEndpoint(database, configurations, ids, clock, sourceForTeacherClass),
     sessionExport: new SessionExportService(new SqliteSessionExportRepository(database)),
     ...observabilityEndpoint(observability),
     ...(identityProviders.length === 0
@@ -376,4 +379,30 @@ export async function composeTeacherServices(
       },
     },
   });
+}
+
+function skillWorkspaceEndpoint(
+  database: SqliteApplicationDatabase,
+  configurations: SqliteTeachingConfigurationRepository,
+  ids: IdGenerator,
+  clock: Clock,
+  sourceForTeacherClass: (teacherId: string, classId: string) => SkillSource,
+) {
+  if (
+    database.readOne(
+      "SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'marea_student_skill_assignments'",
+    ) === undefined
+  )
+    return {};
+  return {
+    skillWorkspace: new SkillWorkspaceService(
+      new SqliteSkillAssignments(
+        database,
+        configurations.requireTeacherClass.bind(configurations),
+        ids,
+        clock,
+      ),
+      sourceForTeacherClass,
+    ),
+  };
 }

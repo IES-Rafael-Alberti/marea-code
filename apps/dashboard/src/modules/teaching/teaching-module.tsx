@@ -14,6 +14,7 @@ export function TeachingModule({
   state,
   controller,
   classSelection = true,
+  showSkills = true,
 }: TeachingModuleProperties) {
   const m = teachingMessages(locale);
   return (
@@ -38,7 +39,12 @@ export function TeachingModule({
       {state.classId === null ? (
         <p role="status">{m.chooseClass}</p>
       ) : (
-        <TeachingClassConfiguration state={state} controller={controller} messages={m} />
+        <TeachingClassConfiguration
+          showSkills={showSkills}
+          state={state}
+          controller={controller}
+          messages={m}
+        />
       )}
     </section>
   );
@@ -95,10 +101,12 @@ function TeachingClassesPanel({
 }
 
 function TeachingClassConfiguration({
+  showSkills,
   state,
   controller,
   messages: m,
 }: {
+  readonly showSkills: boolean;
   readonly state: TeachingState;
   readonly controller: TeachingActions;
   readonly messages: TeachingMessages;
@@ -182,6 +190,7 @@ function TeachingClassConfiguration({
         <p role="status">{m.noDraft}</p>
       ) : (
         <TeachingEditor
+          showSkills={showSkills}
           settings={state.draft}
           catalog={state.catalog}
           disabled={transitioning || blocked || state.recovery !== null}

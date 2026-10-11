@@ -1,3 +1,4 @@
+import { registerSkillWorkspaceRoutes } from "./skill-workspace-http.boundary.js";
 import { registerServerSettingsRoutes } from "./server-settings-http.boundary.js";
 import { registerSessionExportRoutes } from "./session-export-http.boundary.js";
 import { registerEducationalInsightsRoutes } from "./educational-insights-http.boundary.js";
@@ -22,6 +23,7 @@ export function registerDashboardModuleRoutes(options: {
     path: "/api/v1/dashboard/observability",
   });
   registerSessionExportRoutes({ ...options, service: options.services.sessionExport });
+  registerSkillWorkspaceRoutes({ ...options, service: options.services.skillWorkspace });
   registerEducationalInsightsRoutes({ ...options, service: options.services.educationalInsights });
   registerDashboardProfileRoutes({ ...options, service: options.services.profiles });
   registerUsageHealthRoutes({ ...options, service: options.services.usageHealth });

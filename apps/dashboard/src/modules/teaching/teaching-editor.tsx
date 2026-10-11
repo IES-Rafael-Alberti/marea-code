@@ -15,6 +15,7 @@ import {
 } from "./teaching-view-selection.js";
 
 export interface TeachingEditorProperties {
+  readonly showSkills?: boolean;
   readonly settings: TeachingSettings;
   readonly catalog: readonly TeachingCatalogEntry[];
   readonly disabled: boolean;
@@ -24,6 +25,7 @@ export interface TeachingEditorProperties {
 
 /** Editable teaching draft; inactive mode fields and selections are always preserved. */
 export function TeachingEditor({
+  showSkills = true,
   settings,
   catalog,
   disabled,
@@ -104,24 +106,28 @@ export function TeachingEditor({
           {settings.agentMode === "tutoring" ? m.restoreTutoring : m.restoreFree}
         </button>
       </details>
-      <TeachingSkillGroup
-        kind="didactic"
-        settings={settings}
-        available={reviewed.available.didactic}
-        selections={reviewed.didactic}
-        disabled={disabled}
-        messages={m}
-        edit={edit}
-      />
-      <TeachingSkillGroup
-        kind="evaluation"
-        settings={settings}
-        available={reviewed.available.evaluation}
-        selections={reviewed.evaluation}
-        disabled={disabled}
-        messages={m}
-        edit={edit}
-      />
+      {showSkills && (
+        <>
+          <TeachingSkillGroup
+            kind="didactic"
+            settings={settings}
+            available={reviewed.available.didactic}
+            selections={reviewed.didactic}
+            disabled={disabled}
+            messages={m}
+            edit={edit}
+          />
+          <TeachingSkillGroup
+            kind="evaluation"
+            settings={settings}
+            available={reviewed.available.evaluation}
+            selections={reviewed.evaluation}
+            disabled={disabled}
+            messages={m}
+            edit={edit}
+          />
+        </>
+      )}
       <label className="teaching-automatic">
         <input
           type="checkbox"

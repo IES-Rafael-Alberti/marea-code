@@ -1,5 +1,5 @@
 /** Locale-independent navigation through the teacher workspace, by position in its menus. */
-const views = ["sessions", "map", "progress", "reports", "settings"];
+const views = ["sessions", "skills", "map", "progress", "reports", "settings"];
 const settings = ["classroom", "server", "panel", "administration"];
 
 export function classSelection(page) {

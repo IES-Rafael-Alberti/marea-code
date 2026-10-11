@@ -236,6 +236,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Synthetic observability host compilation failed' }
           node apps/dashboard/browser/observability.mjs
           if ($LASTEXITCODE -ne 0) { throw 'Observability and session export browser acceptance failed' }
+      - name: Skills workspace in a real browser
+        if: runner.os != 'Windows' && matrix.component == 'server'
+        run: |
+          $manifest = Get-ChildItem reports/phase5/candidates -Recurse -Filter manifest.json | Select-Object -First 1
+          $env:MAREA_DASHBOARD_DIST = Join-Path $manifest.DirectoryName 'dashboard'
+          $env:MAREA_PROFILE_HOST = Join-Path $env:RUNNER_TEMP 'marea-skills-host'
+          bun build apps/teacher-server/smoke/skill-workspace-host.ts --compile --outfile $env:MAREA_PROFILE_HOST
+          if ($LASTEXITCODE -ne 0) { throw 'Synthetic skills host compilation failed' }
+          node apps/dashboard/browser/skills.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Skills browser acceptance failed' }
       - name: Fresh managed server setup and update recovery
         if: matrix.component == 'server'
         run: |
@@ -251,6 +261,7 @@ jobs:
             reports/phase5/installer.sigstore.json
             reports/phase5/installed-client-receipt.json
             reports/phase5/native-credential-writer-receipt.json
+            reports/skills-browser
           retention-days: 7
           # Vite's signed dashboard inventory lives in dashboard/.vite/manifest.json.
           include-hidden-files: true

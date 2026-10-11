@@ -83,7 +83,7 @@ it("starts from the browser entry point", async () => {
 
   await vi.waitFor(() => {
     const html = renderToStaticMarkup(render.mock.lastCall?.[0]);
-    expect(html).toContain("Edición de skills");
+    expect(html).toContain("Skills");
     expect(html.match(/Physics/gu)).toHaveLength(1);
   });
   expect(document.documentElement.lang).toBe("es");
