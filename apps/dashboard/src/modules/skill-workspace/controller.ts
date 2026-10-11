@@ -4,7 +4,11 @@ import { createSkillAuthoringClient } from "../skill-authoring/skill-authoring-c
 import { createSkillWorkspaceClient } from "./client.boundary.js";
 import { loadSkillWorkspace } from "./load-workspace.js";
 import { SkillWorkspaceState } from "./state.js";
-import type { SkillAuthoringReadResponse, TeachingSettings } from "@marea/protocol";
+import type {
+  SkillAuthoringReadResponse,
+  SkillWorkspaceUsage,
+  TeachingSettings,
+} from "@marea/protocol";
 
 type Bundle = NonNullable<SkillAuthoringReadResponse["skill"]>;
 type Selection = TeachingSettings["selection"]["didactic"];
