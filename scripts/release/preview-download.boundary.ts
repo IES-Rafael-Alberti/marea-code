@@ -170,16 +170,18 @@ export async function downloadPreview(
   let totalBytes = 0;
   let receivedBytes = 0;
   let reused = 0;
-  ports.progress?.stage(`Descargando ${String(manifest.files.length)} archivos de Marea...`);
+  const report = (prepared: number, bytes = 0) =>
+    ports.progress?.update(
+      `Preparando archivos ${String(prepared)}/${String(manifest.files.length)}: ${String(prepared - reused)} descargados, ${String(reused)} reutilizados; ${((receivedBytes + bytes) / 1_048_576).toFixed(1)} MiB`,
+    );
+  ports.progress?.stage(`Preparando ${String(manifest.files.length)} archivos de Marea...`);
+  report(0);
   for (const [index, file] of manifest.files.entries()) {
     let transferred = 0;
-    const report = (bytes: number) => {
+    const transferProgress = (bytes: number) => {
       transferred = bytes;
-      ports.progress?.update(
-        `Descargando archivo ${String(index + 1)}/${String(manifest.files.length)}: ${((receivedBytes + bytes) / 1_048_576).toFixed(1)} MiB recibidos en total`,
-      );
+      report(index, bytes);
     };
-    report(0);
     let bytes = verifiedCachedFile(ports.reuseDirectory, file);
     if (bytes === undefined) {
       const transfer: { compressed?: boolean } = {};
@@ -196,7 +198,7 @@ export async function downloadPreview(
       const downloaded = await get(
         `sha256-${file.sha256}`,
         512_000_000,
-        report,
+        transferProgress,
         file.path,
         fetchArtifact,
       );
@@ -214,11 +216,10 @@ export async function downloadPreview(
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     writeFileSync(path, bytes, { flag: "wx", mode: 0o600 });
     if (file.executable) chmodSync(path, 0o700);
+    report(index + 1);
   }
-  if (reused > 0)
-    ports.progress?.stage(
-      `Reutilizados ${String(reused)} archivos verificados, sin descargarlos de nuevo.`,
-    );
-  ports.progress?.stage(`Descarga verificada: ${String(manifest.files.length)} archivos.`);
+  ports.progress?.stage(
+    `Archivos verificados: ${String(manifest.files.length)}; descargados: ${String(manifest.files.length - reused)}; reutilizados: ${String(reused)}; ${(receivedBytes / 1_048_576).toFixed(1)} MiB recibidos en total.`,
+  );
   return manifest;
 }

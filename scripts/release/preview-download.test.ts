@@ -116,14 +116,15 @@ it("reports signature verification, per-file streamed totals and authenticated c
   expect(progress.stage.mock.calls).toEqual([
     ["Obteniendo la información de la versión..."],
     ["Verificando la firma de la versión..."],
-    ["Descargando 2 archivos de Marea..."],
-    ["Descarga verificada: 2 archivos."],
+    ["Preparando 2 archivos de Marea..."],
+    ["Archivos verificados: 2; descargados: 2; reutilizados: 0; 1.8 MiB recibidos en total."],
   ]);
   expect(progress.update.mock.calls).toEqual([
-    ["Descargando archivo 1/2: 0.0 MiB recibidos en total"],
-    ["Descargando archivo 1/2: 1.5 MiB recibidos en total"],
-    ["Descargando archivo 2/2: 1.5 MiB recibidos en total"],
-    ["Descargando archivo 2/2: 1.8 MiB recibidos en total"],
+    ["Preparando archivos 0/2: 0 descargados, 0 reutilizados; 0.0 MiB"],
+    ["Preparando archivos 0/2: 0 descargados, 0 reutilizados; 1.5 MiB"],
+    ["Preparando archivos 1/2: 1 descargados, 0 reutilizados; 1.5 MiB"],
+    ["Preparando archivos 1/2: 1 descargados, 0 reutilizados; 1.8 MiB"],
+    ["Preparando archivos 2/2: 2 descargados, 0 reutilizados; 1.8 MiB"],
   ]);
   progress.stage.mockClear();
   verify.mockImplementationOnce(() => {

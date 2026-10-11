@@ -78,10 +78,14 @@ it("reuses both bootstrap programs and downloads only the compressed client with
   for (const [name, bytes] of f.bodies)
     expect(readFileSync(join(f.destination, name))).toEqual(bytes);
   expect(f.progress.stage).toHaveBeenCalledWith(
-    "Reutilizados 2 archivos verificados, sin descargarlos de nuevo.",
+    "Archivos verificados: 3; descargados: 1; reutilizados: 2; 0.0 MiB recibidos en total.",
   );
-  expect(f.progress.update.mock.calls.at(-1)).toEqual([
-    "Descargando archivo 3/3: 0.0 MiB recibidos en total",
+  expect(f.progress.update.mock.calls).toEqual([
+    ["Preparando archivos 0/3: 0 descargados, 0 reutilizados; 0.0 MiB"],
+    ["Preparando archivos 1/3: 0 descargados, 1 reutilizados; 0.0 MiB"],
+    ["Preparando archivos 2/3: 0 descargados, 2 reutilizados; 0.0 MiB"],
+    ["Preparando archivos 2/3: 0 descargados, 2 reutilizados; 0.0 MiB"],
+    ["Preparando archivos 3/3: 1 descargados, 2 reutilizados; 0.0 MiB"],
   ]);
 });
 
@@ -96,7 +100,7 @@ it.each([true, false])(
     expect(readFileSync(join(f.destination, "marea"))).toEqual(f.bodies.get("marea"));
     if (showProgress)
       expect(f.progress.stage).toHaveBeenCalledWith(
-        "Reutilizados 3 archivos verificados, sin descargarlos de nuevo.",
+        "Archivos verificados: 3; descargados: 0; reutilizados: 3; 0.0 MiB recibidos en total.",
       );
   },
 );
@@ -115,7 +119,9 @@ it("redownloads changed cache entries, and accepts legacy raw assets only when g
   await f.run();
   expect(f.fetch).toHaveBeenCalledTimes(8);
   expect(cancelled).toHaveBeenCalledTimes(3);
-  expect(f.progress.stage).not.toHaveBeenCalledWith(expect.stringContaining("Reutilizados"));
+  expect(f.progress.stage).toHaveBeenCalledWith(
+    "Archivos verificados: 3; descargados: 3; reutilizados: 0; 0.0 MiB recibidos en total.",
+  );
   for (const [name, bytes] of f.bodies)
     expect(readFileSync(join(f.destination, name))).toEqual(bytes);
 });
@@ -148,5 +154,7 @@ it("never uses cached artifacts before the new inventory signature is authentica
   });
   await expect(f.run()).rejects.toThrow("signature rejected");
   expect(f.fetch).toHaveBeenCalledTimes(2);
-  expect(f.progress.stage).not.toHaveBeenCalledWith(expect.stringContaining("Reutilizados"));
+  expect(f.progress.stage).not.toHaveBeenCalledWith(
+    expect.stringContaining("Archivos verificados"),
+  );
 });
