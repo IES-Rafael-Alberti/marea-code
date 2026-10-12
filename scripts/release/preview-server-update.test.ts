@@ -37,6 +37,7 @@ vi.mock("../../apps/teacher-server/src/platform/teacher-host/teacher-host-config
 import { installExampleSkill } from "./preview-skills.boundary.js";
 import {
   activatePreviewServer,
+  assertPreviewServerIdle,
   assertPreviewServerReady,
   updateJournal,
 } from "./preview-server-update.boundary.js";
@@ -51,6 +52,7 @@ beforeEach(() => {
     release: ports.release,
     capability: { assertOwned: ports.assertOwned },
   });
+  ports.release.mockReturnValue(true);
   ports.readOperationsConfig.mockReturnValue({ databasePath: join(root, "marea.sqlite") });
   ports.readTeacherHostConfig.mockReturnValue({
     releaseId: "release:preview",
@@ -63,6 +65,18 @@ beforeEach(() => {
   });
   ports.createBackup.mockResolvedValue({ path: join(root, "backups/safety") });
   ports.initializeSqliteStorage.mockReturnValue({ close: ports.closeStorage });
+});
+
+it("checks exclusive access before downloading without migrating or backing up, and refuses uncertain release", () => {
+  assertPreviewServerIdle(root);
+  expect(ports.acquireInstallation).toHaveBeenCalledExactlyOnceWith(root);
+  expect(ports.release).toHaveBeenCalledOnce();
+  expect(ports.createBackup).not.toHaveBeenCalled();
+  expect(ports.initializeSqliteStorage).not.toHaveBeenCalled();
+  ports.release.mockReturnValue(false);
+  expect(() => {
+    assertPreviewServerIdle(root);
+  }).toThrow("installation-lost");
 });
 afterEach(() => {
   vi.restoreAllMocks();

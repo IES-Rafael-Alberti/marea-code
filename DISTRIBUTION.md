@@ -235,7 +235,12 @@ version and no recommendation, installation stops with a useful message.
 
 Stop the server before accepting an update. Its existing exclusive installation
 lock prevents an update while a teacher host or another offline operation owns
-the data. A deletion-aware backup precedes migration; the matching dashboard and
+the data. The managed updater checks that lock before downloading, explains a busy
+installation, and checks ownership again when activating. Close the running host
+with Ctrl+C, then retry `marea-teacher update`. After an unexpected shutdown, start
+Marea to review its abandoned-lock recovery prompt, stop it normally, and retry;
+do not remove lock files while another Marea process owns the installation.
+A deletion-aware backup precedes migration; the matching dashboard and
 server version change together. Settings and credentials are preserved.
 
 An interrupted server update leaves `installation/state/preview-update-pending.json`

@@ -1,4 +1,6 @@
 import { parseServerArguments } from "../../apps/student/src/server-arguments.js";
+import { OperatorCliError } from "../../apps/teacher-server/src/platform/operator-cli/errors.js";
+import { InstallerUsageError } from "./installer-cli.boundary.js";
 import { uninstallPreview } from "./preview-uninstall.boundary.js";
 import { preparePreviewRoot } from "./preview-existing.boundary.js";
 import { installPreviewAtomically } from "./preview-install-transaction.boundary.js";
@@ -28,6 +30,7 @@ import {
 } from "./preview-download.boundary.js";
 import {
   activatePreviewServer,
+  assertPreviewServerIdle,
   assertPreviewServerReady,
 } from "./preview-server-update.boundary.js";
 import { type RunPrivateCommand } from "./preview-setup.boundary.js";
@@ -303,20 +306,26 @@ async function updateBeforeStart(
     return release;
   }
   try {
+    if (settings.installation !== undefined && !onboardingPending(root))
+      assertPreviewServerIdle(settings.installation);
     return await fetchAndInstall(
       root,
       settings,
       offered,
       join(release, `cosign${executableSuffix()}`),
     );
-  } catch {
+  } catch (error) {
     if (settings.installation !== undefined && !onboardingPending(root))
       assertPreviewServerReady(settings.installation);
     if (required)
-      throw new Error(
+      throw new InstallerUsageError(
         `No se ha podido instalar la versión ${offered} necesaria para este servidor.`,
       );
-    process.stderr.write("No se ha podido actualizar; se conserva la instalación verificada.\n");
+    process.stderr.write(
+      error instanceof OperatorCliError && error.code === "installation-busy"
+        ? "No se puede actualizar porque el servidor está en uso o conserva un bloqueo. Cierra marea-teacher con Ctrl+C en la terminal donde está abierto y vuelve a ejecutar marea-teacher update. Si hubo un apagado inesperado, inicia Marea, revisa el aviso de recuperación del bloqueo y ciérralo antes de actualizar. Se conserva la versión instalada.\n"
+        : "No se ha podido actualizar; se conserva la instalación verificada.\n",
+    );
     process.exitCode = 1;
     return activeRelease(root);
   }
