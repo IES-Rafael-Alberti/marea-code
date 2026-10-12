@@ -5,12 +5,8 @@ import { SkillDetail } from "./detail.js";
 import { workspaceFixture } from "./workspace.fixture.js";
 import { skillWorkspaceMessages } from "./messages.js";
 import { tree, text, control, change } from "../server-settings/forms.fixture.js";
+import { click } from "./view-controls.fixture.js";
 const m = skillWorkspaceMessages("en");
-function click(nodes: ReturnType<typeof tree>, caption: string) {
-  const found = nodes.find((node) => node.type === "button" && text(node) === caption);
-  if (!found) throw new Error(caption);
-  (found.props.onClick as () => void)();
-}
 it("shows inherited and individual assignments, supports batch selection and restores inheritance", async () => {
   const f = workspaceFixture();
   const c = f.controller;
@@ -89,12 +85,10 @@ it("filters the library, switches practice/evaluation and modifies class selecti
         selection={selection}
         source="all"
         filterSource={filterSource}
-        filterModule={vi.fn()}
         catalog={c.catalog}
       />,
     );
   click(render(), m.evaluation);
-  expect(control(render(), m.module).value).toBe("");
   expect(chooseKind).toHaveBeenCalledWith("evaluation");
   click(render(), m.add);
   expect(pick).toHaveBeenCalledWith({ students: null, kind: "didactic", initial: selection });
@@ -118,10 +112,6 @@ it("filters the library, switches practice/evaluation and modifies class selecti
     expect(c.notice).toBe("assigned");
   });
   expect(c.configuration?.settings.selection.didactic).toEqual([]);
-  c.catalog = c.catalog.map((entry) => ({ ...entry, kind: "evaluation" }));
-  expect(
-    render("library", "evaluation").filter((node) => node.props.className === "skills-curriculum"),
-  ).toHaveLength(0);
   c.catalog = [];
   expect(render().some((node) => text(node) === m.empty)).toBe(true);
   expect(

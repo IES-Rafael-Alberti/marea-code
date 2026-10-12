@@ -12,9 +12,35 @@ import { CurriculumFilter, CurriculumLabels } from "./curriculum-view.js";
 import { skillWorkspaceMessages } from "./messages.js";
 import { tree, text, change, control } from "../server-settings/forms.fixture.js";
 import { workspaceFixture } from "./workspace.fixture.js";
+import { LibrarySkills } from "./panes.js";
 const code = { codigo: "0485" },
   name = { nombre: "Programación" },
   both = { ...code, ...name };
+it("defaults the library module filter to all and keeps assessment methods outside curricular labels", async () => {
+  const { controller: c } = workspaceFixture();
+  await c.load();
+  c.catalog = c.catalog.map((entry) => ({ ...entry, kind: "evaluation" }));
+  const m = skillWorkspaceMessages("en");
+  const nodes = tree(
+    LibrarySkills({
+      c,
+      m,
+      kind: "evaluation",
+      tab: "library",
+      catalog: c.catalog,
+      query: "",
+      search: vi.fn(),
+      chooseKind: vi.fn(),
+      pick: vi.fn(),
+      selection: [],
+      source: "all",
+      filterSource: vi.fn(),
+      filterModule: vi.fn(),
+    }),
+  );
+  expect(control(nodes, m.module).value).toBe("");
+  expect(nodes.filter((node) => node.props.className === "skills-curriculum")).toHaveLength(0);
+});
 it("classifies by exact code or normalized name and resolves only unambiguous known correspondences", async () => {
   const f = workspaceFixture();
   await f.controller.load();

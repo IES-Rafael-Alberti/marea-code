@@ -2,16 +2,11 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SkillsWorkspace } from "./view.js";
 import { workspaceFixture } from "./workspace.fixture.js";
 import { tree, text, change } from "../server-settings/forms.fixture.js";
-const { hooks, refs, resetRender, mockReact, m } = await vi.hoisted(async () =>
+const { hooks, resetRender, resetState, mockReact, m } = await vi.hoisted(async () =>
   (await import("./view-hooks.fixture.js")).viewHooks(),
 );
 vi.mock("react", async (original) => mockReact(original));
-beforeEach(() => {
-  hooks.values = [];
-  hooks.effects = [];
-  refs.values = [];
-  resetRender();
-});
+beforeEach(resetState);
 afterEach(() => {
   vi.unstubAllGlobals();
 });

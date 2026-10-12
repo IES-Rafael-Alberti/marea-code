@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SkillsClass } from "./view.js";
 import { buttons, click, skillViewFixture } from "./view-controls.fixture.js";
 import { tree, text, control, change } from "../server-settings/forms.fixture.js";
-const { hooks, refs, resetRender, mockReact, m } = await vi.hoisted(async () =>
+const { hooks, refs, resetRender, resetState, mockReact, m } = await vi.hoisted(async () =>
   (await import("./view-hooks.fixture.js")).viewHooks(),
 );
 vi.mock("react", async (original) => mockReact(original));
@@ -11,12 +11,7 @@ vi.mock("../../browser-random-uuid.js", () => ({
   browserRandomUUID: () => "11111111-1111-4111-8111-111111111111",
 }));
 const fixture = () => skillViewFixture(resetRender, m);
-beforeEach(() => {
-  hooks.values = [];
-  hooks.effects = [];
-  refs.values = [];
-  resetRender();
-});
+beforeEach(resetState);
 afterEach(() => {
   vi.unstubAllGlobals();
 });
