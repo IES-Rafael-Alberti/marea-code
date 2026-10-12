@@ -1,3 +1,4 @@
+import { skillCurriculum } from "./skill-curriculum.boundary.js";
 import { parseDocument } from "yaml";
 import {
   SkillWorkspaceRequestSchema,
@@ -77,6 +78,7 @@ export class SkillWorkspaceService {
             const bundle = await source.load(entry.id);
             const title = humanTitle(bundle);
             return {
+              ...(request.includeCurriculum ? { curriculum: skillCurriculum(bundle) } : {}),
               id: entry.id,
               name: entry.name,
               description: entry.description,

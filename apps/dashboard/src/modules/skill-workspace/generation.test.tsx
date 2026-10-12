@@ -13,11 +13,13 @@ beforeEach(() => {
   hooks.values = [];
   hooks.index = 0;
 });
-it("generates a separate proposal from free text, preserves edits on failure and only replaces Markdown on explicit use", async () => {
+it("generates directly in the unsaved editor, preserves text on failure and supports undo", async () => {
   const f = workspaceFixture(),
     c = f.controller;
   const { render, button, click } = editorControls(hooks, () => <SkillGeneration c={c} m={m} />);
   expect(render()).toEqual([]);
+  c.applyGenerated("ignored");
+  c.undoGeneration();
   c.create("didactic");
   expect(button(m.generate).props.disabled).toBe(true);
   const editNotes = (value: string) => {
@@ -32,29 +34,33 @@ it("generates a separate proposal from free text, preserves edits on failure and
   const original = c.editor?.draft;
   click(m.generate);
   expect(button(m.generating).props.disabled).toBe(true);
-  await vi.waitFor(() => {
-    expect(c.generated).not.toBeNull();
-  });
   expect(c.editor?.draft).toBe(original);
-  expect(render().find((node) => node.type === "pre")?.props.children).toBe(c.generated);
+  await vi.waitFor(() => {
+    expect(c.beforeGeneration).toBe(original);
+  });
+  const generated = c.editor?.draft;
+  expect(generated).not.toBe(original);
+  expect(c.drafts.get(c.editor?.key ?? "")?.draft).toBe(generated);
+  expect(render().some((node) => node.type === "pre")).toBe(false);
   const body = f.request.mock.calls[0]?.[1].body;
-  const request = SkillWorkspaceRequestSchema.parse(
-    JSON.parse(typeof body === "string" ? body : ""),
-  );
-  expect(request).toMatchObject({
+  expect(
+    SkillWorkspaceRequestSchema.parse(JSON.parse(typeof body === "string" ? body : "")),
+  ).toMatchObject({
     kind: "generate",
     instructions: "RA1: Bucles y casos límite",
     skillKind: "didactic",
     locale: "en",
   });
   c.busy = true;
-  expect(button(m.useGenerated).props.disabled).toBe(true);
-  expect(button(m.discardGenerated).props.disabled).toBe(true);
-  c.acceptGenerated();
-  expect(c.editor?.draft).toBe(original);
+  expect(button(m.undoGeneration).props.disabled).toBe(true);
+  c.undoGeneration();
+  expect(c.editor?.draft).toBe(generated);
   c.busy = false;
-  click(m.discardGenerated);
-  expect(c.generated).toBeNull();
+  expect(button(m.undoGeneration).props.disabled).toBe(false);
+  click(m.undoGeneration);
+  expect(c.editor?.draft).toBe(original);
+  expect(c.beforeGeneration).toBeNull();
+  c.undoGeneration();
   expect(c.editor?.draft).toBe(original);
   f.failures.set("generate", 422);
   click(m.generate);
@@ -68,28 +74,22 @@ it("generates a separate proposal from free text, preserves edits on failure and
   f.failures.delete("generate");
   click(m.generate);
   await vi.waitFor(() => {
-    expect(c.generated).not.toBeNull();
+    expect(c.beforeGeneration).toBe(original);
   });
-  const proposal = c.generated;
-  click(m.useGenerated);
-  expect(c.editor?.draft.files[0]?.content).toBe(proposal);
-  expect(c.generated).toBeNull();
   expect(
     f.request.mock.calls.some(
       ([, options]) =>
         typeof options.body === "string" && options.body.includes("skill-authoring-save"),
     ),
   ).toBe(false);
-  c.acceptGenerated();
-  expect(c.generated).toBeNull();
   if (!c.editor) throw new Error("editor");
   c.editor = { ...c.editor, applyPending: true };
   expect(button(m.generate).props.disabled).toBe(true);
-  c.generated = "keep";
-  c.acceptGenerated();
-  expect(c.generated).toBe("keep");
+  expect(button(m.undoGeneration).props.disabled).toBe(true);
+  c.undoGeneration();
+  expect(c.beforeGeneration).toBe(original);
 });
-it("ignores generation when there is no editable draft and does not revive an editor closed during a request", async () => {
+it("ignores generation without an editable draft and late responses after closing or disposal", async () => {
   const f = workspaceFixture(),
     c = f.controller;
   await c.generate("notes", "es");
@@ -103,7 +103,20 @@ it("ignores generation when there is no editable draft and does not revive an ed
   const pending = c.generate("notes", "es");
   c.closeEditor();
   await pending;
-  expect(c.generated).toBeNull();
-  c.acceptGenerated();
+  expect(c.beforeGeneration).toBeNull();
+  c.undoGeneration();
   expect(c.editor).toBeNull();
+  c.create("didactic");
+  const replaced = c.generate("notes", "es");
+  c.create("evaluation");
+  const current = c.editor;
+  await replaced;
+  expect(c.editor).toBe(current);
+  expect(c.beforeGeneration).toBeNull();
+  const original = c.editor;
+  const disposed = c.generate("notes", "es");
+  c.dispose();
+  await disposed;
+  expect(c.editor).toBe(original);
+  expect(c.beforeGeneration).toBeNull();
 });

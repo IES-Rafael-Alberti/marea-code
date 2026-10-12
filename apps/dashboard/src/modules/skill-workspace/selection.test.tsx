@@ -80,6 +80,7 @@ it("keeps the catalog order stable while selecting, searching and saving", () =>
 });
 it("allows one evaluation method and distinguishes an empty selection", () => {
   const f = fixture("evaluation", []);
+  expect(f.render().filter((node) => node.props.className === "skills-curriculum")).toHaveLength(0);
   expect(f.render().some((node) => text(node) === m.noEvaluation)).toBe(true);
   change(control(f.render(), "judge"), { checked: true });
   change(control(f.render(), "other-judge"), { checked: true });

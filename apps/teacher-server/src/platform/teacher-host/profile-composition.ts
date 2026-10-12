@@ -2,7 +2,12 @@ import {
   activeGovernanceAccount,
   activeGovernanceMembership,
 } from "../persistence/governance-access-sql.js";
-import { createDashboardProfileStore, type SqliteApplicationDatabase } from "@marea/sqlite-storage";
+import { dashboardLanguage } from "../../dashboard-profiles/language.boundary.js";
+import {
+  createDashboardLanguageStore,
+  createDashboardProfileStore,
+  type SqliteApplicationDatabase,
+} from "@marea/sqlite-storage";
 import type { DashboardModuleSelection } from "@marea/protocol";
 import type { Clock, IdGenerator } from "../../identity/contracts.js";
 import type {
@@ -28,8 +33,15 @@ export function composeDashboardProfiles<S extends DashboardModuleSelection>(opt
        (?2 IS NULL OR ${activeGovernanceMembership("?1", "?2", "'teacher'")})`,
       [ownerId, classId],
     ) !== undefined;
-  return createDashboardProfileService({
+  const profiles = createDashboardProfileService({
     ...options,
     store: { ...store, authorized },
   });
+  const language = createDashboardLanguageStore(options.database);
+  return {
+    execute: (...args: Parameters<typeof profiles.execute>) =>
+      args[1] === "language"
+        ? dashboardLanguage(args[0], args[2], { ...store, authorized }, language)
+        : profiles.execute(...args),
+  };
 }

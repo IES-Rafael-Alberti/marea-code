@@ -107,7 +107,7 @@ export class SkillWorkspaceController extends SkillWorkspaceState {
         },
         this.abort.signal,
       );
-      if (this.editor === editor && !this.disposed()) this.generated = result.content;
+      if (this.editor === editor && !this.disposed()) this.applyGenerated(result.content);
     });
   }
   reviewDeletion() {
@@ -215,6 +215,7 @@ export class SkillWorkspaceController extends SkillWorkspaceState {
     );
     this.drafts.delete(key);
     this.editor = null;
+    this.beforeGeneration = null;
     this.detail = null;
     await this.refresh();
     await this.teachingChanged();

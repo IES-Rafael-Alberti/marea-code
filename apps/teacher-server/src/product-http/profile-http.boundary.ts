@@ -25,7 +25,7 @@ export function registerDashboardProfileRoutes(options: {
   readonly authenticate: (request: Request) => AuthenticatedIdentity;
   readonly service: DashboardProfileEndpoint | undefined;
 }): void {
-  for (const operation of ["read", "catalog", "save", "reset"]) {
+  for (const operation of ["read", "catalog", "save", "reset", "language"]) {
     options.app.post(`/api/v1/dashboard/profiles/${operation}`, options.policy, async (context) => {
       try {
         const identity = options.authenticate(context.req.raw);

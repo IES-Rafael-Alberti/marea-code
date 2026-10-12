@@ -291,3 +291,14 @@
   color: #a31835;
   border-color: currentColor;
 }
+
+.skills-curriculum {
+  display: block;
+  font-size: 0.85em;
+  color: var(--color-muted);
+  overflow-wrap: anywhere;
+}
+
+.skills-curriculum > span {
+  display: block;
+}

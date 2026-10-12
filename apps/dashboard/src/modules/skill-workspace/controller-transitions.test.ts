@@ -50,7 +50,7 @@ it("retains conflict copies and redraws proposal changes without accepting a mis
   c.create("didactic");
   const original = c.editor;
   c.problem = "conflict";
-  c.generated = "old";
+  c.beforeGeneration = c.editor?.draft ?? null;
   f.changed.mockClear();
   c.copyEditor();
   expect(c.editor).toMatchObject({
@@ -62,22 +62,21 @@ it("retains conflict copies and redraws proposal changes without accepting a mis
   expect(c.editor?.key).toBe(`copy:${c.editor?.draft.slug ?? "missing"}`);
   expect(c.drafts.get(c.editor?.key ?? "")).toBe(c.editor);
   expect(c.editor).not.toBe(original);
-  expect(c.generated).toBeNull();
+  expect(c.beforeGeneration).toBeNull();
   expect(c.problem).toBeNull();
   expect(f.changed).toHaveBeenCalledOnce();
   const copied = c.editor;
   f.changed.mockClear();
-  c.acceptGenerated();
+  c.undoGeneration();
   expect(c.editor).toBe(copied);
   expect(f.changed).not.toHaveBeenCalled();
-  c.generated = "---\nname: foreign\ndescription: Example\n---\nBody";
-  c.acceptGenerated();
+  c.applyGenerated("---\nname: foreign\ndescription: Example\n---\nBody");
   expect(c.editor?.draft.slug).toBe(copied?.draft.slug);
-  expect(c.generated).toBeNull();
-  c.generated = "discard";
+  expect(c.beforeGeneration).toBe(copied?.draft);
   f.changed.mockClear();
-  c.discardGenerated();
-  expect(c.generated).toBeNull();
+  c.undoGeneration();
+  expect(c.editor?.draft).toBe(copied?.draft);
+  expect(c.beforeGeneration).toBeNull();
   expect(f.changed).toHaveBeenCalledOnce();
   c.deleting = true;
   f.changed.mockClear();

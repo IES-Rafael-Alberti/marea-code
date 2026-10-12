@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { SkillWorkspaceController } from "./controller.js";
 import type { SkillWorkspaceMessages } from "./messages.js";
 
-/** Generated text is a separate proposal until the teacher explicitly puts it in the editor. */
+/** Generation updates the unsaved editor, with a reversible snapshot of the previous draft. */
 export function SkillGeneration({
   c,
   m,
@@ -37,30 +37,16 @@ export function SkillGeneration({
         {c.busy ? m.generating : m.generate}
       </button>
       <p>{m.generationHelp}</p>
-      {c.generated !== null && (
-        <section aria-label={m.generatedTitle}>
-          <h3>{m.generatedTitle}</h3>
-          <pre className="skills-markdown">{c.generated}</pre>
-          <p>{m.generationReplace}</p>
-          <button
-            type="button"
-            disabled={c.busy}
-            onClick={() => {
-              c.acceptGenerated();
-            }}
-          >
-            {m.useGenerated}
-          </button>
-          <button
-            type="button"
-            disabled={c.busy}
-            onClick={() => {
-              c.discardGenerated();
-            }}
-          >
-            {m.discardGenerated}
-          </button>
-        </section>
+      {c.beforeGeneration !== null && (
+        <button
+          type="button"
+          disabled={c.busy || c.editor.applyPending}
+          onClick={() => {
+            c.undoGeneration();
+          }}
+        >
+          {m.undoGeneration}
+        </button>
       )}
     </details>
   );

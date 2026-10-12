@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { DashboardLanguagePreferenceSchema } from "./dashboard-language.js";
 
 import { CredentialLoginSchema, CredentialPasswordSchema } from "./auth.js";
 import { SafeDisplayNameSchema } from "./technical.js";
@@ -8,6 +9,7 @@ import { PrivateProviderRouteSchema, RouteBudgetSchema } from "./server-model-ro
 /** Local first-run setup only. This is not an extension of the student wire protocol. */
 export const ServerSetupRequestSchema = z
   .object({
+    language: DashboardLanguagePreferenceSchema.optional(),
     center: SafeDisplayNameSchema,
     classroom: SafeDisplayNameSchema,
     teacher: SafeDisplayNameSchema,

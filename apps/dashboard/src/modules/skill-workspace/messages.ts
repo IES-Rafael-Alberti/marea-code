@@ -1,6 +1,14 @@
 import type { DashboardLocale } from "../../messages.js";
 
 const labels = {
+  module: ["Módulo", "Module", "Modulua"],
+  allModules: ["Todos los módulos", "All modules", "Modulu guztiak"],
+  unlinked: ["Sin vinculación curricular", "No curriculum link", "Curriculum-loturarik gabe"],
+  guideCurriculum: [
+    "Puedes añadir referencias a cada criterio: modulo con codigo, nombre o ambos; ra como número (3); criterio como texto (f). Los códigos del módulo van entre comillas: '0485'. curriculo permite declarar modulos y una fuente. Los niveles son indicadores propios; usa solo referencias que hayas comprobado.",
+    "Each criterion may include referencias: modulo with codigo, nombre or both; ra as a number (3); criterio as text (f). Quote module codes: '0485'. curriculo may declare modulos and a fuente. Levels are your own indicators; only use verified references.",
+    "Irizpide bakoitzak referencias izan ditzake: modulo eremuan codigo, nombre edo biak; ra zenbaki gisa (3); criterio testu gisa (f). Jarri modulu-kodeak komatxo artean: '0485'. curriculo eremuak modulos eta fuente jaso ditzake. Mailak zure adierazleak dira; erabili egiaztatutako erreferentziak bakarrik.",
+  ],
   guide: ["Cómo escribir una skill", "How to write a skill", "Nola idatzi skill bat"],
   guideHeader: [
     "La cabecera entre --- identifica la skill: name, description y, opcionalmente, metadata.title. Debajo escribes las instrucciones completas en Markdown.",
@@ -41,18 +49,11 @@ const labels = {
   generate: ["Generar borrador", "Generate draft", "Sortu zirriborroa"],
   generating: ["Generando borrador…", "Generating draft…", "Zirriborroa sortzen…"],
   generationHelp: [
-    "Usa el modelo configurado para esta clase. El texto generado queda pendiente de tu revisión.",
-    "Uses the model configured for this class. Generated text awaits your review.",
-    "Ikasgela honetarako konfiguratutako modeloa erabiltzen du. Sortutako testua zuk berrikusi behar duzu.",
+    "El borrador aparecerá en el editor. Revísalo antes de guardarlo. Puedes deshacer la generación.",
+    "The draft will appear in the editor. Review it before saving. You can undo generation.",
+    "Zirriborroa editorean agertuko da. Berrikusi gorde aurretik. Sorkuntza desegin dezakezu.",
   ],
-  generatedTitle: ["Propuesta del modelo", "Model proposal", "Modeloaren proposamena"],
-  generationReplace: [
-    "Al usar esta propuesta se sustituye el Markdown del editor. Después puedes editarlo antes de guardar.",
-    "Using this proposal replaces the editor Markdown. You can then edit it before saving.",
-    "Proposamena erabiltzeak editoreko Markdown ordezkatzen du. Ondoren editatu dezakezu gorde aurretik.",
-  ],
-  useGenerated: ["Usar este borrador", "Use this draft", "Erabili zirriborro hau"],
-  discardGenerated: ["Descartar propuesta", "Discard proposal", "Baztertu proposamena"],
+  undoGeneration: ["Deshacer generación", "Undo generation", "Desegin sorkuntza"],
   generationProblem: [
     "No se ha podido generar una skill válida. Comprueba el modelo y la conexión en Ajustes, o revisa las indicaciones y reintenta. Tu texto se conserva.",
     "A valid skill could not be generated. Check the model and connection in Settings, or revise your notes and retry. Your text is preserved.",
@@ -88,7 +89,7 @@ const labels = {
     "The content exceeds the size limit or contains invalid characters.",
     "Edukiak tamaina-muga gainditzen du edo karaktere baliogabeak ditu.",
   ],
-  deleteTitle: ["Eliminar skill", "Delete skill", "Ezabatu skilla"],
+  deleteTitle: ["Eliminar de la biblioteca", "Delete from library", "Ezabatu liburutegitik"],
   deleteHelp: [
     "Se eliminará de tu biblioteca y de las asignaciones indicadas arriba. Si es el método de evaluación de una clase, se desactivará su evaluación automática.",
     "It will be deleted from your library and the assignments listed above. If it is a class assessment method, automatic assessment will be disabled.",
@@ -108,11 +109,20 @@ const labels = {
   classroom: ["Esta clase", "This class", "Ikasgela hau"],
   students: ["Por alumno", "By student", "Ikasleka"],
   library: ["Biblioteca", "Library", "Liburutegia"],
-  add: ["Añadir skills", "Add skills", "Gehitu skillak"],
+  add: [
+    "Elegir skills de la biblioteca",
+    "Choose skills from library",
+    "Aukeratu liburutegiko skillak",
+  ],
+  assignSkill: ["Usar en esta clase", "Use in this class", "Erabili ikasgela honetan"],
   select: ["Guardar selección", "Save selection", "Gorde hautaketa"],
-  search: ["Buscar skills", "Search skills", "Bilatu skillak"],
+  search: [
+    "Buscar skill, módulo o criterio",
+    "Search skills, modules or criteria",
+    "Bilatu skillak, moduluak edo irizpideak",
+  ],
   studentSearch: ["Buscar alumno", "Search students", "Bilatu ikaslea"],
-  newSkill: ["Nueva skill", "New skill", "Skill berria"],
+  newSkill: ["Crear una skill", "Create a skill", "Sortu skill bat"],
   practice: ["Para practicar", "For practice", "Praktikatzeko"],
   evaluation: ["Para evaluar", "For assessment", "Ebaluatzeko"],
   evaluationHelp: [
@@ -143,10 +153,10 @@ const labels = {
     "Use the class selection",
     "Erabili ikasgelako hautaketa",
   ],
-  customize: ["Elegir para este alumno", "Choose for this student", "Aukeratu ikasle honentzat"],
+  customize: ["Personalizar skills", "Customize skills", "Pertsonalizatu skillak"],
   customizeMany: [
-    "Elegir para los seleccionados",
-    "Choose for selected students",
+    "Personalizar skills de los seleccionados",
+    "Customize skills for selected students",
     "Aukeratu hautatutakoentzat",
   ],
   customHelp: [
@@ -183,7 +193,7 @@ const labels = {
   preview: ["Vista previa", "Preview", "Aurrebista"],
   edit: ["Editar", "Edit", "Editatu"],
   copy: ["Crear mi versión", "Create my version", "Sortu nire bertsioa"],
-  remove: ["Quitar", "Remove", "Kendu"],
+  remove: ["Quitar de esta clase", "Remove from this class", "Kendu ikasgela honetatik"],
   cancel: ["Cancelar", "Cancel", "Utzi"],
   close: ["Cerrar", "Close", "Itxi"],
   back: ["Volver", "Back", "Itzuli"],

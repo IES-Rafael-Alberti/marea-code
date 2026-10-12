@@ -38,3 +38,17 @@ export * from "./session-export.js";
 export * from "./skill-workspace.js";
 
 export { SkillFrontmatterSchema } from "./skill-markdown.js";
+
+export {
+  DashboardLanguagePreferenceSchema,
+  DashboardLanguageRequestSchema,
+  DashboardLanguageResponseSchema,
+} from "./dashboard-language.js";
+
+export {
+  SkillModuleSchema,
+  SkillCurriculumSchema,
+  SkillCurricularReferenceSchema,
+  SkillCurriculumSummarySchema,
+  type SkillCurriculumSummary,
+} from "./skill-curriculum.js";

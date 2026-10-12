@@ -43,13 +43,13 @@ it("retains controllers and drafts per class, guards unsaved work and disposes o
   const dependency = hooks.dependencies[0]?.[0];
   expect(dependency).toBeDefined();
   hooks.effects[0]?.();
-  expect(hooks.values[0]).toBe(true);
+  expect(hooks.values[0]).toBe(1);
   const cleanup = hooks.effects[1]?.();
   await vi.waitFor(() => {
     expect(f.request.mock.calls.length).toBeGreaterThanOrEqual(3);
   });
   await Promise.resolve();
-  expect(hooks.values[0]).toBe(false);
+  expect(hooks.values[0]).toBe(2);
   render("class:one");
   hooks.effects[0]?.();
   click(render("class:one"), m.add);
@@ -57,6 +57,7 @@ it("retains controllers and drafts per class, guards unsaved work and disposes o
   await vi.waitFor(() => {
     expect(f.teachingChanged).toHaveBeenCalledOnce();
   });
+  click(render("class:one"), m.library);
   click(render("class:one"), m.newSkill);
   const markdown = () =>
     render("class:one").find((node) => node.props.id === "skill-markdown")?.props as {

@@ -45,7 +45,12 @@ Teachers can select up to 100 enrolled students for one atomic assignment. Asses
 methods and other tutor policies remain class-wide. Personalization is scoped to the
 student and class, never inferred from a browser name or a session ID.
 
-The library shows human names, descriptions and provenance. Built-in and school skills
+**Create a skill** lives in Library; **Choose skills from library** assigns existing
+skills to a class, while **Customize skills** edits a student selection.
+**Remove from this class** changes an assignment; **Delete from library** removes
+a personal definition after reviewing its usage.
+
+The library shows human names, descriptions, curricular references and provenance. Built-in and school skills
 are read-only; **Create my version** creates a personal draft. Both details and the
 editor show the complete `SKILL.md`, including YAML, criteria and all four levels.
 The teacher writes Markdown directly, with a commented template and an expandable
@@ -57,8 +62,9 @@ controls the displayed title.
 **Help me draft it** accepts free-form topics, goals and criteria. The server uses the
 current configured class model through the installed provider, with the complete
 Testing example (and the assessment example for an assessment skill). It validates
-its Markdown before returning a proposal. Teachers explicitly move that proposal
-into the editor, review it and save; generation never publishes or assigns a skill.
+its Markdown before inserting it directly into the unsaved editor. **Undo generation**
+restores the previous draft, including its original Markdown. Errors preserve the text.
+Teachers review and explicitly save; generation never publishes or assigns a skill.
 No student conversation is sent. Usage is recorded in the independent educational
 ledger under the teacher, using the configured tutoring limits and prices. Requests
 have a two-minute timeout, propagate cancellation and allow one in flight per teacher.
@@ -95,6 +101,46 @@ latest class policy inside its existing authorization path. Removing an account 
 class cascades to its assignments. Backups include the table. Migrations 1–13 retain
 their checksums. The new dashboard endpoint does not change baseline student protocol
 schemas or require a matching client release.
+
+## Curricular references
+
+Optional `curriculo` frontmatter declares `modulos` and a `fuente` (source text or URL).
+Each module supplies a quoted string `codigo`, a `nombre`, or both. Each criterion
+retains its own stable `codigo` and may add `referencias`: objects with `modulo`,
+positive integer `ra` (for example `3`) and string `criterio` (for example `f`).
+The display formats this as `Programación · 0485 · RA3.f`. Criterion statements and
+four progression levels remain teacher-authored indicators; a skill assessment is
+not automatic certification of an entire official learning outcome.
+
+The library and assignment picker search names, module codes and RA/criterion labels,
+and filter by module or lack of curricular links. Module codes take precedence for
+grouping. Names ignore case and repeated spaces; a name-only module maps to a code
+only if the visible catalog establishes exactly one corresponding code. No external
+curriculum database, source fetch or invented code is required. The generation prompt
+preserves supplied references and omits them when the teacher has supplied none.
+
+Testing now uses `testing-casos`, `testing-unitarias` and `testing-limites`, linked to
+0485 RA3.f in [Royal Decree 405/2023](https://www.boe.es/buscar/doc.php?id=BOE-A-2023-13221).
+The old RA5 identifiers were incorrect curricular labels. Existing frozen sessions,
+evaluations and progress records are not recoded or merged with the corrected example.
+Updating the release refreshes the library, not previously captured class or student
+selections. To adopt the corrected Testing version for a class, open its library
+detail, choose **Use in this class**, and save the selection. Individual overrides
+remain explicit; reselect Testing or restore class inheritance to update them.
+New frontmatter remains inside `SKILL.md`; baseline bundle/criterion wire shapes are
+unchanged. Only library requests with `includeCurriculum: true` receive the optional
+curriculum summary, so older strict dashboard requests retain their response shape.
+
+## Dashboard entry and language
+
+GET and HEAD on `/` redirect to `/dashboard/`; product `/api/` and `/v1/` routes retain
+their behavior. Startup prints separately labelled dashboard URLs and student commands.
+Web setup saves the selected language on the first teacher's account. On later logins,
+the account preference overrides browser detection and local storage; teachers can
+change it immediately in **Settings → My dashboard**. The dedicated authenticated
+`/api/v1/dashboard/profiles/language` endpoint leaves strict profile documents unchanged.
+The preference is namespaced account metadata in the existing SQLite database, included
+in backups and removed by account retention. Database schema 14 remains unchanged.
 
 ## Identity providers
 

@@ -89,10 +89,12 @@ it("filters the library, switches practice/evaluation and modifies class selecti
         selection={selection}
         source="all"
         filterSource={filterSource}
+        filterModule={vi.fn()}
         catalog={c.catalog}
       />,
     );
   click(render(), m.evaluation);
+  expect(control(render(), m.module).value).toBe("");
   expect(chooseKind).toHaveBeenCalledWith("evaluation");
   click(render(), m.add);
   expect(pick).toHaveBeenCalledWith({ students: null, kind: "didactic", initial: selection });
@@ -116,6 +118,10 @@ it("filters the library, switches practice/evaluation and modifies class selecti
     expect(c.notice).toBe("assigned");
   });
   expect(c.configuration?.settings.selection.didactic).toEqual([]);
+  c.catalog = c.catalog.map((entry) => ({ ...entry, kind: "evaluation" }));
+  expect(
+    render("library", "evaluation").filter((node) => node.props.className === "skills-curriculum"),
+  ).toHaveLength(0);
   c.catalog = [];
   expect(render().some((node) => text(node) === m.empty)).toBe(true);
   expect(
@@ -285,16 +291,18 @@ it("renders a mixed individual selection and disables detail actions during save
   await c.open(f.bundle.id);
   const render = () => tree(<SkillDetail controller={c} messages={m} assign={vi.fn()} />);
   expect(
-    render().find((node) => node.type === "button" && text(node) === m.add)?.props.disabled,
+    render().find((node) => node.type === "button" && text(node) === m.assignSkill)?.props.disabled,
   ).toBe(false);
   c.configuration = null;
   expect(
-    render().find((node) => node.type === "button" && text(node) === m.add)?.props.disabled,
+    render().find((node) => node.type === "button" && text(node) === m.assignSkill)?.props.disabled,
   ).toBe(true);
   c.busy = true;
   expect(
     render()
-      .filter((node) => node.type === "button" && [m.close, m.add, m.edit].includes(text(node)))
+      .filter(
+        (node) => node.type === "button" && [m.close, m.assignSkill, m.edit].includes(text(node)),
+      )
       .every((node) => node.props.disabled === true),
   ).toBe(true);
   if (!c.detail) throw new Error("detail");

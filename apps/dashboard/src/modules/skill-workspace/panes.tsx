@@ -1,3 +1,4 @@
+import { CurriculumFilter, CurriculumLabels } from "./curriculum-view.js";
 import type { Dispatch, SetStateAction } from "react";
 import type { SkillLibraryEntry, SkillWorkspaceStudent, TeachingSettings } from "@marea/protocol";
 import type { SkillWorkspaceController } from "./controller.js";
@@ -108,6 +109,8 @@ export function StudentSkills({
 }
 
 export function LibrarySkills({
+  module = "",
+  filterModule,
   c,
   m,
   query,
@@ -121,6 +124,8 @@ export function LibrarySkills({
   filterSource,
   catalog,
 }: {
+  readonly module?: string;
+  readonly filterModule?: (value: string) => void;
   readonly c: SkillWorkspaceController;
   readonly m: SkillWorkspaceMessages;
   readonly query: string;
@@ -173,6 +178,9 @@ export function LibrarySkills({
             }}
           />
         </label>
+        {filterModule && (
+          <CurriculumFilter catalog={c.catalog} value={module} change={filterModule} messages={m} />
+        )}
         {tab === "library" && (
           <label>
             {m.library}
@@ -203,6 +211,7 @@ export function LibrarySkills({
             >
               <strong>{entry.title}</strong>
               <span>{entry.description}</span>
+              {entry.kind === "didactic" && <CurriculumLabels entry={entry} messages={m} />}
               {c.drafts.has(entry.id) && <small>{m.draft}</small>}
             </button>
             {tab === "classroom" && (

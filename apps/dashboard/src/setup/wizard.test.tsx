@@ -140,6 +140,7 @@ it("guides a school through all five steps and preserves edits when navigating b
   expect(client.finish).toHaveBeenCalledOnce();
   expect(client.finish).toHaveBeenCalledWith({
     ...setupInput(),
+    language: "en",
     port: 19876,
     access: "https",
     publicOrigin: "https://school.test",

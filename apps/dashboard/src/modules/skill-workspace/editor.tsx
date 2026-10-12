@@ -50,6 +50,7 @@ export function SkillEditor({
         <p>{m.guideHeader}</p>
         <p>{draft.kind === "didactic" ? m.guideDidactic : m.guideEvaluation}</p>
         <p>{m.guideCriteria}</p>
+        <p>{m.guideCurriculum}</p>
         <p>{m.guideName}</p>
       </details>
       <SkillGeneration c={c} m={m} />

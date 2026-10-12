@@ -5,6 +5,8 @@ const p = vi.hoisted(() => ({
   acquireInstallation: vi.fn(),
   release: vi.fn(),
   initializeSqliteStorage: vi.fn(),
+  createDashboardLanguageStore: vi.fn(),
+  writeLanguage: vi.fn(),
   close: vi.fn(),
   serverSettingsStore: vi.fn(),
   write: vi.fn(),
@@ -28,7 +30,10 @@ vi.mock("../../apps/teacher-server/src/educational-insights/progress.js", () => 
   },
 }));
 vi.mock("node:fs", () => ({ writeFileSync: p.writeFileSync }));
-vi.mock("@marea/sqlite-storage", () => ({ initializeSqliteStorage: p.initializeSqliteStorage }));
+vi.mock("@marea/sqlite-storage", () => ({
+  initializeSqliteStorage: p.initializeSqliteStorage,
+  createDashboardLanguageStore: p.createDashboardLanguageStore,
+}));
 vi.mock("./preview-setup.boundary.js", () => p);
 vi.mock("../../apps/teacher-server/src/platform/operator-cli/installation-lock.js", () => p);
 vi.mock("../../apps/teacher-server/src/platform/operator-cli/composition.js", () => p);
@@ -85,6 +90,7 @@ beforeEach(() => {
   p.acquireInstallation.mockReturnValue({ release: p.release });
   p.initializeSqliteStorage.mockReturnValue({ database: "database", close: p.close });
   p.serverSettingsStore.mockReturnValue({ write: p.write });
+  p.createDashboardLanguageStore.mockReturnValue({ write: p.writeLanguage });
   p.serverSettingsOperator.mockReturnValue({ forClass: p.forClass });
   p.forClass.mockReturnValue(policy);
   p.list.mockResolvedValue([
@@ -102,6 +108,7 @@ it.each([false, true])(
     if (example)
       data.request = {
         ...data.request,
+        language: "es",
         identityProviders: { "org.example.identity": { token: "secret" } },
       };
     await provisionOnboarding("/stage", "/release", "0.1.0-preview.18", data, run);
@@ -132,6 +139,10 @@ it.each([false, true])(
       schema: "skill-assignments",
     });
     expect(p.repository).toHaveBeenCalledWith("database");
+    if (example) {
+      expect(p.createDashboardLanguageStore).toHaveBeenCalledWith("database");
+      expect(p.writeLanguage).toHaveBeenCalledExactlyOnceWith(setupTeacher.userId, "es");
+    } else expect(p.writeLanguage).not.toHaveBeenCalled();
     expect(p.write).toHaveBeenCalledWith(data.settings, 0);
     expect(p.skills).toHaveBeenCalledWith("/stage/core");
     expect(p.forClass).toHaveBeenCalledWith("class:main");

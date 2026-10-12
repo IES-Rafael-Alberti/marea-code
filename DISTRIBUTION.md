@@ -1,17 +1,26 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.31`.
+The commands below target `0.1.0-preview.32`.
 
-This preview makes `SKILL.md` the visible, editable source of every skill. Creation
-starts with a Markdown template and a guide. Teachers can generate a draft using the
-configured model, the complete Testing example and their own topics and criteria,
-then review and edit it before saving. Personal skills can be deleted after reviewing
-the class and individual assignments that will be withdrawn. Existing conversations
-retain their frozen content; existing companion files are preserved when editing.
+This preview adds optional curriculum links to didactic `SKILL.md` files. Modules
+can be identified by name, quoted code, or both; learning outcomes use numeric `ra`
+values. Library search and module filters use these references. The bundled Testing
+example corrects its former RA5 labels and links its own indicators to Programación
+0485, RA3.f, with the normative source recorded in the Markdown.
+If a class already uses the previous Testing revision, open Testing in Library,
+choose **Use in this class**, and save the selection to use the corrected version
+for new sessions. Existing sessions and individual selections retain their captured
+version until the teacher changes those selections.
 
-The Skills workspace retains class selections, persistent per-student selections,
-bulk personalization and the personal library from preview 29. The database remains
-at schema 14 and compatible students continue to connect.
+Generated skill drafts now appear directly in the editor with an undo action.
+Creation belongs in Library; assigning and removing class skills have distinct labels.
+The dashboard restores each teacher's saved language, including the choice made in
+web setup. Visiting the server root opens the dashboard, and startup prints its URLs.
+
+Managed server updates check installation ownership and offer abandoned-lock recovery
+before downloading. The activation step still rechecks ownership to protect against
+a server starting during the download. The database remains at schema 14, existing
+sessions keep their frozen skill content, and compatible students continue to connect.
 
 Download progress now distinguishes files received from verified files reused locally,
 and reports the transferred bytes. The counter covers the whole signed inventory;
@@ -48,13 +57,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.31/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.32/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.31/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.32/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -194,13 +203,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.31/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.32/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.31/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.32/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Run `marea` from the project directory. The managed installation keeps student
@@ -330,7 +339,7 @@ the empty root allows the same installation command to run again. Do not delete
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.31`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.32`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a

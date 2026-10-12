@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { SkillsClass } from "./view.js";
-import { workspaceFixture } from "./workspace.fixture.js";
+import { buttons, click, skillViewFixture } from "./view-controls.fixture.js";
 import { tree, text, control, change } from "../server-settings/forms.fixture.js";
 const { hooks, refs, resetRender, mockReact, m } = await vi.hoisted(async () =>
   (await import("./view-hooks.fixture.js")).viewHooks(),
@@ -10,33 +10,7 @@ vi.mock("react", async (original) => mockReact(original));
 vi.mock("../../browser-random-uuid.js", () => ({
   browserRandomUUID: () => "11111111-1111-4111-8111-111111111111",
 }));
-const buttons = (nodes: ReturnType<typeof tree>, caption: string) =>
-  nodes.filter((node) => node.type === "button" && text(node) === caption);
-function click(nodes: ReturnType<typeof tree>, caption: string, index = 0) {
-  const button = buttons(nodes, caption)[index];
-  if (!button) throw new Error(caption);
-  (button.props.onClick as () => void)();
-}
-function fixture() {
-  const f = workspaceFixture();
-  const c = f.controller;
-  const render = () => {
-    resetRender();
-    return tree(<SkillsClass controller={c} messages={m} />);
-  };
-  return {
-    ...f,
-    c,
-    render,
-    checkStudent: (name: string) => {
-      const checkbox = render().find((node) => node.props["aria-label"] === name);
-      (checkbox?.props.onChange as (event: object) => void)({ currentTarget: { checked: true } });
-    },
-    click: (caption: string, index = 0) => {
-      click(render(), caption, index);
-    },
-  };
-}
+const fixture = () => skillViewFixture(resetRender, m);
 beforeEach(() => {
   hooks.values = [];
   hooks.effects = [];
@@ -67,6 +41,7 @@ it("keeps separate class, student and library views with stable filters and deta
   expect(f.render().some((node) => node.type === "aside")).toBe(true);
   f.click(m.students);
   expect(f.render().some((node) => node.type === "strong" && text(node) === "Ana")).toBe(true);
+  f.click(m.library);
   f.click(m.newSkill);
   expect(f.c.editor?.draft.kind).toBe("didactic");
   expect(f.render().some((node) => node.type === "form")).toBe(true);
@@ -142,7 +117,7 @@ it("adds a skill from detail and communicates free mode, configuration gaps and 
   const f = fixture();
   await f.c.load();
   await f.c.open(f.bundle.id);
-  f.click(m.add, 1);
+  f.click(m.assignSkill);
   expect(control(f.render(), "Unit testing").checked).toBe(true);
   f.click(m.cancel);
   if (!f.c.configuration) throw new Error("config");
@@ -185,7 +160,7 @@ it("preserves other selected skills when adding detail and handles an evaluator 
       },
     },
   };
-  f.click(m.add, 1);
+  f.click(m.assignSkill);
   expect(
     f.render().filter((node) => node.props.type === "checkbox" && node.props.checked),
   ).toHaveLength(2);
@@ -193,7 +168,7 @@ it("preserves other selected skills when adding detail and handles an evaluator 
   f.c.detail = { ...f.c.detail, skill: { ...f.bundle, kind: "evaluation" } };
   f.c.catalog = f.c.catalog.map((entry) => ({ ...entry, kind: "evaluation" }));
   hooks.values = hooks.values.slice(0, 6);
-  f.click(m.add, 1);
+  f.click(m.assignSkill);
   expect(control(f.render(), "Unit testing").checked).toBe(true);
   expect(f.render().some((node) => text(node) === "1 skills")).toBe(true);
   f.click(m.cancel);
@@ -263,6 +238,7 @@ it("preserves the readable workspace layout across class, library, student, deta
   f.click(m.cancel);
   hooks.values = hooks.values.slice(0, 6);
   f.click(m.library);
+  f.click(m.library);
   f.click(m.newSkill);
   screenshot("new skill editor");
 });
@@ -308,6 +284,7 @@ it("shows only selected skills of the chosen kind and searches titles and descri
   expect(names()).toHaveLength(1);
   change(control(f.render(), m.search), { value: "" });
   expect(names()).toEqual(["JudgePractice unit testing"]);
+  f.click(m.library);
   f.click(m.newSkill);
   f.c.closeEditor();
   hooks.values = hooks.values.slice(0, 6);
@@ -364,7 +341,7 @@ it("replaces an existing evaluator and avoids duplicate practice references when
       },
     },
   };
-  f.click(m.add, 1);
+  f.click(m.assignSkill);
   expect(f.render().find((node) => node.type === "dialog")).toBeDefined();
   expect(f.render().some((node) => node.type === "h3" && text(node) === m.add)).toBe(true);
   expect(
@@ -375,7 +352,7 @@ it("replaces an existing evaluator and avoids duplicate practice references when
   hooks.values = hooks.values.slice(0, 6);
   f.c.detail = { ...f.c.detail, skill: { ...f.bundle, kind: "evaluation" } };
   f.c.catalog = f.c.catalog.map((entry) => ({ ...entry, kind: "evaluation" }));
-  f.click(m.add, 1);
+  f.click(m.assignSkill);
   expect(f.render().some((node) => text(node) === "1 skills")).toBe(true);
 });
 
@@ -400,12 +377,44 @@ it("returns from editing to an unfiltered library so the saved personal copy sta
   f.click(m.library);
   change(control(f.render(), m.search), { value: "absent" });
   change(control(f.render(), m.library), { value: "marea" });
+  f.click(m.library);
+  change(control(f.render(), m.module), { value: "name:programación" });
   f.click(m.newSkill);
   f.click(m.back);
   expect(buttons(f.render(), m.library)[0]?.props["aria-current"]).toBe("page");
   expect(control(f.render(), m.search).value).toBe("");
   expect(control(f.render(), m.library).value).toBe("all");
+  expect(control(f.render(), m.module).value).toBe("");
   expect(f.render().filter((node) => node.props.className === "skills-open")).toHaveLength(1);
+});
+it("filters library and picker by module and curricular reference, resetting the library on tab changes", async () => {
+  const f = fixture();
+  await f.c.load();
+  const module = { nombre: "Programación", codigo: "0485" };
+  f.c.catalog = f.c.catalog.map((entry) => ({
+    ...entry,
+    curriculum: { modulos: [module], referencias: [{ modulo: module, ra: 3, criterio: "f" }] },
+  }));
+  f.click(m.library);
+  change(control(f.render(), m.module), { value: "unlinked" });
+  expect(f.render().filter((node) => node.props.className === "skills-open")).toHaveLength(0);
+  change(control(f.render(), m.module), { value: "code:0485" });
+  change(control(f.render(), m.search), { value: "RA3.f" });
+  expect(f.render().filter((node) => node.props.className === "skills-open")).toHaveLength(1);
+  change(control(f.render(), m.search), { value: "RA3.g" });
+  expect(f.render().filter((node) => node.props.className === "skills-open")).toHaveLength(0);
+  f.click(m.classroom);
+  f.click(m.library);
+  expect(control(f.render(), m.module).value).toBe("");
+  f.click(m.classroom);
+  f.click(m.add);
+  change(control(f.render(), m.module, 1), { value: "unlinked" });
+  expect(f.render().filter((node) => node.props.type === "checkbox")).toHaveLength(0);
+  change(control(f.render(), m.module, 1), { value: "code:0485" });
+  change(control(f.render(), m.search, 1), { value: "RA3.f" });
+  expect(f.render().filter((node) => node.props.type === "checkbox")).toHaveLength(1);
+  change(control(f.render(), m.search, 1), { value: "RA3.g" });
+  expect(f.render().filter((node) => node.props.type === "checkbox")).toHaveLength(0);
 });
 it("explains a failed generation while retaining the teacher's editor", () => {
   const f = fixture();

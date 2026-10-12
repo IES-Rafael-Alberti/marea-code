@@ -1,3 +1,5 @@
+import { CurriculumLabels, CurriculumFilter } from "./curriculum-view.js";
+import { matchesSkill, matchesCurriculum } from "./curriculum.js";
 import { useState } from "react";
 import type { SkillLibraryEntry, TeachingSettings } from "@marea/protocol";
 import type { SkillWorkspaceMessages } from "./messages.js";
@@ -27,10 +29,10 @@ export function SkillSelection({
 }) {
   const [query, search] = useState("");
   const [selection, select] = useState(initial);
+  const [module, filterModule] = useState("");
   const available = catalog.filter(
     (item) =>
-      item.kind === kind &&
-      `${item.title} ${item.description}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
+      item.kind === kind && matchesCurriculum(item, module, catalog) && matchesSkill(item, query),
   );
   return (
     <section className="skills-picker" aria-label={title}>
@@ -51,6 +53,7 @@ export function SkillSelection({
           }}
         />
       </label>
+      <CurriculumFilter catalog={catalog} value={module} change={filterModule} messages={m} />
       <div className="skills-picker-list">
         {selection
           .filter((item) => !catalog.some((entry) => entry.id === item.id))
@@ -92,6 +95,7 @@ export function SkillSelection({
             <span>
               <strong>{entry.title}</strong>
               <span>{entry.description}</span>
+              {entry.kind === "didactic" && <CurriculumLabels entry={entry} messages={m} />}
             </span>
           </label>
         ))}

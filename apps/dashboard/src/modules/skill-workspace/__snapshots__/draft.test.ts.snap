@@ -12,6 +12,11 @@ metadata:
 #   - codigo: local-1
 #     enunciado: Qué debe demostrar el alumno
 #     niveles: [Con guía, Con ayuda puntual, De forma autónoma, En situaciones nuevas]
+#     referencias:
+#       - modulo: {nombre: Nombre del módulo}
+#         ra: 3
+#         criterio: f
+# Las referencias son opcionales: añade solo las que hayas comprobado.
 ---
 
 # Lo que tiene que dominar

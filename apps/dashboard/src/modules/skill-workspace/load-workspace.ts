@@ -18,7 +18,7 @@ export async function loadSkillWorkspace(
   do {
     const page: Extract<SkillWorkspaceResponse, { kind: "library" }> = await request(
       classId,
-      { kind: "library", after: after as SkillLibraryEntry["id"] | null },
+      { kind: "library", after: after as SkillLibraryEntry["id"] | null, includeCurriculum: true },
       signal,
     );
 

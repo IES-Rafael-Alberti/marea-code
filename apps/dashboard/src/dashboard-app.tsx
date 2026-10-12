@@ -40,6 +40,7 @@ export interface DashboardAppProperties {
   readonly preference?: LocalePreference;
   readonly onPreferenceChange?: (preference: LocalePreference) => void;
   readonly languageSaveWarning?: boolean;
+  readonly languageBusy?: boolean;
   readonly navigation?: { readonly section: string; select(section: string): void };
   readonly workspace?: Omit<SessionsModuleProperties, "locale">;
   readonly state?: DashboardState;
@@ -57,6 +58,7 @@ export function DashboardApp({
   preference = "automatic",
   onPreferenceChange,
   languageSaveWarning = false,
+  languageBusy = false,
   navigation,
   workspace,
   state = { status: "loading" },
@@ -69,29 +71,26 @@ export function DashboardApp({
   const messages = getDashboardMessages(locale);
   const section = navigation?.section ?? "sessions";
   const tabs = messages.navigation;
+  const languageControl = (
+    <>
+      <InterfaceLanguageSelector
+        messages={messages}
+        preference={preference}
+        onChange={onPreferenceChange}
+        disabled={languageBusy || session?.state.status === "signing-in"}
+      />
+      {languageSaveWarning && (
+        <p className="language-save-warning" role="status">
+          {messages.languageSaveFailed}
+        </p>
+      )}
+    </>
+  );
   const signIn =
     session === undefined ||
     session.state.status === "signed-in" ||
     session.state.status === "signing-out" ? null : (
-      <SignInModule
-        locale={locale}
-        {...session}
-        languageControl={
-          <>
-            <InterfaceLanguageSelector
-              messages={messages}
-              preference={preference}
-              onChange={onPreferenceChange}
-              disabled={session.state.status === "signing-in"}
-            />
-            {languageSaveWarning && (
-              <p className="language-save-warning" role="status">
-                {messages.languageSaveFailed}
-              </p>
-            )}
-          </>
-        }
-      />
+      <SignInModule locale={locale} {...session} languageControl={languageControl} />
     );
   const signedIn = signIn === null;
 
@@ -113,6 +112,7 @@ export function DashboardApp({
           {profiles !== undefined ? (
             <TeacherWorkspace
               locale={locale}
+              languageControl={languageControl}
               profiles={profiles}
               teaching={teaching}
               authoring={authoring}

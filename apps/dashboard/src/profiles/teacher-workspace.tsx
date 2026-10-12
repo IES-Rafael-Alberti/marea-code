@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { DashboardLocale } from "../messages.js";
 import { ProfileShell, type ProfileRuntime } from "./profile-shell.js";
 import { ClassSettings } from "./class-settings.js";
@@ -15,12 +16,14 @@ import {
 export function TeacherWorkspace({
   locale,
   profiles,
+  languageControl,
   teaching,
   authoring,
   governance,
 }: {
   readonly locale: DashboardLocale;
   readonly profiles: ProfileRuntime;
+  readonly languageControl?: ReactNode;
   readonly teaching: Omit<TeachingModuleProperties, "locale"> | undefined;
   readonly authoring: Omit<SkillAuthoringModuleProperties, "locale"> | undefined;
   readonly governance: Omit<GovernanceModuleProperties, "locale"> | undefined;
@@ -40,6 +43,7 @@ export function TeacherWorkspace({
         await authoring?.controller.confirmNavigation(true);
       }}
       settings={{
+        language: languageControl,
         skills: (
           <SkillsWorkspace
             classId={selectedClassId}

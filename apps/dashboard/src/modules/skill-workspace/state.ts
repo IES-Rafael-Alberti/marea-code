@@ -23,7 +23,7 @@ export class SkillWorkspaceState {
   loaded = false;
   problem: string | null = null;
   notice: "saved" | "assigned" | "deleted" | null = null;
-  generated: string | null = null;
+  beforeGeneration: SkillAuthoringDraft | null = null;
   deleting = false;
   catalog: readonly SkillLibraryEntry[] = [];
   students: readonly SkillWorkspaceStudent[] = [];
@@ -40,7 +40,7 @@ export class SkillWorkspaceState {
     this.changed();
   }
   create(kind: SkillAuthoringDraft["kind"]) {
-    this.generated = null;
+    this.beforeGeneration = null;
     this.editor = this.drafts.get(`new:${kind}`) ?? {
       key: `new:${kind}`,
       draft: newSkillDraft(kind),
@@ -53,7 +53,7 @@ export class SkillWorkspaceState {
     this.changed();
   }
   editDetail(copy = false) {
-    this.generated = null;
+    this.beforeGeneration = null;
     const detail = this.detail;
     if (detail === null) return;
     const bundle = detail.skill;
@@ -84,7 +84,7 @@ export class SkillWorkspaceState {
   copyEditor() {
     if (!this.editor || this.busy) return;
     const draft = copySkillDraft(this.editor.draft);
-    this.generated = null;
+    this.beforeGeneration = null;
     this.editor = {
       key: `copy:${draft.slug}`,
       draft,
@@ -98,24 +98,32 @@ export class SkillWorkspaceState {
     this.changed();
   }
   closeEditor() {
-    this.generated = null;
+    this.beforeGeneration = null;
     this.editor = null;
     this.changed();
   }
   discardEditor() {
-    this.generated = null;
+    this.beforeGeneration = null;
     if (this.editor) this.drafts.delete(this.editor.key);
     this.editor = null;
     this.changed();
   }
-  acceptGenerated() {
-    if (!this.editor || this.generated === null || this.busy || this.editor.applyPending) return;
-    this.edit(editSkillMarkdown(this.editor.draft, this.generated, false));
-    this.discardGenerated();
+  /** The request owner checks the editor identity before applying its result. */
+  applyGenerated(content: string) {
+    if (!this.editor) return;
+    this.beforeGeneration = this.editor.draft;
+    this.editor = {
+      ...this.editor,
+      draft: editSkillMarkdown(this.editor.draft, content, false),
+    };
+    this.drafts.set(this.editor.key, this.editor);
   }
-  discardGenerated() {
-    this.generated = null;
-    this.changed();
+  undoGeneration() {
+    if (!this.editor || this.beforeGeneration === null || this.busy || this.editor.applyPending)
+      return;
+    const draft = this.beforeGeneration;
+    this.beforeGeneration = null;
+    this.edit(draft);
   }
   cancelDeletion() {
     this.deleting = false;

@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { SkillCurriculumSchema, SkillCurricularReferenceSchema } from "./skill-curriculum.js";
 
 const MAX_DESCRIPTION_LENGTH = 1_024;
 const MAX_COMPATIBILITY_LENGTH = 500;
@@ -23,6 +24,7 @@ const criterionSchema = z
   .object({
     codigo: criterionCode,
     enunciado: criterionStatement.default(""),
+    referencias: z.array(SkillCurricularReferenceSchema).min(1).max(16).optional(),
     niveles: z.tuple([criterionLevel, criterionLevel, criterionLevel, criterionLevel]).optional(),
   })
   .strict();
@@ -36,6 +38,7 @@ export const SkillFrontmatterSchema = z
     metadata: z.record(z.string(), z.string()).optional(),
     "allowed-tools": z.unknown().optional(),
     module: trimmedText.optional(),
+    curriculo: SkillCurriculumSchema.optional(),
     criterios: z.array(criterionSchema).max(MAX_CRITERIA).optional(),
   })
   .strict();

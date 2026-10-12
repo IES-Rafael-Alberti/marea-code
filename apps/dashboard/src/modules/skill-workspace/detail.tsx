@@ -38,7 +38,7 @@ export function SkillDetail({
             assign(bundle);
           }}
         >
-          {m.add}
+          {m.assignSkill}
         </button>
         <button
           disabled={c.busy}

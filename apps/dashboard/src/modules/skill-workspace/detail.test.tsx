@@ -22,7 +22,7 @@ it("shows complete source, allows copying or authorized editing and confirms wit
     f.bundle.files[0]?.content,
   );
   expect(render().some((node) => node.type === "li" && text(node).includes("Physics"))).toBe(true);
-  click(m.add);
+  click(m.assignSkill);
   expect(assign).toHaveBeenCalledWith(f.bundle);
   click(m.edit);
   expect(c.editor?.skillId).toBe(f.bundle.id);

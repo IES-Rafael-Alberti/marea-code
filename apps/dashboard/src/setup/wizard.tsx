@@ -105,16 +105,18 @@ export function SetupWizard({
       return;
     }
     setBusy(true);
-    void client.finish({ ...details, connections, route, identityProviders }).then(
-      (url) => {
-        setReady(true);
-        openDashboard(url);
-      },
-      () => {
-        setError("error");
-        setBusy(false);
-      },
-    );
+    void client
+      .finish({ ...details, language: locale, connections, route, identityProviders })
+      .then(
+        (url) => {
+          setReady(true);
+          openDashboard(url);
+        },
+        () => {
+          setError("error");
+          setBusy(false);
+        },
+      );
   };
   return (
     <main className="shell setup-shell">

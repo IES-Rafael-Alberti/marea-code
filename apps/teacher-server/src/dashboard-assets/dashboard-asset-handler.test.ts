@@ -71,16 +71,19 @@ describe("dashboard asset handler", () => {
     expect(response.headers.get("allow")).toBe("GET, HEAD");
   });
 
-  it.each(["/", "/dashboards", "/dashboard/missing.js", "/dashboard/assets%2Fapp.js"])(
-    "does not expose an unlisted path at %s",
-    async (path) => {
-      const response = handle(new Request(`https://school.example${path}`));
+  it.each([
+    "/api/v1/missing",
+    "/v1/missing",
+    "/dashboards",
+    "/dashboard/missing.js",
+    "/dashboard/assets%2Fapp.js",
+  ])("does not expose an unlisted path at %s", async (path) => {
+    const response = handle(new Request(`https://school.example${path}`));
 
-      expect(response.status).toBe(404);
-      expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
-      expect(await response.text()).toBe("Not Found");
-    },
-  );
+    expect(response.status).toBe(404);
+    expect(response.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(await response.text()).toBe("Not Found");
+  });
 
   it("does not consult the asset source for paths outside the mount", () => {
     const find = vi.fn((): DashboardAsset | null => null);
@@ -92,3 +95,17 @@ describe("dashboard asset handler", () => {
     expect(find).not.toHaveBeenCalled();
   });
 });
+
+it.each(["GET", "HEAD"])(
+  "redirects only the server root to the teacher dashboard for %s",
+  async (method) => {
+    const response = handle(
+      new Request("https://school.example/?next=https://other.test", { method }),
+    );
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/dashboard/");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(await response.text()).toBe("");
+    expect(handle(new Request("https://school.example/", { method: "POST" })).status).toBe(405);
+  },
+);

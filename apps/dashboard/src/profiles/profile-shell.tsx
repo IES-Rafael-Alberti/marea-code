@@ -37,6 +37,7 @@ export interface ProfileRuntime extends SessionPluginPorts {
 }
 /** Content owned by the teacher workspace; each part is shown in its own settings section. */
 export interface WorkspaceSettings {
+  readonly language?: ReactNode;
   readonly classroom?: ReactNode;
   readonly skills?: ReactNode;
   readonly server?: ReactNode;
@@ -293,6 +294,7 @@ export function ProfileShell({
           </div>
           <div hidden={shownPart !== "panel"} className="settings-page">
             <p className="settings-intro">{w.panelNote}</p>
+            {settings.language}
             {section === "settings" && shownPart === "panel" && renderModules("settings")}
             {controller === null ? (
               <p role="status">{m.loading}</p>

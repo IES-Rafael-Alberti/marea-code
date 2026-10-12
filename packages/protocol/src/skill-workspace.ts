@@ -1,4 +1,5 @@
 import * as z from "zod";
+import { SkillCurriculumSummarySchema } from "./skill-curriculum.js";
 import { RequestIdSchema, SkillIdSchema } from "./identifiers.js";
 import { RevisionIdSchema, SafeDisplayNameSchema } from "./technical.js";
 import { Sha256DigestSchema } from "./runs.js";
@@ -38,7 +39,14 @@ export const SkillWorkspaceRequestSchema = z.discriminatedUnion("kind", [
       expectedUsage: Sha256DigestSchema,
     })
     .strict(),
-  z.object({ ...envelope, kind: z.literal("library"), after: SkillIdSchema.nullable() }).strict(),
+  z
+    .object({
+      ...envelope,
+      kind: z.literal("library"),
+      after: SkillIdSchema.nullable(),
+      includeCurriculum: z.literal(true).optional(),
+    })
+    .strict(),
   z
     .object({ ...envelope, kind: z.literal("students"), after: RevisionIdSchema.nullable() })
     .strict(),
@@ -83,7 +91,10 @@ export const SkillWorkspaceUsageSchema = z
   })
   .strict();
 export const SkillLibraryEntrySchema = TeachingCatalogEntrySchema.unwrap()
-  .extend({ title: z.string().min(1).max(256) })
+  .extend({
+    title: z.string().min(1).max(256),
+    curriculum: SkillCurriculumSummarySchema.optional(),
+  })
   .strict();
 export type SkillLibraryEntry = z.infer<typeof SkillLibraryEntrySchema>;
 export const SkillWorkspaceResponseSchema = z.discriminatedUnion("kind", [

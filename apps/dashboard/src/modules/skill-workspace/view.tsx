@@ -1,3 +1,4 @@
+import { matchesSkill, matchesCurriculum } from "./curriculum.js";
 import { StudentSkills, LibrarySkills } from "./panes.js";
 import { SkillDetail } from "./detail.js";
 import { useEffect, useRef, useState } from "react";
@@ -21,7 +22,7 @@ export function SkillsWorkspace({
   readonly locale: DashboardLocale;
   readonly teachingChanged: () => Promise<void>;
 }) {
-  const [, redraw] = useState(false);
+  const [, redraw] = useState(0);
   const controllers = useRef(new Map<string, SkillWorkspaceController>());
   const changed = useRef(teachingChanged);
   changed.current = teachingChanged;
@@ -32,7 +33,7 @@ export function SkillsWorkspace({
       classId,
       fetchRequest,
       () => {
-        redraw((value) => !value);
+        redraw((value) => value + 1);
       },
       () => changed.current(),
     );
@@ -77,6 +78,7 @@ export function SkillsClass({
   const [source, filterSource] = useState("all");
   const [selected, selectStudents] = useState<readonly string[]>([]);
   const [picker, pick] = useState<Picker | null>(null);
+  const [module, filterModule] = useState("");
   const classSelection = c.configuration?.settings.selection ?? { didactic: [], evaluation: [] };
   const selection = classSelection[kind];
   const listProps = { c, m, query, search };
@@ -85,7 +87,8 @@ export function SkillsClass({
       entry.kind === kind &&
       (tab !== "classroom" || selection.some((item) => item.id === entry.id)) &&
       (source === "all" || entry.source === source) &&
-      `${entry.title} ${entry.description}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()),
+      matchesCurriculum(entry, module, c.catalog) &&
+      matchesSkill(entry, query),
   );
   const personalize = (students: readonly SkillWorkspaceStudent[]) => {
     const first = students[0];
@@ -131,22 +134,25 @@ export function SkillsClass({
             chooseTab("library");
             search("");
             filterSource("all");
+            filterModule("");
           }}
         />
       ) : (
         <>
           <header className="skills-toolbar">
             <h2>Skills</h2>
-            <button
-              className="skills-primary"
-              disabled={c.busy}
-              onClick={() => {
-                chooseTab("library");
-                c.create(kind);
-              }}
-            >
-              {m.newSkill}
-            </button>
+            {tab === "library" && (
+              <button
+                className="skills-primary"
+                disabled={c.busy}
+                onClick={() => {
+                  chooseTab("library");
+                  c.create(kind);
+                }}
+              >
+                {m.newSkill}
+              </button>
+            )}
           </header>
           <nav className="skills-tabs" aria-label="Skills">
             {(["classroom", "students", "library"] as const).map((value) => (
@@ -157,6 +163,7 @@ export function SkillsClass({
                   chooseTab(value);
                   search("");
                   filterSource("all");
+                  filterModule("");
                 }}
               >
                 {m[value]}
@@ -183,6 +190,8 @@ export function SkillsClass({
                   ) : (
                     <LibrarySkills
                       {...listProps}
+                      module={module}
+                      filterModule={filterModule}
                       kind={kind}
                       chooseKind={chooseKind}
                       tab={tab}
