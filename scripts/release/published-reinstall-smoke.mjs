@@ -133,7 +133,7 @@ async function install(login, retained) {
 async function loginToServer(login, obsoleteLogin) {
   const host = terminal(launcher, ["--allow-http"]);
   try {
-    await host.waitForText(`Teacher host ready at http://0.0.0.0:${port}`, 120000);
+    await host.waitForText("Teacher host ready at ", 120000);
     for (const user of [login, obsoleteLogin].filter(Boolean)) {
       const response = await globalThis.fetch(`${origin}/api/v1/dashboard/session/login`, {
         method: "POST",
