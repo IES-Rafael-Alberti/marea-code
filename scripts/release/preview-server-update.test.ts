@@ -67,16 +67,14 @@ beforeEach(() => {
   ports.initializeSqliteStorage.mockReturnValue({ close: ports.closeStorage });
 });
 
-it("checks exclusive access before downloading without migrating or backing up, and refuses uncertain release", () => {
-  assertPreviewServerIdle(root);
+it("checks exclusive access before downloading without migrating or backing up, and refuses uncertain release", async () => {
+  await assertPreviewServerIdle(root);
   expect(ports.acquireInstallation).toHaveBeenCalledExactlyOnceWith(root);
   expect(ports.release).toHaveBeenCalledOnce();
   expect(ports.createBackup).not.toHaveBeenCalled();
   expect(ports.initializeSqliteStorage).not.toHaveBeenCalled();
   ports.release.mockReturnValue(false);
-  expect(() => {
-    assertPreviewServerIdle(root);
-  }).toThrow("installation-lost");
+  await expect(assertPreviewServerIdle(root)).rejects.toThrow("installation-lost");
 });
 afterEach(() => {
   vi.restoreAllMocks();

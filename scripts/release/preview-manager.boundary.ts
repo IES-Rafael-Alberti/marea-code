@@ -307,7 +307,7 @@ async function updateBeforeStart(
   }
   try {
     if (settings.installation !== undefined && !onboardingPending(root))
-      assertPreviewServerIdle(settings.installation);
+      await assertPreviewServerIdle(settings.installation);
     return await fetchAndInstall(
       root,
       settings,
@@ -323,7 +323,7 @@ async function updateBeforeStart(
       );
     process.stderr.write(
       error instanceof OperatorCliError && error.code === "installation-busy"
-        ? "No se puede actualizar porque el servidor está en uso o conserva un bloqueo. Cierra marea-teacher con Ctrl+C en la terminal donde está abierto y vuelve a ejecutar marea-teacher update. Si hubo un apagado inesperado, inicia Marea, revisa el aviso de recuperación del bloqueo y ciérralo antes de actualizar. Se conserva la versión instalada.\n"
+        ? "La instalación sigue bloqueada. Cierra el servidor si está en marcha y vuelve a ejecutar marea-teacher update para revisar el bloqueo. Se conserva la versión instalada.\n"
         : "No se ha podido actualizar; se conserva la instalación verificada.\n",
     );
     process.exitCode = 1;

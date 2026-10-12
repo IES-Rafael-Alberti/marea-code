@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import { initializeSqliteStorage } from "@marea/sqlite-storage";
 import { acquireInstallation } from "../../apps/teacher-server/src/platform/operator-cli/installation-lock.js";
 import { OperatorCliError } from "../../apps/teacher-server/src/platform/operator-cli/errors.js";
+import { acquireWithLockRecovery } from "../../apps/teacher-server/src/platform/installation/abandoned-lock-recovery.js";
+import { processLockRecovery } from "../../apps/teacher-server/src/platform/installation/lock-recovery-terminal.boundary.js";
 import { createOperationsApplication } from "../../apps/teacher-server/src/platform/operations-cli/operations-application.js";
 import { readOperationsConfig } from "../../apps/teacher-server/src/platform/operations-cli/operations-config.js";
 import { readTeacherHostConfig } from "../../apps/teacher-server/src/platform/teacher-host/teacher-host-config.js";
@@ -11,9 +13,12 @@ import { installExampleSkill } from "./preview-skills.boundary.js";
 
 export const updateJournal = "preview-update-pending.json";
 
-/** Avoid downloading an update that cannot start. Activation still takes its own exclusive lock. */
-export function assertPreviewServerIdle(installation: string): void {
-  const owner = acquireInstallation(installation);
+/** Review abandoned locks before downloading. Activation still takes its own exclusive lock. */
+export async function assertPreviewServerIdle(installation: string): Promise<void> {
+  const owner = await acquireWithLockRecovery(
+    acquireInstallation,
+    processLockRecovery(),
+  )(installation);
   if (!owner.release()) throw new OperatorCliError("installation-lost");
 }
 

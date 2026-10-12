@@ -27,7 +27,7 @@ it.each(["before download", "during activation"])(
     expect(ports.runForeground).not.toHaveBeenCalled();
     expect(process.exitCode).toBe(1);
     expect(output.mock.calls.at(-1)).toEqual([
-      "No se puede actualizar porque el servidor está en uso o conserva un bloqueo. Cierra marea-teacher con Ctrl+C en la terminal donde está abierto y vuelve a ejecutar marea-teacher update. Si hubo un apagado inesperado, inicia Marea, revisa el aviso de recuperación del bloqueo y ciérralo antes de actualizar. Se conserva la versión instalada.\n",
+      "La instalación sigue bloqueada. Cierra el servidor si está en marcha y vuelve a ejecutar marea-teacher update para revisar el bloqueo. Se conserva la versión instalada.\n",
     ]);
     const version = vi.spyOn(process.stdout, "write").mockReturnValue(true);
     await previewMain(["run", "server", "--root", "/private", "--", "--version"]);
@@ -44,6 +44,31 @@ it.each(["before download", "during activation"])(
     );
   },
 );
+
+it("waits for lock recovery consent before downloading and stops when recovery is refused", async () => {
+  state.selected = "server";
+  ports.offeredVersion.mockResolvedValue("0.1.0-preview.31");
+  ports.acceptUpdate.mockResolvedValue(true);
+  vi.spyOn(process.stderr, "write").mockReturnValue(true);
+  for (const accepted of [false, true]) {
+    ports.downloadPreview.mockClear();
+    ports.installRelease.mockClear();
+    ports.assertPreviewServerIdle.mockClear();
+    const recovery = Promise.withResolvers<undefined>();
+    ports.assertPreviewServerIdle.mockReturnValueOnce(recovery.promise);
+    const updating = update();
+    await vi.waitFor(() => {
+      expect(ports.assertPreviewServerIdle).toHaveBeenCalledOnce();
+    });
+    expect(ports.downloadPreview).not.toHaveBeenCalled();
+    expect(ports.installRelease).not.toHaveBeenCalled();
+    if (accepted) recovery.resolve(undefined);
+    else recovery.reject(new OperatorCliError("installation-busy"));
+    await updating;
+    expect(ports.downloadPreview).toHaveBeenCalledTimes(accepted ? 1 : 0);
+    expect(ports.installRelease).toHaveBeenCalledTimes(accepted ? 1 : 0);
+  }
+});
 
 it("does not label other ownership errors as a running server", async () => {
   state.selected = "server";
