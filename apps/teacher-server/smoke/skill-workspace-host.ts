@@ -2,6 +2,7 @@ import {
   chmodSync,
   cpSync,
   mkdirSync,
+  readFileSync,
   readdirSync,
   rmSync,
   statSync,
@@ -51,7 +52,7 @@ storage.close();
 mkdirSync(join(f.root, "core/didactic/testing"), { mode: 0o700 });
 writeFileSync(
   join(f.root, "core/didactic/testing/SKILL.md"),
-  "---\nname: testing\ndescription: Aprender a escribir pruebas pequeñas y útiles.\n---\n# Testing\n\nPropón al alumno un caso de prueba pequeño para su proyecto.\n",
+  readFileSync(resolve("content/skills/didactic/testing/SKILL.md"), "utf8"),
   { mode: 0o600 },
 );
 rmSync(join(f.root, "dashboard"), { recursive: true });
