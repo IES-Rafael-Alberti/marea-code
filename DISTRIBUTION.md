@@ -212,6 +212,22 @@ Windows x64/ARM64:
 & ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.33/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
+The immutable preview 33 bootstrap has an architecture-detection incompatibility
+with Windows PowerShell 5.1 on ARM64. If it fails on `OSArchitecture` with a null
+value, and `Get-CimInstance Win32_Processor | Select-Object Architecture` confirms
+`12` (ARM64), this temporary command installs the same verified preview 33 files:
+
+```powershell
+$mareaInstaller = Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.33/install.ps1' -ErrorAction Stop
+$mareaInstaller = $mareaInstaller.Replace('$architecture=[System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()', '$architecture="arm64"')
+& ([scriptblock]::Create($mareaInstaller)) -Component student -Server https://marea.example.edu -Version '0.1.0-preview.33'
+```
+
+Only architecture selection changes; checksum and release-signature verification
+remain enabled. The source bootstrap now queries the native Windows architecture
+directly, including from an emulated shell. Its complete flow is checked in
+Windows PowerShell 5.1 and PowerShell 7 on both x64 and ARM64 before future releases.
+
 Run `marea` from the project directory. The managed installation keeps student
 session state under `~/.marea-preview/student/student-state`; it does not reuse
 the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and

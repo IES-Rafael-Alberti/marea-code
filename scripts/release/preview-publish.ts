@@ -69,7 +69,25 @@ export function bootstrapScript(
   if (windows)
     return `param([ValidateSet('student','server')][string]$Component='student', [string]$Server='', [string]$Version='')
 $ErrorActionPreference='Stop'
-$architecture=[System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
+# Query Windows itself: .NET Framework in Windows PowerShell 5.1 can return a null
+# OSArchitecture, and an emulated shell may report its own architecture instead.
+if (-not ('Marea.BootstrapPlatform' -as [type])) {
+  Add-Type -Namespace Marea -Name BootstrapPlatform -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+[return: System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.Bool)]
+public static extern bool IsWow64Process2(System.IntPtr process, out ushort processMachine, out ushort nativeMachine);
+'@
+}
+[ushort]$processMachine=0
+[ushort]$nativeMachine=0
+if (-not [Marea.BootstrapPlatform]::IsWow64Process2([System.IntPtr](-1), [ref]$processMachine, [ref]$nativeMachine)) {
+  throw [System.ComponentModel.Win32Exception]::new([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())
+}
+$architecture=switch ($nativeMachine) {
+  34404 { 'x64' }
+  43620 { 'arm64' }
+  default { throw "Unsupported native Windows architecture: $nativeMachine" }
+}
 switch ("$Component-win32-$architecture") {
 ${bootstrapCases(manifests, true)}
   default { throw 'Unsupported native platform' }
