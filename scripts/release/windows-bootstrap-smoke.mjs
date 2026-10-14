@@ -3,7 +3,7 @@ import { Buffer } from "node:buffer";
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { gzipSync } from "node:zlib";
 import { bootstrapScript } from "./preview-publish.ts";
@@ -33,6 +33,20 @@ process.exit(Number(process.env.MAREA_BOOTSTRAP_EXIT || 0));`,
     timeout: 120_000,
   });
   assert.equal(built.status, 0, built.stderr);
+  const manifested = spawnSync(
+    "powershell.exe",
+    [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      resolve("scripts/release/windows-executable-manifest.ps1"),
+      "-Executable",
+      binary,
+    ],
+    { encoding: "utf8", timeout: 120_000 },
+  );
+  assert.equal(manifested.status, 0, manifested.stderr);
   const assets = join(root, "assets");
   mkdirSync(assets);
   const payloads = [readFileSync(binary), Buffer.from("synthetic signature verifier")];
@@ -76,6 +90,10 @@ process.exit(Number(process.env.MAREA_BOOTSTRAP_EXIT || 0));`,
 # A PowerShell 7 parent exports its module path; isolate the child shell's own
 # built-in modules, just as a fresh Windows PowerShell terminal would load them.
 $env:PSModulePath=[IO.Path]::Combine($PSHOME, 'Modules')
+$identity=[Security.Principal.WindowsIdentity]::GetCurrent()
+if ([Security.Principal.WindowsPrincipal]::new($identity).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+  throw 'Bootstrap acceptance must run without administrator privileges'
+}
 ${prefix}
 function Invoke-WebRequest {
   param([switch]$UseBasicParsing, [string]$Uri, [string]$OutFile)
