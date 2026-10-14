@@ -1,8 +1,16 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.33`.
+The commands below target `0.1.0-preview.34`.
 
-This preview adds optional curriculum links to didactic `SKILL.md` files. Modules
+This preview fixes Windows installation and startup, including Windows PowerShell
+5.1 on ARM64. Architecture detection uses the native processor, the bootstrap waits
+for installation in the same console, and cleanup warnings preserve the installer's
+result. All Marea executables explicitly run with the invoking user's privileges,
+so installation and ordinary startup do not require administrator rights.
+The complete bootstrap, managed launcher and uninstall are tested under a standard
+Windows account on x64 and ARM64, with both PowerShell 5.1 and PowerShell 7.
+
+The previous preview added optional curriculum links to didactic `SKILL.md` files. Modules
 can be identified by name, quoted code, or both; learning outcomes use numeric `ra`
 values. Library search and module filters use these references. The bundled Testing
 example corrects its former RA5 labels and links its own indicators to Programación
@@ -57,13 +65,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.33/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.34/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.33/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.34/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -203,46 +211,40 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.33/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.34/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.33/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.34/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
-The immutable preview 33 bootstrap has an architecture-detection incompatibility
-with Windows PowerShell 5.1 on ARM64. If it fails on `OSArchitecture` with a null
-value, and `Get-CimInstance Win32_Processor | Select-Object Architecture` confirms
-`12` (ARM64), this temporary command installs the same verified preview 33 files:
+Use **PowerShell**, identified by a prompt such as `PS C:\Users\david>`, for the
+installation command. From Command Prompt (`cmd.exe`), first run
+`powershell -NoProfile`. Reopen the terminal after installation to load the new
+per-user PATH entry. Normal installation and startup use an ordinary, non-elevated
+terminal.
+
+Preview 34 queries the native Windows architecture through CIM, including from an
+emulated shell, and waits for the installer in the same console. A temporary-file
+cleanup failure produces a warning without replacing the installer's result.
+The Windows executable manifests explicitly request `asInvoker`; Bun's existing
+manifest settings are preserved before the files are hashed and signed.
+
+If an existing **preview 33** installation requests elevation or opens a console
+that immediately closes when running `marea`, its old launcher must be updated once.
+Open PowerShell as administrator **using the same Windows account that installed
+Marea** and run:
 
 ```powershell
-$mareaInstaller = Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.33/install.ps1' -ErrorAction Stop
-$mareaInstaller = $mareaInstaller.Replace('$architecture=[System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()', '$architecture="arm64"')
-& ([scriptblock]::Create($mareaInstaller)) -Component student -Server https://marea.example.edu -Version '0.1.0-preview.33'
+marea update --version 0.1.0-preview.34
 ```
 
-Only architecture selection changes; checksum and release-signature verification
-remain enabled. Preview 33 may also report an access-denied error while deleting
-its temporary installer. That cleanup error alone does not establish whether the
-installation succeeded: check for a running `marea-install` process and the installed
-`~/.marea-preview/student/bin/marea.cmd` before retrying.
-
-The source bootstrap now queries the native Windows architecture through CIM,
-including from an emulated shell, and explicitly waits for the installer in the
-same console. A temporary-file cleanup failure produces a warning without replacing
-the installer's result. Its complete bootstrap flow is checked in Windows PowerShell
-5.1 and PowerShell 7 on both x64 and ARM64 before future releases, including literal
-paths, delayed exits, failed installs, checksum rejection and blocked cleanup.
-
-Preview 33's Windows executable also lacks an explicit `asInvoker` declaration,
-so Windows may request elevation when starting `marea-install.exe`. New Windows
-candidates merge that declaration into each Marea executable with the Windows SDK
-manifest tool before hashing and signing. Bun's existing manifest settings are
-preserved. Bootstrap acceptance runs both PowerShell versions under a disposable
-standard user account, and checks the compiled managed launcher and uninstall too;
-the administrator account used by CI cannot mask an elevation requirement.
+Accept the update, close that administrator terminal, and run `marea` from an
+ordinary terminal. Do not reinstall over the existing root or delete its student
+state. If Windows asks for credentials belonging to a different administrator
+account, cancel rather than updating that account's installation.
 
 Run `marea` from the project directory. The managed installation keeps student
 session state under `~/.marea-preview/student/student-state`; it does not reuse
@@ -371,7 +373,7 @@ the empty root allows the same installation command to run again. Do not delete
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.33`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.34`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
