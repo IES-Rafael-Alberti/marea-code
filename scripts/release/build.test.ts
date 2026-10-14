@@ -401,7 +401,8 @@ it("records dirty and clean source distinctly, normalizes git whitespace and ret
       ],
       { cwd: "/isolated", encoding: "utf8" },
     );
-    expect(mocks.spawnSync.mock.calls.filter(([, args]) => args.includes("-Executable"))).toEqual(
+    const commands = mocks.spawnSync.mock.calls as [string, string[], unknown][];
+    expect(commands.filter(([, args]) => args.includes("-Executable"))).toEqual(
       ["marea", "marea-install"].map((name) => [
         "powershell.exe",
         [
@@ -417,7 +418,6 @@ it("records dirty and clean source distinctly, normalizes git whitespace and ret
         { cwd: "/isolated", encoding: "utf8" },
       ]),
     );
-    const commands = mocks.spawnSync.mock.calls;
     expect(commands.findLastIndex(([, args]) => args.includes("-Executable"))).toBeLessThan(
       commands.findIndex(([command]) => command === "syft"),
     );

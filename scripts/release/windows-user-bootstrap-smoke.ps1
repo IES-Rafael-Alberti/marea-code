@@ -11,7 +11,9 @@ try {
   $bun=(Get-Command bun -CommandType Application).Source
   $principal='*'+$account.SID.Value
   foreach ($readable in @($workspace, (Split-Path $bun))) {
-    & icacls.exe $readable /grant "${principal}:(OI)(CI)RX" | Out-Null
+    # Bun's dependency cache can leave hard-linked files with protected ACLs.
+    # Grant the disposable account read access to each fixture file explicitly.
+    & icacls.exe $readable /grant "${principal}:(OI)(CI)RX" /T | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Could not grant fixture read access' }
   }
   & icacls.exe $scratch /grant "${principal}:(OI)(CI)F" | Out-Null
