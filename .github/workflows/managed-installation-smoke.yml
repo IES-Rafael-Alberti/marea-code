@@ -91,8 +91,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native privacy check failed' }
       - name: Generated bootstrap in Windows PowerShell 5.1 and PowerShell 7
         run: |
-          bun scripts/release/windows-bootstrap-smoke.mjs
-          if ($LASTEXITCODE -ne 0) { throw 'Windows bootstrap compatibility failed' }
+          ./scripts/release/windows-user-bootstrap-smoke.ps1
       - name: Compile and exercise managed launch and uninstall
         if: ${{ !inputs.bootstrap_only }}
         run: |

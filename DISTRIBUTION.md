@@ -236,6 +236,14 @@ the installer's result. Its complete bootstrap flow is checked in Windows PowerS
 5.1 and PowerShell 7 on both x64 and ARM64 before future releases, including literal
 paths, delayed exits, failed installs, checksum rejection and blocked cleanup.
 
+Preview 33's Windows executable also lacks an explicit `asInvoker` declaration,
+so Windows may request elevation when starting `marea-install.exe`. New Windows
+candidates merge that declaration into each Marea executable with the Windows SDK
+manifest tool before hashing and signing. Bun's existing manifest settings are
+preserved. Bootstrap acceptance runs both PowerShell versions under a disposable
+standard user account, and checks the compiled managed launcher and uninstall too;
+the administrator account used by CI cannot mask an elevation requirement.
+
 Run `marea` from the project directory. The managed installation keeps student
 session state under `~/.marea-preview/student/student-state`; it does not reuse
 the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
