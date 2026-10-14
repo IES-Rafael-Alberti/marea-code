@@ -18,42 +18,9 @@ assert.ok(["x64", "arm64"].includes(architecture));
 assert.equal(process.arch, architecture, "Acceptance runtime must be native");
 const root = mkdtempSync(join(tmpdir(), "marea-windows-bootstrap-"));
 const version = "0.1.0-preview.1";
-function buildExecutable(entry, binary) {
-  const built = spawnSync(
-    process.execPath,
-    ["build", entry, "--compile", "--minify", "--outfile", binary],
-    {
-      encoding: "utf8",
-      timeout: 120_000,
-    },
-  );
-  assert.equal(built.status, 0, built.stderr);
-  const manifested = spawnSync(
-    "powershell.exe",
-    [
-      "-NoProfile",
-      "-ExecutionPolicy",
-      "Bypass",
-      "-File",
-      resolve("scripts/release/windows-executable-manifest.ps1"),
-      "-Executable",
-      binary,
-    ],
-    { encoding: "utf8", timeout: 120_000 },
-  );
-  assert.equal(manifested.status, 0, manifested.stderr);
-}
+const fixtures = resolve(process.argv[2]);
 try {
-  const entry = join(root, "installer.mjs");
-  const binary = join(root, "installer.exe");
-  writeFileSync(
-    entry,
-    `import {writeFileSync} from 'node:fs';
-await Bun.sleep(600);
-writeFileSync(process.env.MAREA_BOOTSTRAP_RECEIPT, JSON.stringify({architecture:process.arch,args:process.argv.slice(2)}));
-process.exit(Number(process.env.MAREA_BOOTSTRAP_EXIT || 0));`,
-  );
-  buildExecutable(entry, binary);
+  const binary = join(fixtures, "installer.exe");
   const assets = join(root, "assets");
   mkdirSync(assets);
   const payloads = [readFileSync(binary), Buffer.from("synthetic signature verifier")];
@@ -205,13 +172,9 @@ foreach ($attempt in 1..2) {
       `${shell}: native ${architecture} bootstrap, checksum rejection and cleanup passed.\n`,
     );
   }
-  const managed = join(root, "managed");
-  mkdirSync(managed);
-  buildExecutable(resolve("scripts/release/install.mjs"), join(managed, "marea-install.exe"));
-  writeFileSync(join(managed, "manifest.json"), JSON.stringify({ component: "student", version }));
   const lifecycle = spawnSync(
     process.execPath,
-    ["scripts/release/preview-launcher-smoke.mjs", managed],
+    [join(fixtures, "managed-smoke.mjs"), join(fixtures, "managed")],
     {
       encoding: "utf8",
       timeout: 120_000,
