@@ -78,8 +78,8 @@ if (-not ('Marea.BootstrapPlatform' -as [type])) {
 public static extern bool IsWow64Process2(System.IntPtr process, out ushort processMachine, out ushort nativeMachine);
 '@
 }
-[ushort]$processMachine=0
-[ushort]$nativeMachine=0
+[System.UInt16]$processMachine=0
+[System.UInt16]$nativeMachine=0
 if (-not [Marea.BootstrapPlatform]::IsWow64Process2([System.IntPtr](-1), [ref]$processMachine, [ref]$nativeMachine)) {
   throw [System.ComponentModel.Win32Exception]::new([System.Runtime.InteropServices.Marshal]::GetLastWin32Error())
 }
