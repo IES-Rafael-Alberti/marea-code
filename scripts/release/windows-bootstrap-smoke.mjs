@@ -63,6 +63,7 @@ process.exit(Number(process.env.MAREA_BOOTSTRAP_EXIT || 0));`,
     component = "student",
     exitCode = "0",
     address = server,
+    cleanup = true,
   ) {
     const work = join(root, `${shell}-${scenario}-José's 日本語`);
     mkdirSync(work);
@@ -84,7 +85,7 @@ function Invoke-WebRequest {
   Copy-Item -LiteralPath (Join-Path ${powershellLiteral(assets)} $Uri.Substring($base.Length)) -Destination $OutFile
 }
 # Invoke the same in-memory script-block form shown in the dashboard. Repeating
-# also checks that loading the native probe twice in one shell remains safe.
+# also checks independent installations in the same PowerShell process.
 foreach ($attempt in 1..2) {
   & ([scriptblock]::Create((Get-Content -LiteralPath ${powershellLiteral(bootstrap)} -Raw))) -Component ${component} -Server ${powershellLiteral(address)} -Version '${version}'
 }
@@ -103,16 +104,12 @@ foreach ($attempt in 1..2) {
     });
     if (existsSync(downloads))
       for (const downloaded of readFileSync(downloads, "utf8").trim().split(/\r?\n/u))
-        assert.equal(existsSync(dirname(downloaded)), false, "Bootstrap temporary files leaked");
+        assert.equal(
+          existsSync(dirname(downloaded)),
+          !cleanup,
+          "Unexpected bootstrap cleanup result",
+        );
     return { result, receipt, downloads };
-  }
-
-  function fakePlatform(nativeMachine, succeeds) {
-    return `Add-Type -Namespace Marea -Name BootstrapPlatform -MemberDefinition @'
-public static bool IsWow64Process2(System.IntPtr process, out ushort processMachine, out ushort nativeMachine) {
-  processMachine = 0; nativeMachine = ${nativeMachine}; return ${succeeds};
-}
-'@`;
   }
 
   for (const shell of ["powershell.exe", "pwsh.exe"]) {
@@ -138,8 +135,11 @@ public static bool IsWow64Process2(System.IntPtr process, out ushort processMach
     assert.equal(quoted.result.status, 0, quoted.result.stderr);
     assert.equal(JSON.parse(readFileSync(quoted.receipt, "utf8")).args.at(-1), literalAddress);
     for (const [scenario, prefix] of [
-      ["unsupported", fakePlatform(332, true)],
-      ["native-query-failed", fakePlatform(0, false)],
+      ["unsupported", "function Get-CimInstance { [pscustomobject]@{ Architecture=0 } }"],
+      [
+        "native-query-failed",
+        "function Get-CimInstance { throw 'Native architecture unavailable' }",
+      ],
     ]) {
       const denied = run(shell, scenario, prefix);
       assert.notEqual(denied.result.status, 0);
@@ -149,6 +149,25 @@ public static bool IsWow64Process2(System.IntPtr process, out ushort processMach
     const failed = run(shell, "installer-failed", "", "student", "7");
     assert.notEqual(failed.result.status, 0);
     assert.match(failed.result.stderr, /Marea installation failed/u);
+    const lockedCleanup = `function Remove-Item {
+  param([string]$LiteralPath, [switch]$Recurse, [switch]$Force)
+  if ($Recurse) { throw 'Simulated Windows temporary-file lock' }
+  Microsoft.PowerShell.Management\\Remove-Item -LiteralPath $LiteralPath -Force
+}`;
+    for (const code of ["0", "7"]) {
+      const locked = run(
+        shell,
+        `locked-cleanup-${code}`,
+        lockedCleanup,
+        "student",
+        code,
+        server,
+        false,
+      );
+      assert.equal(locked.result.status, code === "0" ? 0 : 1, locked.result.stderr);
+      assert.match(locked.result.stdout, /Could not remove Marea temporary directory/u);
+      if (code === "7") assert.match(locked.result.stderr, /Marea installation failed/u);
+    }
     const archive = join(assets, `sha256-${files[0].sha256}.gz`);
     const original = readFileSync(archive);
     writeFileSync(archive, gzipSync(Buffer.from("damaged installer")));
