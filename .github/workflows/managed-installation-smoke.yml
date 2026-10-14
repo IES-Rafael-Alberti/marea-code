@@ -2,12 +2,18 @@ name: Managed installation smoke
 
 on:
   workflow_dispatch:
+    inputs:
+      bootstrap_only:
+        description: Check Windows bootstrap compatibility without the full managed lifecycle
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
   posix-wizard:
+    if: ${{ !inputs.bootstrap_only }}
     strategy:
       fail-fast: false
       matrix:
@@ -83,7 +89,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed' }
           bun packages/private-filesystem/smoke/native-permissions.ts
           if ($LASTEXITCODE -ne 0) { throw 'Native privacy check failed' }
+      - name: Generated bootstrap in Windows PowerShell 5.1 and PowerShell 7
+        run: |
+          bun scripts/release/windows-bootstrap-smoke.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'Windows bootstrap compatibility failed' }
       - name: Compile and exercise managed launch and uninstall
+        if: ${{ !inputs.bootstrap_only }}
         run: |
           New-Item -ItemType Directory -Force reports/managed-smoke | Out-Null
           bun build scripts/release/install.mjs --compile --outfile reports/managed-smoke/marea-install.exe
@@ -92,7 +103,7 @@ jobs:
           bun scripts/release/preview-launcher-smoke.mjs reports/managed-smoke
           if ($LASTEXITCODE -ne 0) { throw 'Managed launcher and uninstall failed' }
       - name: Exercise real server setup, locking, recovery and purge
-        if: matrix.server
+        if: ${{ matrix.server && !inputs.bootstrap_only }}
         run: |
           foreach ($entry in @(@('teacher-host-entry.ts','marea-teacher'),@('cli-entry.ts','marea-admin'),@('operations-entry.ts','marea-operations'))) {
             bun build "apps/teacher-server/$($entry[0])" --compile --outfile "reports/managed-smoke/$($entry[1]).exe"
@@ -105,7 +116,7 @@ jobs:
           bun scripts/release/preview-setup-smoke.mjs reports/managed-smoke
           if ($LASTEXITCODE -ne 0) { throw 'Managed server lifecycle failed' }
       - name: Exercise first-run browser setup with native Windows binaries
-        if: matrix.server
+        if: ${{ matrix.server && !inputs.bootstrap_only }}
         run: |
           bun scripts/release/preview-wizard-smoke.mjs reports/managed-smoke
           if ($LASTEXITCODE -ne 0) { throw 'Native web onboarding failed' }
