@@ -122,8 +122,11 @@ try {
   $arguments=@('preview','install',$Component,'--repository','school/marea','--cosign',(Join-Path $temp 'cosign.exe'))
   if ($Version) { $arguments+=@('--version',$Version) }
   if ($Server) { $arguments+=@('--server',$Server) }
-  & (Join-Path $temp 'marea-install.exe') @arguments
-  if ($LASTEXITCODE -ne 0) { throw 'Marea installation failed' }
+  # Windows PowerShell may return before an ARM64 child has finished. Wait for
+  # the process explicitly, keep its console, and preserve literal argv values.
+  $commandLine=($arguments | ForEach-Object { '"'+($_ -replace '(\\\\*)"', '$1$1\\"' -replace '(\\\\+)$', '$1$1')+'"' }) -join ' '
+  $installer=Start-Process -FilePath (Join-Path $temp 'marea-install.exe') -ArgumentList $commandLine -NoNewWindow -Wait -PassThru
+  if ($installer.ExitCode -ne 0) { throw "Marea installation failed (exit $($installer.ExitCode))" }
 } finally { Remove-Item -LiteralPath $temp -Recurse -Force }
 "
 `;

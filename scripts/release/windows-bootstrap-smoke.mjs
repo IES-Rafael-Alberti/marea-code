@@ -24,6 +24,7 @@ try {
   writeFileSync(
     entry,
     `import {writeFileSync} from 'node:fs';
+await Bun.sleep(600);
 writeFileSync(process.env.MAREA_BOOTSTRAP_RECEIPT, JSON.stringify({architecture:process.arch,args:process.argv.slice(2)}));
 process.exit(Number(process.env.MAREA_BOOTSTRAP_EXIT || 0));`,
   );
@@ -55,7 +56,14 @@ process.exit(Number(process.env.MAREA_BOOTSTRAP_EXIT || 0));`,
   writeFileSync(bootstrap, bootstrapScript("school/marea", version, manifests, true));
   const server = "http://192.0.2.10:18787";
 
-  function run(shell, scenario, prefix = "", component = "student", exitCode = "0") {
+  function run(
+    shell,
+    scenario,
+    prefix = "",
+    component = "student",
+    exitCode = "0",
+    address = server,
+  ) {
     const work = join(root, `${shell}-${scenario}-José's 日本語`);
     mkdirSync(work);
     const receipt = join(work, "receipt.json");
@@ -64,6 +72,9 @@ process.exit(Number(process.env.MAREA_BOOTSTRAP_EXIT || 0));`,
     writeFileSync(
       driver,
       `\ufeff$ErrorActionPreference='Stop'
+# A PowerShell 7 parent exports its module path; isolate the child shell's own
+# built-in modules, just as a fresh Windows PowerShell terminal would load them.
+$env:PSModulePath=[IO.Path]::Combine($PSHOME, 'Modules')
 ${prefix}
 function Invoke-WebRequest {
   param([switch]$UseBasicParsing, [string]$Uri, [string]$OutFile)
@@ -75,7 +86,7 @@ function Invoke-WebRequest {
 # Invoke the same in-memory script-block form shown in the dashboard. Repeating
 # also checks that loading the native probe twice in one shell remains safe.
 foreach ($attempt in 1..2) {
-  & ([scriptblock]::Create((Get-Content -LiteralPath ${powershellLiteral(bootstrap)} -Raw))) -Component ${component} -Server '${server}' -Version '${version}'
+  & ([scriptblock]::Create((Get-Content -LiteralPath ${powershellLiteral(bootstrap)} -Raw))) -Component ${component} -Server ${powershellLiteral(address)} -Version '${version}'
 }
 `,
     );
@@ -86,6 +97,8 @@ foreach ($attempt in 1..2) {
         ...process.env,
         MAREA_BOOTSTRAP_RECEIPT: receipt,
         MAREA_BOOTSTRAP_EXIT: exitCode,
+        TEMP: work,
+        TMP: work,
       },
     });
     if (existsSync(downloads))
@@ -120,6 +133,10 @@ public static bool IsWow64Process2(System.IntPtr process, out ushort processMach
       assert.deepEqual(receipt.args.slice(7), ["--version", version, "--server", server]);
       assert.equal(readFileSync(accepted.downloads, "utf8").trim().split(/\r?\n/u).length, 4);
     }
+    const literalAddress = `${server}/a b/"quoted"/end\\`;
+    const quoted = run(shell, "literal-arguments", "", "student", "0", literalAddress);
+    assert.equal(quoted.result.status, 0, quoted.result.stderr);
+    assert.equal(JSON.parse(readFileSync(quoted.receipt, "utf8")).args.at(-1), literalAddress);
     for (const [scenario, prefix] of [
       ["unsupported", fakePlatform(332, true)],
       ["native-query-failed", fakePlatform(0, false)],
