@@ -47,7 +47,7 @@
     "@marea/sqlite-storage": "workspace:*",
     "@marea/telemetry-pipeline": "workspace:*",
     "@marea/transport-server": "workspace:*",
-    "hono": "4.13.7",
+    "hono": "4.13.11",
     "yaml": "2.8.3",
     "zod": "4.4.3"
   },
