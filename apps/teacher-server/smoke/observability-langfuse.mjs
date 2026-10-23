@@ -121,17 +121,12 @@ try {
   const receipt = {
     traceId: trace.id,
     sessionId: trace.sessionId,
+    userId: trace.userId,
+    classId: trace.classId,
+    release: trace.release,
     from: time(-60000),
     until: time(3600000),
-    spans: trace.spans.map((s) => ({
-      id: s.id,
-      parentId: s.parentId,
-      type: s.type,
-      name: s.name,
-      input: s.input,
-      output: s.output,
-      usage: s.usage,
-    })),
+    spans: trace.spans,
   };
   const receiptPath = process.env.MAREA_ACCEPTANCE_RECEIPT ?? "/tmp/marea-langfuse-acceptance.json";
   writeFileSync(receiptPath, JSON.stringify(receipt, null, 2), { mode: 0o600 });

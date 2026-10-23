@@ -40,7 +40,7 @@ reconstruct content that was never captured.
 
 ## Configure an external destination
 
-1. Update the server. Managed preview updates back up and migrate SQLite to schema 13.
+1. Update the server. Managed preview updates back up and migrate SQLite to the current schema.
    Manual installations must use the offline installation upgrade procedure.
 2. As an administrator, open **Settings → Server → Observability**.
 3. Select an installed exporter and complete its fields.
@@ -79,18 +79,31 @@ absent, and detected clock skew is marked. This is not an exact reconstruction o
 unrecorded provider internals or a new student-side tracing dependency.
 
 Langfuse receives native observation types, input/output, model, usage, session and
-parent links. Marea uses the v4 ingestion header; delivery and read-back were also
-verified against a self-hosted Langfuse 3.206.0 server. Generic OTLP receives the
-same structure through standard spans and `gen_ai`/Marea attributes.
+parent links. Marea uses direct OTLP with the v4 ingestion header, without a Langfuse
+SDK. Delivery and modern observation API read-back were verified against self-hosted
+Langfuse 4.68.0 on 2026-10-23; see the acceptance details below. Generic OTLP receives
+the same structure through standard spans and `gen_ai`/Marea attributes.
+
+Policy cost units remain metadata (`costUnits`, `costUnit`), not native Langfuse USD
+costs: policy units are not necessarily currency. Langfuse may calculate costs when
+it recognizes the model and its pricing. A missing cost is not a free model call.
+For observations without a recorded completion time, Langfuse v4 uses the start time
+as the end time. Check `timingComplete` before interpreting a zero duration.
 
 ## Delivery, failures and deletion
 
 The server owns a SQLite queue of references to session events, not a second copy
 of their content. A background worker sends sequential batches of at most eight
 turns, with a ten-second deadline per request. The queue survives restarts and
-retries with stable trace/span IDs. Delivery is at least once; the destination
-must support idempotent identifiers to avoid duplicate observations after an
-ambiguous acknowledgement.
+retries with stable trace/span IDs. Delivery is at least once. Langfuse v4 does not
+reliably deduplicate repeated observations: if it stores a request but its response
+is lost, a retry can duplicate observations and inflate collector metrics. Stable
+IDs preserve correlation, not an exactly-once guarantee. Retrying an export never
+repeats a model call or adds usage to Marea's local ledger.
+
+There is no SDK buffer to flush. Each exporter call awaits one bounded HTTP request.
+Stopping the host cancels in-flight delivery and keeps pending queue references for
+the next startup; it does not wait indefinitely to drain the queue.
 
 The queue holds at most 1,000 turns. Excess turns increment the displayed dropped
 counter. Failed attempts back off, up to five minutes; after eight failures they
@@ -131,11 +144,65 @@ The file supplies `LANGFUSE_BASE_URL` (or `LANGFUSE_HOST`), `LANGFUSE_PUBLIC_KEY
 and writes a private receipt to `/tmp/marea-langfuse-acceptance.json` by default
 (`MAREA_ACCEPTANCE_RECEIPT` overrides it). It never reads the school's installation.
 
-After ingestion, read the trace with the Langfuse CLI and compare session ID,
-parent links, content and usage against the receipt. Set `LANGFUSE_HOST` explicitly
-to the configured base URL. On a v3 server, use an available v3 CLI API snapshot
-(e.g. `--api-version 3.200.0`); v4-only read endpoints are not a valid acceptance test
-for an older self-hosted server. Keep credentials out of command arguments and logs.
+Before sending, load the same private environment for the Langfuse CLI, set
+`LANGFUSE_HOST` to the configured base URL, and confirm the effective project:
+
+```sh
+npx --yes langfuse-cli@1.2.4 api projects list --json
+npx --yes langfuse-cli@1.2.4 api health get --json
+```
+
+After ingestion, use `observations list` (the modern `/api/public/v2/observations`
+endpoint), scoped to the synthetic receipt's trace ID. Keep credentials out of
+command arguments and logs. Run from the repository root:
+
+```sh
+umask 077
+mareaTraceId="$(node -p "require('/tmp/marea-langfuse-acceptance.json').traceId")"
+npx --yes langfuse-cli@1.2.4 api observations list \
+  --trace-id "$mareaTraceId" --limit 100 \
+  --fields core,basic,time,io,metadata,model,usage,trace_context --json \
+  > /tmp/marea-langfuse-observations.json
+node apps/teacher-server/smoke/observability-langfuse-verify.mjs \
+  /tmp/marea-langfuse-acceptance.json /tmp/marea-langfuse-observations.json \
+  YOUR_CONFIRMED_PROJECT_ID
+```
+
+If ingestion is still pending, repeat only the read. Do not resend the same spans to
+poll for completion. The verifier checks all six stored observations, their IDs and
+parents, types, names, pseudonymous user/session/class, release, timestamps, content,
+metadata, model and token counts. The synthetic model has no USD pricing; its policy
+cost is checked as metadata. Neither this smoke nor its verification calls an LLM.
+
+### Langfuse v4 acceptance, 2026-10-23
+
+The existing exporter's direct OTLP contract passed against Langfuse 4.68.0 in the
+confirmed test project, configured for `events_only` and direct OTel ingestion:
+
+- Six stored observations: tutoring root, model request group, generation attempt,
+  question event, approval and tool. User/session/release/class propagated to each.
+- Synthetic content and hierarchy matched the receipt. Only the generation attempt
+  carried usage: 12 input tokens, 8 output tokens, 20 total. Policy cost was 20
+  `synthetic-unit`; native USD costs remained absent.
+- Observation metadata retained string, number and boolean values as top-level keys.
+  Filtering `metadata.terminalEvent = turn-ended` returned exactly the root. Although
+  the current migration guide recommends per-key metadata attributes, this server
+  also handles Marea's existing JSON object correctly; no exporter rewrite was needed.
+- The plugin's 89 tests and the host's 34 observability tests passed, covering custom
+  URL prefixes, authentication, v4 headers, cancellation, shutdown, response limits,
+  partial rejection, bounded batches, persistent retries and queue recovery.
+- No legacy Langfuse API reader was found in the application. Validation uses the
+  modern observations API, not a successful POST alone.
+
+This verifies the source exporter and host queue using an isolated synthetic database.
+The exporter source is unchanged from preview.34; it does not prove which version
+an existing school installation is running. Check `marea-teacher --version` there.
+The validation harness is not bundled into the application. No SDK, UI, personal-data
+capture, collector infrastructure or historical project was changed.
+
+Contract references: [OTel v4 migration](https://langfuse.com/integrations/native/opentelemetry/migration-to-v4),
+[OTel mapping](https://langfuse.com/integrations/native/opentelemetry), and
+[observation updates and duplicates](https://langfuse.com/faq/all/tracing-data-updates).
 
 For the dashboard journey, build `apps/dashboard` and compile
 `apps/teacher-server/smoke/dashboard-host.ts`. Run
