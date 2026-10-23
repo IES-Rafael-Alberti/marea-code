@@ -1,8 +1,15 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.34`.
+The commands below target `0.1.0-preview.35`.
 
-This preview fixes Windows installation and startup, including Windows PowerShell
+This preview validates the existing direct OTLP exporter against Langfuse 4.68.0
+and adds a repeatable check of the stored observations through the modern API.
+No Langfuse SDK or collector migration is needed in Marea. See
+[Observability](OBSERVABILITY.md) for verified fields, retry semantics and costs.
+It also updates the dashboard build tool to Vite 8.2.4 to address
+[GHSA-587h-7wmj-h5pm](https://github.com/advisories/GHSA-587h-7wmj-h5pm).
+
+Preview 34 fixed Windows installation and startup, including Windows PowerShell
 5.1 on ARM64. Architecture detection uses the native processor, the bootstrap waits
 for installation in the same console, and cleanup warnings preserve the installer's
 result. All Marea executables explicitly run with the invoking user's privileges,
@@ -10,7 +17,7 @@ so installation and ordinary startup do not require administrator rights.
 The complete bootstrap, managed launcher and uninstall are tested under a standard
 Windows account on x64 and ARM64, with both PowerShell 5.1 and PowerShell 7.
 
-The previous preview added optional curriculum links to didactic `SKILL.md` files. Modules
+Preview 33 added optional curriculum links to didactic `SKILL.md` files. Modules
 can be identified by name, quoted code, or both; learning outcomes use numeric `ra`
 values. Library search and module filters use these references. The bundled Testing
 example corrects its former RA5 labels and links its own indicators to Programación
@@ -65,13 +72,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.34/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.35/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.34/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.35/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -211,13 +218,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.34/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.35/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.34/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.35/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Use **PowerShell**, identified by a prompt such as `PS C:\Users\david>`, for the
@@ -373,7 +380,7 @@ the empty root allows the same installation command to run again. Do not delete
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.34`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.35`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
