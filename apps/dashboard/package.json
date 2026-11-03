@@ -16,7 +16,7 @@
     "@marea/protocol": "workspace:*",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "zod": "4.4.3",
+    "zod": "4.6.7",
     "yaml": "2.8.3",
     "@marea/plugin-api": "workspace:*",
     "@marea/plugin-runtime": "workspace:*"

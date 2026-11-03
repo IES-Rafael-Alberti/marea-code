@@ -1,0 +1,191 @@
+diff --git a/src/v4/core/checks.ts b/src/v4/core/checks.ts
+index 02383796bfb52e6bf9681a3c52aeadef599d8aab..7db81e0c91ea09be403ca943112b8bc34c8c1620 100644
+--- a/src/v4/core/checks.ts
++++ b/src/v4/core/checks.ts
+@@ -567,9 +567,8 @@ export const $ZodCheckMaxLength: core.$constructor<$ZodCheckMaxLength> = /*@__PU
+ 
+     inst._zod.check = (payload) => {
+       const input = payload.value;
+-      const units = input.length;
+-      // Strings are measured in Unicode code points, not UTF-16 units. A code point is at most two units, so a string that already fits in units fits in code points; only an overflow has to be counted.
+-      const length = typeof input === "string" && units > def.maximum ? util.codePointLength(input) : units;
++      // Marea protocol 0.1 retains UTF-16 code-unit text bounds.
++      const length = input.length;
+ 
+       if (length <= def.maximum) return;
+       const origin = util.getLengthableOrigin(input);
+@@ -612,12 +611,8 @@ export const $ZodCheckMinLength: core.$constructor<$ZodCheckMinLength> = /*@__PU
+ 
+     inst._zod.check = (payload) => {
+       const input = payload.value;
+-      const units = input.length;
+-      // A code point is one or two UTF-16 units, so fewer units than the floor can never reach it and twice the floor always clears it. Only in between is the exact count in doubt.
+-      const length =
+-        typeof input === "string" && units >= def.minimum && units < def.minimum * 2
+-          ? util.codePointLength(input)
+-          : units;
++      // Marea protocol 0.1 retains UTF-16 code-unit text bounds.
++      const length = input.length;
+ 
+       if (length >= def.minimum) return;
+       const origin = util.getLengthableOrigin(input);
+@@ -661,12 +656,8 @@ export const $ZodCheckLengthEquals: core.$constructor<$ZodCheckLengthEquals> = /
+ 
+     inst._zod.check = (payload) => {
+       const input = payload.value;
+-      const units = input.length;
+-      // A code point is one or two UTF-16 units, so outside `[length, length * 2]` units the target is missed either way — and missed in the same direction in both measures.
+-      const length =
+-        typeof input === "string" && units >= def.length && units <= def.length * 2
+-          ? util.codePointLength(input)
+-          : units;
++      // Marea protocol 0.1 retains UTF-16 code-unit text bounds.
++      const length = input.length;
+       if (length === def.length) return;
+       const origin = util.getLengthableOrigin(input);
+       const tooBig = length > def.length;
+diff --git a/src/v4/core/compile.ts b/src/v4/core/compile.ts
+index 83cee50fcbf09a52549862324dc8070494c543b4..df414499ba431e3cc784d6e72a3e5c06eb1d7e07 100644
+--- a/src/v4/core/compile.ts
++++ b/src/v4/core/compile.ts
+@@ -474,11 +474,10 @@ function generateChecks(doc: Doc, ctx: CompileContext, schema: SomeType, accesso
+   return currentAccessor;
+ }
+ 
+-// Emit the length operand for a length check, mirroring `$ZodCheckMinLength` and friends: strings measure in code points, everything else in `.length`. `inDoubt` is the caller's cheap UTF-16 bound test — outside it the unit count already settles the comparison, so the scan is skipped.
+-function codePointLengthVar(doc: Doc, ctx: CompileContext, accessor: string, inDoubt: string): string {
+-  const cpLen = addConstant(ctx, util.codePointLength);
++// Marea protocol 0.1 retains UTF-16 code-unit text bounds in compiled checks.
++function codePointLengthVar(doc: Doc, ctx: CompileContext, accessor: string, _inDoubt: string): string {
+   const v = newVar(ctx);
+-  doc.write(`const ${v} = typeof ${accessor} === "string" && ${inDoubt} ? ${cpLen}(${accessor}) : ${accessor}.length;`);
++  doc.write(`const ${v} = ${accessor}.length;`);
+   return v;
+ }
+ 
+diff --git a/v4/core/checks.cjs b/v4/core/checks.cjs
+index b457efb619ddea6ca6136482d98d39c8657b581e..e0ff66faa6d34a96a2148430d6e447255f93e333 100644
+--- a/v4/core/checks.cjs
++++ b/v4/core/checks.cjs
+@@ -294,9 +294,8 @@ exports.$ZodCheckMaxLength = core.$constructor("$ZodCheckMaxLength", (inst, def)
+     (_a = inst._zod.def).when ?? (_a.when = _whenHasLength);
+     inst._zod.check = (payload) => {
+         const input = payload.value;
+-        const units = input.length;
+-        // Strings are measured in Unicode code points, not UTF-16 units. A code point is at most two units, so a string that already fits in units fits in code points; only an overflow has to be counted.
+-        const length = typeof input === "string" && units > def.maximum ? util.codePointLength(input) : units;
++        // Marea protocol 0.1 retains UTF-16 code-unit text bounds.
++        const length = input.length;
+         if (length <= def.maximum)
+             return;
+         const origin = util.getLengthableOrigin(input);
+@@ -317,11 +316,8 @@ exports.$ZodCheckMinLength = core.$constructor("$ZodCheckMinLength", (inst, def)
+     (_a = inst._zod.def).when ?? (_a.when = _whenHasLength);
+     inst._zod.check = (payload) => {
+         const input = payload.value;
+-        const units = input.length;
+-        // A code point is one or two UTF-16 units, so fewer units than the floor can never reach it and twice the floor always clears it. Only in between is the exact count in doubt.
+-        const length = typeof input === "string" && units >= def.minimum && units < def.minimum * 2
+-            ? util.codePointLength(input)
+-            : units;
++        // Marea protocol 0.1 retains UTF-16 code-unit text bounds.
++        const length = input.length;
+         if (length >= def.minimum)
+             return;
+         const origin = util.getLengthableOrigin(input);
+@@ -342,11 +338,8 @@ exports.$ZodCheckLengthEquals = core.$constructor("$ZodCheckLengthEquals", (inst
+     (_a = inst._zod.def).when ?? (_a.when = _whenHasLength);
+     inst._zod.check = (payload) => {
+         const input = payload.value;
+-        const units = input.length;
+-        // A code point is one or two UTF-16 units, so outside `[length, length * 2]` units the target is missed either way — and missed in the same direction in both measures.
+-        const length = typeof input === "string" && units >= def.length && units <= def.length * 2
+-            ? util.codePointLength(input)
+-            : units;
++        // Marea protocol 0.1 retains UTF-16 code-unit text bounds.
++        const length = input.length;
+         if (length === def.length)
+             return;
+         const origin = util.getLengthableOrigin(input);
+diff --git a/v4/core/checks.js b/v4/core/checks.js
+index 6bd3531478ce3596bad135f182f54727667dd839..cdff79b1a748126968b6e7bc64142c5c1f6b8fc3 100644
+--- a/v4/core/checks.js
++++ b/v4/core/checks.js
+@@ -268,9 +268,8 @@ export const $ZodCheckMaxLength = /*@__PURE__*/ core.$constructor("$ZodCheckMaxL
+     (_a = inst._zod.def).when ?? (_a.when = _whenHasLength);
+     inst._zod.check = (payload) => {
+         const input = payload.value;
+-        const units = input.length;
+-        // Strings are measured in Unicode code points, not UTF-16 units. A code point is at most two units, so a string that already fits in units fits in code points; only an overflow has to be counted.
+-        const length = typeof input === "string" && units > def.maximum ? util.codePointLength(input) : units;
++        // Marea protocol 0.1 retains UTF-16 code-unit text bounds.
++        const length = input.length;
+         if (length <= def.maximum)
+             return;
+         const origin = util.getLengthableOrigin(input);
+@@ -291,11 +290,8 @@ export const $ZodCheckMinLength = /*@__PURE__*/ core.$constructor("$ZodCheckMinL
+     (_a = inst._zod.def).when ?? (_a.when = _whenHasLength);
+     inst._zod.check = (payload) => {
+         const input = payload.value;
+-        const units = input.length;
+-        // A code point is one or two UTF-16 units, so fewer units than the floor can never reach it and twice the floor always clears it. Only in between is the exact count in doubt.
+-        const length = typeof input === "string" && units >= def.minimum && units < def.minimum * 2
+-            ? util.codePointLength(input)
+-            : units;
++        // Marea protocol 0.1 retains UTF-16 code-unit text bounds.
++        const length = input.length;
+         if (length >= def.minimum)
+             return;
+         const origin = util.getLengthableOrigin(input);
+@@ -316,11 +312,8 @@ export const $ZodCheckLengthEquals = /*@__PURE__*/ core.$constructor("$ZodCheckL
+     (_a = inst._zod.def).when ?? (_a.when = _whenHasLength);
+     inst._zod.check = (payload) => {
+         const input = payload.value;
+-        const units = input.length;
+-        // A code point is one or two UTF-16 units, so outside `[length, length * 2]` units the target is missed either way — and missed in the same direction in both measures.
+-        const length = typeof input === "string" && units >= def.length && units <= def.length * 2
+-            ? util.codePointLength(input)
+-            : units;
++        // Marea protocol 0.1 retains UTF-16 code-unit text bounds.
++        const length = input.length;
+         if (length === def.length)
+             return;
+         const origin = util.getLengthableOrigin(input);
+diff --git a/v4/core/compile.cjs b/v4/core/compile.cjs
+index e1acf15bf1a57c26b810e0e09696e4d6e2155532..3f6ac055837313b9deecb0fd8e10598c5d5e29d6 100644
+--- a/v4/core/compile.cjs
++++ b/v4/core/compile.cjs
+@@ -378,11 +378,10 @@ function generateChecks(doc, ctx, schema, accessor) {
+     }
+     return currentAccessor;
+ }
+-// Emit the length operand for a length check, mirroring `$ZodCheckMinLength` and friends: strings measure in code points, everything else in `.length`. `inDoubt` is the caller's cheap UTF-16 bound test — outside it the unit count already settles the comparison, so the scan is skipped.
+-function codePointLengthVar(doc, ctx, accessor, inDoubt) {
+-    const cpLen = addConstant(ctx, util.codePointLength);
++// Marea protocol 0.1 retains UTF-16 code-unit text bounds in compiled checks.
++function codePointLengthVar(doc, ctx, accessor, _inDoubt) {
+     const v = newVar(ctx);
+-    doc.write(`const ${v} = typeof ${accessor} === "string" && ${inDoubt} ? ${cpLen}(${accessor}) : ${accessor}.length;`);
++    doc.write(`const ${v} = ${accessor}.length;`);
+     return v;
+ }
+ // Emit a source operand for a gt/lt bound. Numbers inline; Dates hoist as a constant (relational operators compare via valueOf). NaN and Invalid Date bounds can't compile to a comparison that matches runtime semantics.
+diff --git a/v4/core/compile.js b/v4/core/compile.js
+index c5819e0a31f023ca92ab15330e3e47afb4d263e7..682779501a8989f75cd618dad5728ff60742ffff 100644
+--- a/v4/core/compile.js
++++ b/v4/core/compile.js
+@@ -347,11 +347,10 @@ function generateChecks(doc, ctx, schema, accessor) {
+     }
+     return currentAccessor;
+ }
+-// Emit the length operand for a length check, mirroring `$ZodCheckMinLength` and friends: strings measure in code points, everything else in `.length`. `inDoubt` is the caller's cheap UTF-16 bound test — outside it the unit count already settles the comparison, so the scan is skipped.
+-function codePointLengthVar(doc, ctx, accessor, inDoubt) {
+-    const cpLen = addConstant(ctx, util.codePointLength);
++// Marea protocol 0.1 retains UTF-16 code-unit text bounds in compiled checks.
++function codePointLengthVar(doc, ctx, accessor, _inDoubt) {
+     const v = newVar(ctx);
+-    doc.write(`const ${v} = typeof ${accessor} === "string" && ${inDoubt} ? ${cpLen}(${accessor}) : ${accessor}.length;`);
++    doc.write(`const ${v} = ${accessor}.length;`);
+     return v;
+ }
+ // Emit a source operand for a gt/lt bound. Numbers inline; Dates hoist as a constant (relational operators compare via valueOf). NaN and Invalid Date bounds can't compile to a comparison that matches runtime semantics.

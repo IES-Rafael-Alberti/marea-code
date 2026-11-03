@@ -13,6 +13,23 @@ const assignment = {
   students: [{ studentId: "student:one", expectedVersion: null }],
   selection: [{ id: "marea/testing", digest }],
 };
+it.each([false, true])(
+  "rejects oversized assignments before expanding invalid elements (jitless=%s)",
+  (jitless) => {
+    for (const invalid of [null, { studentId: 42, expectedVersion: false }]) {
+      const result = SkillWorkspaceRequestSchema.safeParse(
+        { ...assignment, students: Array.from({ length: 101 }, () => invalid) },
+        { jitless },
+      );
+      expect(result.success).toBe(false);
+      expect(result.error?.issues).toHaveLength(1);
+      expect(result.error?.issues).toMatchObject([
+        { code: "too_big", path: ["students"], maximum: 100 },
+      ]);
+    }
+    expect(SkillWorkspaceRequestSchema.parse(assignment, { jitless })).toEqual(assignment);
+  },
+);
 it("distinguishes inherited and empty individual selections with bounded atomic target lists", () => {
   for (const selection of [null, [], assignment.selection])
     expect(SkillWorkspaceRequestSchema.parse({ ...assignment, selection })).toMatchObject({

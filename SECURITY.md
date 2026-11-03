@@ -9,6 +9,35 @@ The `preview` channel is for supervised classroom pilots. Update the server firs
 managed student installations follow the server's exact preview version. A preview
 is not a stable-release or production-readiness claim.
 
+## Dependency updates
+
+Preview 36 updates every first-party Zod pin and all resolved copies to `4.6.7`
+for [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
+The patched parser checks existing collection upper bounds before validating
+elements. The protocol regression rejects oversized, malformed skill assignments
+with one size error in both compiled and interpreted parsing, while preserving
+valid assignments. Existing HTTP, WebSocket and response byte limits still apply;
+this update does not impose a new global limit on unconstrained collections.
+
+The pinned Bun patch `patches/zod@4.6.7.patch` preserves protocol 0.1 string
+length semantics: minimum, maximum and exact text lengths count UTF-16 code units.
+Upstream changed those checks to Unicode code points, which could reject existing
+passwords and allow event content unreadable by older clients. The compatibility
+patch covers interpreted and compiled checks in both ESM and CommonJS, plus their
+TypeScript sources. It does not change the upstream collection-size security fix.
+`bun run release:audit` verifies both behaviors and fails if this patch is absent.
+Remove it only with an explicit protocol and credential migration, or an upstream
+compatibility setting that preserves the existing contract.
+
+Both server Hono dependencies resolve to `4.13.11` for
+[GHSA-5r4p-p66f-jhc7](https://github.com/advisories/GHSA-5r4p-p66f-jhc7).
+Marea serves dashboard assets through its own exact asset lookup rather than
+Hono's affected `serveStatic` middleware. Encoded asset paths remain rejected,
+and the existing GET, HEAD, cache and request-policy tests cover normal behavior.
+
+These upgrades do not add advisory exclusions. `bun run release:audit` continues
+to block other high or critical dependency advisories.
+
 ## Temporary dependency mitigation
 
 `braces@3.0.3` remains listed under
