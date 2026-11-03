@@ -11,7 +11,7 @@ is not a stable-release or production-readiness claim.
 
 ## Dependency updates
 
-Preview 36 updates every first-party Zod pin and all resolved copies to `4.6.7`
+Preview 37 updates every first-party Zod pin and all resolved copies to `4.6.7`
 for [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
 The patched parser checks existing collection upper bounds before validating
 elements. The protocol regression rejects oversized, malformed skill assignments
