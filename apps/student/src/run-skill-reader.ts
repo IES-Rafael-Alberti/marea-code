@@ -31,7 +31,7 @@ export class RunSkillReadError extends ReadOnlyToolInputError {
 type DidacticSkillReference = StudentRunSnapshot["didacticSkills"][number];
 
 function skillName(id: string): string {
-  return id.split("/").at(-1) ?? id;
+  return id.slice(id.lastIndexOf("/") + 1);
 }
 
 /**
