@@ -125,6 +125,17 @@ export class PilotProvider {
     const server = createServer(
       { cert: readFileSync(tls.cert), key: readFileSync(tls.key) },
       (request, response) => {
+        if (request.method === "GET") {
+          response.writeHead(200, { "content-type": "application/json" });
+          response.end(
+            JSON.stringify({
+              data: request.url?.endsWith("/models/user")
+                ? [{ id: "synthetic/pilot-model", name: "Pilot model", context_length: 200_000 }]
+                : {},
+            }),
+          );
+          return;
+        }
         const chunks: Buffer[] = [];
         request.on("data", (chunk: Buffer) => chunks.push(chunk));
         request.on("end", () => {
