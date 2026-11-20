@@ -40,7 +40,7 @@ describe("student controlled read tools", () => {
       [
         "Read UTF-8 project text. Arguments: path, a virtual path such as /src/main.ts (root is the project).",
         "List a project directory as JSON text. Arguments: path; use / for the project root.",
-        "Read a frozen didactic skill. Arguments: skillId from the run manifest, path must name a file (SKILL.md or an exact resource file referenced there), not a directory. Do not guess resource paths.",
+        "Read an auxiliary file from a frozen didactic skill; mandatory SKILL.md instructions are already loaded. Arguments: skillId from the run manifest, path must name a file (SKILL.md or an exact resource file referenced there), not a directory. Do not guess resource paths.",
       ].map(
         (description) =>
           description +

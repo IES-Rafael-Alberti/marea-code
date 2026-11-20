@@ -5,6 +5,8 @@ export const ProviderModelSchema = z
   .object({
     id: z.string().min(1).max(512),
     name: z.string().min(1).max(512),
+    maxOutputTokens: z.number().int().positive().optional(),
+    contextWindowTokens: z.number().int().positive().optional(),
     pricing: z
       .object({
         costUnit: z.string().min(1).max(64),

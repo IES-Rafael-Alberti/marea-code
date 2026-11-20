@@ -108,6 +108,12 @@ describe("conversation student interface", () => {
       attemptId: "attempt:one",
     });
     expect(controller.thinking).toHaveBeenCalledWith("message:one", "attempt:one");
+    studentInterface.present({
+      type: "skills-loading",
+      messageId: "message:one",
+      attemptId: "attempt:one",
+    });
+    expect(controller.thinking).toHaveBeenCalledWith("message:one", "attempt:one", "loadingSkills");
     const toolStartedEvent = {
       arguments: { path: "exercise.txt" },
       attemptId: "attempt:one",

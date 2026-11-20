@@ -472,3 +472,15 @@ describe("Marea gateway model boundary", () => {
     ).rejects.toThrow("unsupported model stream");
   });
 });
+
+it("reports oversized complete prompts before any gateway request, without truncating", async () => {
+  const gateway = new ScriptedGateway(textResponse("ok"));
+  const model = new MareaGatewayChatModel({ gateway, nextRequestId: requestIds() });
+  await expect(model.invoke([new SystemMessage("x".repeat(65_537))])).rejects.toMatchObject({
+    streamCode: "context-exceeded",
+    streamRetryable: false,
+  });
+  expect(gateway.requests).toHaveLength(0);
+  await model.invoke([new SystemMessage("x".repeat(65_536))]);
+  expect(gateway.requests[0]?.messages[0]?.content).toHaveLength(65_536);
+});

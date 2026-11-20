@@ -1,3 +1,4 @@
+import { loadRequiredSkills } from "./required-skill-context.js";
 import { describeProject } from "./project-description.boundary.js";
 import { diagnosticGateway } from "./diagnostic-gateway.js";
 import { FileOperationExecutor } from "./operation-executor.boundary.js";
@@ -125,6 +126,18 @@ export async function createProductionStudentApplication(
   });
   // Stryker disable next-line ObjectLiteral: deleting required constructor fields is a type error.
   const agent = createDeepAgentsStudentRuntime({
+    loadSkills: (runId, snapshot, signal) =>
+      loadRequiredSkills(
+        snapshot,
+        new RunSkillReader({
+          runId,
+          snapshot,
+          server,
+          nextRequestId: ids.request,
+          runToken: tokenBinding.read,
+        }),
+        signal,
+      ),
     operations: true,
     projectContext: (snapshot) =>
       snapshot.teacherToolPolicy.restrictions.some((rule) => rule.tool === "list_directory")

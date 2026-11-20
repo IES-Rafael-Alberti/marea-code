@@ -121,6 +121,14 @@ function createRequest(
 }
 
 function translateMessages(messages: readonly BaseMessage[]): readonly ModelGatewayMessage[] {
+  if (messages.some((message) => message.text.length > 65_536)) {
+    throw new ModelStreamError({
+      code: "context-exceeded",
+      message:
+        "The full prompt exceeds the supported message size. Ask your teacher to reduce the materials and start a new session. Nothing was truncated.",
+      retryable: false,
+    });
+  }
   const toolNames = new Map<string, string>();
   return messages.map((message) => translateMessage(message, toolNames));
 }

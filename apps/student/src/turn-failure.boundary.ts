@@ -1,3 +1,4 @@
+import { RequiredSkillsError } from "./required-skill-context.js";
 import {
   AgentAdapterError,
   ModelStreamError,
@@ -83,7 +84,9 @@ function classifyRecognized(recognized: RecognizedFailure, prefix: string): Turn
           ? recognized.streamCode
           : recognized.streamCode === "authentication-failed" ||
               recognized.streamCode === "usage-invalid" ||
-              recognized.streamCode === "invalid-response"
+              recognized.streamCode === "invalid-response" ||
+              recognized.streamCode === "context-exceeded" ||
+              recognized.streamCode === "context-unavailable"
             ? "request-failed"
             : "provider-interrupted",
       recoverable: true,
@@ -160,6 +163,14 @@ function classifyTopLevel(error: unknown, prefix: string): TurnFailureInfo {
 }
 
 function classifyAttempt(error: unknown, prefix: string): TurnFailureInfo {
+  if (error instanceof RequiredSkillsError)
+    return {
+      detail: error.message,
+      hasPrefix: prefix !== "",
+      kind: "request-failed",
+      recoverable: true,
+      retryable: true,
+    };
   const recognized = deepestRecognized(error);
   if (recognized !== null) return classifyRecognized(recognized, prefix);
   return classifyTopLevel(error, prefix);

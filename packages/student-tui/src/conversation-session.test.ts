@@ -111,6 +111,8 @@ describe("conversation TUI session", () => {
     expect(target.binding.session.thinking("stale", "stale")).toBe(false);
     expect(target.binding.session.thinking()).toBe(true);
     expect(target.binding.session.snapshot().activity).toBe("thinking");
+    expect(target.binding.session.thinking(undefined, undefined, "loadingSkills")).toBe(true);
+    expect(target.binding.session.snapshot().activity).toBe("loadingSkills");
     expect(target.binding.session.snapshot().tools).toEqual([
       {
         arguments: { path: "a.txt" },

@@ -385,9 +385,13 @@ export function createConversationController(
     },
     resumeTurn,
     snapshot: () => current,
-    thinking(messageId?: ConversationMessageId, attemptId?: ConversationAttemptId): boolean {
+    thinking(
+      messageId?: ConversationMessageId,
+      attemptId?: ConversationAttemptId,
+      activity: "thinking" | "loadingSkills" = "thinking",
+    ): boolean {
       if (!matchesTurn(turn, messageId, attemptId)) return false;
-      return update({ ...current, activity: "thinking" });
+      return update({ ...current, activity });
     },
     toolFinished(
       finish: ConversationToolFinish,

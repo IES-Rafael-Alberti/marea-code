@@ -123,3 +123,24 @@ it("classifies a rejected key with no response body", async () => {
     retryable: false,
   });
 });
+
+it("retains context and output limits without exposing provider account data", async () => {
+  const fetch = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ data: {} }))
+    .mockResolvedValueOnce(
+      Response.json({
+        data: [
+          {
+            ...model,
+            context_length: 128000,
+            top_provider: { context_length: 64000, max_completion_tokens: 4096 },
+          },
+          { id: "other", name: "Other", context_length: 100000, top_provider: null },
+        ],
+      }),
+    );
+  const models = await listOpenRouterModels(config, signal(), fetch);
+  expect(models[0]).toMatchObject({ contextWindowTokens: 64000, maxOutputTokens: 4096 });
+  expect(models[1]).toMatchObject({ contextWindowTokens: 100000 });
+});

@@ -144,7 +144,7 @@ export interface ApprovalPrompt extends TurnAttemptIdentity {
 }
 
 export type StudentViewEvent =
-  | (TurnAttemptIdentity & { readonly type: "thinking" })
+  | (TurnAttemptIdentity & { readonly type: "thinking" | "skills-loading" })
   | (TurnAttemptIdentity & { readonly type: "assistant-text"; readonly text: string })
   | (TurnAttemptIdentity & {
       readonly type: "tool-started";
@@ -284,6 +284,7 @@ export interface AgentApprovalTurn {
 }
 
 export interface AgentRuntime {
+  prepare?(turn: Pick<AgentMessageTurn, "runId" | "snapshot">, signal: AbortSignal): Promise<void>;
   resumeOperation?(turn: OperationTurn, signal: AbortSignal): AsyncIterable<AgentEvent>;
   resumeQuestions?(turn: AgentQuestionTurn, signal: AbortSignal): AsyncIterable<AgentEvent>;
   streamStartup?(

@@ -72,3 +72,14 @@ describe("status line", () => {
     expect(statusLine(state(), PARITY_TEST_COPY).context).toBe("");
   });
 });
+
+it("shows the loading-materials label and supports older interface copy", () => {
+  const loading = state({ activity: "loadingSkills" });
+  expect(statusLine(loading, PARITY_TEST_COPY).label).toBe(PARITY_TEST_COPY.status.starting);
+  expect(
+    statusLine(loading, {
+      ...PARITY_TEST_COPY,
+      status: { ...PARITY_TEST_COPY.status, loadingSkills: "Loading instructions" },
+    }).label,
+  ).toBe("Loading instructions");
+});

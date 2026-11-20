@@ -50,13 +50,20 @@ describe("OpenRouter inference provider", () => {
     );
     const cancellation = new TestCancellation();
 
-    await expect(collect(provider(http).stream(REQUEST, cancellation))).resolves.toEqual([
+    await expect(
+      collect(
+        createOpenRouterProviderWith(CONFIGURATION, http, (request) =>
+          Promise.resolve({ ...request, maxOutputTokens: 256 }),
+        ).stream(REQUEST, cancellation),
+      ),
+    ).resolves.toEqual([
       { text: "Hola", type: "text-delta" },
       { text: " mundo", type: "text-delta" },
       { inputTokens: 4, outputTokens: 2, type: "usage" },
       { finishReason: "stop", type: "completed" },
     ]);
     expect(http.requests).toHaveLength(1);
+    expect(http.requests[0]?.body.maxOutputTokens).toBe(256);
     expect(http.requests[0]).toMatchObject({
       apiKey: "server-secret",
       body: REQUEST,
@@ -379,3 +386,22 @@ it.each([false, true])(
     expect(cancellation.unsubscribed).toBe(true);
   },
 );
+
+it("rejects a failed context admission before sending inference and releases cancellation", async () => {
+  const http = new TestHttp(httpResponse(sse()));
+  const cancellation = new TestCancellation();
+  const guarded = createOpenRouterProviderWith(CONFIGURATION, http, () =>
+    Promise.reject(
+      new InferenceProviderError({
+        code: "context-exceeded",
+        message: "Reduce materials",
+        retryable: false,
+      }),
+    ),
+  );
+  await expect(collect(guarded.stream(REQUEST, cancellation))).rejects.toMatchObject({
+    code: "context-exceeded",
+  });
+  expect(http.requests).toHaveLength(0);
+  expect(cancellation.unsubscribed).toBe(true);
+});

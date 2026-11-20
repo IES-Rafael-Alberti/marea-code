@@ -275,3 +275,24 @@ describe("provider admission and durable accounting", () => {
     }
   });
 });
+
+it.each(["context-exceeded", "context-unavailable"] as const)(
+  "settles %s before inference with zero token cost",
+  async (code) => {
+    const test = fixture();
+    try {
+      test.provider.events = [];
+      test.provider.failure = new InferenceProviderError({
+        code,
+        message: "Context admission refused",
+        retryable: false,
+      });
+      await expect(collect(test.metered.stream(request, cancellation()))).rejects.toMatchObject({
+        code,
+      });
+      expect(test.ledger.totals(account)).toMatchObject({ tokens: 0, costUnits: 0, inFlight: 0 });
+    } finally {
+      test.database.close();
+    }
+  },
+);

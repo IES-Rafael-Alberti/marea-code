@@ -133,6 +133,10 @@ function aborted(): InferenceProviderError {
 export function createOpenRouterProviderWith(
   configuration: OpenRouterConfiguration,
   http: OpenRouterHttpPort,
+  preflight?: (
+    request: InferenceProviderRequest,
+    signal: AbortSignal,
+  ) => Promise<InferenceProviderRequest>,
 ): InferenceProvider {
   return Object.freeze({
     async *stream(
@@ -147,11 +151,13 @@ export function createOpenRouterProviderWith(
         controller.abort();
       });
       try {
+        const admitted =
+          preflight === undefined ? request : await preflight(request, controller.signal);
         let response: OpenRouterHttpResponse;
         try {
           response = await http.send({
             apiKey: configuration.apiKey,
-            body: request,
+            body: admitted,
             endpoint: configuration.endpoint,
             signal: controller.signal,
           });

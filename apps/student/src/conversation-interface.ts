@@ -104,6 +104,8 @@ export function createConversationStudentInterface(
     present(event: StudentViewEvent): void {
       if (event.type === "assistant-text") {
         options.conversation.appendAssistantText(event.text, event.messageId, event.attemptId);
+      } else if (event.type === "skills-loading") {
+        options.conversation.thinking(event.messageId, event.attemptId, "loadingSkills");
       } else if (event.type === "thinking") {
         options.conversation.thinking(event.messageId, event.attemptId);
       } else if (event.type === "tool-started") {

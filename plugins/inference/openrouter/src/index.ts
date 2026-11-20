@@ -1,3 +1,4 @@
+import { createContextPreflight } from "./context-preflight.js";
 import {
   defineInferenceProviderCatalogEntry,
   type InferenceProviderCatalogEntry,
@@ -38,6 +39,7 @@ const openRouterProviderPlugin: InferenceProviderCatalogEntry = defineInferenceP
       return createOpenRouterProviderWith(
         parseOpenRouterConfiguration(configuration),
         openRouterHttp,
+        createContextPreflight((signal) => listOpenRouterModels(configuration, signal)),
       );
     },
     manifest: {

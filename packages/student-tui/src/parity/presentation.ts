@@ -92,14 +92,14 @@ export function createPresentation(
   const syncActivity = (snapshot: ConversationSnapshot): void => {
     if (
       snapshot.status === "streaming" &&
-      (previous.status !== "streaming" || snapshot.activity === "thinking")
+      (previous.status !== "streaming" || snapshot.activity !== undefined)
     ) {
       state = {
         ...state,
         transcript: finishAssistantText(state.transcript),
         status: {
           ...state.status,
-          activity: "thinking",
+          activity: snapshot.activity ?? "thinking",
           toolName: "",
           hint: "turn",
           elapsedMs: 0,

@@ -88,6 +88,7 @@ function expectedCopy(translator: Translator) {
       retrying: text("student.tui.status.retrying"),
       reviewing: text("student.tui.status.reviewing"),
       starting: text("student.tui.status.starting"),
+      loadingSkills: text("student.tui.status.loadingSkills"),
       thinking: text("student.tui.status.thinking"),
       unrecoverable: text("student.tui.status.unrecoverable"),
       waitingAnswer: text("student.tui.status.waiting-answer"),
