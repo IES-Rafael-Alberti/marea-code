@@ -142,11 +142,7 @@ export function createConversationTuiSession(
     resumeTurn: () => active(() => controller.resumeTurn()),
     snapshot: (): ConversationSnapshot => controller.snapshot(),
     thinking: (messageId?: string, attemptId?: string, activity?: "thinking" | "loadingSkills") =>
-      active(() =>
-        activity === undefined
-          ? controller.thinking(messageId, attemptId)
-          : controller.thinking(messageId, attemptId, activity),
-      ),
+      active(() => controller.thinking(messageId, attemptId, activity)),
     toolFinished: (
       finish: Parameters<ConversationController["toolFinished"]>[0],
       messageId?: string,

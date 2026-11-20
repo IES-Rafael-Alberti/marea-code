@@ -1,6 +1,6 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.41`.
+The commands below target `0.1.0-preview.42`.
 
 This preview fixes installation and update downloads on slow connections (PR #15).
 Transfers now stop after 30 seconds without receiving data, rather than after
@@ -8,9 +8,12 @@ Transfers now stop after 30 seconds without receiving data, rather than after
 acceptance exercises a signed native inventory over real HTTP, including an
 application transfer lasting 36 seconds and a stalled transfer that must abort.
 Older installed updaters use their existing download behavior for the first update.
-The unpublished preview.40 tag is retained for traceability: its release run could
-not use GitHub's retired macOS 14 runners. Preview 41 uses macOS 15 ARM64 runners
-and requires the same complete native acceptance matrix before publication.
+Preview 40 and 41 were not published. Their immutable tags are retained for
+traceability: preview 40 encountered retired macOS 14 runners, and preview 41
+exposed missing mutation assertions in the new skill/context checks. Preview 42
+uses macOS 15 ARM64 runners and strengthens those assertions, including exact
+capacity boundaries, cancellation and accounting after partial inference.
+The complete native acceptance matrix remains required before publication.
 
 Selected didactic skills are now loaded in full before the tutor starts. Missing,
 unverifiable or oversized required materials block the turn with a clear error;
@@ -98,13 +101,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.41/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.42/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.41/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.42/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -244,13 +247,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.41/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.42/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.41/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.42/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Use **PowerShell**, identified by a prompt such as `PS C:\Users\david>`, for the
@@ -406,7 +409,7 @@ the empty root allows the same installation command to run again. Do not delete
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.41`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.42`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a

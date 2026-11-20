@@ -1,3 +1,4 @@
+import { RequiredSkillsError } from "./required-skill-context.js";
 import { AgentAdapterError, ModelStreamError } from "@marea/deepagents-adapter";
 import { describe, expect, it } from "vitest";
 
@@ -251,6 +252,23 @@ it.each(["context-exceeded", "context-unavailable"])(
     ).toMatchObject({
       kind: "request-failed",
       detail: "Reduce materials or select a larger model.",
+    });
+  },
+);
+
+it.each(["", "Already visible text"])(
+  "retains the visible prefix for required-skill failures: %s",
+  (prefix) => {
+    expect(
+      classifyTurnFailure(
+        new TurnAttemptFailed(prefix, new RequiredSkillsError("Retry materials")),
+      ),
+    ).toEqual({
+      detail: "Retry materials",
+      hasPrefix: prefix.length > 0,
+      kind: "request-failed",
+      recoverable: true,
+      retryable: true,
     });
   },
 );

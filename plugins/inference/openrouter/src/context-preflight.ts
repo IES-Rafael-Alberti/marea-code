@@ -11,11 +11,11 @@ export function createContextPreflight(
   models: (signal: AbortSignal) => Promise<readonly ProviderModel[]>,
   now: () => number = Date.now,
 ): (request: InferenceProviderRequest, signal: AbortSignal) => Promise<InferenceProviderRequest> {
-  let catalog: readonly ProviderModel[] = [];
+  let catalog: readonly ProviderModel[] | undefined;
   let expiresAt = 0;
   return async (request, signal) => {
     signal.throwIfAborted();
-    if (now() >= expiresAt) {
+    if (catalog === undefined || now() >= expiresAt) {
       try {
         catalog = await models(signal);
       } catch {
@@ -28,8 +28,7 @@ export function createContextPreflight(
       expiresAt = now() + 300_000;
     }
     const model = catalog.find((model) => model.id === request.upstreamModel);
-    const capacity = model?.contextWindowTokens;
-    if (capacity === undefined) {
+    if (model?.contextWindowTokens === undefined) {
       throw new InferenceProviderError({
         code: "context-unavailable",
         message:
@@ -37,7 +36,8 @@ export function createContextPreflight(
         retryable: true,
       });
     }
-    const output = Math.min(request.maxOutputTokens ?? 8192, model?.maxOutputTokens ?? 8192);
+    const capacity = model.contextWindowTokens;
+    const output = Math.min(request.maxOutputTokens ?? 8192, model.maxOutputTokens ?? 8192);
     const input =
       new TextEncoder().encode(JSON.stringify({ messages: request.messages, tools: request.tools }))
         .byteLength + 4096;

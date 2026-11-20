@@ -47,6 +47,7 @@ export class RequiredSkillContext {
       this.content(runId, snapshot);
       return;
     }
+    // Stryker disable next-line ConditionalExpression,CallExpression: Without this type-narrowing guard, calling an absent loader throws and the catch produces the same RequiredSkillsError.
     if (load === undefined) throw new RequiredSkillsError();
     let content: string;
     try {

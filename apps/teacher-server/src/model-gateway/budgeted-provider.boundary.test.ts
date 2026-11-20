@@ -15,6 +15,15 @@ import {
   collect,
   collectAttempts,
 } from "./budgeted-provider.fixture.js";
+function expectUncertainCharge(test: ReturnType<typeof fixture>): void {
+  expect(test.ledger.totals(account)).toEqual({
+    requests: 1,
+    tokens: 20,
+    costUnits: 50,
+    inFlight: 0,
+  });
+}
+
 describe("provider admission and durable accounting", () => {
   it("overrides caller output limits and persists settlement before announcing completion", async () => {
     const test = fixture();
@@ -189,12 +198,7 @@ describe("provider admission and durable accounting", () => {
           message: "The provider did not report valid final usage.",
           retryable: false,
         });
-        expect(test.ledger.totals(account)).toEqual({
-          requests: 1,
-          tokens: 20,
-          costUnits: 50,
-          inFlight: 0,
-        });
+        expectUncertainCharge(test);
       } finally {
         test.database.close();
       }
@@ -293,6 +297,29 @@ it.each(["context-exceeded", "context-unavailable"] as const)(
       expect(test.ledger.totals(account)).toMatchObject({ tokens: 0, costUnits: 0, inFlight: 0 });
     } finally {
       test.database.close();
+    }
+  },
+);
+
+it.each(["context-exceeded", "context-unavailable"] as const)(
+  "does not refund %s after inference has already emitted output or usage",
+  async (code) => {
+    for (const events of [[usage], [{ type: "text-delta" as const, text: "Partial" }]]) {
+      const test = fixture();
+      try {
+        test.provider.events = events;
+        test.provider.failure = new InferenceProviderError({
+          code,
+          message: "Late provider failure",
+          retryable: false,
+        });
+        await expect(collect(test.metered.stream(request, cancellation()))).rejects.toMatchObject({
+          code,
+        });
+        expectUncertainCharge(test);
+      } finally {
+        test.database.close();
+      }
     }
   },
 );
