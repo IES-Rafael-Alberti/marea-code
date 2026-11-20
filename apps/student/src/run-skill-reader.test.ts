@@ -109,6 +109,54 @@ describe("immutable run skill reader", () => {
     expect(test.readSkill).not.toHaveBeenCalled();
   });
 
+  it.each(["testing", "teacher/testing", " testing"])(
+    "resolves the shortened identifier %s to the canonical selected skill",
+    async (shortened) => {
+      const test = fixture();
+      expect(await new RunSkillReader(test.options).read(shortened, "SKILL.md")).toBe(content);
+      expect(test.readSkill).toHaveBeenCalledWith(token, expect.objectContaining({ skillId }));
+    },
+  );
+
+  it("lists the exact selected identifiers when the requested skill is unknown", async () => {
+    const test = fixture();
+    // Shares its final character with `testing`, so only the full name may match.
+    const failure = new RunSkillReader(test.options).read("teacher/missing", "SKILL.md");
+    await expect(failure).rejects.toBeInstanceOf(RunSkillReadError);
+    await expect(failure).rejects.toThrow(`Use one of these exact skillId values: ${skillId}.`);
+    expect(test.readSkill).not.toHaveBeenCalled();
+  });
+
+  it("does not guess between selected skills that share a name", async () => {
+    const test = fixture();
+    const other = SkillIdSchema.parse("marea/testing");
+    const reader = new RunSkillReader({
+      ...test.options,
+      snapshot: {
+        ...test.captured,
+        didacticSkills: [...test.captured.didacticSkills, { id: other, digest }],
+      },
+    });
+    await expect(reader.read("testing", "SKILL.md")).rejects.toThrow(
+      `Use one of these exact skillId values: ${skillId}, ${other}.`,
+    );
+    expect(test.readSkill).not.toHaveBeenCalled();
+    expect(await reader.read(skillId, "SKILL.md")).toBe(content);
+    expect(test.readSkill).toHaveBeenCalledWith(token, expect.objectContaining({ skillId }));
+  });
+
+  it("reports when the run snapshot selects no didactic skills", async () => {
+    const test = fixture();
+    const reader = new RunSkillReader({
+      ...test.options,
+      snapshot: { ...test.captured, didacticSkills: [] },
+    });
+    await expect(reader.read("testing", "SKILL.md")).rejects.toThrow(
+      "No didactic skills are available in this run snapshot.",
+    );
+    expect(test.readSkill).not.toHaveBeenCalled();
+  });
+
   it("captures authority instead of following caller edits", async () => {
     const test = fixture();
     const reader = new RunSkillReader(test.options);

@@ -22,10 +22,41 @@ export interface RunSkillReaderOptions {
 }
 
 export class RunSkillReadError extends ReadOnlyToolInputError {
-  constructor() {
-    super("The requested teaching resource is not available in this run snapshot.");
+  constructor(message = "The requested teaching resource is not available in this run snapshot.") {
+    super(message);
     this.name = "RunSkillReadError";
   }
+}
+
+type DidacticSkillReference = StudentRunSnapshot["didacticSkills"][number];
+
+function skillName(id: string): string {
+  return id.split("/").at(-1) ?? id;
+}
+
+/**
+ * Models often shorten teacher identifiers such as `teacher/user:teacher/testing`
+ * to `teacher/testing` or `testing`. Accept the exact identifier first and then a
+ * unique match on the final segment; the request always uses the canonical id.
+ */
+function resolveReference(
+  skills: readonly DidacticSkillReference[],
+  requested: string,
+): DidacticSkillReference | undefined {
+  const exact = skills.find((candidate) => candidate.id === requested);
+  if (exact !== undefined) return exact;
+  const name = skillName(requested.trim());
+  const matches = skills.filter((candidate) => skillName(candidate.id) === name);
+  return matches.length === 1 ? matches[0] : undefined;
+}
+
+function unknownSkillError(skills: readonly DidacticSkillReference[]): RunSkillReadError {
+  const available = skills.map((candidate) => candidate.id).join(", ");
+  return new RunSkillReadError(
+    available === ""
+      ? "No didactic skills are available in this run snapshot."
+      : `The requested skill is not in this run snapshot. Use one of these exact skillId values: ${available}.`,
+  );
 }
 
 /** No filesystem paths or evaluator bundles are exposed through this reader. */
@@ -45,16 +76,17 @@ export class RunSkillReader {
 
   async read(skillId: string, path: string): Promise<string> {
     const { snapshot } = this.#options;
-    const reference = snapshot.didacticSkills.find((candidate) => candidate.id === skillId);
-    if (snapshot.agentMode === "free" || reference === undefined || !isSkillFilePath(path)) {
+    if (snapshot.agentMode === "free" || !isSkillFilePath(path)) {
       throw new RunSkillReadError();
     }
+    const reference = resolveReference(snapshot.didacticSkills, skillId);
+    if (reference === undefined) throw unknownSkillError(snapshot.didacticSkills);
     const request = {
       protocolVersion: CURRENT_PROTOCOL_VERSION,
       requestId: this.#options.nextRequestId(),
       runId: this.#options.runId,
       snapshotId: snapshot.id,
-      skillId: SkillIdSchema.parse(skillId),
+      skillId: SkillIdSchema.parse(reference.id),
     };
     const result = RunSkillResponseSchema.parse(
       await this.#options.server.readSkill(await this.#options.runToken(), request),
