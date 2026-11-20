@@ -152,7 +152,17 @@ export class SessionTurnExecutor {
             sequence,
           }),
         );
+    const loadingSkills =
+      active.snapshot.agentMode === "tutoring" && active.snapshot.didacticSkills.length > 0;
     try {
+      if (loadingSkills) {
+        this.options.studentInterface.present({ ...identity, type: "skills-loading" });
+      }
+      await this.options.agent.prepare?.(active, signal);
+      if (loadingSkills) {
+        signal.throwIfAborted();
+        this.options.studentInterface.present({ ...identity, type: "thinking" });
+      }
       await this.options.evidence?.capture("student", messageId);
       await this.clearFailure(priorTurn);
       await this.options.flushOutbox();

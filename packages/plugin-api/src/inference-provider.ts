@@ -127,7 +127,13 @@ export type InferenceProviderFactory = (
 ) => InferenceProvider;
 
 export type InferenceProviderErrorCode =
-  "aborted" | "authentication-failed" | "invalid-response" | "rate-limited" | "unavailable";
+  | "aborted"
+  | "authentication-failed"
+  | "invalid-response"
+  | "rate-limited"
+  | "unavailable"
+  | "context-exceeded"
+  | "context-unavailable";
 
 export class InferenceProviderError extends Error {
   public readonly code: InferenceProviderErrorCode;

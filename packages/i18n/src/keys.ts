@@ -127,6 +127,7 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.tui.status.reviewing",
   "student.tui.status.starting",
   "student.tui.status.thinking",
+  "student.tui.status.loadingSkills",
   "student.tui.status.unrecoverable",
   "student.tui.status.waiting-answer",
   "student.tui.status.waiting-approval",

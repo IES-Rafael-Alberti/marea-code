@@ -1,3 +1,12 @@
+import { createHash } from "node:crypto";
+import {
+  RunSkillResponseSchema,
+  RunTokenSchema,
+  SkillIdSchema,
+  Sha256DigestSchema,
+} from "@marea/protocol";
+import type { StudentServer } from "./contracts.js";
+import * as http from "./http-client.boundary.js";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -7,7 +16,7 @@ import { createProductionStudentApplication } from "./composition.js";
 import * as bridge from "./deepagents-runtime.boundary.js";
 import { runId, snapshot } from "./deepagents-runtime.fixture.js";
 import { StartupFixtureAgent } from "./startup.fixture.js";
-import { FixtureInterface } from "./student.fixture.js";
+import { FixtureInterface, FixtureServer } from "./student.fixture.js";
 import { readToolPage } from "./read-tool-page.js";
 
 describe("production runtime read-tool wiring", () => {
@@ -16,6 +25,8 @@ describe("production runtime read-tool wiring", () => {
     const projectRoot = join(root, "project");
     await mkdir(projectRoot);
     await writeFile(join(projectRoot, "exercise.txt"), "Synthetic exercise");
+    const server: StudentServer = new FixtureServer();
+    const httpFactory = vi.spyOn(http, "createHttpStudentServer").mockReturnValue(server);
     let configured: bridge.DeepAgentsStudentRuntimeOptions | undefined;
     const factory = vi
       .spyOn(bridge, "createDeepAgentsStudentRuntime")
@@ -43,6 +54,53 @@ describe("production runtime read-tool wiring", () => {
             },
           }),
         ).toBe("");
+        const content = "Mandatory complete instructions.";
+        const id = SkillIdSchema.parse("teacher/ana/example");
+        const digest = Sha256DigestSchema.parse(
+          `sha256:${createHash("sha256").update(`SKILL.md\0${content}\0`).digest("hex")}`,
+        );
+        const selected = { ...snapshot(), didacticSkills: [{ id, digest }] };
+        let delivered = content;
+        vi.spyOn(application.controller, "modelRunToken").mockResolvedValue(
+          RunTokenSchema.parse("r".repeat(32)),
+        );
+        const read = vi.spyOn(server, "readSkill").mockImplementation((_token, request) =>
+          Promise.resolve(
+            RunSkillResponseSchema.parse({
+              protocolVersion: request.protocolVersion,
+              requestId: request.requestId,
+              runId: request.runId,
+              snapshotId: request.snapshotId,
+              skill: {
+                id,
+                digest,
+                name: "example",
+                description: "Didactic example",
+                kind: "didactic",
+                source: "teacher",
+                license: null,
+                compatibility: null,
+                criteria: [],
+                files: [
+                  {
+                    path: "SKILL.md",
+                    content: delivered,
+                    sizeBytes: new TextEncoder().encode(delivered).byteLength,
+                  },
+                ],
+              },
+            }),
+          ),
+        );
+        const load = configured?.loadSkills;
+        if (load === undefined) throw new Error("Missing mandatory skill loader");
+        expect(await load(runId, selected, new AbortController().signal)).toContain(content);
+        expect(read).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({ skillId: id, snapshotId: selected.id }),
+        );
+        delivered = "Substituted instructions";
+        await expect(load(runId, selected, new AbortController().signal)).rejects.toThrow();
         const readers = configured?.readOnlyTools;
         if (readers === undefined) throw new Error("The production runtime omitted read tools.");
         const tools = readers(runId, snapshot());
@@ -70,6 +128,7 @@ describe("production runtime read-tool wiring", () => {
       }
     } finally {
       factory.mockRestore();
+      httpFactory.mockRestore();
       await rm(root, { recursive: true, force: true });
     }
   });

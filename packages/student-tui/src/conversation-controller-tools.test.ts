@@ -79,6 +79,8 @@ it("accepts thinking only for the active attempt and clears it on visible work",
   expect(target.controller.thinking("stale", "stale")).toBe(false);
   expect(target.controller.thinking()).toBe(true);
   expect(target.controller.snapshot().activity).toBe("thinking");
+  expect(target.controller.thinking(undefined, undefined, "loadingSkills")).toBe(true);
+  expect(target.controller.snapshot().activity).toBe("loadingSkills");
   target.controller.appendAssistantText("Hello");
   expect(target.controller.snapshot().activity).toBeUndefined();
   target.controller.thinking();

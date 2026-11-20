@@ -1,3 +1,4 @@
+import { RequiredSkillContext } from "./required-skill-context.js";
 import { deniesWrite, socraticOptions } from "./operation-mediator.js";
 import { OperationMediator } from "./operation-mediator.js";
 import { WriteRequestSchema, type WriteRequest } from "./write-request.js";
@@ -34,6 +35,11 @@ const INTERNAL_WRITE_TOOL_NAME = "marea_write_file";
 export type DeepAgentRuntimeFactory = (options: DeepAgentRuntimeOptions) => DeepAgentRuntime;
 
 export interface DeepAgentsStudentRuntimeOptions {
+  readonly loadSkills?: (
+    runId: RunId,
+    snapshot: StudentRunSnapshot,
+    signal: AbortSignal,
+  ) => Promise<string>;
   readonly checkpoint: DeepAgentRuntimeOptions["checkpoint"];
   readonly operations?: boolean;
   readonly projectContext?: (snapshot: StudentRunSnapshot) => string;
@@ -197,11 +203,16 @@ function parseWriteRequest(arguments_: Readonly<Record<string, string>>): WriteR
 }
 
 class DeepAgentsStudentRuntime implements AgentRuntime {
+  private readonly skills = new RequiredSkillContext();
   private readonly contexts = new Map<RunId, RunContexts>();
   private readonly createRuntime: DeepAgentRuntimeFactory;
 
   constructor(private readonly options: DeepAgentsStudentRuntimeOptions) {
     this.createRuntime = options.createRuntime ?? createAgentRuntime;
+  }
+
+  prepare(turn: Pick<AgentMessageTurn, "runId" | "snapshot">, signal: AbortSignal): Promise<void> {
+    return this.skills.prepare(turn.runId, turn.snapshot, signal, this.options.loadSkills);
   }
 
   streamMessage(turn: AgentMessageTurn, signal: AbortSignal): AsyncIterable<AgentEvent> {
@@ -368,9 +379,7 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
         effectTools: operations,
         checkpoint: this.options.checkpoint,
         model: this.options.model,
-        systemPrompt: [snapshot.prompt.content, this.options.projectContext?.(snapshot)]
-          .filter(Boolean)
-          .join("\n\n"),
+        systemPrompt: this.skills.prompt(runId, snapshot, this.options.projectContext?.(snapshot)),
         readOnlyTools: this.options.readOnlyTools?.(runId, snapshot) ?? [],
         readOnly: startup,
         questions: !startup,

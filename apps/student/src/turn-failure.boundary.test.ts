@@ -240,3 +240,17 @@ it.each([
   expect(persisted.message).toBe("The stored turn requires intervention.");
   expect(classifyTurnFailure(persisted)).toBe(failure);
 });
+
+it.each(["context-exceeded", "context-unavailable"])(
+  "shows actionable %s context admission errors",
+  (code) => {
+    expect(
+      classifyTurnFailure(
+        streamFailure({ code, message: "Reduce materials or select a larger model." }),
+      ),
+    ).toMatchObject({
+      kind: "request-failed",
+      detail: "Reduce materials or select a larger model.",
+    });
+  },
+);

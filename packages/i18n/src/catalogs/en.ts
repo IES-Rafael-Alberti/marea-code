@@ -170,6 +170,7 @@ const englishCatalog = {
   "student.tui.status.retrying": "retrying",
   "student.tui.status.reviewing": "reviewing the project",
   "student.tui.status.starting": "preparing",
+  "student.tui.status.loadingSkills": "loading teaching instructions",
   "student.tui.status.thinking": "thinking",
   "student.tui.status.unrecoverable": "unrecoverable error",
   "student.tui.status.waiting-answer": "waiting for your answer",

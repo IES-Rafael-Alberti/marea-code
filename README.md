@@ -62,6 +62,40 @@ The main applications are `apps/student`, `apps/teacher-server` and
 `apps/dashboard`; shared contracts live in `packages`, and first-party extensions
 in `plugins`. Distribution code lives in `scripts/release`.
 
+## Mandatory didactic materials
+
+Before the tutor startup or a resumed turn can execute, the production client reads
+all selected `SKILL.md` files through the immutable run skill reader. Each bundle's
+identity, snapshot, digest and canonical bytes are checked before its full document
+is admitted. A failed or cancelled load never admits partial instructions; the same
+turn can retry. Auxiliary files remain available through the exact-id read tool.
+
+The verified documents are part of the runtime system prompt, for both startup and
+conversation, rather than tool results in conversation history. Reopening a client
+reloads the session's frozen versions; teacher edits apply only to new sessions.
+Explicit class instructions and Marea safety/permission rules take precedence over
+skill content. Evaluation material remains on the separate private evaluator path.
+The student sees a localized loading status, not the instruction content.
+
+Admission never truncates or automatically summarizes mandatory documents. The
+client reserves space for project and harness instructions inside the existing
+64K-character gateway message envelope (48,000 characters for materials plus the
+snapshot prompt). This transport limit is independent of the model context window.
+A larger model cannot remove that transport limit.
+
+The production OpenRouter provider checks every full inference request against the
+account's model catalog, cached for five minutes. It uses the smaller advertised
+model/top-provider context limit, a conservative UTF-8 byte-based token estimate,
+a 4,096-token framing allowance, and an explicit output reserve. This is not an
+exact tokenizer: it may reject requests that would fit. Unknown capacity blocks
+inference with a retryable error; excessive context requires reducing materials or
+selecting a larger model and starting a new session. Preflight refusals settle with
+zero inference tokens/cost. The catalog requires network access when refreshed.
+
+Provider metadata follows the [OpenRouter model catalog](https://openrouter.ai/docs/api/api-reference/models/get-models).
+Other inference plugins must supply their own admission check; this does not add
+model identifiers or provider secrets to the student protocol.
+
 ## License
 
 Marea Code is distributed under the [MIT License](LICENSE). Third-party dependencies

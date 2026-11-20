@@ -13,6 +13,13 @@ const Catalog = z.object({
       z.object({
         id: z.string(),
         name: z.string(),
+        context_length: z.number().int().positive().optional(),
+        top_provider: z
+          .object({
+            context_length: z.number().int().positive().nullish(),
+            max_completion_tokens: z.number().int().positive().nullish(),
+          })
+          .nullish(),
         pricing: z.unknown().optional(),
       }),
     )
@@ -77,6 +84,17 @@ export async function listOpenRouterModels(
       catalog.data.map((model) => ({
         id: model.id,
         name: model.name,
+        ...(model.context_length === undefined
+          ? {}
+          : {
+              contextWindowTokens: Math.min(
+                model.context_length,
+                model.top_provider?.context_length ?? model.context_length,
+              ),
+            }),
+        ...(model.top_provider?.max_completion_tokens == null
+          ? {}
+          : { maxOutputTokens: model.top_provider.max_completion_tokens }),
         pricing: modelPricing(model.pricing),
       })),
     );

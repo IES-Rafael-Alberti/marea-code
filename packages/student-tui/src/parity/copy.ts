@@ -31,6 +31,7 @@ export interface StatusCopy {
   readonly reviewing: string;
   readonly starting: string;
   readonly thinking: string;
+  readonly loadingSkills?: string;
   readonly unrecoverable: string;
   readonly waitingAnswer: string;
   readonly waitingApproval: string;

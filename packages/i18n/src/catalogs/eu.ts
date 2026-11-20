@@ -169,6 +169,7 @@ const basqueCatalog = {
   "student.tui.status.retrying": "berriro saiatzen",
   "student.tui.status.reviewing": "proiektua berrikusten",
   "student.tui.status.starting": "prestatzen",
+  "student.tui.status.loadingSkills": "irakaskuntza-jarraibideak kargatzen",
   "student.tui.status.thinking": "pentsatzen",
   "student.tui.status.unrecoverable": "berreskuraezina den errorea",
   "student.tui.status.waiting-answer": "zure erantzunaren zain",

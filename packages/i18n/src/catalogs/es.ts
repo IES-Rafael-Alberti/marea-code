@@ -172,6 +172,7 @@ const spanishCatalog = {
   "student.tui.status.retrying": "reintentando",
   "student.tui.status.reviewing": "revisando proyecto",
   "student.tui.status.starting": "preparando",
+  "student.tui.status.loadingSkills": "cargando instrucciones",
   "student.tui.status.thinking": "pensando",
   "student.tui.status.unrecoverable": "error no recuperable",
   "student.tui.status.waiting-answer": "esperando respuesta",

@@ -72,6 +72,16 @@ function requestDuration(policy: UsagePolicy): number | null {
 }
 
 /** One instance belongs to one logical gateway request; each provider retry reserves again. */
+function admissionFailureUsage(
+  code: string,
+  emitted: boolean,
+  usage: TokenUsage | null,
+): TokenUsage | null {
+  const rejected =
+    !emitted && usage === null && (code === "context-exceeded" || code === "context-unavailable");
+  return rejected ? { inputTokens: 0, outputTokens: 0 } : null;
+}
+
 export class BudgetedInferenceProvider implements InferenceProvider {
   private attempt = 0;
 
@@ -148,8 +158,10 @@ export class BudgetedInferenceProvider implements InferenceProvider {
       }
       throw invalidUsage();
     } catch (error) {
-      if (!settlement.done) settle(null);
       const failure = inferenceFailure(error);
+      if (!settlement.done) {
+        settle(admissionFailureUsage(failure.code, emitted, usage));
+      }
       code = failure.code;
       retryBlockedBy = admissionDenial(
         reservation.policy,

@@ -31,7 +31,7 @@ export interface StatusLine {
 }
 
 function labelFor(state: StatusState, copy: StatusCopy): string {
-  return state.activity === "tool" ? state.toolName : copy[state.activity];
+  return state.activity === "tool" ? state.toolName : (copy[state.activity] ?? copy.starting);
 }
 
 /**

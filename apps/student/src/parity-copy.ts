@@ -91,6 +91,7 @@ export function createParityCopy(translator: Translator): ParityCopy {
       retrying: translator.t("student.tui.status.retrying"),
       reviewing: translator.t("student.tui.status.reviewing"),
       starting: translator.t("student.tui.status.starting"),
+      loadingSkills: translator.t("student.tui.status.loadingSkills"),
       thinking: translator.t("student.tui.status.thinking"),
       unrecoverable: translator.t("student.tui.status.unrecoverable"),
       waitingAnswer: translator.t("student.tui.status.waiting-answer"),

@@ -68,7 +68,7 @@ export function createRuntimeReadTools(options: RuntimeReadToolsOptions): readon
     tools.push({
       name: "marea_read_skill",
       description:
-        "Read a frozen didactic skill. Arguments: skillId from the run manifest, path must name a file (SKILL.md or an exact resource file referenced there), not a directory. Do not guess resource paths." +
+        "Read an auxiliary file from a frozen didactic skill; mandatory SKILL.md instructions are already loaded. Arguments: skillId from the run manifest, path must name a file (SKILL.md or an exact resource file referenced there), not a directory. Do not guess resource paths." +
         PAGING,
       execute: (input) => {
         const parsed = SkillPathSchema.parse(input);

@@ -79,7 +79,7 @@ export interface ConversationApproval {
 
 export interface ConversationSnapshot {
   /** Generic internal work; never carries private tool names or reasoning text. */
-  readonly activity?: "thinking" | undefined;
+  readonly activity?: "thinking" | "loadingSkills" | undefined;
   readonly questions?: QuestionsRequest;
   readonly approval: ConversationApproval | null;
   /** Classified failure while status is "failed"; absent otherwise. */
@@ -132,7 +132,11 @@ export interface ConversationCopy {
 
 /** What both the controller and the session offer for the turn in progress. */
 interface ConversationTurnSurface {
-  thinking(messageId?: ConversationMessageId, attemptId?: ConversationAttemptId): boolean;
+  thinking(
+    messageId?: ConversationMessageId,
+    attemptId?: ConversationAttemptId,
+    activity?: "thinking" | "loadingSkills",
+  ): boolean;
   appendAssistantText(
     text: string,
     messageId?: ConversationMessageId,
