@@ -79,6 +79,101 @@ it("reports bounded streamed byte totals before the download finishes", async ()
   expect(progress.mock.calls).toEqual([[3], [6]]);
 });
 
+/** Serves one byte after each delay and fails the body as soon as the request is aborted. */
+const pacedFetch =
+  (delays: number[]) =>
+  (_url: string, init?: RequestInit): Promise<Response> => {
+    const signal = init?.signal ?? new AbortController().signal;
+    const pending = [...delays];
+    return Promise.resolve(
+      new Response(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            signal.addEventListener("abort", () => {
+              controller.error(signal.reason);
+            });
+          },
+          pull(controller) {
+            const delay = pending.shift();
+            if (delay === undefined) {
+              controller.close();
+              return;
+            }
+            return new Promise<void>((resolve) =>
+              setTimeout(() => {
+                controller.enqueue(Buffer.from("x"));
+                resolve();
+              }, delay),
+            );
+          },
+        }),
+      ),
+    );
+  };
+
+it("lets a slow but steady download run longer than the idle limit", async () => {
+  vi.useFakeTimers();
+  try {
+    const signals: (AbortSignal | null | undefined)[] = [];
+    const paced = pacedFetch([20_000, 20_000, 20_000, 20_000]);
+    const download = boundedDownload(
+      (url, init) => {
+        signals.push(init?.signal);
+        return paced(url, init);
+      },
+      "https://test",
+      4,
+    );
+    await vi.advanceTimersByTimeAsync(80_000);
+    expect(Buffer.from(await download).toString()).toBe("xxxx");
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(signals.map((signal) => signal?.aborted)).toEqual([false]);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("aborts a download that stops receiving data for the idle limit", async () => {
+  vi.useFakeTimers();
+  try {
+    const progress = vi.fn();
+    let outcome = "pending";
+    void boundedDownload(pacedFetch([0, 3_600_000]), "https://test", 2, {}, progress).then(
+      () => (outcome = "completed"),
+      () => (outcome = "aborted"),
+    );
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect([outcome, progress.mock.calls]).toEqual(["pending", [[1]]]);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(outcome).toBe("aborted");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("aborts a request whose response headers never arrive", async () => {
+  vi.useFakeTimers();
+  try {
+    let outcome = "pending";
+    const silent = (_url: string, init?: RequestInit) =>
+      new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () => {
+          reject(new Error("aborted"));
+        });
+      });
+    void boundedDownload(silent, "https://test", 1).then(
+      () => (outcome = "completed"),
+      () => (outcome = "aborted"),
+    );
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect(outcome).toBe("pending");
+    await vi.advanceTimersByTimeAsync(1);
+    expect(outcome).toBe("aborted");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 it("reports signature verification, per-file streamed totals and authenticated completion", async () => {
   const binary = Buffer.alloc(1_572_864);
   const license = Buffer.alloc(262_144);

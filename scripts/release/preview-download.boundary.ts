@@ -29,6 +29,9 @@ export interface DownloadPorts {
   readonly progress?: Pick<InstallationProgress, "stage" | "update">;
 }
 
+/** Silence that aborts a download; a slow but steady connection may take as long as it needs. */
+export const downloadIdleTimeoutMs = 30_000;
+
 /** Bounds the streamed body as well as time; an absent or dishonest Content-Length is not trusted. */
 export async function boundedDownload(
   fetcher: PreviewFetch,
@@ -37,7 +40,33 @@ export async function boundedDownload(
   init: RequestInit = {},
   progress?: (bytes: number) => void,
 ): Promise<Uint8Array> {
-  const response = await fetcher(url, { ...init, signal: AbortSignal.timeout(30_000) });
+  const idle = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const rearm = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      idle.abort();
+    }, downloadIdleTimeoutMs);
+  };
+  rearm();
+  try {
+    return await streamDownload(fetcher, url, limit, { ...init, signal: idle.signal }, (bytes) => {
+      rearm();
+      progress?.(bytes);
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function streamDownload(
+  fetcher: PreviewFetch,
+  url: string,
+  limit: number,
+  init: RequestInit,
+  progress: (bytes: number) => void,
+): Promise<Uint8Array> {
+  const response = await fetcher(url, init);
   if (!response.ok || response.body === null) {
     await response.body?.cancel();
     const retryAfter = Number(response.headers.get("retry-after"));
@@ -63,7 +92,7 @@ export async function boundedDownload(
       if (size > limit)
         throw new DownloadResponseError("Release download exceeds size limit", false);
       chunks.push(part.value);
-      progress?.(size);
+      progress(size);
     }
   } finally {
     await reader.cancel();
