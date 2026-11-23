@@ -28,8 +28,6 @@ export type StudentConversationPort = Pick<
   | "thinking"
   | "toolFinished"
   | "toolStarted"
-  | "suspend"
-  | "resume"
 >;
 
 export interface ConversationStudentInterfaceOptions {
@@ -55,8 +53,6 @@ export function adaptConversationTuiSession(
     ...(session.requestQuestions === undefined
       ? {}
       : { requestQuestions: session.requestQuestions.bind(session) }),
-    ...(session.suspend === undefined ? {} : { suspend: session.suspend.bind(session) }),
-    ...(session.resume === undefined ? {} : { resume: session.resume.bind(session) }),
     thinking: session.thinking.bind(session),
     toolFinished: session.toolFinished.bind(session),
     toolStarted: session.toolStarted.bind(session),
@@ -67,22 +63,10 @@ export function createConversationStudentInterface(
   options: ConversationStudentInterfaceOptions,
 ): StudentInterface {
   return Object.freeze({
-    authenticate: async (reason: AuthenticationReason, authentication: AuthenticationOptions) => {
-      options.conversation.suspend?.();
-      try {
-        return await options.authentication.authenticate(reason, authentication);
-      } finally {
-        options.conversation.resume?.();
-      }
-    },
-    chooseClass: async (classes: readonly SelectableClass[]) => {
-      options.conversation.suspend?.();
-      try {
-        return await options.authentication.chooseClass(classes);
-      } finally {
-        options.conversation.resume?.();
-      }
-    },
+    authenticate: (reason: AuthenticationReason, authentication: AuthenticationOptions) =>
+      options.authentication.authenticate(reason, authentication),
+    chooseClass: (classes: readonly SelectableClass[]) =>
+      options.authentication.chooseClass(classes),
     askQuestions: async (
       request: import("@marea/deepagents-adapter").QuestionRequest &
         import("./contracts.js").TurnAttemptIdentity,

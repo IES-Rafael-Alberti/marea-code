@@ -9,7 +9,7 @@ import { ApprovalIdSchema } from "@marea/protocol";
 import { describe, expect, it, vi } from "vitest";
 
 import type { ApprovalPrompt, StudentViewEvent } from "./contracts.js";
-import type { AuthenticationPrompt, StudentConversationPort } from "./conversation-interface.js";
+import type { AuthenticationPrompt } from "./conversation-interface.js";
 import {
   adaptConversationTuiSession,
   createConversationExitSignal,
@@ -34,27 +34,6 @@ function conversation(): ConversationController {
       messages: [],
       status: "ready",
     })),
-    thinking: vi.fn(() => true),
-    toolFinished: vi.fn(() => true),
-    toolStarted: vi.fn(() => true),
-  };
-}
-
-function suspendableConversationPort(
-  suspend: () => void,
-  resume: () => void,
-): StudentConversationPort {
-  return {
-    appendAssistantText: vi.fn(() => true),
-    cancel: vi.fn(() => true),
-    complete: vi.fn(() => true),
-    requestApproval: vi.fn(async (): Promise<"approved"> => "approved"),
-    resume: () => {
-      resume();
-    },
-    suspend: () => {
-      suspend();
-    },
     thinking: vi.fn(() => true),
     toolFinished: vi.fn(() => true),
     toolStarted: vi.fn(() => true),
@@ -271,60 +250,6 @@ describe("conversation student interface", () => {
       expect(session.requestApproval.mock.contexts[0]).toBe(session);
     },
   );
-
-  it("suspends and resumes the conversation around authentication and class prompts", async () => {
-    const order: string[] = [];
-    const suspend = vi.fn(() => order.push("suspend"));
-    const resume = vi.fn(() => order.push("resume"));
-    const authentication: AuthenticationPrompt = {
-      authenticate: vi.fn(async () => {
-        order.push("authenticate");
-        return { kind: "login", login: "student", password: "long-password" } as const;
-      }),
-      chooseClass: vi.fn(async () => {
-        order.push("chooseClass");
-        return "class:two";
-      }),
-    };
-    const conversationPort = suspendableConversationPort(suspend, resume);
-    const studentInterface = createConversationStudentInterface({
-      authentication,
-      conversation: conversationPort,
-    });
-
-    await studentInterface.authenticate("missing", { providers: [] });
-    await studentInterface.chooseClass([{ classId: "class:two", displayName: "Two" }]);
-    expect(order).toEqual([
-      "suspend",
-      "authenticate",
-      "resume",
-      "suspend",
-      "chooseClass",
-      "resume",
-    ]);
-  });
-
-  it("resumes the conversation even when the prompt rejects", async () => {
-    const suspend = vi.fn();
-    const resume = vi.fn();
-    const authentication: AuthenticationPrompt = {
-      authenticate: vi.fn(async () => {
-        throw new Error("prompt failed");
-      }),
-      chooseClass: vi.fn(async () => "class:two"),
-    };
-    const conversationPort = suspendableConversationPort(suspend, resume);
-    const studentInterface = createConversationStudentInterface({
-      authentication,
-      conversation: conversationPort,
-    });
-
-    await expect(studentInterface.authenticate("missing", { providers: [] })).rejects.toThrow(
-      "prompt failed",
-    );
-    expect(suspend).toHaveBeenCalledOnce();
-    expect(resume).toHaveBeenCalledOnce();
-  });
 });
 it.each(["execute", "edit_file"])(
   "presents reviewed %s arguments and the command's permission warning",

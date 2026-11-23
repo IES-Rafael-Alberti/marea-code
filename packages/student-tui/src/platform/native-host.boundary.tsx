@@ -10,9 +10,6 @@ import { useSyncExternalStore, type ReactNode } from "react";
 export interface OpenTuiHost {
   dispose(): void;
   render(node: ReactNode): void;
-  /** Pauses the renderer and releases raw mode so an external prompt can own the terminal. */
-  suspend?(): void;
-  resume?(): void;
 }
 
 export async function createNativeOpenTuiHost(
@@ -52,7 +49,6 @@ export async function createNativeOpenTuiHost(
     throw new Error("OpenTUI React root creation failed.");
   }
   let disposed = false;
-  let suspended = false;
 
   return Object.freeze({
     dispose(): void {
@@ -71,16 +67,6 @@ export async function createNativeOpenTuiHost(
       if (disposed) return;
       screen = node;
       for (const listener of listeners) listener();
-    },
-    resume(): void {
-      if (disposed || !suspended) return;
-      suspended = false;
-      renderer.resume();
-    },
-    suspend(): void {
-      if (disposed || suspended) return;
-      suspended = true;
-      renderer.suspend();
     },
   });
 }

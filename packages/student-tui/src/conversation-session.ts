@@ -141,12 +141,6 @@ export function createConversationTuiSession(
     },
     resumeTurn: () => active(() => controller.resumeTurn()),
     snapshot: (): ConversationSnapshot => controller.snapshot(),
-    suspend: (): void => {
-      if (!settled) options.view.suspend?.();
-    },
-    resume: (): void => {
-      if (!settled) options.view.resume?.();
-    },
     thinking: (messageId?: string, attemptId?: string, activity?: "thinking" | "loadingSkills") =>
       active(() => controller.thinking(messageId, attemptId, activity)),
     toolFinished: (

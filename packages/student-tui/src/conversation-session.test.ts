@@ -290,28 +290,6 @@ describe("conversation TUI session", () => {
     expect(target.binding.session.retry?.()).toBe(false);
     expect(target.binding.session.fail()).toBe(false);
   });
-
-  it("suspends and resumes the underlying view while an external prompt owns the terminal", () => {
-    const suspend = vi.fn();
-    const resume = vi.fn();
-    const binding = createConversationTuiSession({
-      onMessage: () => Promise.resolve(),
-      setExitCode: vi.fn(),
-      signals: createSignalHarness().source,
-      view: { dispose: vi.fn(), render: vi.fn(), resume, suspend },
-    });
-
-    binding.session.suspend?.();
-    binding.session.resume?.();
-    expect(suspend).toHaveBeenCalledOnce();
-    expect(resume).toHaveBeenCalledOnce();
-
-    binding.session.close();
-    binding.session.suspend?.();
-    binding.session.resume?.();
-    expect(suspend).toHaveBeenCalledOnce();
-    expect(resume).toHaveBeenCalledOnce();
-  });
 });
 
 it("binds question requests to the active session and refuses them after closure", async () => {
