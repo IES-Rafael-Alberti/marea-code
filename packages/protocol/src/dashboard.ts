@@ -2,7 +2,7 @@ import * as z from "zod";
 
 import { DashboardCursorSchema, RequestIdSchema, RunIdSchema } from "./identifiers.js";
 import { UtcTimestampSchema } from "./runs.js";
-import { SafeDisplayNameSchema } from "./technical.js";
+import { ProjectDisplayNameSchema, SafeDisplayNameSchema } from "./technical.js";
 import { CurrentProtocolVersionSchema } from "./version.js";
 
 export const ActiveRunDashboardQuerySchema = z
@@ -21,7 +21,7 @@ const ActiveRunDashboardItemSchema = z
     runId: RunIdSchema,
     studentDisplayName: SafeDisplayNameSchema,
     classDisplayName: SafeDisplayNameSchema,
-    projectDisplayName: SafeDisplayNameSchema,
+    projectDisplayName: ProjectDisplayNameSchema,
     state: z.literal("active"),
     startedAt: UtcTimestampSchema,
     lastActivityAt: UtcTimestampSchema,
