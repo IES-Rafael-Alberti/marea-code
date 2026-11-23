@@ -9,6 +9,7 @@ const spawn = vi.mocked(childProcess.spawnSync);
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.resetAllMocks();
+  vi.restoreAllMocks();
 });
 
 type ResultOverrides = Partial<childProcess.SpawnSyncReturns<string>>;
@@ -176,7 +177,7 @@ describe("checkWindowsPrivatePath", () => {
   );
 
   it("rejects a non-local path without spawning", () => {
-    const error = capturePrivateError(() => checkWindowsPrivatePath("relative", "inspect"));
+    const error = capturePrivateError(() => checkWindowsPrivatePath("relative//server", "inspect"));
     expect(error.diagnosticCode).toBe("private-fs.unexpected");
     expect(spawn).not.toHaveBeenCalled();
   });
@@ -184,6 +185,7 @@ describe("checkWindowsPrivatePath", () => {
   it.each(["spawn-failed", "timeout", "set-acl-failed"])(
     "retries the transient reason %s once and recovers",
     (reason) => {
+      const wait = vi.spyOn(Atomics, "wait").mockReturnValue("timed-out");
       if (reason === "spawn-failed") {
         spawn.mockReturnValueOnce(result({ stdout: "file", error: new Error("blocked") }));
       } else if (reason === "timeout") {
@@ -194,6 +196,14 @@ describe("checkWindowsPrivatePath", () => {
       spawn.mockReturnValueOnce(result({ stdout: "file", status: 0 }));
       expect(checkWindowsPrivatePath("C:/state", "inspect")).toBe("file");
       expect(spawn).toHaveBeenCalledTimes(2);
+      expect(wait).toHaveBeenCalledExactlyOnceWith(expect.any(Int32Array), 0, 0, 250);
+      expect(wait.mock.calls[0]?.[0]).toEqual(new Int32Array(1));
+      expect(wait.mock.invocationCallOrder[0]).toBeGreaterThan(
+        Number(spawn.mock.invocationCallOrder[0]),
+      );
+      expect(wait.mock.invocationCallOrder[0]).toBeLessThan(
+        Number(spawn.mock.invocationCallOrder[1]),
+      );
     },
   );
 

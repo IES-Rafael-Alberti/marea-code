@@ -15,3 +15,8 @@ it("applies optional provider constraints and localized errors", () => {
   expect(identityFieldError(rule, "A", "eu")).toBe("Baliogabea");
   expect(identityFieldError({ ...rule, normalize: "lowercase-trim" }, " ABC ", "en")).toBe("");
 });
+
+it("validates Unicode code points in provider patterns", () => {
+  expect(identityFieldError({ ...rule, pattern: "^\\p{L}+$" }, "é", "en")).toBe("");
+  expect(identityFieldError({ ...rule, pattern: "^\\p{L}+$" }, "1", "en")).toBe("Invalid");
+});

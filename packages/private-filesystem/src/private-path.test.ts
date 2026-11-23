@@ -79,7 +79,7 @@ describe("Windows dispatch", () => {
   it("throws a typed error with the reason and the secure message", () => {
     Object.defineProperty(process, "platform", { value: "win32" });
     vi.spyOn(windows, "checkWindowsPrivatePath").mockImplementation(() => {
-      throw new PrivateFilesystemError("private-fs.reparse-point");
+      throw new PrivateFilesystemError("private-fs.reparse-point", "Unsafe provider details");
     });
     try {
       securePrivatePath("C:\\state", 0o700);
