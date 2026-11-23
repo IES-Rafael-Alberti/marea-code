@@ -396,6 +396,23 @@ describe("external identity service", () => {
     expect(test.opened).toHaveLength(5);
   });
 
+  it("never reuses a flow consumed by a duplicate completion while waiting for a slot", async () => {
+    const test = fixture({ maxCompletions: 1 });
+    const release = Promise.withResolvers<undefined>();
+    test.provider.pending = release.promise.then(() => undefined);
+    const busy = started(test);
+    const running = test.service.complete(completion(busy.response.flowId, busy.request.state));
+    const duplicated = started(test);
+    const request = completion(duplicated.response.flowId, duplicated.request.state);
+    const first = test.service.complete(request);
+    const second = test.service.complete(request);
+    release.resolve(undefined);
+    await running;
+    await expect(first).resolves.toMatchObject({ kind: "external-authenticated" });
+    await expect(second).rejects.toEqual(expect.objectContaining({ code: "auth.invalid" }));
+    expect(test.opened).toHaveLength(2);
+  });
+
   it("bounds provider calls with a default timeout", async () => {
     const test = fixture({ timeout: false });
     const { response, request } = started(test);

@@ -26,7 +26,8 @@ import type {
 const FLOW_DURATION_MS = 10 * 60 * 1_000;
 const MAX_PENDING_FLOWS = 256;
 const DEFAULT_MAX_CONCURRENT_COMPLETIONS = 16;
-const COMPLETION_SLOT_WAIT_MS = 15_000;
+/** Slot wait plus the provider budget must stay below the student client's 30 s request timeout. */
+const COMPLETION_SLOT_WAIT_MS = 8_000;
 const PROVIDER_TIMEOUT_MS = 20_000;
 
 interface PendingFlow {
@@ -48,7 +49,7 @@ export interface ExternalIdentityServiceDependencies {
   readonly timeout?: (milliseconds: number) => AbortSignal;
   /** Upper bound of simultaneous provider verifications; defaults to 16. */
   readonly maxConcurrentCompletions?: number;
-  /** How long a completion waits for a slot before returning auth.busy; defaults to 15 s. */
+  /** How long a completion waits for a slot before returning auth.busy; defaults to 8 s. */
   readonly completionWaitTimeoutMs?: number;
 }
 
@@ -146,6 +147,16 @@ export class ExternalIdentityService {
     // Validate before waiting and consume only once a slot is held, so a busy
     // or timed-out completion keeps its flow for the same code/state to retry.
     if (!(await this.acquireCompletionSlot())) throw new TeacherDomainError("auth.busy");
+    // A duplicate completion of the same flow may have consumed it while this one waited,
+    // and the flow may have expired meanwhile: never reuse a consumed or stale code.
+    if (
+      this.#flows.get(request.flowId) !== flow ||
+      flow.expiresAt <= Date.parse(this.#dependencies.clock.now())
+    ) {
+      this.#flows.delete(request.flowId);
+      this.releaseCompletionSlot();
+      throw new TeacherDomainError("auth.invalid");
+    }
     this.#flows.delete(request.flowId);
     try {
       const identity = await this.verifiedAccount(flow, request.code);
