@@ -323,7 +323,7 @@ async function createStartupTranslator(
   const saved = await createStudentLanguagePreferenceStore(stateRoot).load();
   const resolution = resolveStudentLocale({
     commandLine: undefined,
-    environment: environment.MAREA_LANG?.trim(),
+    environment: environment.MAREA_LANG,
     saved,
     system: systemLocaleCandidates(environment),
   });
