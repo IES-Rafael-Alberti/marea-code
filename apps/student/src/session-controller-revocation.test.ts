@@ -66,13 +66,14 @@ it.each([false, true])(
         "The active run token is unavailable.",
       );
       expect(append).toHaveBeenCalledTimes(1);
+      expect(fixture.state.state.run?.closeReason).toBe("student-exit");
     } else {
       await fixture.controller.close();
       expect(append).toHaveBeenCalledTimes(2);
       expect(append.mock.calls[1]?.[1]).toEqual(append.mock.calls[0]?.[1]);
-      expect(fixture.state.state.run?.phase).toBe("closed");
+      // A server-confirmed close clears the local run: the server holds the history.
+      expect(fixture.state.state.run).toBeNull();
     }
     expect(fixture.server.openRequests).toHaveLength(2);
-    expect(fixture.state.state.run?.closeReason).toBe("student-exit");
   },
 );

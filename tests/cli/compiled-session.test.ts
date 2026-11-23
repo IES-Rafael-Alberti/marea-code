@@ -211,7 +211,8 @@ describe("compiled marea OpenTUI acceptance", { concurrent: false }, () => {
       const state = parseStudentState(
         JSON.parse(await readFile(join(stateDirectory, "session.json"), "utf8")),
       );
-      expect(state.run).toMatchObject({ phase: "closed" });
+      // The server confirmed the close, so the client keeps no local run state.
+      expect(state.run).toBeNull();
       expect((await stat(join(stateDirectory, "credential.json"))).size).toBeGreaterThan(0);
       expect((await stat(join(stateDirectory, "agent", "checkpoints.bin"))).size).toBeGreaterThan(
         0,

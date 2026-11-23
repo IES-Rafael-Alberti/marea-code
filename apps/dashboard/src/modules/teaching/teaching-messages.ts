@@ -54,7 +54,7 @@ export function teachingMessages(locale: Locale) {
         problems: {
           load: "Classes could not be loaded.",
           invalid:
-            "Check the settings and shorten the instructions: the complete prompt, including safety rules and selected skills, must fit within 256 KiB.",
+            "The server rejected the configuration. Check the fields; the complete instructions, including safety rules and selected skills, must fit within 256 KiB.",
           forbidden: "You do not have access to this class.",
           conflict: "The saved configuration changed while you were editing.",
           uncertain: "The save outcome is unknown. Your draft is preserved.",
@@ -133,7 +133,7 @@ export function teachingMessages(locale: Locale) {
           problems: {
             load: "Ezin izan dira ikasgelak kargatu.",
             invalid:
-              "Egiaztatu ezarpenak eta laburtu jarraibideak: prompt osoak, segurtasun-arauak eta hautatutako trebetasunak barne, 256 KiB-ko mugaren barruan egon behar du.",
+              "Zerbitzariak konfigurazioa baztertu du. Egiaztatu eremuak; jarraibide osoek, segurtasun-arauak eta hautatutako trebetasunak barne, 256 KiB-ko mugaren barruan egon behar dute.",
             forbidden: "Ez duzu ikasgela honetarako sarbiderik.",
             conflict: "Gordetako konfigurazioa aldatu egin da editatzen ari zinela.",
             uncertain: "Ez dago gordetzearen emaitza berretsita. Zure zirriborroa mantendu da.",
@@ -212,7 +212,7 @@ export function teachingMessages(locale: Locale) {
           problems: {
             load: "No se han podido cargar las clases.",
             invalid:
-              "Revisa la configuración y acorta las instrucciones: el prompt completo, incluidas las reglas de seguridad y las habilidades seleccionadas, debe caber en 256 KiB.",
+              "El servidor ha rechazado la configuración. Revisa los campos; las instrucciones completas, incluidas las reglas de seguridad y las habilidades seleccionadas, deben caber en 256 KiB.",
             forbidden: "No tienes acceso a esta clase.",
             conflict: "La configuración guardada ha cambiado mientras editabas.",
             uncertain: "El resultado del guardado es desconocido. Tu borrador se conserva.",
