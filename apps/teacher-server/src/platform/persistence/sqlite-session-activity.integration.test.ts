@@ -170,6 +170,18 @@ it("slides authenticated teacher activity without reviving sessions or exceeding
   ).toEqual({ expires_at: "2026-09-12T10:40:00.000Z" });
   f.identities.revokeSession("capped-teacher", "2026-09-12T10:30:00.000Z");
   expect(f.identities.resolveSession("capped-teacher", "2026-09-12T10:31:00.000Z")).toBeUndefined();
+  signIn("disabled-teacher", "user:teacher", OPENED, "2026-09-12T10:30:00.000Z");
+  f.database.execute(
+    "UPDATE marea_governance_accounts SET state = 'disabled' WHERE user_id = 'user:teacher'",
+  );
+  expect(
+    f.identities.resolveSession("disabled-teacher", "2026-09-12T10:29:00.000Z"),
+  ).toBeUndefined();
+  expect(
+    f.database.readOne(
+      "SELECT expires_at FROM marea_auth_sessions WHERE token_hash = 'disabled-teacher'",
+    ),
+  ).toEqual({ expires_at: "2026-09-12T10:30:00.000Z" });
 });
 
 it("counts only current owned lease presence using the server clock", () => {

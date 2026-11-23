@@ -411,3 +411,17 @@ it.each(["0.1.0-preview.6", "9.0.0-preview.1"])(
     });
   },
 );
+
+it("records presence activity only after authenticating the current run lease", async () => {
+  const app = createApplication(createServices(new RecordingProvider()));
+  extendedSessions.length = 0;
+  const heartbeat = (token: string) =>
+    fetchJson(app, request("/v1/runs/presence", { requestId: "presence" }, token));
+  const accepted = await heartbeat(RUN_TOKEN);
+  expect(accepted.response.status).toBe(200);
+  expect(JSON.parse(accepted.text)).toEqual({ requestId: "presence" });
+  expect(extendedSessions).toEqual([[RUN_TOKEN, "run:one"]]);
+  extendedSessions.length = 0;
+  expect((await heartbeat("invalid")).response.status).toBe(409);
+  expect(extendedSessions).toEqual([]);
+});
