@@ -207,6 +207,20 @@ export class SqliteIdentityRepository implements IdentityRepository {
   }
 
   public resolveSession(tokenHash: string, now: string): AuthenticatedIdentity | undefined {
+    // Dashboard HTTP activity and live checks share this authentication boundary.
+    // A single guarded update cannot revive an expired or revoked teacher session.
+    this.#database.execute(
+      `UPDATE marea_auth_sessions
+        SET expires_at = min(strftime('%Y-%m-%dT%H:%M:%fZ', ?2, '+30 minutes'),
+          strftime('%Y-%m-%dT%H:%M:%fZ', issued_at, '+8 hours'))
+        WHERE token_hash = ?1 AND revoked_at IS NULL AND expires_at > ?2
+          AND expires_at < min(strftime('%Y-%m-%dT%H:%M:%fZ', ?2, '+30 minutes'),
+            strftime('%Y-%m-%dT%H:%M:%fZ', issued_at, '+8 hours'))
+          AND EXISTS (SELECT 1 FROM marea_users users
+            WHERE users.id = marea_auth_sessions.user_id AND users.role = 'teacher'
+              AND ${activeGovernanceAccount("users.id")})`,
+      [tokenHash, now],
+    );
     const row = this.#database.readOne(
       this.classScoped() ? READ_CLASS_SCOPED_SESSION : READ_SESSION,
       [tokenHash, now],

@@ -148,3 +148,25 @@ describe("SQLite student session activity", () => {
     expect(extend("closing", "2026-09-12T10:56:00.000Z")).toBeUndefined();
   });
 });
+
+it("slides authenticated teacher activity without reviving sessions or exceeding eight hours", () => {
+  const { f, signIn } = classroom();
+  signIn("teacher", "user:teacher", OPENED, "2026-09-12T10:30:00.000Z");
+  const expiry = () =>
+    f.database.readOne("SELECT expires_at FROM marea_auth_sessions WHERE token_hash = 'teacher'");
+  expect(f.identities.resolveSession("teacher", "2026-09-12T10:29:00.000Z")?.role).toBe("teacher");
+  expect(expiry()).toEqual({ expires_at: "2026-09-12T10:59:00.000Z" });
+  expect(f.identities.resolveSession("teacher", "2026-09-12T10:59:00.000Z")).toBeUndefined();
+  expect(expiry()).toEqual({ expires_at: "2026-09-12T10:59:00.000Z" });
+  signIn("capped-teacher", "user:teacher", "2026-09-12T02:40:00.000Z", "2026-09-12T10:30:00.000Z");
+  expect(f.identities.resolveSession("capped-teacher", "2026-09-12T10:29:00.000Z")?.role).toBe(
+    "teacher",
+  );
+  expect(
+    f.database.readOne(
+      "SELECT expires_at FROM marea_auth_sessions WHERE token_hash = 'capped-teacher'",
+    ),
+  ).toEqual({ expires_at: "2026-09-12T10:40:00.000Z" });
+  f.identities.revokeSession("capped-teacher", "2026-09-12T10:30:00.000Z");
+  expect(f.identities.resolveSession("capped-teacher", "2026-09-12T10:31:00.000Z")).toBeUndefined();
+});
