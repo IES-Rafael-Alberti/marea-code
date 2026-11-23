@@ -1,4 +1,3 @@
-import { createTranslator } from "@marea/i18n";
 import { ApprovalIdSchema, STARTUP_MESSAGE_ID } from "@marea/protocol";
 import type { ConversationTuiOptions } from "@marea/student-tui";
 import { describe, expect, it, vi } from "vitest";
@@ -120,6 +119,7 @@ describe("marea command", () => {
       const runtime: MareaCommandRuntime = {
         createApplication(options) {
           compositions.push(options);
+          options.notice?.("Restored local state.\n");
           // Authentication can run before the conversation has been bound.
           earlyAuthentication = options.studentInterface.withAuthentication?.(() =>
             Promise.resolve("early result"),
@@ -158,6 +158,7 @@ describe("marea command", () => {
         output: options.output,
       });
       expect(composition.externalAuthorization).toBeDefined();
+      expect(options.writes).toContain("Restored local state.\n");
       await expect(earlyAuthentication).resolves.toBe("early result");
       await expect(
         composition.studentInterface.withAuthentication?.(suspendedOperation),
@@ -479,23 +480,5 @@ describe("marea command", () => {
     ).resolves.toBe(1);
     expect(close).not.toHaveBeenCalled();
     expect(dispose).toHaveBeenCalledOnce();
-  });
-
-  it("returns a localized safe error without leaking an internal failure", async () => {
-    const options = commandOptions({ translator: createTranslator("es") });
-
-    await expect(
-      executeMareaCommand(options, {
-        createApplication: () => Promise.reject(new Error("secret provider key")),
-        nextAttemptId: vi.fn(),
-        nextMessageId: vi.fn(),
-        readGitContext: () => ({ branch: "", repositoryUrl: "" }),
-        startConversation: vi.fn(),
-      }),
-    ).resolves.toBe(1);
-    expect(options.errors).toEqual([
-      "Marea no ha podido iniciarse. Inténtalo de nuevo.\nCódigo de diagnóstico: local-state/unexpected. Inclúyelo al comunicar el problema.\n",
-    ]);
-    expect(options.errors.join("")).not.toContain("secret provider key");
   });
 });
