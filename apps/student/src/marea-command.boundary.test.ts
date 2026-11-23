@@ -164,6 +164,7 @@ describe("marea command", () => {
         composition.studentInterface.withAuthentication?.(suspendedOperation),
       ).resolves.toBe("suspended result");
       expect(withTerminalSuspended).toHaveBeenCalledWith(suspendedOperation);
+      expect(suspendedOperation).toHaveBeenCalledExactlyOnceWith();
       await expect(
         composition.studentInterface.withAuthentication?.(() => Promise.resolve("signed in")),
       ).resolves.toBe("signed in");
