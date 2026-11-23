@@ -38,7 +38,7 @@ const TRANSPORT_SYSTEM_CODES: ReadonlySet<string> = new Set([
   "redirect-rejected",
 ]);
 
-export interface StudentHttpTransportCause {
+interface StudentHttpTransportCause {
   readonly name: string;
   readonly code: string;
 }

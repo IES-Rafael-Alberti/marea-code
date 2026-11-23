@@ -1,20 +1,14 @@
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as privacy from "@marea/private-filesystem";
-import { afterEach, expect, it, vi } from "vitest";
+import { expect, it, vi } from "vitest";
 import {
   securePrivateDirectory,
   securePrivateFileParent,
 } from "./private-file-windows.boundary.js";
 
-const platform = process.platform;
-const roots: string[] = [];
-afterEach(async () => {
-  Object.defineProperty(process, "platform", { value: platform });
-  vi.restoreAllMocks();
-  await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
-});
+import { useWindowsPlatformSandbox } from "./windows-platform.fixture.js";
+
+const temporaryRoot = useWindowsPlatformSandbox("marea-win-memo-");
 
 it("secures and marks a Windows directory as verified", () => {
   Object.defineProperty(process, "platform", { value: "win32" });
@@ -59,8 +53,7 @@ it("secures an unverified Windows parent directory", () => {
 });
 
 it("verifies a Windows directory once across many file-parent protections", async () => {
-  const root = await mkdtemp(join(tmpdir(), "marea-win-memo-"));
-  roots.push(root);
+  const root = await temporaryRoot();
   Object.defineProperty(process, "platform", { value: "win32" });
   const secure = vi.spyOn(privacy, "securePrivatePath").mockReturnValue(undefined);
   // Real mark/is verify the memoization: one secure for the directory, none for files.

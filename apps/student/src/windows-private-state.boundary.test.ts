@@ -1,20 +1,14 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import * as privacy from "@marea/private-filesystem";
-import { afterEach, expect, it, vi } from "vitest";
+import { expect, it, vi } from "vitest";
 import { readPrivateTextFile } from "./filesystem.boundary.js";
 
-const platform = process.platform;
-const roots: string[] = [];
-afterEach(async () => {
-  Object.defineProperty(process, "platform", { value: platform });
-  vi.restoreAllMocks();
-  await Promise.all(roots.splice(0).map((path) => rm(path, { recursive: true, force: true })));
-});
+import { useWindowsPlatformSandbox } from "./windows-platform.fixture.js";
+
+const temporaryRoot = useWindowsPlatformSandbox("marea-windows-state-");
 async function fixture(): Promise<string> {
-  const root = await mkdtemp(join(tmpdir(), "marea-windows-state-"));
-  roots.push(root);
+  const root = await temporaryRoot();
   const file = join(root, "credential.json");
   await writeFile(file, "sensitive synthetic credential", { mode: 0o600 });
   return file;

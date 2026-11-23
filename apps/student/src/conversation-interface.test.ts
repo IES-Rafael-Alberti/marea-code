@@ -40,6 +40,27 @@ function conversation(): ConversationController {
   };
 }
 
+function suspendableConversationPort(
+  suspend: () => void,
+  resume: () => void,
+): StudentConversationPort {
+  return {
+    appendAssistantText: vi.fn(() => true),
+    cancel: vi.fn(() => true),
+    complete: vi.fn(() => true),
+    requestApproval: vi.fn(async (): Promise<"approved"> => "approved"),
+    resume: () => {
+      resume();
+    },
+    suspend: () => {
+      suspend();
+    },
+    thinking: vi.fn(() => true),
+    toolFinished: vi.fn(() => true),
+    toolStarted: vi.fn(() => true),
+  };
+}
+
 describe("conversation student interface", () => {
   it("delegates preflight authentication, approval, and presentation to the TUI contract", async () => {
     const authentication: AuthenticationPrompt = {
@@ -265,17 +286,7 @@ describe("conversation student interface", () => {
         return "class:two";
       }),
     };
-    const conversationPort: StudentConversationPort = {
-      appendAssistantText: vi.fn(() => true),
-      cancel: vi.fn(() => true),
-      complete: vi.fn(() => true),
-      requestApproval: vi.fn(async (): Promise<"approved"> => "approved"),
-      resume,
-      suspend,
-      thinking: vi.fn(() => true),
-      toolFinished: vi.fn(() => true),
-      toolStarted: vi.fn(() => true),
-    };
+    const conversationPort = suspendableConversationPort(suspend, resume);
     const studentInterface = createConversationStudentInterface({
       authentication,
       conversation: conversationPort,
@@ -302,17 +313,7 @@ describe("conversation student interface", () => {
       }),
       chooseClass: vi.fn(async () => "class:two"),
     };
-    const conversationPort: StudentConversationPort = {
-      appendAssistantText: vi.fn(() => true),
-      cancel: vi.fn(() => true),
-      complete: vi.fn(() => true),
-      requestApproval: vi.fn(async (): Promise<"approved"> => "approved"),
-      resume,
-      suspend,
-      thinking: vi.fn(() => true),
-      toolFinished: vi.fn(() => true),
-      toolStarted: vi.fn(() => true),
-    };
+    const conversationPort = suspendableConversationPort(suspend, resume);
     const studentInterface = createConversationStudentInterface({
       authentication,
       conversation: conversationPort,
