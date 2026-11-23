@@ -61,7 +61,7 @@ import type {
 } from "./contracts.js";
 import { CURRENT_STUDENT_STATE_VERSION } from "./contracts.js";
 import { LocalSession } from "./local-session.js";
-import { StudentSessionController } from "./session-controller.js";
+import { StudentSessionController, type StudentStartupStage } from "./session-controller.js";
 import { DIGEST, snapshot } from "./student-snapshot.fixture.js";
 
 export { DIGEST } from "./student-snapshot.fixture.js";
@@ -426,6 +426,7 @@ export function createFixtureController(
     readonly operations?: OperationExecutor;
     readonly evidence?: ProjectEvidence;
     readonly liveProgress?: boolean;
+    readonly onStartupStage?: (stage: StudentStartupStage) => void;
     readonly credentials?: MemoryCredentialStore;
     readonly server?: FixtureServer;
     readonly state?: MemoryStateStore;
@@ -447,6 +448,7 @@ export function createFixtureController(
       ...(options.operations === undefined ? {} : { operations: options.operations }),
       ...(options.evidence === undefined ? {} : { evidence: options.evidence }),
       ...(options.liveProgress === undefined ? {} : { liveProgress: options.liveProgress }),
+      ...(options.onStartupStage === undefined ? {} : { onStartupStage: options.onStartupStage }),
       ...(options.classPreference === undefined
         ? {}
         : { classPreference: options.classPreference }),

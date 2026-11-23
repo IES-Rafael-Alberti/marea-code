@@ -24,6 +24,31 @@ async function restartFixture(fixture: ReturnType<typeof createFixtureController
 }
 
 describe("StudentSessionController", () => {
+  it("reports the granular startup stages in execution order", async () => {
+    const stages: string[] = [];
+    const fixture = createFixtureController({
+      onStartupStage: (stage) => stages.push(stage),
+    });
+
+    await fixture.controller.start("Project One");
+
+    expect([...new Set(stages)]).toEqual([
+      "capabilities",
+      "authentication",
+      "bootstrap",
+      "run-open",
+      "outbox",
+    ]);
+
+    const startupReportCount = stages.length;
+    await fixture.controller.sendMessage(
+      "message:startup-stage-scope",
+      "Continue.",
+      new AbortController().signal,
+    );
+    expect(stages).toHaveLength(startupReportCount);
+  });
+
   it("enrolls once, resumes with its stored session, and completes an approved write", async () => {
     const first = createFixtureController();
     const session = await first.controller.start("Project One");

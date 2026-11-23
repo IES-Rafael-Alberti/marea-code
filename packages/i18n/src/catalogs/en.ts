@@ -4,6 +4,8 @@ const englishCatalog = {
   "bootstrap.checking-connection": "Checking the connection to the teacher server…",
   "bootstrap.connection-failed":
     "Could not connect to the teacher server. Check your connection and try again.",
+  "bootstrap.connection-failed-at":
+    "Could not connect to the teacher server at {{origin}}. Check the address, your connection, and that the server is running.",
   "bootstrap.login-required": "Sign in to connect Marea to your teacher server.",
   "bootstrap.ready": "Marea is ready.",
   "bootstrap.resuming-session": "Resuming your session…",

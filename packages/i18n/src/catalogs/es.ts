@@ -4,6 +4,8 @@ const spanishCatalog = {
   "bootstrap.checking-connection": "Comprobando la conexión con el servidor del profesor…",
   "bootstrap.connection-failed":
     "No se ha podido conectar con el servidor del profesor. Comprueba la conexión e inténtalo de nuevo.",
+  "bootstrap.connection-failed-at":
+    "No se ha podido conectar con el servidor del profesor en {{origin}}. Comprueba la dirección, la conexión y que el servidor está en funcionamiento.",
   "bootstrap.login-required": "Inicia sesión para conectar Marea con tu servidor del profesor.",
   "bootstrap.ready": "Marea está lista.",
   "bootstrap.resuming-session": "Reanudando tu sesión…",
