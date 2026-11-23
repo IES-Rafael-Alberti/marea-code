@@ -3,7 +3,7 @@ import * as z from "zod";
 import { SafeStudentPrincipalSchema } from "./auth.js";
 import { RequestIdSchema, RunIdSchema } from "./identifiers.js";
 import { ModelAliasSchema } from "./runs.js";
-import { RevisionIdSchema, SafeDisplayNameSchema } from "./technical.js";
+import { ProjectDisplayNameSchema, RevisionIdSchema, SafeDisplayNameSchema } from "./technical.js";
 import { CurrentProtocolVersionSchema } from "./version.js";
 
 export const ClassBootstrapRequestSchema = z
@@ -18,7 +18,7 @@ export const ClassBootstrapRequestSchema = z
 const ActiveStudentRunSchema = z
   .object({
     runId: RunIdSchema,
-    projectDisplayName: SafeDisplayNameSchema,
+    projectDisplayName: ProjectDisplayNameSchema,
     state: z.literal("active"),
   })
   .strict()
