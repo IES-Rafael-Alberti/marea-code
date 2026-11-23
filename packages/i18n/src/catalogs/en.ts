@@ -51,6 +51,8 @@ const englishCatalog = {
     "The terminal interface could not open. Try another terminal and share this code if it fails again.",
   "student.cli.local-state-invalid":
     "Marea cannot read this project’s saved data. Keep the data and share this code with your teacher so it can be recovered.",
+  "student.cli.local-state-recovered":
+    "Marea could not read some saved data on this computer, so it set that data aside and started a new session. Nothing was deleted, and you may need to sign in again.",
   "student.cli.failure-code": "Diagnostic code: {{code}}. Include it when reporting the problem.",
   "student.cli.unexpected-error": "Marea could not start. Try again.",
   "student.feedback.ack-hint": "After reading it, mark it as read with: {{command}}",

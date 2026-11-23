@@ -248,10 +248,14 @@ async function runStudent(
   const application = await runtime.createApplication({
     clientVersion: MAREA_CLIENT_VERSION,
     externalAuthorization: createLoopbackAuthorization({ translator, output: options.output }),
+    notice: (text) => {
+      options.output.write(text);
+    },
     onStartupStage: stage,
     projectRoot,
     serverUrl,
     stateDirectory,
+    translator,
     studentInterface: createConversationStudentInterface({
       authentication,
       conversation,

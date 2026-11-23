@@ -383,17 +383,27 @@ function createPersistedStateSchema() {
     .strict();
 }
 
-function readPersistedState(
-  statePath: string,
-): z.infer<ReturnType<typeof createPersistedStateSchema>> | null {
+type PersistedCheckpointState = z.infer<ReturnType<typeof createPersistedStateSchema>>;
+
+/**
+ * Reading and decoding are separated on purpose: filesystem failures stay
+ * visible as filesystem errors, so a caller can tell an unreadable checkpoint
+ * from a damaged one. Only decoding and schema failures report
+ * `invalid-checkpoint-state`.
+ */
+function readPersistedState(statePath: string): PersistedCheckpointState | null {
+  const size = statSync(statePath).size;
+  if (size === 0) {
+    return null;
+  }
+  assertCheckpointStateSize(size);
+  return decodePersistedState(readFileSync(statePath));
+}
+
+function decodePersistedState(raw: Uint8Array): PersistedCheckpointState {
   try {
-    const size = statSync(statePath).size;
-    if (size === 0) {
-      return null;
-    }
-    assertCheckpointStateSize(size);
-    const input: unknown = deserialize(readFileSync(statePath));
-    return createPersistedStateSchema().parse(input);
+    const decoded: unknown = deserialize(raw);
+    return createPersistedStateSchema().parse(decoded);
   } catch {
     throw invalidCheckpointState();
   }
