@@ -416,12 +416,18 @@ describe("LocalSession persistence", () => {
       state: "closed",
       alreadyClosed: false,
     });
-    expect(closed.phase).toBe("closed");
-    expect(closed.runToken).toBeNull();
-    const repeated = await local.beginClose("fatal-error");
-    expect(repeated.phase).toBe("closed");
-    expect(repeated.closeReason).toBe("cancelled");
-    expect(repeated.closeRequestId).toBe(first.closeRequestId);
+    expect(closed).toBeNull();
+    expect(await local.load()).toEqual({ version: fixture.state.state.version, run: null });
+    await expect(local.beginClose("fatal-error")).rejects.toThrow("No local student run exists.");
+    await expect(
+      local.finishClose({
+        protocolVersion: "0.1",
+        requestId: new FixtureIds().request(),
+        runId: RunIdSchema.parse("missing"),
+        state: "closed",
+        alreadyClosed: true,
+      }),
+    ).rejects.toThrow("No local student run exists.");
   });
 
   it("returns no approvals or effects without local state", async () => {

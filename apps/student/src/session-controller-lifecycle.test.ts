@@ -163,10 +163,7 @@ describe("StudentSessionController lifecycle races", () => {
     await expect(fixture.controller.pendingTurn()).rejects.toThrow("session is closing");
     expect(fixture.agent.messages).toBe(1);
     expect(fixture.workspace.writes).toBe(0);
-    expect(fixture.state.state.run).toMatchObject({
-      closeReason: "student-exit",
-      phase: "closed",
-    });
+    expect(fixture.state.state.run).toBeNull();
     decision.resolve("approved");
     await Promise.resolve();
     expect(fixture.workspace.writes).toBe(0);
@@ -244,7 +241,7 @@ describe("StudentSessionController lifecycle races", () => {
     await expect(closing).resolves.toBeUndefined();
     expect(findEffect).not.toHaveBeenCalled();
     expect(fixture.workspace.writes).toBe(0);
-    expect(fixture.state.state.run).toMatchObject({ phase: "closed" });
+    expect(fixture.state.state.run).toBeNull();
     expect(fixture.studentInterface.events.at(-1)).toEqual({
       attemptId: "attempt:approval-race",
       messageId: "message:approval-race",

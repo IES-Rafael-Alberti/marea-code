@@ -482,6 +482,6 @@ describe("StudentSessionController recovery", () => {
 
     expect(fixture.server.authenticatedCloseCalls).toBe(0);
     expect(fixture.server.closeCalls).toBe(1);
-    expect(fixture.state.state.run?.phase).toBe("closed");
+    expect(fixture.state.state.run).toBeNull();
   });
 });

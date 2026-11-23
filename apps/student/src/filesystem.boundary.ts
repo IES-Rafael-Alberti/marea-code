@@ -283,7 +283,7 @@ function assertOutsideProject(projectRoot: string, stateDirectory: string): void
   }
 }
 
-export class StudentStateFileTooLargeError extends Error {
+class StudentStateFileTooLargeError extends Error {
   readonly diagnosticCode = "local-state.too-large";
   constructor() {
     super("Student state file exceeds its size limit.");

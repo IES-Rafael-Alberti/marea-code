@@ -260,6 +260,10 @@ describe("LocalSession", () => {
     store.state = { ...store.state, run: { ...different, phase: "closed" } };
     const afterClose = await session.ensureOpening("Project Two", { kind: "new" });
     expect(afterClose.clientSessionId).not.toBe(different.clientSessionId);
+    expect(afterClose).not.toHaveProperty("abandoned");
+    expect(afterClose.turns).toEqual([]);
+    expect(afterClose.outbox).toEqual([]);
+    expect(store.state.run).toEqual(afterClose);
   });
 
   it("creates a fresh resume attempt while preserving active durable progress", async () => {
