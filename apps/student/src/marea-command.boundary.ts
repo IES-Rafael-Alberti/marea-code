@@ -177,6 +177,12 @@ export function createBindableConversationPort(): BindableConversationPort {
       messageId?: ConversationMessageId,
       attemptId?: ConversationAttemptId,
     ) => requireTarget().requestApproval(approval, messageId, attemptId),
+    resume: (): void => {
+      target?.resume?.();
+    },
+    suspend: (): void => {
+      target?.suspend?.();
+    },
     thinking: (messageId?: ConversationMessageId, attemptId?: ConversationAttemptId) =>
       requireTarget().thinking(messageId, attemptId),
     toolFinished: (

@@ -101,7 +101,14 @@ class FakeRepository implements ExternalIdentityRepository {
   }
 }
 
-function fixture(options: { providers?: boolean; timeout?: boolean } = {}) {
+function fixture(
+  options: {
+    providers?: boolean;
+    timeout?: boolean;
+    maxCompletions?: number;
+    completionWaitMs?: number;
+  } = {},
+) {
   const provider = new FakeProvider();
   const repository = new FakeRepository();
   const opened: AuthenticatedIdentity[] = [];
@@ -147,6 +154,12 @@ function fixture(options: { providers?: boolean; timeout?: boolean } = {}) {
             return signal;
           },
         }),
+    ...(options.maxCompletions === undefined
+      ? {}
+      : { maxConcurrentCompletions: options.maxCompletions }),
+    ...(options.completionWaitMs === undefined
+      ? {}
+      : { completionWaitTimeoutMs: options.completionWaitMs }),
   };
   return {
     service: new ExternalIdentityService(dependencies),
@@ -351,27 +364,36 @@ describe("external identity service", () => {
     expect(test.opened).toEqual([]);
   });
 
-  it("limits concurrent completions and releases capacity after each one", async () => {
-    const test = fixture();
+  it("queues concurrent completions beyond the configured limit until slots free", async () => {
+    const test = fixture({ maxCompletions: 4 });
     const release = Promise.withResolvers<undefined>();
     test.provider.pending = release.promise.then(() => undefined);
-    const flows = Array.from({ length: 5 }, () => started(test));
-    const running = flows
-      .slice(0, 4)
-      .map(({ response, request }) =>
-        test.service.complete(completion(response.flowId, request.state)),
-      );
-    const last = flows[4];
-    if (last === undefined) throw new Error("Missing flow.");
+    const flows = Array.from({ length: 6 }, () => started(test));
+    const completions = flows.map(({ response, request }) =>
+      test.service.complete(completion(response.flowId, request.state)),
+    );
+    release.resolve(undefined);
+    await expect(Promise.all(completions)).resolves.toHaveLength(6);
+    expect(test.opened).toHaveLength(6);
+  });
+
+  it("keeps a completion whose slot wait times out retryable with the same flow", async () => {
+    const test = fixture({ maxCompletions: 4, completionWaitMs: 5 });
+    const release = Promise.withResolvers<undefined>();
+    test.provider.pending = release.promise.then(() => undefined);
+    const running = Array.from({ length: 4 }, () => started(test)).map(({ response, request }) =>
+      test.service.complete(completion(response.flowId, request.state)),
+    );
+    const pending = started(test);
     await expect(
-      test.service.complete(completion(last.response.flowId, last.request.state)),
+      test.service.complete(completion(pending.response.flowId, pending.request.state)),
     ).rejects.toEqual(expect.objectContaining({ code: "auth.busy" }));
     release.resolve(undefined);
     await Promise.all(running);
-    const again = started(test);
     await expect(
-      test.service.complete(completion(again.response.flowId, again.request.state)),
+      test.service.complete(completion(pending.response.flowId, pending.request.state)),
     ).resolves.toMatchObject({ kind: "external-authenticated" });
+    expect(test.opened).toHaveLength(5);
   });
 
   it("bounds provider calls with a default timeout", async () => {

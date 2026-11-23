@@ -114,6 +114,9 @@ export interface ConversationView {
   readonly dispose: () => void;
   readonly render: (snapshot: ConversationSnapshot) => void;
   readonly setCopy?: (copy: ConversationCopy) => void;
+  /** Pauses the terminal renderer while an external prompt runs; resumes afterwards. */
+  readonly suspend?: () => void;
+  readonly resume?: () => void;
 }
 
 export interface ConversationHistory {
@@ -220,6 +223,8 @@ export interface ConversationTuiSession extends ConversationTurnSurface {
     messageId?: ConversationMessageId,
     attemptId?: ConversationAttemptId,
   ): Promise<QuestionReply>;
+  suspend?(): void;
+  resume?(): void;
 }
 
 export type ConversationViewFactory = (

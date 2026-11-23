@@ -61,10 +61,16 @@ export async function createConversationView(
       presentation.sync(snapshot);
       schedule.request(snapshot.status === "streaming");
     },
+    resume(): void {
+      host.resume?.();
+    },
     setCopy(next: ConversationCopy): void {
       currentCopy = next;
       presentation.setCopy(next.parity.copy);
       schedule.request(false);
+    },
+    suspend(): void {
+      host.suspend?.();
     },
   });
 }
