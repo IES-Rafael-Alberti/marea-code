@@ -15,6 +15,7 @@ describe("conversation OpenTUI view", () => {
     vi.useFakeTimers();
     const render = vi.fn<(node: ReactNode) => void>();
     const onAction = vi.fn();
+    const suspended = vi.fn();
     const view = await createConversationView(
       {
         parity: {
@@ -23,8 +24,20 @@ describe("conversation OpenTUI view", () => {
         },
       },
       onAction,
-      () => Promise.resolve({ dispose: vi.fn(), render }),
+      () =>
+        Promise.resolve({
+          dispose: vi.fn(),
+          render,
+          withTerminalSuspended: (operation) => {
+            suspended();
+            return operation();
+          },
+        }),
     );
+    await expect(view.withTerminalSuspended?.(() => Promise.resolve("signed in"))).resolves.toBe(
+      "signed in",
+    );
+    expect(suspended).toHaveBeenCalledOnce();
     view.render({ approval: null, messages: [], status: "ready" });
     view.render({
       approval: null,
@@ -68,7 +81,12 @@ it("resolves the controller interrupt through the rendered parity presentation",
     (action) => {
       controller.handle(action);
     },
-    () => Promise.resolve({ dispose: vi.fn(), render }),
+    () =>
+      Promise.resolve({
+        dispose: vi.fn(),
+        render,
+        withTerminalSuspended: (operation) => operation(),
+      }),
   );
   const controller = createConversationController({
     onMessage: () => pendingTurn.promise,
@@ -107,7 +125,13 @@ it.each([undefined, false, true])(
     vi.useFakeTimers();
     const render = vi.fn();
     const dispose = vi.fn();
-    const createHost = vi.fn(() => Promise.resolve({ render, dispose }));
+    const createHost = vi.fn(() =>
+      Promise.resolve({
+        render,
+        dispose,
+        withTerminalSuspended: <T,>(operation: () => Promise<T>) => operation(),
+      }),
+    );
     const view = await createConversationView(
       {
         ...(mouse === undefined ? {} : { mouse }),
@@ -140,7 +164,12 @@ async function liveView(onLanguageCommand?: Parameters<typeof createConversation
       },
     },
     vi.fn(),
-    () => Promise.resolve({ dispose: vi.fn(), render }),
+    () =>
+      Promise.resolve({
+        dispose: vi.fn(),
+        render,
+        withTerminalSuspended: (operation) => operation(),
+      }),
     onLanguageCommand,
   );
   view.render({ approval: null, messages: [], status: "ready" });

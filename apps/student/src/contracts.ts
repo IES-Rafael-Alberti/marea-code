@@ -162,6 +162,8 @@ export type StudentViewEvent =
   | (TurnAttemptIdentity & { readonly type: "turn-completed" });
 
 export interface StudentInterface {
+  /** Keeps terminal ownership for the entire sign-in, including browser and class selection. */
+  withAuthentication?<T>(operation: () => Promise<T>): Promise<T>;
   authenticate(
     reason: AuthenticationReason,
     options: AuthenticationOptions,

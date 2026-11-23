@@ -4,6 +4,8 @@ import select from "@inquirer/select";
 import type { Translator } from "@marea/i18n";
 import { InvitationCodeSchema } from "@marea/protocol";
 
+import { withAuthenticationInput } from "./authentication-input.boundary.js";
+
 import type { AuthenticationPrompt } from "./conversation-interface.js";
 import type {
   AuthenticationInput,
@@ -28,14 +30,20 @@ export function createInquirerAuthenticationQuestions(
 ): AuthenticationQuestions {
   return Object.freeze({
     choose: (message: string, choices: readonly AuthenticationMethodChoice[]) =>
-      select({ choices, message }),
+      withAuthenticationInput((context) => select({ choices, message }, context)),
     secret: (message: string) =>
-      password({
-        mask: "*",
-        message,
-        validate: (value) => value.length > 0 || translator.t("student.auth.required"),
-      }),
-    text: (message: string) => input({ message, required: true }),
+      withAuthenticationInput((context) =>
+        password(
+          {
+            mask: "*",
+            message,
+            validate: (value) => value.length > 0 || translator.t("student.auth.required"),
+          },
+          context,
+        ),
+      ),
+    text: (message: string) =>
+      withAuthenticationInput((context) => input({ message, required: true }, context)),
   });
 }
 

@@ -307,3 +307,55 @@ it("binds question requests to the active session and refuses them after closure
   );
   await target.binding.session.outcome;
 });
+
+it("delegates external interaction to the view without changing the conversation", async () => {
+  const withTerminalSuspended = <T>(operation: () => Promise<T>) => operation();
+  const view = { render: vi.fn(), dispose: vi.fn(), withTerminalSuspended };
+  const suspended = vi.spyOn(view, "withTerminalSuspended");
+  const binding = createConversationTuiSession({
+    onMessage: () => Promise.resolve(),
+    setExitCode: vi.fn(),
+    signals: createSignalHarness().source,
+    view,
+  });
+  const before = binding.session.snapshot();
+  await expect(
+    binding.session.withTerminalSuspended(() => Promise.resolve("signed in")),
+  ).resolves.toBe("signed in");
+  expect(suspended).toHaveBeenCalledOnce();
+  expect(binding.session.snapshot()).toEqual(before);
+  binding.session.close();
+  const operation = vi.fn();
+  await expect(binding.session.withTerminalSuspended(operation)).rejects.toThrow("already closed");
+  expect(operation).not.toHaveBeenCalled();
+});
+
+it("supports external interaction in a view without a native terminal", async () => {
+  const target = createTarget();
+  await expect(
+    target.binding.session.withTerminalSuspended(() => Promise.resolve("signed in")),
+  ).resolves.toBe("signed in");
+  target.binding.session.close();
+});
+
+it.each(["SIGINT", "SIGTERM"] as const)(
+  "closes safely on %s during authentication",
+  async (signal) => {
+    const signals = createSignalHarness();
+    const pending = Promise.withResolvers<string>();
+    const dispose = vi.fn();
+    const binding = createConversationTuiSession({
+      onMessage: () => Promise.resolve(),
+      setExitCode: vi.fn(),
+      signals: signals.source,
+      view: { dispose, render: vi.fn(), withTerminalSuspended: (operation) => operation() },
+    });
+    const authentication = binding.session.withTerminalSuspended(() => pending.promise);
+    signals.handlers.get(signal)?.();
+    await expect(binding.session.outcome).resolves.toMatchObject({ reason: signal.toLowerCase() });
+    expect(dispose).toHaveBeenCalledOnce();
+    pending.resolve("finished after exit");
+    await expect(authentication).resolves.toBe("finished after exit");
+    expect(dispose).toHaveBeenCalledOnce();
+  },
+);

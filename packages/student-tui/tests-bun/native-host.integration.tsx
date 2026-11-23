@@ -47,6 +47,14 @@ it("updates one mounted tree, retaining local state and releasing it on disposal
       edit("unfinished draft");
       await setup.flush();
     });
+    await host.withTerminalSuspended(async () => {
+      await host.withTerminalSuspended(() => Promise.resolve());
+    });
+    await setup.flush();
+    expect(setup.captureCharFrame()).toContain("first:unfinished draft");
+    expect(setup.renderer.root.getChildren()[0]).toBe(first);
+    expect(mounts).toBe(1);
+    expect(unmounts).toBe(0);
     for (const answer of ["second", "third", "final"]) {
       await act(async () => {
         host.render(<Screen answer={answer} />);

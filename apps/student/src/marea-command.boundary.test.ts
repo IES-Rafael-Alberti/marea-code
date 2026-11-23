@@ -118,7 +118,11 @@ describe("marea command", () => {
       const runtime: MareaCommandRuntime = {
         createApplication(options) {
           compositions.push(options);
-          return Promise.resolve({ controller, dispose });
+          return (
+            options.studentInterface.withAuthentication?.(() =>
+              Promise.resolve({ controller, dispose }),
+            ) ?? Promise.reject(new Error("Missing authentication scope."))
+          );
         },
         nextAttemptId: () => "attempt:one",
         nextMessageId: () => "message:1",
@@ -148,6 +152,9 @@ describe("marea command", () => {
         output: options.output,
       });
       expect(composition.externalAuthorization).toBeDefined();
+      await expect(
+        composition.studentInterface.withAuthentication?.(() => Promise.resolve("signed in")),
+      ).resolves.toBe("signed in");
       const studentInterface = composition.studentInterface;
       const identity = { attemptId: "attempt:one", messageId: "message:retry" } as const;
       const assistantEvent = {

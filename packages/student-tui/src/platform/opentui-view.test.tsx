@@ -9,6 +9,7 @@ describe("createOpenTuiView", () => {
     const nodes: ReactNode[] = [];
     const dispose = vi.fn();
     const host = {
+      withTerminalSuspended: <T,>(operation: () => Promise<T>) => operation(),
       dispose,
       render(node: ReactNode): void {
         nodes.push(node);

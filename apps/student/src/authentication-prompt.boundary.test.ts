@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+interface PromptContext {
+  readonly input: NodeJS.ReadableStream;
+}
+
 interface InputOptions {
   readonly message: string;
   readonly required: boolean;
@@ -17,9 +21,9 @@ interface SelectOptions {
 }
 
 const vendor = vi.hoisted(() => ({
-  input: vi.fn<(options: InputOptions) => Promise<string>>(),
-  password: vi.fn<(options: PasswordOptions) => Promise<string>>(),
-  select: vi.fn<(options: SelectOptions) => Promise<string>>(),
+  input: vi.fn<(options: InputOptions, context?: PromptContext) => Promise<string>>(),
+  password: vi.fn<(options: PasswordOptions, context?: PromptContext) => Promise<string>>(),
+  select: vi.fn<(options: SelectOptions, context?: PromptContext) => Promise<string>>(),
 }));
 
 vi.mock("@inquirer/input", () => ({ default: vendor.input }));
@@ -184,8 +188,11 @@ describe("student authentication prompt", () => {
     await expect(questions.choose("Method", choices)).resolves.toBe("login");
     await expect(questions.text("Username")).resolves.toBe("student");
     await expect(questions.secret("Password")).resolves.toBe("password");
-    expect(vendor.select).toHaveBeenCalledWith({ choices, message: "Method" });
-    expect(vendor.input).toHaveBeenCalledWith({ message: "Username", required: true });
+    expect(vendor.select.mock.calls[0]?.[0]).toEqual({ choices, message: "Method" });
+    expect(vendor.input.mock.calls[0]?.[0]).toEqual({ message: "Username", required: true });
+    for (const prompt of [vendor.select, vendor.input, vendor.password]) {
+      expect(prompt.mock.calls[0]?.[1]?.input).toBeDefined();
+    }
     const passwordOptions = vendor.password.mock.calls[0]?.[0];
     if (passwordOptions === undefined) throw new Error("Password options were not captured.");
     expect(passwordOptions).toMatchObject({ mask: "*", message: "Password" });

@@ -53,6 +53,9 @@ export async function createConversationView(
     );
   });
   return Object.freeze({
+    withTerminalSuspended<T>(operation: () => Promise<T>): Promise<T> {
+      return host.withTerminalSuspended(operation);
+    },
     dispose(): void {
       schedule.dispose();
       host.dispose();

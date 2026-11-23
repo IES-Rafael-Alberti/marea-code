@@ -10,6 +10,7 @@ describe("marea command failure classification", () => {
   it("classifies a failed turn through the conversation boundary", async () => {
     const exit = Promise.withResolvers<{ readonly exitCode: 0; readonly reason: "closed" }>();
     const session: ConversationTuiSession = {
+      withTerminalSuspended: <T>(operation: () => Promise<T>) => operation(),
       appendAssistantText: () => true,
       cancel: () => true,
       close: () => true,
