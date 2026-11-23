@@ -87,7 +87,7 @@ export class SqliteSessionExportRepository implements SessionExportRepository {
         WHERE ${ACCESS} AND (?2 IS NULL OR runs.id = ?2) AND (?3 IS NULL OR runs.class_id = ?3)
           AND (?4 IS NULL OR runs.student_id = ?4) AND (?5 IS NULL OR runs.opened_at >= ?5)
           AND (?6 IS NULL OR runs.opened_at < ?6)
-        ORDER BY runs.opened_at, runs.id LIMIT ${MAX_RUNS + 1}`,
+        ORDER BY runs.opened_at, runs.id LIMIT ${String(MAX_RUNS + 1)}`,
         [
           identity.userId,
           query.runId ?? null,
