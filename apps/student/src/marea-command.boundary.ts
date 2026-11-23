@@ -4,6 +4,7 @@ import { ensureGitWorkspace } from "./git-workspace.boundary.js";
 import { openInputHistory, type PersistentInputHistory } from "./input-history.boundary.js";
 import { createHash, randomUUID } from "node:crypto";
 import { basename, join, resolve } from "node:path";
+import { projectDisplayNameFromFolder } from "./project-name.js";
 
 import {
   createTranslator,
@@ -269,7 +270,7 @@ async function runStudent(
     onStarted: (started) => {
       startedSession = started;
     },
-    projectDisplayName: basename(projectRoot) || "project",
+    projectDisplayName: projectDisplayNameFromFolder(basename(projectRoot)),
     async waitForExit(): Promise<void> {
       stage("interface");
       const pendingTurn = await application.controller.pendingTurn();
