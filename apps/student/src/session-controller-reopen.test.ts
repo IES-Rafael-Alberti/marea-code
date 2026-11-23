@@ -1,4 +1,4 @@
-import { EventIdSchema, MessageIdSchema, SessionTokenSchema } from "@marea/protocol";
+import { EventIdSchema, MessageIdSchema, RunIdSchema, SessionTokenSchema } from "@marea/protocol";
 import { describe, expect, it } from "vitest";
 
 import type { StoredRun } from "./contracts.js";
@@ -36,6 +36,22 @@ function restart(fixture: Fixture): Fixture {
 }
 
 describe("StudentSessionController run reopen ownership", () => {
+  it("falls back to the current account's run after rejecting a different stored run", async () => {
+    const fixture = createFixtureController();
+    await fixture.controller.start("Project One");
+    const foreignRunId = RunIdSchema.parse("run:foreign");
+    fixture.state.state = {
+      ...fixture.state.state,
+      run: { ...storedRun(fixture), runId: foreignRunId },
+    };
+    refuseResumeOf(fixture, foreignRunId);
+    await restart(fixture).controller.start("Project One");
+    expect(fixture.server.openRequests.at(-1)).toMatchObject({
+      intent: { kind: "resume" },
+      runId: "run:1",
+    });
+    expect(storedRun(fixture).runId).toBe("run:1");
+  });
   it("still resumes the local run when bootstrap points to another project", async () => {
     const fixture = createFixtureController();
     await fixture.controller.start("Project One");
@@ -155,34 +171,40 @@ describe("StudentSessionController run reopen ownership", () => {
     expect(storedRun(fixture).phase).toBe("closed");
   });
 
-  it("signs in again to close only when both session and lease expired", async () => {
-    const fixture = createFixtureController();
-    await fixture.controller.start("Project One");
-    setFixtureLeaseExpiry(fixture.state, "2000-01-01T00:00:00.000Z");
-    const renewedToken = SessionTokenSchema.parse("t".repeat(32));
-    const enroll = fixture.server.enroll.bind(fixture.server);
-    fixture.server.enroll = async (request) => {
-      const response = await enroll(request);
-      return { ...response, session: { ...response.session, token: renewedToken } };
-    };
-    const closeTokens: string[] = [];
-    const close = fixture.server.closeRunAuthenticated.bind(fixture.server);
-    fixture.server.closeRunAuthenticated = (token, request) => {
-      closeTokens.push(token);
-      return close(token, request);
-    };
-    // The original 30-minute session has expired: the server rejects it every time.
-    const bootstrap = fixture.server.bootstrap.bind(fixture.server);
-    fixture.server.bootstrap = (token, request) =>
-      token === renewedToken
-        ? bootstrap(token, request)
-        : Promise.resolve({ authenticated: false as const });
+  it.each(["2000-01-01T00:00:00.000Z", null])(
+    "signs in again to close with rejected session and lease expiry %s",
+    async (expiry) => {
+      const fixture = createFixtureController();
+      await fixture.controller.start("Project One");
+      fixture.state.state = {
+        ...fixture.state.state,
+        run: { ...storedRun(fixture), leaseExpiresAt: expiry },
+      };
+      const renewedToken = SessionTokenSchema.parse("t".repeat(32));
+      const enroll = fixture.server.enroll.bind(fixture.server);
+      fixture.server.enroll = async (request) => {
+        const response = await enroll(request);
+        return { ...response, session: { ...response.session, token: renewedToken } };
+      };
+      const closeTokens: string[] = [];
+      const close = fixture.server.closeRunAuthenticated.bind(fixture.server);
+      fixture.server.closeRunAuthenticated = (token, request) => {
+        closeTokens.push(token);
+        return close(token, request);
+      };
+      // The original 30-minute session has expired: the server rejects it every time.
+      const bootstrap = fixture.server.bootstrap.bind(fixture.server);
+      fixture.server.bootstrap = (token, request) =>
+        token === renewedToken
+          ? bootstrap(token, request)
+          : Promise.resolve({ authenticated: false as const });
 
-    await fixture.controller.close();
+      await fixture.controller.close();
 
-    expect(closeTokens).toEqual([renewedToken]);
-    expect(fixture.studentInterface.authenticationReasons).toEqual(["missing", "rejected"]);
-  });
+      expect(closeTokens).toEqual([renewedToken]);
+      expect(fixture.studentInterface.authenticationReasons).toEqual(["missing", "rejected"]);
+    },
+  );
 });
 
 describe("StudentSessionController revoked lease recovery", () => {
