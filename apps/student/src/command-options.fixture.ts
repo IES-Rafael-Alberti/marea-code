@@ -29,6 +29,7 @@ export function conversationSession(
   outcome = Promise.resolve({ exitCode: 0, reason: "closed" as const }),
 ) {
   return {
+    withTerminalSuspended: <T>(operation: () => Promise<T>) => operation(),
     appendAssistantText: vi.fn(() => true),
     cancel: vi.fn(() => true),
     close: vi.fn(() => true),

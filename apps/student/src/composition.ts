@@ -10,7 +10,9 @@ import {
   createLocalCheckpoint,
   createMareaGatewayModel,
   type AgentCheckpoint,
+  type LocalCheckpointOptions,
 } from "@marea/deepagents-adapter";
+import type { Translator } from "@marea/i18n";
 import { SoftwareVersionSchema, type RunToken } from "@marea/protocol";
 import { openGuardedWorkspace } from "@marea/workspace-backend";
 
@@ -27,8 +29,14 @@ import { createFileEffectLedger } from "./effect-ledger.boundary.js";
 import { createDeepAgentsStudentRuntime } from "./deepagents-runtime.boundary.js";
 import { createHttpModelGateway, createHttpStudentServer } from "./http-client.boundary.js";
 import { LocalSession } from "./local-session.js";
+import {
+  createLocalStateRecovery,
+  isDamagedCheckpointState,
+  type LocalStateRecovery,
+  type LocalStateRecoveryReport,
+} from "./local-state-recovery.boundary.js";
 import { createSystemClock, createSystemIdSource } from "./platform.boundary.js";
-import { StudentSessionController } from "./session-controller.js";
+import { StudentSessionController, type StudentStartupStage } from "./session-controller.js";
 import { createCrashSafeWorkspaceWriter } from "./workspace-writer.js";
 import { RunSkillReader } from "./run-skill-reader.js";
 import { createRuntimeReadTools } from "./runtime-read-tools.js";
@@ -46,14 +54,21 @@ export interface StudentCompositionOptions {
 export interface ProductionStudentCompositionOptions {
   readonly clientVersion: string;
   readonly externalAuthorization?: ExternalAuthorization;
+  /** Start-output sink for the one-time local-state recovery notice. */
+  readonly notice?: (text: string) => void;
+  readonly onStartupStage?: (stage: StudentStartupStage) => void;
   readonly projectRoot: string;
   readonly serverUrl: string;
   readonly stateDirectory: string;
   readonly studentInterface: StudentInterface;
+  /** Interface language for the recovery notice; resolved from the environment when absent. */
+  readonly translator?: Translator;
 }
 
 export interface ProductionStudentApplication {
   readonly controller: StudentSessionController;
+  /** Damaged local state that startup set aside instead of failing. */
+  readonly localStateRecovery: LocalStateRecoveryReport;
   dispose(): void;
 }
 
@@ -104,6 +119,16 @@ export async function createProductionStudentApplication(
   const projectRoot = resolve(options.projectRoot);
   const stateDirectory = resolve(options.stateDirectory);
   const stores = await createFileStudentStores({ projectRoot, stateDirectory });
+  const localState = createLocalStateRecovery({
+    notice: options.notice,
+    probes: [
+      { file: "session.json", load: () => stores.state.load(), reason: "session" },
+      { file: "credential.json", load: () => stores.credentials.load(), reason: "credential" },
+    ],
+    stateDirectory,
+    translator: options.translator,
+  });
+  await localState.prepare();
   const workspace = await openGuardedWorkspace({ rootPath: projectRoot });
   const clock = createSystemClock();
   const ids = createSystemIdSource();
@@ -120,7 +145,7 @@ export async function createProductionStudentApplication(
     ids,
   );
   const projectContext = await describeProject(projectRoot);
-  const checkpoint = createLocalCheckpoint({
+  const checkpoint = await openRecoverableCheckpoint(localState, {
     projectDirectory: projectRoot,
     storageDirectory: join(stateDirectory, "agent"),
   });
@@ -166,6 +191,7 @@ export async function createProductionStudentApplication(
   });
   const controller = new StudentSessionController({
     liveProgress: true,
+    onStartupStage: options.onStartupStage,
     agent,
     classPreference: createFileClassPreferenceStore(stateDirectory),
     clientVersion,
@@ -192,14 +218,34 @@ export async function createProductionStudentApplication(
     workspace: writer,
   });
   let open = true;
+  await localState.announce();
   return Object.freeze({
     controller: tokenBinding.bind(controller),
+    localStateRecovery: localState.report(),
     dispose(): void {
       if (!open) return;
       open = false;
       closeCheckpoint(checkpoint);
     },
   });
+}
+
+/**
+ * A damaged durable checkpoint must not block the student: the adapter's state
+ * is set aside and a fresh checkpoint store is opened. Unreadable state stays an
+ * error, because losing access is not the same as losing content.
+ */
+async function openRecoverableCheckpoint(
+  localState: LocalStateRecovery,
+  options: LocalCheckpointOptions,
+): Promise<AgentCheckpoint> {
+  try {
+    return createLocalCheckpoint(options);
+  } catch (error) {
+    if (!isDamagedCheckpointState(error)) throw error;
+    await localState.quarantineCheckpointState();
+    return createLocalCheckpoint(options);
+  }
 }
 
 export function activeRunToken(controller: StudentSessionController) {

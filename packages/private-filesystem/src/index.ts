@@ -1,5 +1,16 @@
 import { chmodSync, lstatSync } from "node:fs";
-import { windowsPrivateKind } from "./windows-acl.boundary.js";
+import { checkWindowsPrivatePath, windowsPrivateKind } from "./windows-acl.boundary.js";
+import { PrivateFilesystemError } from "./private-filesystem-error.js";
+
+export { checkWindowsPrivatePath, windowsPrivateKind } from "./windows-acl.boundary.js";
+export { PrivateFilesystemError } from "./private-filesystem-error.js";
+export type { WindowsPrivateFailureReason } from "./private-filesystem-error.js";
+export {
+  isVerifiedPrivateDirectory,
+  markVerifiedPrivateDirectory,
+} from "./verified-private-directories.js";
+
+const SECURE_ERROR_MESSAGE = "Private filesystem permissions could not be established.";
 
 /** POSIX uid; Windows ownership is checked against the current SID by the ACL adapter. */
 export function currentOwnerId(): number {
@@ -23,10 +34,24 @@ export function inspectPrivatePath(
 /** Apply before writing secrets; Windows directory grants inherit to future DB/WAL/lock files. */
 export function securePrivatePath(path: string, mode: 0o600 | 0o700): void {
   if (process.platform === "win32") {
-    const expected = mode === 0o700 ? "directory" : "file";
-    if (windowsPrivateKind(path, "secure") !== expected)
-      throw new Error("Private filesystem permissions could not be established.");
+    secureWindowsPrivatePath(path, mode);
     return;
   }
   chmodSync(path, mode);
+}
+
+function secureWindowsPrivatePath(path: string, mode: 0o600 | 0o700): void {
+  const expected = mode === 0o700 ? "directory" : "file";
+  let kind: "directory" | "file";
+  try {
+    kind = checkWindowsPrivatePath(path, "secure");
+  } catch (error) {
+    if (error instanceof PrivateFilesystemError) {
+      throw new PrivateFilesystemError(error.diagnosticCode, SECURE_ERROR_MESSAGE);
+    }
+    throw error;
+  }
+  if (kind !== expected) {
+    throw new PrivateFilesystemError("private-fs.unexpected", SECURE_ERROR_MESSAGE);
+  }
 }

@@ -1,11 +1,16 @@
+/* eslint-disable max-lines -- Lease, close, and reopen recovery are one serial lifecycle state machine. */
 import type { OperationExecutor } from "./operation-contracts.js";
 import type { ProjectEvidence } from "./project-evidence.js";
 import {
   CURRENT_PROTOCOL_VERSION,
   MessageIdSchema,
   STARTUP_MESSAGE_ID,
+  type CloseRunResponse,
+  type AppendRunEventsResponse,
+  type OpenRunResponse,
   type RunId,
   type RunToken,
+  type RenewRunLeaseResponse,
   type SessionToken,
   type StudentRunSnapshot,
 } from "@marea/protocol";
@@ -27,7 +32,7 @@ import type {
 } from "./contracts.js";
 import { NoActiveRunError } from "./contracts.js";
 import { StudentHttpError } from "./http-error.js";
-import { LocalSession } from "./local-session.js";
+import { LocalSession, type ReopenStoredRun } from "./local-session.js";
 import { SerialOperationQueue } from "./serial-operation-queue.js";
 import { negotiateSessionCapabilities } from "./session-capabilities.js";
 import { bootstrapClass, discoverProviders, exchangeExternal } from "./session-sign-in.js";
@@ -39,15 +44,23 @@ import {
 
 const RENEWAL_LEAD_TIME_MS = 60 * 1_000;
 
+export type StudentStartupStage =
+  "capabilities" | "authentication" | "bootstrap" | "run-open" | "outbox";
+
 /** The server refused the run itself, not the class configuration it needs. */
-function isUnavailableRun(error: StudentHttpError): boolean {
+function isRunUnavailable(error: StudentHttpError): boolean {
   return error.code === "run.unavailable" && !error.classConfigurationRequired;
+}
+
+function isRejectedPendingClose(error: StudentHttpError): boolean {
+  return isRunUnavailable(error) || (error.status === 401 && error.code === "auth.invalid");
 }
 
 export interface SessionControllerOptions {
   readonly liveProgress?: boolean;
   readonly evidence?: ProjectEvidence;
   readonly operations?: OperationExecutor;
+  readonly onStartupStage?: ((stage: StudentStartupStage) => void) | undefined;
   readonly agent: AgentRuntime;
   readonly classPreference?: ClassPreferenceStore;
   readonly clientVersion: string;
@@ -77,6 +90,7 @@ export class StudentSessionController {
   private closeAttempt: Promise<void> | null = null;
   private closeRequested: StoredCloseReason | null = null;
   private leaseCheck: Promise<StoredRun> | null = null;
+  private startupComplete = false;
   private sessionToken: SessionToken | null = null;
   /** Set from the negotiated capabilities before any interactive sign-in. */
   private externalSignIn!: boolean;
@@ -128,6 +142,7 @@ export class StudentSessionController {
         this.presenceTimer.unref();
         void send();
       }
+      this.startupComplete = true;
       return active;
     });
   }
@@ -191,17 +206,25 @@ export class StudentSessionController {
     return this.options.localSession.pendingTurn();
   }
 
+  /** Stage labels describe startup only; later re-authentication keeps the reported stage. */
+  private reportStartupStage(stage: StudentStartupStage): void {
+    if (!this.startupComplete) this.options.onStartupStage?.(stage);
+  }
+
   private async startInternal(projectDisplayName: string): Promise<ActiveStudentSession> {
+    this.startupComplete = false;
+    this.reportStartupStage("capabilities");
     const capabilities = await negotiateSessionCapabilities({
       clientVersion: this.options.clientVersion,
       ids: this.options.ids,
       server: this.options.server,
     });
     this.externalSignIn = capabilities.includes("marea.auth.external");
+    this.reportStartupStage("authentication");
     const authenticated = await this.authenticate();
     this.sessionToken = authenticated.token;
     let bootstrap = authenticated.bootstrap;
-    let pending = (await this.options.localSession.load()).run;
+    let pending: ReopenStoredRun | null = (await this.options.localSession.load()).run;
     if (pending?.phase === "closing") {
       await this.settlePendingClose(pending);
       bootstrap = await this.bootstrap(authenticated.token);
@@ -213,11 +236,11 @@ export class StudentSessionController {
       (pending.phase === "active" || pending.phase === "opening")
         ? pending
         : null;
-    const resumeRunId =
-      matchingLocal?.runId ??
-      (bootstrap.activeRun?.projectDisplayName === projectDisplayName
+    const serverRunId =
+      bootstrap.activeRun?.projectDisplayName === projectDisplayName
         ? bootstrap.activeRun.runId
-        : null);
+        : null;
+    const resumeRunId = matchingLocal?.runId ?? serverRunId;
     if (
       matchingLocal?.phase === "opening" &&
       matchingLocal.openIntent.kind === "resume" &&
@@ -225,14 +248,16 @@ export class StudentSessionController {
     ) {
       throw new Error("The pending run resume has no server identifier.");
     }
-    const desiredIntent =
-      resumeRunId === null ? ({ kind: "new" } as const) : ({ kind: "resume" } as const);
     const local = await this.options.localSession.ensureOpening(
       projectDisplayName,
-      desiredIntent,
+      resumeRunId === null ? { kind: "new" } : { kind: "resume" },
       resumeRunId,
     );
-    const opened = await this.openOrStartAfresh(authenticated.token, local, projectDisplayName);
+    this.reportStartupStage("run-open");
+    const opened = await this.openOrSetAside(authenticated.token, local, {
+      projectDisplayName,
+      serverRunId,
+    });
     await this.options.localSession.activate(opened);
     await this.flushOutbox();
     return {
@@ -244,27 +269,37 @@ export class StudentSessionController {
   }
 
   /**
-   * A run the server no longer offers (for example, closed by the teacher) cannot be resumed.
-   * Rather than retrying that resume on every start, open a fresh run for the project once;
-   * its undeliverable local events belong to the closed run and are discarded with it.
+   * Local state is keyed by server and folder, not by student, and the server may close runs
+   * (for example, the teacher). When the server refuses the run being resumed (another account,
+   * another class, or already closed), set it aside once and continue with this student's own
+   * active run or a fresh one instead of retrying the refused resume on every start. Its
+   * undeliverable events stay set aside locally and are never sent. A class configuration
+   * refusal keeps the stored run, because the run itself is still valid.
    */
-  private async openOrStartAfresh(
+  private async openOrSetAside(
     token: SessionToken,
     local: StoredRun,
-    projectDisplayName: string,
-  ) {
+    context: {
+      readonly projectDisplayName: string;
+      readonly serverRunId: RunId | null;
+    },
+  ): Promise<OpenRunResponse> {
     try {
       return await this.options.server.openRun(token, this.openRequest(local));
     } catch (error) {
       if (
         local.openIntent.kind !== "resume" ||
         !(error instanceof StudentHttpError) ||
-        !isUnavailableRun(error)
+        !isRunUnavailable(error)
       )
         throw error;
-      const fresh = await this.options.localSession.ensureOpening(projectDisplayName, {
-        kind: "new",
-      });
+      const fallbackRunId = context.serverRunId === local.runId ? null : context.serverRunId;
+      const fresh = await this.options.localSession.ensureOpening(
+        context.projectDisplayName,
+        fallbackRunId === null ? { kind: "new" } : { kind: "resume" },
+        fallbackRunId,
+        true,
+      );
       return this.options.server.openRun(token, this.openRequest(fresh));
     }
   }
@@ -275,6 +310,7 @@ export class StudentSessionController {
   }> {
     const storedToken = await this.options.credentials.load();
     if (storedToken !== null) {
+      this.reportStartupStage("bootstrap");
       const result = await bootstrapClass(this.options, storedToken);
       if (result.authenticated) return { bootstrap: result.value, token: storedToken };
       await this.options.credentials.clear();
@@ -287,12 +323,16 @@ export class StudentSessionController {
     readonly bootstrap: Awaited<ReturnType<StudentSessionController["bootstrap"]>>;
     readonly token: SessionToken;
   }> {
-    const input = await this.options.studentInterface.authenticate(reason, {
-      providers: await discoverProviders(this.options, this.externalSignIn),
-    });
-    const token = await this.exchangeAuthentication(input);
-    await this.options.credentials.save(token);
-    return { bootstrap: await this.bootstrap(token), token };
+    this.reportStartupStage("authentication");
+    const authenticate = async () => {
+      const input = await this.options.studentInterface.authenticate(reason, {
+        providers: await discoverProviders(this.options, this.externalSignIn),
+      });
+      const token = await this.exchangeAuthentication(input);
+      await this.options.credentials.save(token);
+      return { bootstrap: await this.bootstrap(token), token };
+    };
+    return this.options.studentInterface.withAuthentication?.(authenticate) ?? authenticate();
   }
 
   private async exchangeAuthentication(input: AuthenticationInput): Promise<SessionToken> {
@@ -321,6 +361,7 @@ export class StudentSessionController {
   }
 
   private async bootstrap(token: SessionToken) {
+    this.reportStartupStage("bootstrap");
     const response = await bootstrapClass(this.options, token);
     if (!response.authenticated) throw new Error("The new student session was rejected.");
     return response.value;
@@ -365,13 +406,49 @@ export class StudentSessionController {
     ) {
       throw new Error("The run changed while its lease was being renewed.");
     }
-    const response = await this.options.server.renewLease(sessionToken, {
-      kind: "run-lease-renewal",
-      protocolVersion: CURRENT_PROTOCOL_VERSION,
-      requestId: this.options.ids.request(),
-      runId: run.runId,
-    });
+    let response: RenewRunLeaseResponse;
+    try {
+      response = await this.options.server.renewLease(sessionToken, {
+        kind: "run-lease-renewal",
+        protocolVersion: CURRENT_PROTOCOL_VERSION,
+        requestId: this.options.ids.request(),
+        runId: run.runId,
+      });
+    } catch (error) {
+      if (!(error instanceof StudentHttpError) || !isRunUnavailable(error)) throw error;
+      await this.reopenRevokedLease(run, sessionToken);
+      // The retry is outside recovery handling: a second rejection propagates.
+      response = await this.options.server.renewLease(sessionToken, {
+        kind: "run-lease-renewal",
+        protocolVersion: CURRENT_PROTOCOL_VERSION,
+        requestId: this.options.ids.request(),
+        runId: this.requireRunId(run),
+      });
+    }
     return this.options.localSession.renewLease(response);
+  }
+
+  private async reopenRevokedLease(
+    run: StoredRun,
+    authenticatedToken?: SessionToken,
+  ): Promise<StoredRun> {
+    const current = (await this.options.localSession.load()).run;
+    if (
+      current?.runId !== run.runId ||
+      (current.phase !== "active" && current.phase !== "closing")
+    ) {
+      throw new Error("The run changed while its revoked lease was being recovered.");
+    }
+    const closing = current.phase === "closing";
+    if (closing && current.closeReason === null) {
+      throw new Error("The pending run close has no reason.");
+    }
+    const closeReason = closing ? current.closeReason : null;
+    const opening = await this.options.localSession.reopenLease(this.requireRunId(current));
+    const sessionToken = authenticatedToken ?? (await this.authenticationForRenewal());
+    const opened = await this.options.server.openRun(sessionToken, this.openRequest(opening));
+    const activated = await this.options.localSession.activate(opened);
+    return closeReason === null ? activated : this.options.localSession.beginClose(closeReason);
   }
 
   private async authenticationForRenewal(): Promise<SessionToken> {
@@ -398,6 +475,7 @@ export class StudentSessionController {
   }
 
   private flushOutbox(): Promise<void> {
+    this.reportStartupStage("outbox");
     return this.deliveries.run(() => this.deliverOutbox());
   }
 
@@ -408,12 +486,24 @@ export class StudentSessionController {
       if (firstEvent === undefined) return;
       const run = await this.ensureLease();
       if (run.runToken === null) throw new Error("The active run token is unavailable.");
-      const response = await this.options.server.appendRunEvents(run.runToken, {
+      let response: AppendRunEventsResponse;
+      const request = {
         kind: "run-events-append",
         protocolVersion: CURRENT_PROTOCOL_VERSION,
         requestId: this.options.ids.request(),
         events: batch,
-      });
+      } as const;
+      try {
+        response = await this.options.server.appendRunEvents(run.runToken, request);
+      } catch (error) {
+        if (!(error instanceof StudentHttpError) || !isRunUnavailable(error)) throw error;
+        const reopened = await this.reopenRevokedLease(run);
+        if (reopened.runToken === null) {
+          throw new Error("The active run token is unavailable.", { cause: error });
+        }
+        // Retry the same idempotent delivery once with the resumed run lease.
+        response = await this.options.server.appendRunEvents(reopened.runToken, request);
+      }
       const firstSequence = firstEvent.sequence;
       if (response.highestDurableSequence < firstSequence) {
         throw new Error("The teacher server did not acknowledge the pending event delivery.");
@@ -435,18 +525,34 @@ export class StudentSessionController {
 
   private async settlePendingClose(run: StoredRun): Promise<void> {
     const recovered = run.runId === null ? await this.recoverOpeningForClose(run) : run;
-    await this.settleClose(recovered);
+    await this.settleClose(recovered, true);
   }
 
   private async recoverOpeningForClose(run: StoredRun): Promise<StoredRun> {
     if (run.closeReason === null) throw new Error("The pending run close has no reason.");
     const token = this.sessionToken ?? (await this.authenticationForRenewal());
+    this.reportStartupStage("run-open");
     const opened = await this.options.server.openRun(token, this.openRequest(run));
     await this.options.localSession.activate(opened);
     return this.options.localSession.beginClose(run.closeReason);
   }
 
-  private async settleClose(run: StoredRun): Promise<void> {
+  /**
+   * Closing must not open an interactive sign-in while the student is leaving: an expired
+   * session falls back to the still-valid run lease, and only a run without one re-authenticates.
+   */
+  private async closeSessionToken(run: StoredRun): Promise<SessionToken | null> {
+    if (this.sessionToken === null) return null;
+    const checked = await bootstrapClass(this.options, this.sessionToken);
+    if (checked.authenticated) return this.sessionToken;
+    const leaseExpiresAt = Date.parse(String(run.leaseExpiresAt));
+    const leaseValid =
+      Number.isFinite(leaseExpiresAt) && leaseExpiresAt > Date.parse(this.options.clock.now());
+    if (run.runToken !== null && leaseValid) return null;
+    return this.authenticationForRenewal();
+  }
+
+  private async settleClose(run: StoredRun, rejectWithoutFailing = false): Promise<void> {
     const runId = this.requireRunId(run);
     if (run.closeReason === null) throw new Error("The pending run close has no reason.");
     if (run.closeRequestId === null) throw new Error("The pending run close has no request ID.");
@@ -456,14 +562,33 @@ export class StudentSessionController {
       requestId: run.closeRequestId,
       reason: run.closeReason,
     } as const;
-    const response =
-      this.sessionToken !== null
-        ? await this.options.server.closeRunAuthenticated(this.sessionToken, { ...request, runId })
-        : run.runToken === null
-          ? (() => {
-              throw new Error("The pending run close has no run token.");
-            })()
-          : await this.options.server.closeRun(run.runToken, request);
+    const sessionToken = await this.closeSessionToken(run);
+    let response: CloseRunResponse;
+    try {
+      response =
+        sessionToken !== null
+          ? await this.options.server.closeRunAuthenticated(sessionToken, { ...request, runId })
+          : run.runToken === null
+            ? (() => {
+                throw new Error("The pending run close has no run token.");
+              })()
+            : await this.options.server.closeRun(run.runToken, request);
+    } catch (error) {
+      if (
+        !rejectWithoutFailing ||
+        !(error instanceof StudentHttpError) ||
+        !isRejectedPendingClose(error)
+      ) {
+        throw error;
+      }
+      response = {
+        protocolVersion: CURRENT_PROTOCOL_VERSION,
+        requestId: run.closeRequestId,
+        runId,
+        state: "closed",
+        alreadyClosed: true,
+      };
+    }
     await this.options.localSession.finishClose(response);
   }
 

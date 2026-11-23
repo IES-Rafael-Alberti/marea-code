@@ -20,11 +20,20 @@ export const RelativeWorkspacePathSchema = z
   .string()
   .min(1)
   .max(512)
-  .regex(/^[\p{L}\p{N}._-]+(?:\/[\p{L}\p{N}._-]+)*(?![\s\S])/u)
   .refine(
-    (path) => path.split("/").every((segment) => segment !== "." && segment !== ".."),
+    isValidRelativeWorkspacePath,
     "Workspace event paths must stay relative to the project root.",
   );
+
+function isValidRelativeWorkspacePath(path: string): boolean {
+  if (path.includes("\\") || /[\p{Cc}\p{Cf}]/u.test(path)) return false;
+  return path.split("/").every((segment) => {
+    if (segment.length === 0) return false;
+    if (segment.includes(":") || segment.endsWith(".") || segment.endsWith(" ")) return false;
+    if (segment.toLowerCase().startsWith(".marea-")) return false;
+    return !/^(?:aux|con|nul|prn|com[1-9]|lpt[1-9])(?:\..*)?$/iu.test(segment);
+  });
+}
 
 const eventBaseShape = {
   eventId: EventIdSchema,

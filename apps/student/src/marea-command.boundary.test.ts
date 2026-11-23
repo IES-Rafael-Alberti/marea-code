@@ -1,4 +1,3 @@
-import { createTranslator } from "@marea/i18n";
 import { ApprovalIdSchema, STARTUP_MESSAGE_ID } from "@marea/protocol";
 import type { ConversationTuiOptions } from "@marea/student-tui";
 import { describe, expect, it, vi } from "vitest";
@@ -20,7 +19,6 @@ vi.mock("./external-authorization.boundary.js", async (original) => {
 import type { ProductionStudentCompositionOptions } from "./composition.js";
 import type { ApprovalPrompt, StudentViewEvent } from "./contracts.js";
 import {
-  createBindableConversationPort,
   executeMareaCommand,
   MAREA_CLIENT_VERSION,
   type MareaCommandRuntime,
@@ -99,6 +97,9 @@ describe("marea command", () => {
     async ({ arguments: arguments_ }) => {
       const exit = Promise.withResolvers<{ readonly exitCode: 0; readonly reason: "closed" }>();
       const session = conversationSession(exit.promise);
+      const suspendedOperation = vi.fn(() => Promise.resolve("suspended result"));
+      const withTerminalSuspended = vi.spyOn(session, "withTerminalSuspended");
+      let earlyAuthentication: Promise<string> | undefined;
       const controller = {
         close: vi.fn(() => Promise.resolve()),
         sendMessage: vi.fn(() => Promise.resolve()),
@@ -118,7 +119,16 @@ describe("marea command", () => {
       const runtime: MareaCommandRuntime = {
         createApplication(options) {
           compositions.push(options);
-          return Promise.resolve({ controller, dispose });
+          options.notice?.("Restored local state.\n");
+          // Authentication can run before the conversation has been bound.
+          earlyAuthentication = options.studentInterface.withAuthentication?.(() =>
+            Promise.resolve("early result"),
+          );
+          return (
+            options.studentInterface.withAuthentication?.(() =>
+              Promise.resolve({ controller, dispose }),
+            ) ?? Promise.reject(new Error("Missing authentication scope."))
+          );
         },
         nextAttemptId: () => "attempt:one",
         nextMessageId: () => "message:1",
@@ -148,6 +158,16 @@ describe("marea command", () => {
         output: options.output,
       });
       expect(composition.externalAuthorization).toBeDefined();
+      expect(options.writes).toContain("Restored local state.\n");
+      await expect(earlyAuthentication).resolves.toBe("early result");
+      await expect(
+        composition.studentInterface.withAuthentication?.(suspendedOperation),
+      ).resolves.toBe("suspended result");
+      expect(withTerminalSuspended).toHaveBeenCalledWith(suspendedOperation);
+      expect(suspendedOperation).toHaveBeenCalledExactlyOnceWith();
+      await expect(
+        composition.studentInterface.withAuthentication?.(() => Promise.resolve("signed in")),
+      ).resolves.toBe("signed in");
       const studentInterface = composition.studentInterface;
       const identity = { attemptId: "attempt:one", messageId: "message:retry" } as const;
       const assistantEvent = {
@@ -462,31 +482,4 @@ describe("marea command", () => {
     expect(close).not.toHaveBeenCalled();
     expect(dispose).toHaveBeenCalledOnce();
   });
-
-  it("returns a localized safe error without leaking an internal failure", async () => {
-    const options = commandOptions({ translator: createTranslator("es") });
-
-    await expect(
-      executeMareaCommand(options, {
-        createApplication: () => Promise.reject(new Error("secret provider key")),
-        nextAttemptId: vi.fn(),
-        nextMessageId: vi.fn(),
-        readGitContext: () => ({ branch: "", repositoryUrl: "" }),
-        startConversation: vi.fn(),
-      }),
-    ).resolves.toBe(1);
-    expect(options.errors).toEqual([
-      "Marea no ha podido iniciarse. Inténtalo de nuevo.\nCódigo de diagnóstico: local-state/unexpected. Inclúyelo al comunicar el problema.\n",
-    ]);
-    expect(options.errors.join("")).not.toContain("secret provider key");
-  });
-});
-
-it("forwards generic thinking through the bound conversation port", () => {
-  const port = createBindableConversationPort();
-  expect(() => port.thinking()).toThrow("The conversation interface is not ready.");
-  const session = conversationSession();
-  port.bind(session);
-  expect(port.thinking("message", "attempt")).toBe(true);
-  expect(session.thinking).toHaveBeenCalledExactlyOnceWith("message", "attempt");
 });

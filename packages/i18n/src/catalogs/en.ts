@@ -1,9 +1,17 @@
 import type { CompleteCatalog } from "../keys.js";
 
 const englishCatalog = {
+  "dashboard.validation.name":
+    "Use 1–120 letters, numbers, spaces, periods, apostrophes or hyphens; start with a letter or number.",
+  "dashboard.validation.login":
+    "Use 3–64 lowercase letters, numbers, periods, underscores or hyphens; start with a letter or number.",
+  "dashboard.validation.id":
+    "Use 1–128 letters, numbers, periods, underscores, colons or hyphens; start with a letter or number.",
   "bootstrap.checking-connection": "Checking the connection to the teacher server…",
   "bootstrap.connection-failed":
     "Could not connect to the teacher server. Check your connection and try again.",
+  "bootstrap.connection-failed-at":
+    "Could not connect to the teacher server at {{origin}}. Check the address, your connection, and that the server is running.",
   "bootstrap.login-required": "Sign in to connect Marea to your teacher server.",
   "bootstrap.ready": "Marea is ready.",
   "bootstrap.resuming-session": "Resuming your session…",
@@ -49,6 +57,8 @@ const englishCatalog = {
     "The terminal interface could not open. Try another terminal and share this code if it fails again.",
   "student.cli.local-state-invalid":
     "Marea cannot read this project’s saved data. Keep the data and share this code with your teacher so it can be recovered.",
+  "student.cli.local-state-recovered":
+    "Marea could not read some saved data on this computer, so it set that data aside and started a new session. Nothing was deleted, and you may need to sign in again.",
   "student.cli.failure-code": "Diagnostic code: {{code}}. Include it when reporting the problem.",
   "student.cli.unexpected-error": "Marea could not start. Try again.",
   "student.feedback.ack-hint": "After reading it, mark it as read with: {{command}}",

@@ -1,8 +1,16 @@
 import type { CompleteCatalog } from "../keys.js";
 const basqueCatalog = {
+  "dashboard.validation.name":
+    "Erabili 1–120 letra, zenbaki, zuriune, puntu, apostrofo edo marratxo; hasi letra edo zenbaki batekin.",
+  "dashboard.validation.login":
+    "Erabili 3–64 letra xehe, zenbaki, puntu, azpimarra edo marratxo; hasi letra edo zenbaki batekin.",
+  "dashboard.validation.id":
+    "Erabili 1–128 letra, zenbaki, puntu, azpimarra, bi puntu edo marratxo; hasi letra edo zenbaki batekin.",
   "bootstrap.checking-connection": "Irakaslearen zerbitzariarekiko konexioa egiaztatzen…",
   "bootstrap.connection-failed":
     "Ezin izan da irakaslearen zerbitzariarekin konektatu. Egiaztatu konexioa eta saiatu berriro.",
+  "bootstrap.connection-failed-at":
+    "Ezin izan da konektatu {{origin}} helbideko irakaslearen zerbitzariarekin. Egiaztatu helbidea eta konexioa, eta zerbitzaria martxan dagoela.",
   "bootstrap.login-required": "Hasi saioa Marea irakaslearen zerbitzariarekin konektatzeko.",
   "bootstrap.ready": "Marea prest dago.",
   "bootstrap.resuming-session": "Zure saioarekin jarraitzen…",
@@ -47,6 +55,8 @@ const basqueCatalog = {
     "Ezin izan da terminaleko interfazea ireki. Probatu beste terminal batean eta eman kode hau berriro huts egiten badu.",
   "student.cli.local-state-invalid":
     "Mareak ezin ditu proiektu honen gordetako datuak irakurri. Gorde datuak eta eman kode hau irakasleari, berreskuratu ahal izateko.",
+  "student.cli.local-state-recovered":
+    "Mareak ezin izan ditu ordenagailu honetako datu gordetu batzuk irakurri; beraz, alde batera utzi ditu eta saio berri bat hasi du. Ez da ezer ezabatu, eta agian saioa berriro hasi beharko duzu.",
   "student.cli.failure-code": "Diagnostiko-kodea: {{code}}. Sartu arazoaren berri ematean.",
   "student.cli.unexpected-error": "Marea ezin izan da hasi. Saiatu berriro.",
   "student.feedback.ack-hint":

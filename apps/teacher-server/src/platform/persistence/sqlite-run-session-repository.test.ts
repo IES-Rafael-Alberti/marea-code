@@ -325,7 +325,7 @@ describe("SQLite run session repository events", () => {
     expect(highest).toBe(3);
     expect(database.executions.at(-1)?.parameters).toEqual([
       "run:1",
-      "2026-09-03T10:03:00.000Z",
+      "2026-09-03T10:04:00.000Z",
       3,
       false,
     ]);
@@ -372,7 +372,7 @@ describe("SQLite run session repository events", () => {
       new SqliteRunSessionRepository(database).appendEvents({
         events: [event("event:ordinary", 2)],
         leaseTokenHash: "digest:lease",
-        now: "now",
+        now: "2026-09-03T10:02:00.000Z",
       }),
     ).toBe(2);
     expect(database.executions.at(-1)?.parameters).toEqual([
@@ -390,7 +390,7 @@ describe("SQLite run session repository events", () => {
       new SqliteRunSessionRepository(database).appendEvents({
         events: [event("event:approval", 2, "approval-requested")],
         leaseTokenHash: "digest:lease",
-        now: "now",
+        now: "2026-09-03T10:02:00.000Z",
       }),
     ).toBe(2);
     expect(database.executions.at(-1)?.parameters).toEqual([

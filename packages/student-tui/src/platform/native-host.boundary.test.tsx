@@ -9,6 +9,8 @@ const doubles = vi.hoisted(() => ({
   createRenderer: vi.fn(),
   createRoot: vi.fn(),
   destroy: vi.fn(),
+  suspend: vi.fn(),
+  resume: vi.fn(),
   title: vi.fn(),
   release: vi.fn(),
   install: vi.fn(),
@@ -46,6 +48,8 @@ describe("createNativeOpenTuiHost", () => {
     vi.clearAllMocks();
     doubles.createRenderer.mockResolvedValue({
       destroy: doubles.destroy,
+      suspend: doubles.suspend,
+      resume: doubles.resume,
       setTerminalTitle: doubles.title,
     });
     doubles.install.mockReturnValue(doubles.release);
@@ -71,6 +75,8 @@ describe("createNativeOpenTuiHost", () => {
     });
     expect(doubles.createRoot).toHaveBeenCalledWith({
       destroy: doubles.destroy,
+      suspend: doubles.suspend,
+      resume: doubles.resume,
       setTerminalTitle: doubles.title,
     });
     expect(doubles.render).toHaveBeenCalledOnce();
@@ -151,5 +157,38 @@ describe("createNativeOpenTuiHost", () => {
       openConsoleOnError: false,
     });
     host.dispose();
+  });
+
+  it("yields the terminal once for nested authentication and restores it after failure", async () => {
+    const host = await createNativeOpenTuiHost();
+    const pending = Promise.withResolvers<string>();
+    const operation = host.withTerminalSuspended(async () => {
+      expect(doubles.suspend).toHaveBeenCalledOnce();
+      expect(doubles.resume).not.toHaveBeenCalled();
+      return host.withTerminalSuspended(() => pending.promise);
+    });
+    expect(doubles.resume).not.toHaveBeenCalled();
+    pending.reject(new Error("Sign-in cancelled"));
+    await expect(operation).rejects.toThrow("Sign-in cancelled");
+    expect(doubles.suspend).toHaveBeenCalledOnce();
+    expect(doubles.resume).toHaveBeenCalledOnce();
+    await expect(host.withTerminalSuspended(() => Promise.resolve("signed in"))).resolves.toBe(
+      "signed in",
+    );
+    expect(doubles.suspend).toHaveBeenCalledTimes(2);
+    expect(doubles.resume).toHaveBeenCalledTimes(2);
+    host.dispose();
+  });
+
+  it("does not resurrect a host closed during authentication", async () => {
+    const host = await createNativeOpenTuiHost();
+    await host.withTerminalSuspended(() => {
+      host.dispose();
+      return Promise.resolve();
+    });
+    expect(doubles.resume).not.toHaveBeenCalled();
+    const operation = vi.fn();
+    await expect(host.withTerminalSuspended(operation)).rejects.toThrow("already disposed");
+    expect(operation).not.toHaveBeenCalled();
   });
 });

@@ -6,6 +6,8 @@ interface LiveSession {
   checking: boolean;
 }
 const LIVE_PATH = "/api/v1/dashboard/live";
+/** Exceeds the 120-second skill-generation and 28-second external-login budgets. */
+const HTTP_IDLE_TIMEOUT_SECONDS = 150;
 const MUTATIONS = new Set([
   "/v1/runs/open",
   "/v1/runs/events",
@@ -33,6 +35,7 @@ export const bunServe: ServePort = ({ hostname, port, fetch }) => {
   const server = Bun.serve<LiveSession>({
     hostname,
     port,
+    idleTimeout: HTTP_IDLE_TIMEOUT_SECONDS,
     websocket: {
       maxPayloadLength: 1024,
       backpressureLimit: 256 * 1024,

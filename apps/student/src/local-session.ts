@@ -40,14 +40,22 @@ import {
 
 export type { EventFactory } from "./local-session-turns.js";
 
+/** Additive local fields; existing StoredRun values remain valid without them. */
+export type ReopenStoredRun = StoredRun & {
+  /** Only the latest mismatched run with undelivered events is retained. */
+  readonly abandoned?: readonly ReopenStoredRun[];
+};
+
 function freshOpening(
   projectDisplayName: string,
   openIntent: StoredOpenIntent,
   ids: IdSource,
   resumeRunId: RunId | null,
-): StoredRun {
+  abandoned: readonly ReopenStoredRun[],
+): ReopenStoredRun {
   return {
     approvals: [],
+    ...(abandoned.length === 0 ? {} : { abandoned }),
     clientSessionId: ids.clientSession(),
     closeReason: null,
     closeRequestId: null,
@@ -72,10 +80,10 @@ function freshOpening(
 }
 
 function resumeOpening(
-  existing: StoredRun,
+  existing: ReopenStoredRun,
   openIntent: StoredOpenIntent,
   ids: IdSource,
-): StoredRun {
+): ReopenStoredRun {
   return {
     ...existing,
     clientSessionId: ids.clientSession(),
@@ -85,6 +93,22 @@ function resumeOpening(
     openIntent,
     phase: "opening",
   };
+}
+
+function retainedAbandonedRuns(
+  existing: ReopenStoredRun | null,
+  abandonExisting: boolean,
+): readonly ReopenStoredRun[] {
+  if (existing === null) return [];
+  if (
+    !abandonExisting ||
+    (existing.outbox.length === 0 && (existing.pendingDelivery?.events.length ?? 0) === 0)
+  ) {
+    return existing.abandoned ?? [];
+  }
+  const copy = { ...existing };
+  delete copy.abandoned;
+  return [copy];
 }
 
 export class LocalSession {
@@ -111,7 +135,7 @@ export class LocalSession {
 
   prepareDelivery(limit: number): Promise<readonly CanonicalRunEvent[]> {
     return this.mutateRun((run) => {
-      if (run.pendingDelivery !== null && run.pendingDelivery !== undefined) return run;
+      if (run.pendingDelivery?.events !== undefined) return run;
       const events = run.outbox.slice(0, limit);
       return events.length === 0 ? run : { ...run, pendingDelivery: { events } };
     }).then((run) => run.pendingDelivery?.events.map((event) => event.value) ?? []);
@@ -121,11 +145,13 @@ export class LocalSession {
     projectDisplayName: string,
     desiredIntent: StoredOpenIntent,
     resumeRunId: RunId | null = null,
-  ): Promise<StoredRun> {
+    abandonExisting = false,
+  ): Promise<ReopenStoredRun> {
     return this.mutate((state) => {
-      const existing = state.run;
+      const existing: ReopenStoredRun | null = state.run?.phase === "closed" ? null : state.run;
       if (
         existing !== null &&
+        !abandonExisting &&
         existing.phase === "opening" &&
         existing.projectDisplayName === projectDisplayName &&
         (existing.openIntent.kind === "new" ||
@@ -136,11 +162,18 @@ export class LocalSession {
       const run =
         desiredIntent.kind === "resume" &&
         existing !== null &&
+        !abandonExisting &&
         existing.phase === "active" &&
         existing.projectDisplayName === projectDisplayName &&
         (resumeRunId === null || existing.runId === resumeRunId)
           ? resumeOpening(existing, desiredIntent, this.ids)
-          : freshOpening(projectDisplayName, desiredIntent, this.ids, resumeRunId);
+          : freshOpening(
+              projectDisplayName,
+              desiredIntent,
+              this.ids,
+              resumeRunId,
+              retainedAbandonedRuns(existing, abandonExisting),
+            );
       return { state: { ...state, run }, value: run };
     });
   }
@@ -179,6 +212,23 @@ export class LocalSession {
         leaseIssuedAt: response.lease.issuedAt,
         runToken: response.lease.token,
       };
+    });
+  }
+
+  reopenLease(runId: Exclude<StoredRun["runId"], null>): Promise<ReopenStoredRun> {
+    return this.mutate((state) => {
+      const current: ReopenStoredRun | null = state.run;
+      if (current?.runId !== runId || (current.phase !== "active" && current.phase !== "closing")) {
+        throw new Error("The run changed while its revoked lease was being recovered.");
+      }
+      const run: ReopenStoredRun = {
+        ...current,
+        clientSessionId: this.ids.clientSession(),
+        idempotencyKey: this.ids.idempotency(),
+        openIntent: { kind: "resume" },
+        phase: "opening",
+      };
+      return { state: { ...state, run }, value: run };
     });
   }
 
@@ -361,20 +411,14 @@ export class LocalSession {
     }));
   }
 
-  finishClose(response: CloseRunResponse): Promise<StoredRun> {
-    return this.mutateRun((run) => {
+  finishClose(response: CloseRunResponse): Promise<null> {
+    return this.mutate((state) => {
+      const run = state.run;
+      if (run === null) throw new Error("No local student run exists.");
       if (run.runId !== response.runId) {
         throw new Error("The close response addressed another run.");
       }
-      return {
-        ...run,
-        leaseExpiresAt: null,
-        leaseIssuedAt: null,
-        outbox: [],
-        pendingDelivery: null,
-        phase: "closed",
-        runToken: null,
-      };
+      return { state: { ...state, run: null }, value: null };
     });
   }
 

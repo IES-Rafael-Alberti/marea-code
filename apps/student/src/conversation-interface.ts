@@ -32,6 +32,7 @@ export type StudentConversationPort = Pick<
 
 export interface ConversationStudentInterfaceOptions {
   readonly authentication: AuthenticationPrompt;
+  readonly withAuthentication?: <T>(operation: () => Promise<T>) => Promise<T>;
   readonly conversation: StudentConversationPort;
   readonly executeWarning?: string | undefined;
   readonly getExecuteWarning?: (() => string) | undefined;
@@ -62,11 +63,14 @@ export function adaptConversationTuiSession(
 export function createConversationStudentInterface(
   options: ConversationStudentInterfaceOptions,
 ): StudentInterface {
+  const withAuthentication = <T>(operation: () => Promise<T>): Promise<T> =>
+    options.withAuthentication?.(operation) ?? operation();
   return Object.freeze({
+    withAuthentication,
     authenticate: (reason: AuthenticationReason, authentication: AuthenticationOptions) =>
       options.authentication.authenticate(reason, authentication),
     chooseClass: (classes: readonly SelectableClass[]) =>
-      options.authentication.chooseClass(classes),
+      withAuthentication(() => options.authentication.chooseClass(classes)),
     askQuestions: async (
       request: import("@marea/deepagents-adapter").QuestionRequest &
         import("./contracts.js").TurnAttemptIdentity,

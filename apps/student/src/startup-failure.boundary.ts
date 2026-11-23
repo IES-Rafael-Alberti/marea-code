@@ -3,6 +3,59 @@ import { StudentTuiStartupError } from "@marea/student-tui";
 import { ZodError } from "zod";
 
 import { StudentHttpError } from "./http-error.js";
+import { studentHttpTransportDiagnostics } from "./http-transport-diagnostics.boundary.js";
+
+const DIAGNOSTIC_CODE = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/u;
+const MAX_DIAGNOSTIC_DEPTH = 3;
+
+function errorProperty(value: object, key: string): unknown {
+  try {
+    return Reflect.get(value, key);
+  } catch {
+    // Unreadable properties have no diagnostic value.
+  }
+  return undefined;
+}
+
+function findDiagnosticCode(error: unknown, includeCheckpoint: boolean): string | null {
+  let current = error;
+  const seen = new Set<unknown>();
+  for (let depth = 0; depth < MAX_DIAGNOSTIC_DEPTH; depth += 1) {
+    if (typeof current !== "object" || seen.has(current)) break;
+    // Stryker disable next-line ConditionalExpression: Reflect.get(null) is caught and yields no properties, so traversing null also returns no diagnostic.
+    if (current === null) break;
+    seen.add(current);
+    const candidate = errorProperty(current, "diagnosticCode");
+    if (typeof candidate === "string" && DIAGNOSTIC_CODE.test(candidate)) return candidate;
+    if (
+      includeCheckpoint &&
+      errorProperty(current, "name") === "AgentAdapterError" &&
+      errorProperty(current, "code") === "invalid-checkpoint-state"
+    ) {
+      return "checkpoint.invalid";
+    }
+    current = errorProperty(current, "cause");
+  }
+  return null;
+}
+
+/** Shared, read-only diagnostic contract used by startup and turn boundaries. */
+export function diagnosticCodeFor(error: unknown): string | null {
+  return findDiagnosticCode(error, false);
+}
+
+function startupDiagnosticCode(error: unknown): string | null {
+  return findDiagnosticCode(error, true);
+}
+
+function printableServerOrigin(value: string): string | null {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.origin : null;
+  } catch {
+    return null;
+  }
+}
 
 export class StudentWorkspaceError extends Error {
   constructor(
@@ -30,6 +83,7 @@ const HTTP_MESSAGES: ReadonlyMap<string, MessageKey> = new Map([
 export function startupFailure(error: unknown, translator: Translator, stage: string): string {
   let key: MessageKey = "student.cli.unexpected-error";
   let code = "unexpected";
+  let serverOrigin: string | null = null;
   if (error instanceof StudentWorkspaceError) {
     key = error.key;
     code = key;
@@ -43,7 +97,16 @@ export function startupFailure(error: unknown, translator: Translator, stage: st
       key = "student.cli.class-configuration-required";
       code = "class-configuration-required";
     }
-    code += `/HTTP-${String(error.status)}`;
+    const transport =
+      error.code === "transport.unavailable" || error.code === "transport.interrupted"
+        ? studentHttpTransportDiagnostics(error)
+        : null;
+    if (transport === null) {
+      code += `/HTTP-${String(error.status)}`;
+    } else {
+      serverOrigin = printableServerOrigin(transport.serverOrigin);
+      code = `${error.code}/HTTP-0/${transport.endpoint.slice(1)}/${transport.cause.name}:${transport.cause.code}`;
+    }
   } else if (error instanceof StudentTuiStartupError) {
     key =
       error.code === "NON_INTERACTIVE"
@@ -53,6 +116,12 @@ export function startupFailure(error: unknown, translator: Translator, stage: st
   } else if (error instanceof ZodError) {
     key = "student.cli.local-state-invalid";
     code = "local-state-invalid";
+  } else {
+    code = startupDiagnosticCode(error) ?? code;
   }
-  return `${translator.t(key)}\n${translator.t("student.cli.failure-code", { code: `${stage}/${code}` })}\n`;
+  const message =
+    serverOrigin === null
+      ? translator.t(key)
+      : translator.t("bootstrap.connection-failed-at", { origin: serverOrigin });
+  return `${message}\n${translator.t("student.cli.failure-code", { code: `${stage}/${code}` })}\n`;
 }

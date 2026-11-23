@@ -1,6 +1,11 @@
 export const MESSAGE_KEYS = Object.freeze([
+  "dashboard.validation.name",
+  "dashboard.validation.login",
+  "dashboard.validation.id",
+
   "bootstrap.checking-connection",
   "bootstrap.connection-failed",
+  "bootstrap.connection-failed-at",
   "bootstrap.login-required",
   "bootstrap.ready",
   "bootstrap.resuming-session",
@@ -35,6 +40,7 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.cli.terminal-required",
   "student.cli.renderer-failed",
   "student.cli.local-state-invalid",
+  "student.cli.local-state-recovered",
   "student.cli.failure-code",
   "student.cli.unexpected-error",
   "student.feedback.ack-hint",
@@ -162,6 +168,7 @@ export type MessageKey = (typeof MESSAGE_KEYS)[number];
 
 /** Parameters accepted by each message. Missing keys are intentionally not accepted. */
 export interface MessageParameterMap {
+  readonly "bootstrap.connection-failed-at": { readonly origin: string };
   readonly "student.cli.failure-code": { readonly code: string };
   readonly "student.cli.invalid-language": { readonly option: string };
   readonly "student.auth.external": { readonly provider: string };

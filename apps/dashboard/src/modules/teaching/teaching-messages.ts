@@ -53,7 +53,8 @@ export function teachingMessages(locale: Locale) {
         remove: "Remove",
         problems: {
           load: "Classes could not be loaded.",
-          invalid: "The server rejected the request as invalid.",
+          invalid:
+            "The server rejected the configuration. Check the fields; the complete instructions, including safety rules and selected skills, must fit within 256 KiB.",
           forbidden: "You do not have access to this class.",
           conflict: "The saved configuration changed while you were editing.",
           uncertain: "The save outcome is unknown. Your draft is preserved.",
@@ -131,7 +132,8 @@ export function teachingMessages(locale: Locale) {
           remove: "Kendu",
           problems: {
             load: "Ezin izan dira ikasgelak kargatu.",
-            invalid: "Zerbitzariak eskaera baliogabetzat baztertu du.",
+            invalid:
+              "Zerbitzariak konfigurazioa baztertu du. Egiaztatu eremuak; jarraibide osoek, segurtasun-arauak eta hautatutako trebetasunak barne, 256 KiB-ko mugaren barruan egon behar dute.",
             forbidden: "Ez duzu ikasgela honetarako sarbiderik.",
             conflict: "Gordetako konfigurazioa aldatu egin da editatzen ari zinela.",
             uncertain: "Ez dago gordetzearen emaitza berretsita. Zure zirriborroa mantendu da.",
@@ -209,7 +211,8 @@ export function teachingMessages(locale: Locale) {
           remove: "Quitar",
           problems: {
             load: "No se han podido cargar las clases.",
-            invalid: "El servidor ha rechazado la solicitud por no ser válida.",
+            invalid:
+              "El servidor ha rechazado la configuración. Revisa los campos; las instrucciones completas, incluidas las reglas de seguridad y las habilidades seleccionadas, deben caber en 256 KiB.",
             forbidden: "No tienes acceso a esta clase.",
             conflict: "La configuración guardada ha cambiado mientras editabas.",
             uncertain: "El resultado del guardado es desconocido. Tu borrador se conserva.",

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 
 import { ApprovalIdSchema } from "../../packages/protocol/src/index.js";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import * as z from "zod";
 
 import { parseStudentState } from "../../apps/student/src/filesystem.boundary.js";
@@ -211,7 +211,8 @@ describe("compiled marea OpenTUI acceptance", { concurrent: false }, () => {
       const state = parseStudentState(
         JSON.parse(await readFile(join(stateDirectory, "session.json"), "utf8")),
       );
-      expect(state.run).toMatchObject({ phase: "closed" });
+      // The server confirmed the close, so the client keeps no local run state.
+      expect(state.run).toBeNull();
       expect((await stat(join(stateDirectory, "credential.json"))).size).toBeGreaterThan(0);
       expect((await stat(join(stateDirectory, "agent", "checkpoints.bin"))).size).toBeGreaterThan(
         0,
@@ -333,3 +334,64 @@ function coreEvents(value: Parameters<typeof storedEvents>[0]) {
       ].includes(event.event_type),
   );
 }
+
+it("reauthenticates outside the live TUI and continues the same compiled conversation", async () => {
+  const value = await resources.harness();
+  // Make the server-issued lease require renewal immediately on the real client.
+  // Server time stays fixed, so renewed leases remain valid on the server.
+  const serverTime = new Date(Date.now() - 11 * 60_000).toISOString();
+  vi.spyOn(value.clock, "now").mockReturnValue(serverTime);
+  const location = await resources.project("marea-reauthentication-");
+  const executablePath = join(location.root, "marea");
+  await compileMarea(executablePath);
+  const terminal = launchMarea(value, location, executablePath);
+  await enrollCompiledStudent(terminal, ACCEPTANCE_SESSION.ada);
+  await terminal.waitForQuiet();
+  const runs = value.database.readAll("SELECT id FROM marea_runs");
+  expect(runs).toHaveLength(1);
+  value.database.execute("UPDATE marea_auth_sessions SET revoked_at = ?1", [serverTime]);
+  const before = terminal.transcript().length;
+  terminal.write("Please prepare the tide notes.\r");
+  await terminal.waitForText("Your saved session is no longer valid.", 15_000);
+  const prompt = terminal.transcript().slice(before);
+  expect(prompt).toContain("\u001b[?1006l");
+  expect(prompt).toContain("\u001b[?1049l");
+  expect(prompt.lastIndexOf("\u001b[?1006l")).toBeGreaterThan(prompt.lastIndexOf("\u001b[?1006h"));
+  // Inject reports already in transit, even though reporting is now disabled.
+  const mouse = "\u001b[<35;20;3M";
+  terminal.write(mouse.repeat(3));
+  terminal.write("\r");
+  await vi.waitFor(
+    () => {
+      expect(terminal.transcript().slice(before)).toContain("Username");
+    },
+    { timeout: 10_000 },
+  );
+  terminal.write(mouse.repeat(3));
+  terminal.write(`${ACCEPTANCE_SESSION.ada.login}\r`);
+  await vi.waitFor(
+    () => {
+      expect(terminal.transcript().slice(before)).toContain("Password");
+    },
+    { timeout: 10_000 },
+  );
+  terminal.write(`${ACCEPTANCE_SESSION.ada.password}\r`);
+  await terminal.waitForText("Authorize", 15_000);
+  const resumed = terminal.transcript().slice(before);
+  expect(resumed.lastIndexOf("\u001b[?1006h")).toBeGreaterThan(
+    resumed.lastIndexOf("\u001b[?1006l"),
+  );
+  expect(resumed).not.toContain(ACCEPTANCE_SESSION.ada.password);
+  expect(resumed).not.toContain("35;20;3M");
+  terminal.write("\u001b[<35;20;3M");
+  terminal.write("y");
+  await terminal.waitForText("saved.", 15_000);
+  await waitForStoredEvent(value, "assistant-message");
+  expect(terminal.transcript().slice(before)).not.toContain("[<35;20;3M");
+  expect(value.database.readAll("SELECT id FROM marea_runs")).toEqual(runs);
+  expect(coreEvents(value).filter((event) => event.event_type === "student-message")).toHaveLength(
+    1,
+  );
+  await terminal.waitForQuiet();
+  await closeWithQuit(terminal);
+}, 60_000);

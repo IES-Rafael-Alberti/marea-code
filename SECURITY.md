@@ -82,11 +82,41 @@ Repository administrators must enable the dependency graph, Dependabot alerts,
 secret scanning, and private vulnerability reporting in repository settings
 where available.
 
-Bearer sessions are issued for 30 minutes. A student session is extended to 30
-minutes from now only when an authenticated lease renewal succeeds
-for one of the student's own active runs with recent durable activity, and never
-beyond 8 hours after sign-in. Teacher revocation, account deactivation, closed
-runs, and expired sessions are never extended or revived.
+Bearer sessions have a 30-minute idle timeout and an absolute lifetime of 8 hours
+from sign-in. Authenticated teacher dashboard activity, including live connection
+checks, slides teacher sessions. Authenticated presence heartbeats and successful
+lease renewals for a student's own active run count as activity using the server
+clock; lease renewal slides the student's session. Closing the terminal stops
+heartbeats and renewal, so the session lapses after 30 minutes. Teacher revocation,
+account deactivation, closed runs, and expired sessions are never extended or revived.
+
+## Private state file protection
+
+Student state, credentials and input history are stored outside the project
+workspace in a per-account private directory. On Windows, that directory is
+protected by a PowerShell ACL boundary (`packages/private-filesystem`): it
+rejects network and other unsupported volumes, reparse points, foreign owners,
+and foreign access-control entries, then grants access only to the current user,
+`SYSTEM` and `Administrators`.
+
+A directory is secured and verified **once per process** (memoized by its
+resolved realpath). Files created inside a verified directory inherit its
+protected ACL, so the model is _private directory = no foreign writers_: after
+securing, a foreign principal has no write access to the directory, and
+re-verifying every file that lives inside it would add PowerShell latency
+without closing an attack surface. Atomic writes therefore verify the containing
+directory instead of re-securing each temporary file, and reads skip the
+per-file ACL inspect only when the parent directory was verified this process
+and the file is a regular, non-link file. This optimization never skips the
+directory checks themselves: volume, reparse-point, owner and ACE rejection
+still run on first verification.
+
+Failures surface as a typed `PrivateFilesystemError` whose `diagnosticCode` is
+`private-fs.<reason>` from a fixed allowlist (for example `private-fs.timeout`,
+`private-fs.reparse-point`, `private-fs.set-acl-failed`). Diagnostic codes never
+carry paths, tokens or user content. Only transient failures (spawn failure,
+timeout, or an antivirus sharing violation during `Set-Acl`) are retried once;
+owner, ACE, volume and reparse-point failures are rejected immediately.
 
 ## Preview baseline CodeQL review
 

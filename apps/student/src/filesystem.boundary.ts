@@ -1,7 +1,8 @@
-import { inspectPrivatePath, securePrivatePath } from "@marea/private-filesystem";
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, open, readFile, realpath, rename, rm } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
+
+import * as privateWindows from "./private-file-windows.boundary.js";
 
 import {
   CanonicalRunEventSchema,
@@ -31,6 +32,7 @@ import {
 } from "./contracts.js";
 
 const MAX_FILE_BYTES = 1_048_576;
+const MAX_STUDENT_STATE_FILE_BYTES = 20 * 1_048_576;
 const MAX_COLLECTION_SIZE = 4_096;
 const PRIVATE_DIRECTORY_MODE = 0o700;
 const PRIVATE_FILE_MODE = 0o600;
@@ -176,7 +178,7 @@ const StoredTurnsSchema = z
   .refine((turns) => hasUniqueValues(turns, (turn) => turn.messageId))
   .readonly();
 
-const StoredRunSchema = z
+const StoredRunBaseSchema = z
   .object({
     clientSessionId: ClientSessionIdSchema,
     closeReason: CloseRunReasonSchema.nullable(),
@@ -211,6 +213,12 @@ const StoredRunSchema = z
     snapshotId: SnapshotIdSchema.nullable(),
     turns: StoredTurnsSchema,
   })
+  .strict();
+const StoredAbandonedRunSchema = StoredRunBaseSchema.readonly();
+const StoredRunSchema = StoredRunBaseSchema.extend({
+  // Bound set-aside data and forbid recursive nesting on disk.
+  abandoned: z.array(StoredAbandonedRunSchema).max(1).optional(),
+})
   .strict()
   .readonly();
 
@@ -248,7 +256,7 @@ export interface AtomicFileOperations {
 
 const NODE_ATOMIC_FILE_OPERATIONS: AtomicFileOperations = Object.freeze({
   chmod: (path: string) => {
-    securePrivatePath(path, PRIVATE_FILE_MODE);
+    privateWindows.securePrivateFileParent(path);
     return Promise.resolve();
   },
   open,
@@ -275,15 +283,25 @@ function assertOutsideProject(projectRoot: string, stateDirectory: string): void
   }
 }
 
-export async function readPrivateTextFile(path: string): Promise<string | null> {
+class StudentStateFileTooLargeError extends Error {
+  readonly diagnosticCode = "local-state.too-large";
+  constructor() {
+    super("Student state file exceeds its size limit.");
+    this.name = "StudentStateFileTooLargeError";
+  }
+}
+
+export async function readPrivateTextFile(
+  path: string,
+  maxBytes = MAX_FILE_BYTES,
+): Promise<string | null> {
   try {
     const fileStat = await lstat(path);
-    if (!fileStat.isFile() || fileStat.size > MAX_FILE_BYTES) {
+    if (!fileStat.isFile()) {
       throw new Error("Student state file is unsafe or exceeds its size limit.");
     }
-    if (process.platform === "win32" && inspectPrivatePath(path) !== "file") {
-      throw new Error("Student state file permissions are unsafe.");
-    }
+    if (fileStat.size > maxBytes) throw new StudentStateFileTooLargeError();
+    if (process.platform === "win32") privateWindows.assertPrivateWindowsFileReadable(path);
     // Stryker disable next-line StringLiteral: Node treats an empty encoding as a binary read.
     return await readFile(path, "utf8");
   } catch (error: unknown) {
@@ -350,7 +368,7 @@ class FileStateStore implements StudentStateStore {
   constructor(private readonly path: string) {}
 
   async load(): Promise<StudentState> {
-    const content = await readPrivateTextFile(this.path);
+    const content = await readPrivateTextFile(this.path, MAX_STUDENT_STATE_FILE_BYTES);
     if (content === null) return { run: null, version: CURRENT_STUDENT_STATE_VERSION };
     const raw = parseJson(content);
     const state = parseStudentState(raw);
@@ -389,29 +407,7 @@ export function parseStudentState(value: unknown): StudentState {
       ? null
       : (() => {
           const runRecord = z.record(z.string(), z.unknown()).parse(rawRun);
-          const runKnownKeys = new Set([
-            "clientSessionId",
-            "closeReason",
-            "closeRequestId",
-            "approvals",
-            "effects",
-            "eventKeys",
-            "idempotencyKey",
-            "leaseExpiresAt",
-            "leaseIssuedAt",
-            "nextSequence",
-            "openIntent",
-            "outbox",
-            "pendingApprovals",
-            "pendingDelivery",
-            "phase",
-            "projectDisplayName",
-            "runId",
-            "runToken",
-            "snapshot",
-            "snapshotId",
-            "turns",
-          ]);
+          const runKnownKeys = new Set([...Object.keys(StoredRunBaseSchema.shape), "abandoned"]);
           const legacy = collectLegacy(runRecord, runKnownKeys);
           const known: Record<string, unknown> = Object.fromEntries(
             Object.entries(runRecord).filter(([key]) => runKnownKeys.has(key)),
@@ -490,7 +486,7 @@ export async function createFileStudentStores(
   await mkdir(requestedStateDirectory, { recursive: true, mode: PRIVATE_DIRECTORY_MODE });
   const stateDirectory = await realpath(requestedStateDirectory);
   assertOutsideProject(projectRoot, stateDirectory);
-  securePrivatePath(stateDirectory, PRIVATE_DIRECTORY_MODE);
+  privateWindows.securePrivateDirectory(stateDirectory);
   return Object.freeze({
     credentials: new FileCredentialStore(join(stateDirectory, "credential.json")),
     state: new FileStateStore(join(stateDirectory, "session.json")),

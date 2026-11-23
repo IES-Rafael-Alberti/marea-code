@@ -37,7 +37,7 @@
   "problems": {
     "conflict": "Gordetako konfigurazioa aldatu egin da editatzen ari zinela.",
     "forbidden": "Ez duzu ikasgela honetarako sarbiderik.",
-    "invalid": "Zerbitzariak eskaera baliogabetzat baztertu du.",
+    "invalid": "Zerbitzariak konfigurazioa baztertu du. Egiaztatu eremuak; jarraibide osoek, segurtasun-arauak eta hautatutako trebetasunak barne, 256 KiB-ko mugaren barruan egon behar dute.",
     "load": "Ezin izan dira ikasgelak kargatu.",
     "skill-unavailable": "Hautatutako skill-a ez dago eskuragarri edo zaharkituta dago zerbitzarian.",
     "uncertain": "Ez dago gordetzearen emaitza berretsita. Zure zirriborroa mantendu da.",

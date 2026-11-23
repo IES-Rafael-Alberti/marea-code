@@ -1,6 +1,10 @@
-import type { Locale } from "@marea/i18n";
+import { translate, type Locale } from "@marea/i18n";
 
 const en = {
+  nameHelp: translate("dashboard.validation.name", "en"),
+  loginHelp: translate("dashboard.validation.login", "en"),
+  idHelp: translate("dashboard.validation.id", "en"),
+
   heading: "Center administration",
   authority:
     "Actions are checked again by the server. Private operator settings are not managed here.",
@@ -73,6 +77,10 @@ const en = {
 export type GovernanceMessages = typeof en;
 
 const es: GovernanceMessages = {
+  nameHelp: translate("dashboard.validation.name", "es"),
+  loginHelp: translate("dashboard.validation.login", "es"),
+  idHelp: translate("dashboard.validation.id", "es"),
+
   heading: "Administración del centro",
   authority:
     "El servidor vuelve a comprobar cada acción. Los ajustes privados del operador no se gestionan aquí.",
@@ -143,6 +151,10 @@ const es: GovernanceMessages = {
 };
 
 const eu: GovernanceMessages = {
+  nameHelp: translate("dashboard.validation.name", "eu"),
+  loginHelp: translate("dashboard.validation.login", "eu"),
+  idHelp: translate("dashboard.validation.id", "eu"),
+
   heading: "Zentroaren administrazioa",
   authority:
     "Zerbitzariak ekintza guztiak berriro egiaztatzen ditu. Operadorearen ezarpen pribatuak ez dira hemen kudeatzen.",

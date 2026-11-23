@@ -207,6 +207,20 @@ export class SqliteIdentityRepository implements IdentityRepository {
   }
 
   public resolveSession(tokenHash: string, now: string): AuthenticatedIdentity | undefined {
+    // Dashboard HTTP activity and live checks share this authentication boundary.
+    // A single guarded update cannot revive an expired or revoked teacher session.
+    this.#database.execute(
+      `UPDATE marea_auth_sessions
+        SET expires_at = min(strftime('%Y-%m-%dT%H:%M:%fZ', ?2, '+30 minutes'),
+          strftime('%Y-%m-%dT%H:%M:%fZ', issued_at, '+8 hours'))
+        WHERE token_hash = ?1 AND revoked_at IS NULL AND expires_at > ?2
+          AND expires_at < min(strftime('%Y-%m-%dT%H:%M:%fZ', ?2, '+30 minutes'),
+            strftime('%Y-%m-%dT%H:%M:%fZ', issued_at, '+8 hours'))
+          AND EXISTS (SELECT 1 FROM marea_users users
+            WHERE users.id = marea_auth_sessions.user_id AND users.role = 'teacher'
+              AND ${activeGovernanceAccount("users.id")})`,
+      [tokenHash, now],
+    );
     const row = this.#database.readOne(
       this.classScoped() ? READ_CLASS_SCOPED_SESSION : READ_SESSION,
       [tokenHash, now],
@@ -246,6 +260,18 @@ export class SqliteIdentityRepository implements IdentityRepository {
     readonly runId: string;
     readonly tokenHash: string;
   }): string | undefined {
+    // Presence carries a run lease rather than an account bearer token. Only a
+    // current lease of this active run may advance its server activity clock.
+    this.#database.execute(
+      `UPDATE marea_active_runs SET last_activity_at = max(last_activity_at, ?2)
+        WHERE run_id = ?3 AND EXISTS (
+          SELECT 1 FROM marea_run_leases leases JOIN marea_runs runs ON runs.id = leases.run_id
+          WHERE leases.token_hash = ?1 AND leases.run_id = ?3
+            AND leases.revoked_at IS NULL AND leases.expires_at > ?2
+            AND runs.state = 'active'
+            AND ${activeStudentClass("runs.student_id", "runs.class_id")})`,
+      [input.tokenHash, input.now, input.runId],
+    );
     // One statement: a concurrent revocation or expiry can never be overwritten.
     const extended = this.#database.readAll(
       `UPDATE marea_auth_sessions

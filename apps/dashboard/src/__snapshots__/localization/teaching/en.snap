@@ -37,7 +37,7 @@
   "problems": {
     "conflict": "The saved configuration changed while you were editing.",
     "forbidden": "You do not have access to this class.",
-    "invalid": "The server rejected the request as invalid.",
+    "invalid": "The server rejected the configuration. Check the fields; the complete instructions, including safety rules and selected skills, must fit within 256 KiB.",
     "load": "Classes could not be loaded.",
     "skill-unavailable": "A selected skill is unavailable or stale on the server.",
     "uncertain": "The save outcome is unknown. Your draft is preserved.",

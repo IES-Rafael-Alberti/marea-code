@@ -4,6 +4,7 @@ import { ensureGitWorkspace } from "./git-workspace.boundary.js";
 import { openInputHistory, type PersistentInputHistory } from "./input-history.boundary.js";
 import { createHash, randomUUID } from "node:crypto";
 import { basename, join, resolve } from "node:path";
+import { projectDisplayNameFromFolder } from "./project-name.js";
 
 import {
   createTranslator,
@@ -234,6 +235,7 @@ async function runStudent(
   const { projectRoot, stateDirectory } = studentLocations(options, serverUrl);
   await runtime.ensureWorkspace?.(projectRoot, translator);
   stage("local-state");
+  let session: ConversationTuiSession | null = null;
   const conversation = createBindableConversationPort();
   const authentication = createAuthenticationPrompt(
     createInquirerAuthenticationQuestions(translator),
@@ -242,17 +244,22 @@ async function runStudent(
   const application = await runtime.createApplication({
     clientVersion: MAREA_CLIENT_VERSION,
     externalAuthorization: createLoopbackAuthorization({ translator, output: options.output }),
+    notice: (text) => {
+      options.output.write(text);
+    },
+    onStartupStage: stage,
     projectRoot,
     serverUrl,
     stateDirectory,
+    translator,
     studentInterface: createConversationStudentInterface({
       authentication,
+      withAuthentication: (operation) => session?.withTerminalSuspended(operation) ?? operation(),
       conversation,
       getExecuteWarning: () => translator.t("student.tui.approval.execute-warning"),
     }),
   });
   stage("session");
-  let session: ConversationTuiSession | null = null;
   let startedSession: object | null = null;
   await runInteractiveMarea({
     controller: application.controller,
@@ -263,7 +270,7 @@ async function runStudent(
     onStarted: (started) => {
       startedSession = started;
     },
-    projectDisplayName: basename(projectRoot) || "project",
+    projectDisplayName: projectDisplayNameFromFolder(basename(projectRoot)),
     async waitForExit(): Promise<void> {
       stage("interface");
       const pendingTurn = await application.controller.pendingTurn();

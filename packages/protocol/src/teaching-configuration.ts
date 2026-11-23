@@ -10,6 +10,14 @@ import { CurrentProtocolVersionSchema } from "./version.js";
 export const MAX_TEACHING_CONFIGURATION_BYTES = 4 * 1_024 * 1_024;
 export const TEACHING_CATALOG_PAGE_SIZE = 100;
 
+const instructionText = z
+  .string()
+  .max(262_144)
+  .refine(
+    (value) => new TextEncoder().encode(value).byteLength <= 262_144,
+    "Instructions must fit within 256 KiB of UTF-8 text before prompt composition.",
+  );
+
 const envelope = { protocolVersion: CurrentProtocolVersionSchema, requestId: RequestIdSchema };
 const selectedRevision = z
   .object({ id: SkillIdSchema, digest: Sha256DigestSchema })
@@ -30,8 +38,8 @@ export const TeachingSelectionSchema = z
 
 export const ClassInstructionsSchema = z
   .object({
-    tutoring: z.string().max(262_144),
-    free: z.string().max(262_144),
+    tutoring: instructionText,
+    free: instructionText,
     /** Absent in legacy records, whose text supplements the packaged mode. */
     format: z.literal("complete-mode").optional(),
   })

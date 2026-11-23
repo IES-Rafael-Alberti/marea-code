@@ -20,7 +20,9 @@ export function registerPresenceRoute(
     );
     if (!parsed.ok) return parsed.response;
     return safeOperation(parsed.value.requestId, () => {
-      const lease = services.runs.authorizeLease(bearer(context.req.raw));
+      const token = bearer(context.req.raw);
+      const lease = services.runs.authorizeLease(token);
+      services.identity.extendForRunActivity(token, lease.runId);
       services.educationalInsights?.heartbeat(lease.runId);
       return jsonResponse({ requestId: parsed.value.requestId });
     });

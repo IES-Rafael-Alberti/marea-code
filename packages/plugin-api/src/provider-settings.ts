@@ -39,6 +39,15 @@ export const ProviderSettingsDescriptorSchema = z
             label: Label,
             kind: z.enum(["text", "secret", "url"]),
             required: z.boolean(),
+            validation: z
+              .object({
+                maxLength: z.number().int().positive().max(16384),
+                pattern: z.string().min(1).max(1024),
+                normalize: z.enum(["none", "lowercase-trim"]),
+                message: Label,
+              })
+              .strict()
+              .optional(),
             multiline: z.boolean().optional(),
             defaultValue: z.string().max(2048).optional(),
           })

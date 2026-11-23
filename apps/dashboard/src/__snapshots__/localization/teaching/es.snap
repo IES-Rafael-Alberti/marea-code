@@ -37,7 +37,7 @@
   "problems": {
     "conflict": "La configuración guardada ha cambiado mientras editabas.",
     "forbidden": "No tienes acceso a esta clase.",
-    "invalid": "El servidor ha rechazado la solicitud por no ser válida.",
+    "invalid": "El servidor ha rechazado la configuración. Revisa los campos; las instrucciones completas, incluidas las reglas de seguridad y las habilidades seleccionadas, deben caber en 256 KiB.",
     "load": "No se han podido cargar las clases.",
     "skill-unavailable": "Una skill seleccionada no está disponible o está desactualizada.",
     "uncertain": "El resultado del guardado es desconocido. Tu borrador se conserva.",

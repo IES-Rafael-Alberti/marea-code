@@ -1,4 +1,14 @@
 import type { MemoryStateStore } from "./student.fixture.js";
+import type { StoredRun } from "./contracts.js";
+
+export function replaceFixtureRun(
+  state: MemoryStateStore,
+  changes: Partial<StoredRun> | null,
+): void {
+  const run = state.state.run;
+  if (run === null) throw new Error("Fixture run missing.");
+  state.state = { ...state.state, run: changes === null ? null : { ...run, ...changes } };
+}
 
 const EXPIRING_LEASE = "2026-09-03T10:00:30.000Z";
 

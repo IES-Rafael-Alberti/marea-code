@@ -1,4 +1,5 @@
 import { StudentHttpError } from "./http-error.js";
+import { transportFailure } from "./http-transport-diagnostics.boundary.js";
 import { CLASS_CONFIGURATION_REQUIRED_HEADER, SOCRATIC_GATE_HEADER } from "@marea/protocol";
 export { StudentHttpError } from "./http-error.js";
 import { boundedEventDelivery } from "./event-delivery.js";
@@ -54,6 +55,7 @@ import type { AuthenticationResult, StudentServer } from "./contracts.js";
 
 const MAX_JSON_RESPONSE_BYTES = 1_048_576;
 const MAX_REQUEST_BYTES = 1_048_576;
+const MAX_MODEL_REQUEST_BYTES = 2_097_152;
 const MAX_STREAM_LINE_BYTES = 131_072;
 const DEFAULT_TIMEOUT_MS = 30_000;
 const encoder = new TextEncoder();
@@ -209,6 +211,7 @@ function assertContentType(response: Response, expected: string): void {
 
 async function readBoundedBody(
   response: Response,
+  request: Request,
   maxBytes = MAX_JSON_RESPONSE_BYTES,
 ): Promise<string> {
   const length = response.headers.get("content-length");
@@ -224,7 +227,7 @@ async function readBoundedBody(
   const chunks: Uint8Array[] = [];
   let size = 0;
   const body: AsyncIterable<Uint8Array> = response.body;
-  for await (const chunk of transportBody(body)) {
+  for await (const chunk of transportBody(body, request)) {
     size += chunk.byteLength;
     if (size > maxBytes) {
       throw new StudentHttpError(response.status, "response.too-large", false);
@@ -247,9 +250,11 @@ async function readBoundedBody(
   // Stryker restore BlockStatement
 }
 
-async function responseError(response: Response): Promise<StudentHttpError> {
+async function responseError(response: Response, request: Request): Promise<StudentHttpError> {
   try {
-    const parsed = ProtocolErrorResponseSchema.parse(parseJson(await readBoundedBody(response)));
+    const parsed = ProtocolErrorResponseSchema.parse(
+      parseJson(await readBoundedBody(response, request)),
+    );
     return new StudentHttpError(
       response.status,
       parsed.error.code,
@@ -264,29 +269,23 @@ async function responseError(response: Response): Promise<StudentHttpError> {
 }
 
 async function fetchResponse(fetchRequest: StudentFetch, request: Request): Promise<Response> {
+  const startedAt = performance.now();
   try {
     return await fetchRequest(request);
-  } catch {
-    throw new StudentHttpError(
-      0,
-      request.signal.aborted ? "request.cancelled" : "transport.unavailable",
-      !request.signal.aborted,
-    );
+  } catch (error: unknown) {
+    throw transportFailure(request, error, startedAt, false);
   }
 }
 
 async function* transportBody(
   body: AsyncIterable<Uint8Array>,
-  signal?: AbortSignal,
+  request: Request,
 ): AsyncGenerator<Uint8Array> {
+  const startedAt = performance.now();
   try {
     yield* body;
-  } catch {
-    throw new StudentHttpError(
-      0,
-      signal?.aborted === true ? "request.cancelled" : "transport.interrupted",
-      signal?.aborted !== true,
-    );
+  } catch (error: unknown) {
+    throw transportFailure(request, error, startedAt, true);
   }
 }
 
@@ -304,21 +303,21 @@ export function createHttpClient(options: StudentHttpOptions): HttpClient {
       maxResponseBytes = MAX_JSON_RESPONSE_BYTES,
       maxRequestBytes = MAX_REQUEST_BYTES,
     ): Promise<T> {
-      const response = await fetchResponse(
-        fetchRequest,
-        createRequest(
-          baseUrl,
-          path,
-          body,
-          AbortSignal.timeout(timeout),
-          credential,
-          maxRequestBytes,
-        ),
+      const request = createRequest(
+        baseUrl,
+        path,
+        body,
+        AbortSignal.timeout(timeout),
+        credential,
+        maxRequestBytes,
       );
-      if (!response.ok) throw await responseError(response);
+      const response = await fetchResponse(fetchRequest, request);
+      if (!response.ok) throw await responseError(response, request);
       assertContentType(response, "application/json");
       try {
-        const parsed = schema.parse(parseJson(await readBoundedBody(response, maxResponseBytes)));
+        const parsed = schema.parse(
+          parseJson(await readBoundedBody(response, request, maxResponseBytes)),
+        );
         if (parsed.requestId !== requestId) {
           throw new StudentHttpError(response.status, "response.invalid", false);
         }
@@ -331,7 +330,7 @@ export function createHttpClient(options: StudentHttpOptions): HttpClient {
     stream(path: string, body: ModelGatewayRequest, signal: AbortSignal, credential?: string) {
       return streamResponse(
         fetchRequest,
-        createRequest(baseUrl, path, body, signal, credential),
+        createRequest(baseUrl, path, body, signal, credential, MAX_MODEL_REQUEST_BYTES),
         body,
       );
     },
@@ -344,7 +343,7 @@ async function* streamResponse(
   expected: ModelGatewayRequest,
 ): AsyncGenerator<ModelGatewayStreamChunk> {
   const response = await fetchResponse(fetchRequest, request);
-  if (!response.ok) throw await responseError(response);
+  if (!response.ok) throw await responseError(response, request);
   assertContentType(response, "application/x-ndjson");
   // The stream catch also normalizes the iterator's null-body TypeError; this guard fails earlier.
   // Stryker disable next-line ConditionalExpression
@@ -354,7 +353,7 @@ async function* streamResponse(
   let pending = "";
   try {
     const body: AsyncIterable<Uint8Array> = response.body;
-    for await (const chunk of transportBody(body, request.signal)) {
+    for await (const chunk of transportBody(body, request)) {
       pending += decoder.decode(chunk, { stream: true });
       const lines = pending.split("\n");
       // Splice always returns one tail element, so its join separator is unobservable.

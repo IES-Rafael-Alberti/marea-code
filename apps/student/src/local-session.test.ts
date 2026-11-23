@@ -257,9 +257,11 @@ describe("LocalSession", () => {
       snapshotId: null,
       turns: [],
     });
-    store.state = { ...store.state, run: { ...different, phase: "closed" } };
+    const closed = { ...different, phase: "closed" as const, abandoned: [different] };
+    store.state = { ...store.state, run: closed };
     const afterClose = await session.ensureOpening("Project Two", { kind: "new" });
     expect(afterClose.clientSessionId).not.toBe(different.clientSessionId);
+    expect(afterClose).not.toHaveProperty("abandoned");
   });
 
   it("creates a fresh resume attempt while preserving active durable progress", async () => {

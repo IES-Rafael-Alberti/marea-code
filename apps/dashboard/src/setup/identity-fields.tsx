@@ -1,3 +1,5 @@
+import { identityFieldError } from "./identity-validation.js";
+import { showFieldValidity } from "../forms/validation.js";
 import { ProviderHelp, GuideSteps } from "../forms/provider-help.js";
 import { SecretInput, SecretTextarea } from "../forms/secret-input.js";
 import type { ProviderSettingsDescriptor } from "@marea/plugin-api";
@@ -109,7 +111,15 @@ function IdentityField({
   const common = {
     required: field.required && !saved,
     autoComplete: "off",
-    maxLength: 16_384,
+    maxLength: field.validation?.maxLength ?? 16_384,
+    ref: (input: HTMLInputElement | HTMLTextAreaElement | null) => {
+      if (!input) return;
+      input.setCustomValidity(identityFieldError(field.validation, value, locale));
+      if (input.dataset.touched) showFieldValidity(input);
+    },
+    onBlur: (event: { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => {
+      showFieldValidity(event.currentTarget);
+    },
     value,
   };
   return (
@@ -151,6 +161,7 @@ function IdentityField({
           }}
         />
       )}
+      <span className="field-error" aria-live="polite" />
     </label>
   );
 }

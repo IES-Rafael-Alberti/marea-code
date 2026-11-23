@@ -93,6 +93,60 @@ async function listening(text: Translator) {
 }
 
 describe("loopback external authorization", () => {
+  it.each([
+    [-1, 1],
+    [0, 1],
+    [1, 1],
+    [2, 2],
+    [420_000, 420_000],
+    [600_000, 600_000],
+    [600_001, 600_000],
+    [Number.NaN, 300_000],
+  ])("uses a bounded server expiry (%s milliseconds)", async (remaining, expected) => {
+    const now = Date.parse("2026-09-03T10:00:00.000Z");
+    vi.spyOn(Date, "now").mockReturnValue(now);
+    const test = harness();
+    const opened = Promise.withResolvers<string>();
+    const pending = createLoopbackAuthorization({
+      translator,
+      output: { error: () => undefined },
+      openBrowser: opened.resolve,
+      listen: test.listen,
+    }).authorize(async () => ({
+      authorizationUrl: "https://accounts.example.test/auth",
+      expiresAt: Number.isNaN(remaining) ? "invalid" : new Date(now + remaining).toISOString(),
+    }));
+    expect(await opened.promise).toBe("https://accounts.example.test/auth");
+    expect(setTimeout).toHaveBeenLastCalledWith(expect.any(Function), expected);
+    const calls = vi.mocked(setTimeout).mock.results;
+    expect(clearTimeout).toHaveBeenCalledWith(calls.at(-2)?.value);
+    const timeout = vi.mocked(setTimeout).mock.calls.at(-1)?.[0] as () => void;
+    timeout();
+    await expect(pending).rejects.toThrow("The external sign-in timed out.");
+    expect(clearTimeout).toHaveBeenLastCalledWith(calls.at(-1)?.value);
+    expect(test.state.closed).toBe(1);
+  });
+
+  it("honors an explicit timeout for a server expiry", async () => {
+    const test = harness();
+    const opened = Promise.withResolvers<string>();
+    const pending = createLoopbackAuthorization({
+      translator,
+      output: { error: () => undefined },
+      openBrowser: opened.resolve,
+      listen: test.listen,
+      timeoutMs: 1234,
+    }).authorize(async () => ({
+      authorizationUrl: "https://accounts.example.test/auth",
+      expiresAt: "2099-01-01T00:00:00.000Z",
+    }));
+    await opened.promise;
+    expect(setTimeout).toHaveBeenLastCalledWith(expect.any(Function), 1234);
+    test.call("/callback?code=a&state=b");
+    await expect(pending).resolves.toEqual({ code: "a", state: "b" });
+    expect(test.state.closed).toBe(1);
+  });
+
   it("serves the provider answer once on its callback and reports progress", async () => {
     const test = harness();
     const shown: string[] = [];
@@ -111,6 +165,20 @@ describe("loopback external authorization", () => {
     await vi.waitFor(() => {
       expect(opened).toHaveLength(1);
     });
+    expect(vi.mocked(setTimeout).mock.calls.filter(([, delay]) => delay === 300_000)).toHaveLength(
+      1,
+    );
+    const initialTimer = vi
+      .mocked(setTimeout)
+      .mock.calls.findIndex(([, delay]) => delay === 300_000);
+    // Compare by identity: Bun timer objects are deeply equal to each other.
+    expect(
+      vi
+        .mocked(clearTimeout)
+        .mock.calls.some(
+          ([handle]) => handle === vi.mocked(setTimeout).mock.results[initialTimer]?.value,
+        ),
+    ).toBe(false);
     expect(test.call("/elsewhere").status).toBe(404);
     expect(test.call("/callback?code=a&state=b", "POST").status).toBe(404);
     const done = test.call("/callback?code=4%2Fcode&state=xyz");

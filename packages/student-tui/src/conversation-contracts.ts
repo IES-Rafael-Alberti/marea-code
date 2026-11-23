@@ -111,6 +111,8 @@ export type ConversationApprovalDecision =
   "approved" | "rejected" | { readonly decision: "rejected"; readonly reason: string };
 
 export interface ConversationView {
+  /** Native views yield all terminal ownership to an external interactive flow. */
+  readonly withTerminalSuspended?: <T>(operation: () => Promise<T>) => Promise<T>;
   readonly dispose: () => void;
   readonly render: (snapshot: ConversationSnapshot) => void;
   readonly setCopy?: (copy: ConversationCopy) => void;
@@ -212,6 +214,7 @@ export interface ConversationLanguageChange {
 }
 
 export interface ConversationTuiSession extends ConversationTurnSurface {
+  withTerminalSuspended<T>(operation: () => Promise<T>): Promise<T>;
   readonly outcome: Promise<StudentTuiOutcome>;
   readonly retry?: () => boolean;
   close(): boolean;

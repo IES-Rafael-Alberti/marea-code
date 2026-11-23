@@ -1,9 +1,17 @@
 import type { CompleteCatalog } from "../keys.js";
 
 const spanishCatalog = {
+  "dashboard.validation.name":
+    "Usa entre 1 y 120 letras, números, espacios, puntos, apóstrofos o guiones; empieza por una letra o número.",
+  "dashboard.validation.login":
+    "Usa entre 3 y 64 letras minúsculas, números, puntos, guiones bajos o guiones; empieza por una letra o número.",
+  "dashboard.validation.id":
+    "Usa entre 1 y 128 letras, números, puntos, guiones bajos, dos puntos o guiones; empieza por una letra o número.",
   "bootstrap.checking-connection": "Comprobando la conexión con el servidor del profesor…",
   "bootstrap.connection-failed":
     "No se ha podido conectar con el servidor del profesor. Comprueba la conexión e inténtalo de nuevo.",
+  "bootstrap.connection-failed-at":
+    "No se ha podido conectar con el servidor del profesor en {{origin}}. Comprueba la dirección, la conexión y que el servidor está en funcionamiento.",
   "bootstrap.login-required": "Inicia sesión para conectar Marea con tu servidor del profesor.",
   "bootstrap.ready": "Marea está lista.",
   "bootstrap.resuming-session": "Reanudando tu sesión…",
@@ -50,6 +58,8 @@ const spanishCatalog = {
     "No se ha podido abrir la interfaz de terminal. Prueba en otra terminal y comunica este código si vuelve a fallar.",
   "student.cli.local-state-invalid":
     "Marea no puede leer los datos guardados de este proyecto. Conserva esos datos y comunica este código al profesor para poder recuperarlos.",
+  "student.cli.local-state-recovered":
+    "Marea no ha podido leer algunos datos guardados en este equipo, así que los ha apartado y ha iniciado una sesión nueva. No se ha borrado nada y puede que tengas que iniciar sesión de nuevo.",
   "student.cli.failure-code":
     "Código de diagnóstico: {{code}}. Inclúyelo al comunicar el problema.",
   "student.cli.unexpected-error": "Marea no ha podido iniciarse. Inténtalo de nuevo.",

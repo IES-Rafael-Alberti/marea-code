@@ -1,189 +1,22 @@
-/* eslint-disable @typescript-eslint/require-await */
 import { createHash } from "node:crypto";
-
-import {
-  IdentityProviderError,
-  type ExternalIdentity,
-  type IdentityAuthorizationRequest,
-  type IdentityAuthorizationResponse,
-  type IdentityProvider,
-} from "@marea/plugin-api";
+import { IdentityProviderError } from "@marea/plugin-api";
 import {
   ExternalAuthBeginRequestSchema,
-  ExternalAuthCompleteRequestSchema,
   ExternalAuthProvidersRequestSchema,
 } from "@marea/protocol";
-import { describe, expect, it } from "vitest";
-
-import type { AuthenticatedIdentity } from "../identity/contracts.js";
-import type {
-  ClassAdmissionRules,
-  ExternalIdentityRepository,
-  ExternalProvisioning,
-} from "./contracts.js";
+import { describe, expect, it, vi } from "vitest";
+import { externalDisplayName, externalLogin } from "./service.js";
 import {
-  ExternalIdentityService,
-  externalDisplayName,
-  externalLogin,
-  type ExternalIdentityServiceDependencies,
-} from "./service.js";
-
-const PROVIDER_ID = "org.example.idp";
-const label = { es: "Centro", en: "School", eu: "Ikastetxea" };
-const PERSON: ExternalIdentity = { subject: "sub-1", email: "ana@school.test", displayName: "Ana" };
-const ACCOUNT: AuthenticatedIdentity = {
-  classId: null,
-  displayName: "Ana",
-  role: "student",
-  userId: "user:ana",
-};
-
-class FakeProvider implements IdentityProvider {
-  readonly requests: IdentityAuthorizationRequest[] = [];
-  readonly responses: IdentityAuthorizationResponse[] = [];
-  readonly admissions: string[] = [];
-  failure: Error | undefined;
-  admitFailure: Error | undefined;
-  pending: Promise<void> | undefined;
-
-  authorizationUrl(request: IdentityAuthorizationRequest): string {
-    this.requests.push(request);
-    return `https://idp.test/auth?state=${request.state}`;
-  }
-
-  async complete(response: IdentityAuthorizationResponse): Promise<ExternalIdentity> {
-    this.responses.push(response);
-    await this.pending;
-    if (this.failure !== undefined) throw this.failure;
-    return PERSON;
-  }
-
-  normalizeRule(): string | undefined {
-    return undefined;
-  }
-
-  async admits(identity: ExternalIdentity, rules: ClassAdmissionRules["rules"]): Promise<boolean> {
-    if (this.admitFailure !== undefined) throw this.admitFailure;
-    this.admissions.push(rules.map((rule) => rule.value).join(","));
-    return rules.some((rule) => rule.value === identity.email);
-  }
-}
-
-class FakeRepository implements ExternalIdentityRepository {
-  stored = true;
-  account: AuthenticatedIdentity | undefined = ACCOUNT;
-  readonly provisioned: ExternalProvisioning[] = [];
-  rules: readonly ClassAdmissionRules[] = [
-    { classId: "class:a", rules: [{ kind: "email", value: "ana@school.test" }] },
-    { classId: "class:b", rules: [{ kind: "email", value: "other@school.test" }] },
-    { classId: "class:c", rules: [{ kind: "email", value: "ana@school.test" }] },
-  ];
-
-  available() {
-    return this.stored;
-  }
-  classRules(providerId: string) {
-    expect(providerId).toBe(PROVIDER_ID);
-    return this.rules;
-  }
-  provision(input: ExternalProvisioning) {
-    this.provisioned.push(input);
-    return this.account;
-  }
-  teacherClassAccess(): boolean {
-    throw new Error("unused");
-  }
-  classRulesFor(): never {
-    throw new Error("unused");
-  }
-  changeRules(): never {
-    throw new Error("unused");
-  }
-}
-
-function fixture(options: { providers?: boolean; timeout?: boolean } = {}) {
-  const provider = new FakeProvider();
-  const repository = new FakeRepository();
-  const opened: AuthenticatedIdentity[] = [];
-  const clock = { value: "2026-10-05T10:00:00.000Z", now: () => clock.value };
-  let secret = 0;
-  let id = 0;
-  const signals: AbortSignal[] = [];
-  const dependencies: ExternalIdentityServiceDependencies = {
-    providers:
-      options.providers === false
-        ? []
-        : [
-            {
-              id: PROVIDER_ID,
-              descriptor: { displayName: label, ruleKinds: [{ kind: "email", label }] },
-              provider,
-            },
-          ],
-    repository,
-    sessions: {
-      openExternalSession(identity) {
-        opened.push(identity);
-        return {
-          principal: { role: "student", displayName: identity.displayName },
-          session: {
-            token: "t".repeat(43),
-            issuedAt: clock.now(),
-            expiresAt: "2026-10-05T10:30:00.000Z",
-          },
-        };
-      },
-    },
-    clock,
-    ids: { createId: (namespace) => `${namespace}:${String(++id)}` },
-    secrets: { issue: () => `secret-${String(++secret).padStart(36, "0")}` },
-    ...(options.timeout === false
-      ? {}
-      : {
-          timeout: (milliseconds: number) => {
-            expect(milliseconds).toBe(20_000);
-            const signal = new AbortController().signal;
-            signals.push(signal);
-            return signal;
-          },
-        }),
-  };
-  return {
-    service: new ExternalIdentityService(dependencies),
-    provider,
-    repository,
-    opened,
-    clock,
-    signals,
-  };
-}
-
-const envelope = { protocolVersion: "0.1" } as const;
-const beginRequest = ExternalAuthBeginRequestSchema.parse({
-  ...envelope,
-  kind: "external-auth-begin",
-  requestId: "r:begin",
-  providerId: PROVIDER_ID,
-  redirectUri: "http://127.0.0.1:4321/callback",
-});
-
-function completion(flowId: string, state: string, code = "4/code") {
-  return ExternalAuthCompleteRequestSchema.parse({
-    ...envelope,
-    kind: "external-auth-complete",
-    requestId: "r:complete",
-    flowId,
-    state,
-    code,
-  });
-}
-
-function started(test: ReturnType<typeof fixture>) {
-  const response = test.service.begin(beginRequest);
-  const request = test.provider.requests.at(-1);
-  if (request === undefined) throw new Error("No authorization request.");
-  return { response, request };
-}
+  fixture,
+  started,
+  completion,
+  PROVIDER_ID,
+  label,
+  PERSON,
+  ACCOUNT,
+  beginRequest,
+  envelope,
+} from "./service.fixture.js";
 
 describe("external identity service", () => {
   it("lists providers only while storage and a provider are available", () => {
@@ -351,27 +184,62 @@ describe("external identity service", () => {
     expect(test.opened).toEqual([]);
   });
 
-  it("limits concurrent completions and releases capacity after each one", async () => {
-    const test = fixture();
-    const release = Promise.withResolvers<undefined>();
-    test.provider.pending = release.promise.then(() => undefined);
-    const flows = Array.from({ length: 5 }, () => started(test));
-    const running = flows
-      .slice(0, 4)
-      .map(({ response, request }) =>
+  it("queues concurrent completions beyond the configured limit until slots free", async () => {
+    vi.useFakeTimers();
+    try {
+      const test = fixture({ maxCompletions: 4 });
+      const release = Promise.withResolvers<undefined>();
+      test.provider.pending = release.promise.then(() => undefined);
+      const flows = Array.from({ length: 6 }, () => started(test));
+      const completions = flows.map(({ response, request }) =>
         test.service.complete(completion(response.flowId, request.state)),
       );
-    const last = flows[4];
-    if (last === undefined) throw new Error("Missing flow.");
+      expect(vi.getTimerCount()).toBe(2);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(test.provider.responses).toHaveLength(4);
+      release.resolve(undefined);
+      await expect(Promise.all(completions)).resolves.toHaveLength(6);
+      expect(test.opened).toHaveLength(6);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a completion whose slot wait times out retryable with the same flow", async () => {
+    const test = fixture({ maxCompletions: 4, completionWaitMs: 5 });
+    const release = Promise.withResolvers<undefined>();
+    test.provider.pending = release.promise.then(() => undefined);
+    const running = Array.from({ length: 4 }, () => started(test)).map(({ response, request }) =>
+      test.service.complete(completion(response.flowId, request.state)),
+    );
+    const pending = started(test);
     await expect(
-      test.service.complete(completion(last.response.flowId, last.request.state)),
+      test.service.complete(completion(pending.response.flowId, pending.request.state)),
     ).rejects.toEqual(expect.objectContaining({ code: "auth.busy" }));
     release.resolve(undefined);
     await Promise.all(running);
-    const again = started(test);
     await expect(
-      test.service.complete(completion(again.response.flowId, again.request.state)),
+      test.service.complete(completion(pending.response.flowId, pending.request.state)),
     ).resolves.toMatchObject({ kind: "external-authenticated" });
+    expect(test.opened).toHaveLength(5);
+  });
+
+  it("never reuses a flow consumed by a duplicate completion while waiting for a slot", async () => {
+    const test = fixture({ maxCompletions: 1 });
+    const release = Promise.withResolvers<undefined>();
+    test.provider.pending = release.promise.then(() => undefined);
+    const busy = started(test);
+    const running = test.service.complete(completion(busy.response.flowId, busy.request.state));
+    const duplicated = started(test);
+    const request = completion(duplicated.response.flowId, duplicated.request.state);
+    const first = test.service.complete(request);
+    const second = test.service.complete(request);
+    release.resolve(undefined);
+    await running;
+    await expect(first).resolves.toMatchObject({ kind: "external-authenticated" });
+    await expect(second).rejects.toEqual(expect.objectContaining({ code: "auth.invalid" }));
+    expect(test.opened).toHaveLength(2);
   });
 
   it("bounds provider calls with a default timeout", async () => {

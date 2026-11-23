@@ -1,5 +1,5 @@
 import { RunIdSchema } from "@marea/protocol";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { StoredRun } from "./contracts.js";
 import { setFixtureLeaseExpiry } from "./session-test.fixture.js";
@@ -136,3 +136,66 @@ describe("StudentSessionController model run token", () => {
     expect(fixture.server.renewCalls).toBe(0);
   });
 });
+
+it.each(["success", "cancelled", "exchange-failed"] as const)(
+  "keeps authentication ownership and the same run (%s)",
+  async (outcome) => {
+    const fixture = createFixtureController();
+    await fixture.controller.start("Project One");
+    await fixture.controller.sendMessage(
+      "message:before-login",
+      "Start here.",
+      new AbortController().signal,
+    );
+    setFixtureLeaseExpiry(fixture.state);
+    const before = structuredClone(fixture.state.state.run);
+    fixture.server.rejectStored = true;
+    fixture.studentInterface.authKind = "login";
+    if (outcome === "cancelled")
+      vi.spyOn(fixture.studentInterface, "authenticate").mockRejectedValueOnce(
+        new Error("Sign-in cancelled"),
+      );
+    let authenticating = false;
+    const withAuthentication = vi.fn(async <T>(operation: () => Promise<T>) => {
+      authenticating = true;
+      try {
+        return await operation();
+      } finally {
+        authenticating = false;
+      }
+    });
+    const originalLogin = fixture.server.login.bind(fixture.server);
+    vi.spyOn(fixture.server, "login").mockImplementation((request) => {
+      expect(authenticating).toBe(true);
+      return outcome === "exchange-failed"
+        ? Promise.reject(new Error("Credential exchange failed"))
+        : originalLogin(request);
+    });
+    Object.assign(fixture.studentInterface, { withAuthentication });
+    const turn = fixture.controller.sendMessage(
+      "message:after-login",
+      "Continue here.",
+      new AbortController().signal,
+    );
+    if (outcome === "success") await turn;
+    else
+      await expect(turn).rejects.toThrow(
+        outcome === "cancelled" ? "Sign-in cancelled" : "Credential exchange failed",
+      );
+    expect(withAuthentication).toHaveBeenCalledOnce();
+    expect(authenticating).toBe(false);
+    expect(fixture.server.openRequests).toHaveLength(1);
+    expect(fixture.state.state.run).toMatchObject({
+      runId: before?.runId,
+      snapshot: before?.snapshot,
+      turns:
+        outcome === "success"
+          ? [
+              ...(before?.turns ?? []),
+              expect.objectContaining({ messageId: "message:after-login", state: "completed" }),
+            ]
+          : before?.turns,
+    });
+    expect(fixture.agent.messages).toBe(outcome === "success" ? 2 : 1);
+  },
+);
