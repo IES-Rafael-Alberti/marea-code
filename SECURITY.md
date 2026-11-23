@@ -82,6 +82,12 @@ Repository administrators must enable the dependency graph, Dependabot alerts,
 secret scanning, and private vulnerability reporting in repository settings
 where available.
 
+Bearer sessions are issued for 30 minutes. A student session is extended to 30
+minutes from now only when an authenticated lease renewal succeeds
+for one of the student's own active runs with recent durable activity, and never
+beyond 8 hours after sign-in. Teacher revocation, account deactivation, closed
+runs, and expired sessions are never extended or revived.
+
 ## Preview baseline CodeQL review
 
 The CodeQL report for commit `622226e` was reviewed on 2026-10-05. Its three

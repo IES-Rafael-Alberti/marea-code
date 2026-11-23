@@ -55,6 +55,17 @@ class IdentityRepositoryFake implements IdentityRepository {
     this.sessions.push(input);
   }
 
+  public readonly extensions: Parameters<IdentityRepository["extendSessionForRunActivity"]>[0][] =
+    [];
+  public extended: string | undefined = "2026-09-03T10:30:00.000Z";
+
+  public extendSessionForRunActivity(
+    input: Parameters<IdentityRepository["extendSessionForRunActivity"]>[0],
+  ): string | undefined {
+    this.extensions.push(input);
+    return this.extended;
+  }
+
   public findCredential(): StoredCredential | undefined {
     return this.credential;
   }
@@ -231,6 +242,25 @@ describe("identity service", () => {
     expect(() => service.authenticate(response.session.token)).toThrow(
       expect.objectContaining({ code: "auth.invalid", name: "TeacherDomainError" }),
     );
+  });
+
+  it("slides a session by its idle timeout for recent run activity within an 8-hour lifetime", () => {
+    const service = new IdentityService(dependencies);
+
+    expect(service.extendForRunActivity("session-token", "run:1")).toBe("2026-09-03T10:30:00.000Z");
+    repository.extended = undefined;
+    expect(service.extendForRunActivity("session-token", "run:1")).toBeUndefined();
+    expect(repository.extensions).toEqual([
+      {
+        activitySince: "2026-09-03T09:30:00.000Z",
+        expiresAt: "2026-09-03T10:30:00.000Z",
+        maxLifetimeSeconds: 28_800,
+        now: "2026-09-03T10:00:00.000Z",
+        runId: "run:1",
+        tokenHash: "digest:session-token",
+      },
+      expect.objectContaining({ runId: "run:1" }),
+    ]);
   });
 
   it("leaves a teacher or a student with several or no classes without a session class", async () => {

@@ -26,7 +26,10 @@ import type {
 import { TeacherDomainError } from "./errors.js";
 import { PasswordAdmission } from "./password-admission.js";
 
+/** Idle timeout: a session lapses after this long without renewed run activity. */
 const SESSION_DURATION_MS = 30 * 60 * 1_000;
+/** Absolute lifetime from sign-in; activity never extends a session beyond it. */
+const SESSION_MAX_LIFETIME_SECONDS = 8 * 60 * 60;
 
 export interface IdentityServiceDependencies {
   readonly clock: Clock;
@@ -165,6 +168,23 @@ export class IdentityService {
     );
     if (identity === undefined) throw new TeacherDomainError("request.conflict");
     return identity;
+  }
+
+  /**
+   * Keeps a working student signed in: each lease renewal of a run with recent activity
+   * slides the session's idle timeout, up to its absolute lifetime. Idle or revoked
+   * sessions are left to lapse.
+   */
+  public extendForRunActivity(token: string, runId: string): string | undefined {
+    const now = this.#dependencies.clock.now();
+    return this.#dependencies.repository.extendSessionForRunActivity({
+      activitySince: new Date(Date.parse(now) - SESSION_DURATION_MS).toISOString(),
+      expiresAt: expiresAt(now),
+      maxLifetimeSeconds: SESSION_MAX_LIFETIME_SECONDS,
+      now,
+      runId,
+      tokenHash: this.#dependencies.digest.digest(token),
+    });
   }
 
   public authenticate(token: string): AuthenticatedSession {
