@@ -3,7 +3,7 @@ import * as z from "zod";
 import { CanonicalRunEventSchema } from "./events.js";
 import { RequestIdSchema, RunIdSchema } from "./identifiers.js";
 import { StudentRunSnapshotSchema, UtcTimestampSchema } from "./runs.js";
-import { RevisionIdSchema, SafeDisplayNameSchema } from "./technical.js";
+import { ProjectDisplayNameSchema, RevisionIdSchema, SafeDisplayNameSchema } from "./technical.js";
 import { CurrentProtocolVersionSchema } from "./version.js";
 
 const sequence = z.number().int().nonnegative();
@@ -69,7 +69,7 @@ export const SessionHistoryItemSchema = z
     runId: RunIdSchema,
     studentDisplayName: SafeDisplayNameSchema,
     classDisplayName: SafeDisplayNameSchema,
-    projectDisplayName: SafeDisplayNameSchema,
+    projectDisplayName: ProjectDisplayNameSchema,
     state: z.enum(["active", "closed"]),
     openedAt: UtcTimestampSchema,
     closedAt: UtcTimestampSchema.nullable(),

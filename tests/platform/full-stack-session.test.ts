@@ -20,6 +20,7 @@ import { createHttpStudentServer } from "../../apps/student/src/http-client.boun
 import { createCrashSafeWorkspaceWriter } from "../../apps/student/src/workspace-writer.js";
 import {
   ActiveRunDashboardResponseSchema,
+  ClassSessionsResponseSchema,
   ApprovalIdSchema,
   InvitationCodeSchema,
   StudentRunSnapshotSchema,
@@ -301,7 +302,8 @@ describe("safe vertical slice", () => {
     const server = createHttpStudentServer({ baseUrl: TEACHER_ORIGIN, fetch: bridge.fetch });
     const root = await mkdtemp(join(tmpdir(), "marea-session-"));
     temporaryDirectories.push(root);
-    const projectRoot = join(root, "wave-lab");
+    // A real folder name with characters past the person-name rule, as seen in class.
+    const projectRoot = join(root, "wave_lab (copy)");
     const stateDirectory = join(root, "student-state");
     await mkdir(projectRoot);
     await writeFile(join(projectRoot, ".keep"), "", "utf8");
@@ -416,10 +418,26 @@ describe("safe vertical slice", () => {
       {
         highestDurableSequence: 8,
         pendingApproval: false,
-        projectDisplayName: "wave-lab",
+        projectDisplayName: "wave_lab (copy)",
         runId: opened.runId,
         studentDisplayName: "Student Ada",
       },
+    ]);
+
+    const classHistory = await application.fetch(
+      new Request(`${TEACHER_ORIGIN}/api/v1/dashboard/history/classes`, {
+        body: JSON.stringify({
+          kind: "session-history-query",
+          limit: 50,
+          protocolVersion: "0.1",
+          requestId: "request:class-history",
+        }),
+        headers: { "content-type": "application/json", cookie: cookie ?? "", host: "teacher.test" },
+        method: "POST",
+      }),
+    );
+    expect(ClassSessionsResponseSchema.parse(await classHistory.json()).runs).toMatchObject([
+      { projectDisplayName: "wave_lab (copy)", runId: opened.runId, state: "active" },
     ]);
 
     const storedEvents = database.readAll(

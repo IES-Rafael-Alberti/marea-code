@@ -11,7 +11,12 @@ import {
   SnapshotIdSchema,
 } from "./identifiers.js";
 import { CurrentProtocolVersionSchema } from "./version.js";
-import { RevisionIdSchema, SoftwareVersionSchema, ToolNameSchema } from "./technical.js";
+import {
+  ProjectDisplayNameSchema,
+  RevisionIdSchema,
+  SoftwareVersionSchema,
+  ToolNameSchema,
+} from "./technical.js";
 
 const MAX_PROMPT_BYTES = 256 * 1_024;
 const textEncoder = new TextEncoder();
@@ -30,13 +35,6 @@ export const UtcTimestampSchema = z.iso.datetime({ offset: false });
 export function textDigestBytes(content: string): Uint8Array {
   return textEncoder.encode(content);
 }
-
-const ProjectDisplayNameSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(120)
-  .regex(/^[\p{L}\p{N}][\p{L}\p{N} ._()'-]*$/u);
 
 const ProjectSummarySchema = z
   .object({
