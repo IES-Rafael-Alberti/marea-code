@@ -189,25 +189,18 @@ export class ExternalIdentityService {
         ? configuredWait
         : COMPLETION_SLOT_WAIT_MS;
     return new Promise<boolean>((resolve) => {
-      let settled = false;
-      const state = { timer: undefined as ReturnType<typeof setTimeout> | undefined };
-      const settle = (acquired: boolean): void => {
-        if (settled) return;
-        settled = true;
-        if (state.timer !== undefined) clearTimeout(state.timer);
-        resolve(acquired);
-      };
       const grant = (): void => {
-        if (settled) return;
+        clearTimeout(timer);
         this.#completing += 1;
-        settle(true);
+        resolve(true);
       };
       const expire = (): void => {
+        // Grant clears the timer; expiry removes the waiter before another slot can grant it.
         const index = this.#completionWaiters.indexOf(grant);
-        if (index >= 0) this.#completionWaiters.splice(index, 1);
-        settle(false);
+        this.#completionWaiters.splice(index, 1);
+        resolve(false);
       };
-      state.timer = setTimeout(expire, waitMs);
+      const timer = setTimeout(expire, waitMs);
       this.#completionWaiters.push(grant);
     });
   }
