@@ -182,8 +182,7 @@ describe("local startup reconciliation", () => {
     const closing = test.controller.close();
     await expect(queued).rejects.toThrow("closing");
     await closing;
-    await expect(test.localSession.beginStartup()).rejects.toThrow(
-      "No pending tutor startup is available.",
-    );
+    expect(test.state.state.run).toBeNull();
+    await expect(test.localSession.beginStartup()).rejects.toThrow("No local student run exists.");
   });
 });

@@ -168,7 +168,7 @@ describe("StudentSessionController run reopen ownership", () => {
     expect(runTokens).toHaveLength(1);
     expect(fixture.server.authenticatedCloseCalls).toBe(0);
     expect(fixture.studentInterface.authenticationReasons).toEqual(["missing"]);
-    expect(storedRun(fixture).phase).toBe("closed");
+    expect(fixture.state.state.run).toBeNull();
   });
 
   it.each(["2000-01-01T00:00:00.000Z", null])(

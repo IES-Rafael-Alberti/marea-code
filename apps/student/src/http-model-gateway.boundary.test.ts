@@ -39,6 +39,45 @@ function json(value: object, status: number): Response {
 }
 
 describe("HTTP model gateway boundary", () => {
+  it.each([1_048_577, 2_097_152, 2_097_153])(
+    "bounds model requests at two MiB (%i bytes)",
+    async (size) => {
+      const empty = { ...modelRequest, messages: [{ role: "student" as const, content: "" }] };
+      const overhead = new TextEncoder().encode(JSON.stringify(empty)).byteLength;
+      const request = {
+        ...empty,
+        messages: [{ role: "student" as const, content: "x".repeat(size - overhead) }],
+      };
+      let fetched = 0;
+      const gateway = createHttpModelGateway({
+        baseUrl: "https://teacher.example",
+        runToken: async () => runToken,
+        fetch: async (sent) => {
+          fetched += 1;
+          expect((await sent.arrayBuffer()).byteLength).toBe(size);
+          return new Response(JSON.stringify(chunk({ event: "started" }, 0)), {
+            headers: { "content-type": "application/x-ndjson" },
+          });
+        },
+      });
+      const collect = async () => {
+        const events = [];
+        for await (const event of gateway.stream(request, new AbortController().signal))
+          events.push(event);
+        return events;
+      };
+      if (size > 2_097_152) {
+        await expect(collect()).rejects.toThrow(
+          "The teacher server request exceeds its size limit.",
+        );
+        expect(fetched).toBe(0);
+      } else {
+        await expect(collect()).resolves.toEqual([chunk({ event: "started" }, 0)]);
+        expect(fetched).toBe(1);
+      }
+    },
+  );
+
   it("streams split NDJSON, accepts the final line, and authenticates with the run lease", async () => {
     const payload = [
       JSON.stringify(chunk({ event: "started" }, 0)),

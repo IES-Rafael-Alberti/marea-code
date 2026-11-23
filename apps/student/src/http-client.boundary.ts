@@ -55,6 +55,7 @@ import type { AuthenticationResult, StudentServer } from "./contracts.js";
 
 const MAX_JSON_RESPONSE_BYTES = 1_048_576;
 const MAX_REQUEST_BYTES = 1_048_576;
+const MAX_MODEL_REQUEST_BYTES = 2_097_152;
 const MAX_STREAM_LINE_BYTES = 131_072;
 const DEFAULT_TIMEOUT_MS = 30_000;
 const encoder = new TextEncoder();
@@ -329,7 +330,7 @@ export function createHttpClient(options: StudentHttpOptions): HttpClient {
     stream(path: string, body: ModelGatewayRequest, signal: AbortSignal, credential?: string) {
       return streamResponse(
         fetchRequest,
-        createRequest(baseUrl, path, body, signal, credential),
+        createRequest(baseUrl, path, body, signal, credential, MAX_MODEL_REQUEST_BYTES),
         body,
       );
     },

@@ -110,7 +110,7 @@ describe("StudentSessionController boundaries", () => {
     await expect(fixture.controller.close()).resolves.toBeUndefined();
 
     expect(fixture.server.openRequests).toHaveLength(1);
-    expect(fixture.state.state.run?.phase).toBe("closed");
+    expect(fixture.state.state.run).toBeNull();
   });
 
   it("preserves an exact pending resume but never reuses a local run for another project", async () => {
@@ -312,7 +312,7 @@ describe("StudentSessionController boundaries", () => {
       },
       { attemptId: "attempt:7", messageId: "message:partial", type: "turn-cancelled" },
     ]);
-    expect(fixture.state.state.run?.eventKeys).not.toContain("run:closed");
+    expect(fixture.state.state.run).toBeNull();
   });
 });
 

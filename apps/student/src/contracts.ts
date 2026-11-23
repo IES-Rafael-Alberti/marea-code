@@ -110,7 +110,9 @@ export interface ExternalAuthorizationCallback {
  */
 export interface ExternalAuthorization {
   authorize(
-    start: (redirectUri: string) => Promise<string>,
+    start: (
+      redirectUri: string,
+    ) => Promise<string | { readonly authorizationUrl: string; readonly expiresAt: string }>,
   ): Promise<ExternalAuthorizationCallback>;
 }
 

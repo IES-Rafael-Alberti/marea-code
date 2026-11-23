@@ -148,7 +148,7 @@ export class LocalSession {
     abandonExisting = false,
   ): Promise<ReopenStoredRun> {
     return this.mutate((state) => {
-      const existing: ReopenStoredRun | null = state.run;
+      const existing: ReopenStoredRun | null = state.run?.phase === "closed" ? null : state.run;
       if (
         existing !== null &&
         !abandonExisting &&
@@ -411,20 +411,14 @@ export class LocalSession {
     }));
   }
 
-  finishClose(response: CloseRunResponse): Promise<StoredRun> {
-    return this.mutateRun((run) => {
+  finishClose(response: CloseRunResponse): Promise<null> {
+    return this.mutate((state) => {
+      const run = state.run;
+      if (run === null) throw new Error("No local student run exists.");
       if (run.runId !== response.runId) {
         throw new Error("The close response addressed another run.");
       }
-      return {
-        ...run,
-        leaseExpiresAt: null,
-        leaseIssuedAt: null,
-        outbox: [],
-        pendingDelivery: null,
-        phase: "closed",
-        runToken: null,
-      };
+      return { state: { ...state, run: null }, value: null };
     });
   }
 

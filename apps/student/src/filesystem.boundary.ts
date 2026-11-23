@@ -32,6 +32,7 @@ import {
 } from "./contracts.js";
 
 const MAX_FILE_BYTES = 1_048_576;
+const MAX_STUDENT_STATE_FILE_BYTES = 20 * 1_048_576;
 const MAX_COLLECTION_SIZE = 4_096;
 const PRIVATE_DIRECTORY_MODE = 0o700;
 const PRIVATE_FILE_MODE = 0o600;
@@ -282,12 +283,24 @@ function assertOutsideProject(projectRoot: string, stateDirectory: string): void
   }
 }
 
-export async function readPrivateTextFile(path: string): Promise<string | null> {
+class StudentStateFileTooLargeError extends Error {
+  readonly diagnosticCode = "local-state.too-large";
+  constructor() {
+    super("Student state file exceeds its size limit.");
+    this.name = "StudentStateFileTooLargeError";
+  }
+}
+
+export async function readPrivateTextFile(
+  path: string,
+  maxBytes = MAX_FILE_BYTES,
+): Promise<string | null> {
   try {
     const fileStat = await lstat(path);
-    if (!fileStat.isFile() || fileStat.size > MAX_FILE_BYTES) {
+    if (!fileStat.isFile()) {
       throw new Error("Student state file is unsafe or exceeds its size limit.");
     }
+    if (fileStat.size > maxBytes) throw new StudentStateFileTooLargeError();
     if (process.platform === "win32") privateWindows.assertPrivateWindowsFileReadable(path);
     // Stryker disable next-line StringLiteral: Node treats an empty encoding as a binary read.
     return await readFile(path, "utf8");
@@ -355,7 +368,7 @@ class FileStateStore implements StudentStateStore {
   constructor(private readonly path: string) {}
 
   async load(): Promise<StudentState> {
-    const content = await readPrivateTextFile(this.path);
+    const content = await readPrivateTextFile(this.path, MAX_STUDENT_STATE_FILE_BYTES);
     if (content === null) return { run: null, version: CURRENT_STUDENT_STATE_VERSION };
     const raw = parseJson(content);
     const state = parseStudentState(raw);

@@ -73,8 +73,11 @@ class RecordingAuthorization implements ExternalAuthorization {
   readonly opened: string[] = [];
   skipStart = false;
 
-  async authorize(start: (redirectUri: string) => Promise<string>) {
-    if (!this.skipStart) this.opened.push(await start("http://127.0.0.1:4321/callback"));
+  async authorize(start: Parameters<ExternalAuthorization["authorize"]>[0]) {
+    if (!this.skipStart) {
+      const started = await start("http://127.0.0.1:4321/callback");
+      this.opened.push(typeof started === "string" ? started : started.authorizationUrl);
+    }
     return { code: "4/code", state: "s".repeat(32) };
   }
 }
