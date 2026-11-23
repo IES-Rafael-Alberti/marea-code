@@ -51,7 +51,7 @@ function freshOpening(
   openIntent: StoredOpenIntent,
   ids: IdSource,
   resumeRunId: RunId | null,
-  abandoned: readonly ReopenStoredRun[] = [],
+  abandoned: readonly ReopenStoredRun[],
 ): ReopenStoredRun {
   return {
     approvals: [],

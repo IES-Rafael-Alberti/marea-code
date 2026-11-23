@@ -165,6 +165,15 @@ describe("loopback external authorization", () => {
     await vi.waitFor(() => {
       expect(opened).toHaveLength(1);
     });
+    expect(vi.mocked(setTimeout).mock.calls.filter(([, delay]) => delay === 300_000)).toHaveLength(
+      1,
+    );
+    const initialTimer = vi
+      .mocked(setTimeout)
+      .mock.calls.findIndex(([, delay]) => delay === 300_000);
+    expect(clearTimeout).not.toHaveBeenCalledWith(
+      vi.mocked(setTimeout).mock.results[initialTimer]?.value,
+    );
     expect(test.call("/elsewhere").status).toBe(404);
     expect(test.call("/callback?code=a&state=b", "POST").status).toBe(404);
     const done = test.call("/callback?code=4%2Fcode&state=xyz");

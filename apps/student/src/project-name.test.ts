@@ -12,6 +12,7 @@ describe("projectDisplayNameFromFolder", () => {
     ["ñandúº", "ñandúº"],
     ["x".repeat(130), "x".repeat(120)],
     ["...", "project"],
+    ["x".repeat(119) + " y", "x".repeat(119)],
   ])("sanitizes %s", (folder, expected) => {
     expect(projectDisplayNameFromFolder(folder)).toBe(expected);
   });

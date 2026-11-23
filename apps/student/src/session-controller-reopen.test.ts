@@ -1,5 +1,5 @@
 import { EventIdSchema, MessageIdSchema, RunIdSchema, SessionTokenSchema } from "@marea/protocol";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { StoredRun } from "./contracts.js";
 import { StudentHttpError } from "./http-error.js";
@@ -212,6 +212,7 @@ describe("StudentSessionController revoked lease recovery", () => {
     const fixture = createFixtureController();
     await fixture.controller.start("Project One");
     setFixtureLeaseExpiry(fixture.state);
+    const bootstrap = vi.spyOn(fixture.server, "bootstrap");
     const renew = fixture.server.renewLease.bind(fixture.server);
     let attempts = 0;
     fixture.server.renewLease = (token, request) => {
@@ -225,6 +226,7 @@ describe("StudentSessionController revoked lease recovery", () => {
     await expect(fixture.controller.modelRunToken()).resolves.toBeDefined();
 
     expect(attempts).toBe(2);
+    expect(bootstrap).toHaveBeenCalledTimes(1);
     expect(fixture.server.openRequests).toHaveLength(2);
     expect(fixture.server.openRequests[1]).toMatchObject({
       intent: { kind: "resume" },

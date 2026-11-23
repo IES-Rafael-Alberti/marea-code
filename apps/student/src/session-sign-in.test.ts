@@ -145,15 +145,18 @@ describe("external sign-in completion retry", () => {
     expect(sleep).toHaveBeenCalledTimes(2);
   });
 
-  it("does not retry a 401 rejection", async () => {
+  it.each([
+    new StudentHttpError(401, "auth.invalid", false),
+    new StudentHttpError(401, "auth.invalid", true),
+    new StudentHttpError(503, "server.error", false),
+    Object.assign(new Error("busy"), { status: 503, retryable: true }),
+  ])("does not retry an ineligible rejection %s", async (error) => {
     const sleep = vi.fn<(milliseconds: number) => Promise<void>>(() => Promise.resolve());
     const server = new ExternalFixtureServer(async () => {
-      throw new StudentHttpError(401, "auth.invalid", false);
+      throw error;
     });
 
-    await expect(exchangeExternal(options(server, sleep), PROVIDER_ID)).rejects.toMatchObject({
-      status: 401,
-    });
+    await expect(exchangeExternal(options(server, sleep), PROVIDER_ID)).rejects.toBe(error);
     expect(server.completed).toHaveLength(1);
     expect(sleep).not.toHaveBeenCalled();
   });

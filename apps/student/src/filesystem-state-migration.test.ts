@@ -269,3 +269,11 @@ it("migrates version one to explicit recovery without discarding turn identities
   expect(await stores.state.load()).toEqual(migrated);
   expect(parseStudentState({ version: 1, run: null })).toEqual({ version: 2, run: null });
 });
+
+it("flattens existing root legacy data without nesting it again", () => {
+  expect(parseStudentState({ run: null, legacy: { previous: true }, future: 7 })).toEqual({
+    run: null,
+    version: CURRENT_STUDENT_STATE_VERSION,
+    legacy: { previous: true, future: 7 },
+  });
+});

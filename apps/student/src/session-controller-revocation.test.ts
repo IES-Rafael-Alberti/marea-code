@@ -22,6 +22,7 @@ it.each(["missing", "opening", "no-reason"])(
     const fixture = createFixtureController();
     await fixture.controller.start("Project");
     setFixtureLeaseExpiry(fixture.state);
+    const reopen = vi.spyOn(fixture.localSession, "reopenLease");
     fixture.server.renewLease = () => {
       replaceFixtureRun(
         fixture.state,
@@ -40,6 +41,7 @@ it.each(["missing", "opening", "no-reason"])(
         : "The run changed while its revoked lease was being recovered.",
     );
     expect(fixture.server.openRequests).toHaveLength(1);
+    expect(reopen).not.toHaveBeenCalled();
   },
 );
 
@@ -55,16 +57,18 @@ it.each([false, true])(
       occurredAt,
     }));
     const append = vi.spyOn(fixture.server, "appendRunEvents");
-    append.mockRejectedValueOnce(new StudentHttpError(409, "run.unavailable", false));
+    const rejection = new StudentHttpError(409, "run.unavailable", false);
+    append.mockRejectedValueOnce(rejection);
     if (missingToken) {
       const beginClose = fixture.localSession.beginClose.bind(fixture.localSession);
       vi.spyOn(fixture.localSession, "beginClose").mockImplementation(async (reason) => {
         const run = await beginClose(reason);
         return { ...run, runToken: null };
       });
-      await expect(fixture.controller.close()).rejects.toThrow(
-        "The active run token is unavailable.",
-      );
+      await expect(fixture.controller.close()).rejects.toMatchObject({
+        message: "The active run token is unavailable.",
+        cause: rejection,
+      });
       expect(append).toHaveBeenCalledTimes(1);
       expect(fixture.state.state.run?.closeReason).toBe("student-exit");
     } else {

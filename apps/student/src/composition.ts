@@ -191,7 +191,7 @@ export async function createProductionStudentApplication(
   });
   const controller = new StudentSessionController({
     liveProgress: true,
-    ...(options.onStartupStage === undefined ? {} : { onStartupStage: options.onStartupStage }),
+    onStartupStage: options.onStartupStage,
     agent,
     classPreference: createFileClassPreferenceStore(stateDirectory),
     clientVersion,

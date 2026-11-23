@@ -60,7 +60,7 @@ export interface SessionControllerOptions {
   readonly liveProgress?: boolean;
   readonly evidence?: ProjectEvidence;
   readonly operations?: OperationExecutor;
-  readonly onStartupStage?: (stage: StudentStartupStage) => void;
+  readonly onStartupStage?: ((stage: StudentStartupStage) => void) | undefined;
   readonly agent: AgentRuntime;
   readonly classPreference?: ClassPreferenceStore;
   readonly clientVersion: string;
@@ -545,7 +545,7 @@ export class StudentSessionController {
     if (this.sessionToken === null) return null;
     const checked = await bootstrapClass(this.options, this.sessionToken);
     if (checked.authenticated) return this.sessionToken;
-    const leaseExpiresAt = Date.parse(run.leaseExpiresAt ?? "");
+    const leaseExpiresAt = Date.parse(String(run.leaseExpiresAt));
     const leaseValid =
       Number.isFinite(leaseExpiresAt) && leaseExpiresAt > Date.parse(this.options.clock.now());
     if (run.runToken !== null && leaseValid) return null;
