@@ -12,6 +12,31 @@ import {
 } from "./student.fixture.js";
 
 describe("LocalSession persistence", () => {
+  it.each(["missing", "other", "opening", "closed"] as const)(
+    "preserves %s state when refusing lease recovery",
+    async (scenario) => {
+      const fixture = createFixtureController();
+      await fixture.controller.start("Project One");
+      const run = fixture.state.state.run;
+      if (run?.runId == null) throw new Error("Missing active run.");
+      const stored =
+        scenario === "missing"
+          ? null
+          : {
+              ...run,
+              phase: scenario === "other" ? ("active" as const) : scenario,
+            };
+      fixture.state.state = { ...fixture.state.state, run: stored };
+      const before = fixture.state.state;
+      await expect(
+        fixture.localSession.reopenLease(
+          scenario === "other" ? RunIdSchema.parse("run:other") : run.runId,
+        ),
+      ).rejects.toThrow("The run changed while its revoked lease was being recovered.");
+      expect(fixture.state.state).toBe(before);
+    },
+  );
+
   it("keeps ordered event batches and only acknowledges durable sequences", async () => {
     const store = new MemoryStateStore();
     const session = new LocalSession(store, new FixtureIds(), FIXTURE_CLOCK);
@@ -428,6 +453,18 @@ describe("LocalSession persistence", () => {
         alreadyClosed: true,
       }),
     ).rejects.toThrow("No local student run exists.");
+  });
+
+  it("preserves legacy closed state when close is requested again", async () => {
+    const fixture = createFixtureController();
+    await fixture.controller.start("Project One");
+    const closed = {
+      ...(await fixture.localSession.beginClose("cancelled")),
+      phase: "closed" as const,
+    };
+    fixture.state.state = { ...fixture.state.state, run: closed };
+    expect(await fixture.localSession.beginClose("fatal-error")).toEqual(closed);
+    expect(fixture.state.state.run).toEqual(closed);
   });
 
   it("returns no approvals or effects without local state", async () => {

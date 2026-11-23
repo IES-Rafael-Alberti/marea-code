@@ -84,6 +84,32 @@ function options(
 }
 
 describe("external sign-in completion retry", () => {
+  it("uses the default retry timer and random jitter", async () => {
+    vi.useFakeTimers();
+    const random = vi.spyOn(Math, "random").mockReturnValue(0.5);
+    try {
+      let attempts = 0;
+      const server = new ExternalFixtureServer(async (request) => {
+        attempts += 1;
+        if (attempts === 1) throw new StudentHttpError(503, "auth.busy", true);
+        return successfulResponse(request);
+      });
+      const { sleep, retryJitter, ...defaults } = options(server, async () => undefined);
+      expect(sleep).toBeTypeOf("function");
+      expect(retryJitter).toBeTypeOf("function");
+      const pending = exchangeExternal(defaults, PROVIDER_ID);
+      await vi.advanceTimersByTimeAsync(1249);
+      expect(attempts).toBe(1);
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(pending).resolves.toBe(SESSION_TOKEN);
+      expect(attempts).toBe(2);
+      expect(random).toHaveBeenCalledOnce();
+    } finally {
+      random.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   it("retries a retryable 503 completion with the same flow and succeeds", async () => {
     const sleep = vi.fn<(milliseconds: number) => Promise<void>>(() => Promise.resolve());
     let calls = 0;
