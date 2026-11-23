@@ -6,6 +6,7 @@ import {
   type SessionToken,
 } from "@marea/protocol";
 
+import { StudentHttpError } from "./http-error.js";
 import type {
   AuthenticationResult,
   ClassPreferenceStore,
@@ -22,6 +23,44 @@ export interface SignInOptions {
   readonly ids: IdSource;
   readonly server: StudentServer;
   readonly studentInterface: StudentInterface;
+  /** Test seam: the delay between completion retries. */
+  readonly sleep?: (milliseconds: number) => Promise<void>;
+  /** Test seam: the jitter source for completion retry backoff, in [0, 1). */
+  readonly retryJitter?: () => number;
+}
+
+const MAX_COMPLETION_ATTEMPTS = 3;
+const COMPLETION_RETRY_BASE_DELAY_MS = 1_000;
+const COMPLETION_RETRY_JITTER_MS = 500;
+
+function defaultSleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+function completionRetryDelay(attempt: number, jitter: () => number): number {
+  return (
+    COMPLETION_RETRY_BASE_DELAY_MS * 2 ** attempt +
+    Math.floor(jitter() * COMPLETION_RETRY_JITTER_MS)
+  );
+}
+
+async function completeWithRetry(
+  completeExternal: NonNullable<StudentServer["completeExternal"]>,
+  request: Parameters<NonNullable<StudentServer["completeExternal"]>>[0],
+  sleep: (milliseconds: number) => Promise<void>,
+  jitter: () => number,
+): ReturnType<NonNullable<StudentServer["completeExternal"]>> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await completeExternal(request);
+    } catch (error) {
+      // auth.busy surfaces as a retryable 503 on the completion endpoint; a 401
+      // auth.invalid is never retried because the flow was already consumed.
+      const busy = error instanceof StudentHttpError && error.status === 503 && error.retryable;
+      if (!busy || attempt + 1 >= MAX_COMPLETION_ATTEMPTS) throw error;
+      await sleep(completionRetryDelay(attempt, jitter));
+    }
+  }
 }
 
 /** Providers are offered only by a server that announces them; a failure hides them. */
@@ -69,14 +108,19 @@ export async function exchangeExternal(
     return started.authorizationUrl;
   });
   if (flowId === undefined) throw new Error("The external sign-in did not start.");
-  const response = await completeExternal({
-    kind: "external-auth-complete",
-    protocolVersion: CURRENT_PROTOCOL_VERSION,
-    requestId: options.ids.request(),
-    flowId,
-    state: callback.state,
-    code: callback.code,
-  });
+  const response = await completeWithRetry(
+    completeExternal,
+    {
+      kind: "external-auth-complete",
+      protocolVersion: CURRENT_PROTOCOL_VERSION,
+      requestId: options.ids.request(),
+      flowId,
+      state: callback.state,
+      code: callback.code,
+    },
+    options.sleep ?? defaultSleep,
+    options.retryJitter ?? Math.random,
+  );
   return response.session.token;
 }
 
