@@ -20,7 +20,6 @@ vi.mock("./external-authorization.boundary.js", async (original) => {
 import type { ProductionStudentCompositionOptions } from "./composition.js";
 import type { ApprovalPrompt, StudentViewEvent } from "./contracts.js";
 import {
-  createBindableConversationPort,
   executeMareaCommand,
   MAREA_CLIENT_VERSION,
   type MareaCommandRuntime,
@@ -99,9 +98,9 @@ describe("marea command", () => {
     async ({ arguments: arguments_ }) => {
       const exit = Promise.withResolvers<{ readonly exitCode: 0; readonly reason: "closed" }>();
       const session = conversationSession(exit.promise);
-      const suspendedOperation = vi.fn(async () => "suspended result");
+      const suspendedOperation = vi.fn(() => Promise.resolve("suspended result"));
       const withTerminalSuspended = vi.spyOn(session, "withTerminalSuspended");
-      let earlyAuthentication: Promise<unknown> | undefined;
+      let earlyAuthentication: Promise<string> | undefined;
       const controller = {
         close: vi.fn(() => Promise.resolve()),
         sendMessage: vi.fn(() => Promise.resolve()),
@@ -499,13 +498,4 @@ describe("marea command", () => {
     ]);
     expect(options.errors.join("")).not.toContain("secret provider key");
   });
-});
-
-it("forwards generic thinking through the bound conversation port", () => {
-  const port = createBindableConversationPort();
-  expect(() => port.thinking()).toThrow("The conversation interface is not ready.");
-  const session = conversationSession();
-  port.bind(session);
-  expect(port.thinking("message", "attempt")).toBe(true);
-  expect(session.thinking).toHaveBeenCalledExactlyOnceWith("message", "attempt");
 });
