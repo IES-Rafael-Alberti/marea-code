@@ -28,6 +28,30 @@ function wrappedDiagnostic(depth: number, diagnosticCode: string | number | null
 }
 
 describe("safe startup diagnostics", () => {
+  it.each(["not a URL", "file:///secret", "http://teacher.test/private"])(
+    "prints only valid HTTP origins: %s",
+    (origin) => {
+      const result = startupFailure(transportFailure(origin), translator, "capabilities");
+      expect(result).toBe(
+        `${origin.startsWith("http:") ? translator.t("bootstrap.connection-failed-at", { origin: "http://teacher.test" }) : translator.t("bootstrap.connection-failed")}\n${translator.t("student.cli.failure-code", { code: "capabilities/transport.unavailable/HTTP-0/v1/capabilities/TypeError:ECONNREFUSED" })}\n`,
+      );
+    },
+  );
+
+  it("ignores throwing diagnostic getters and unrelated adapter codes", () => {
+    const error = Object.defineProperty(
+      { name: "AgentAdapterError", code: "other" },
+      "diagnosticCode",
+      {
+        get() {
+          throw new Error("private");
+        },
+      },
+    );
+    expect(startupFailure(error, translator, "session")).toBe(
+      `${translator.t("student.cli.unexpected-error")}\n${translator.t("student.cli.failure-code", { code: "session/unexpected" })}\n`,
+    );
+  });
   it.each([
     ["auth.invalid", "Authentication failed"],
     ["protocol.incompatible", "not compatible"],
