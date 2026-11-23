@@ -3,23 +3,46 @@ name: testing
 description: Diseñar y escribir pruebas automáticas. Úsala cuando el estudiante tenga que decidir qué probar, cómo aislar el código bajo prueba, o qué hacer con los casos límite. También cuando haya que interpretar un test que falla.
 license: MIT
 compatibility: Marea Code
+curriculo:
+  modulos:
+    - codigo: "0485"
+      nombre: Programación
+  fuente: "Real Decreto 405/2023, anexo I, módulo 0485, RA3.f: https://www.boe.es/buscar/doc.php?id=BOE-A-2023-13221"
 criterios:
-  - codigo: RA5.c
+  - codigo: testing-casos
     enunciado: Se han definido casos de prueba pertinentes para el código propio
+    referencias:
+      - modulo:
+          codigo: "0485"
+          nombre: Programación
+        ra: 3
+        criterio: f
     niveles:
       - Reconoce con preguntas qué comportamiento normal conviene comprobar y plantea un caso guiado
       - Elige casos normales y casos límite para una función familiar con ayuda puntual
       - Selecciona y justifica autónomamente casos no redundantes para una situación no trivial
       - Diseña una estrategia de pruebas basada en riesgos para código nuevo o complejo y argumenta qué deja fuera
-  - codigo: RA5.d
+  - codigo: testing-unitarias
     enunciado: Se han realizado pruebas unitarias y se ha interpretado su resultado
+    referencias:
+      - modulo:
+          codigo: "0485"
+          nombre: Programación
+        ra: 3
+        criterio: f
     niveles:
       - Ejecuta una prueba con guía y localiza el valor esperado, el obtenido y la línea del fallo
       - Escribe e interpreta una prueba unitaria sencilla en código familiar con ayuda puntual
       - Distingue autónomamente si un fallo está en el código, en el test o en su preparación
       - Diseña y depura una suite no trivial, aislando dependencias y justificando sus decisiones
-  - codigo: RA5.e
+  - codigo: testing-limites
     enunciado: Se han contemplado los casos límite y las condiciones de error
+    referencias:
+      - modulo:
+          codigo: "0485"
+          nombre: Programación
+        ra: 3
+        criterio: f
     niveles:
       - Reconoce con preguntas un caso situado en la frontera de una entrada válida
       - Prueba entradas inválidas y errores previsibles en una función familiar con ayuda puntual
@@ -37,6 +60,20 @@ criterios:
 Esta skill define qué tiene que llegar a saber hacer el estudiante y cómo
 comprobarlo. El objetivo no es que su proyecto acabe con tests: es que sepa
 decidir cuáles escribir.
+
+## Relación curricular
+
+Los tres criterios propios de esta skill concretan aspectos de **Programación
+(0485), RA3, criterio f**, relativo a la prueba y depuración de programas.
+La numeración está recogida en el [Real Decreto 405/2023, anexo I](https://www.boe.es/buscar/doc.php?id=BOE-A-2023-13221)
+y coincide con el currículo andaluz de DAW de la [Orden de 16 de junio de 2011](https://www.juntadeandalucia.es/boja/2011/149/23).
+
+Los enunciados y los cuatro niveles de esta skill son indicadores didácticos
+propios. Aportan evidencias parciales sobre ese criterio; no equivalen a superar
+por completo el resultado de aprendizaje. Conserva esta distinción al evaluar.
+Los antiguos identificadores RA5.c, RA5.d y RA5.e de este ejemplo no eran
+referencias correctas a Programación; las sesiones anteriores conservan su
+versión original y no deben reinterpretarse con esta correspondencia.
 
 ## Lo que tiene que dominar
 

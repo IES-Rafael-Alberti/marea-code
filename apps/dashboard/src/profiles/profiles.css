@@ -541,6 +541,7 @@ body {
     .secret-control button,
     .session-list li button,
     .skill-authoring-catalog-entry button,
+    .skills-workspace button,
     .report-list button
   ) {
   padding: 0.45em 0.9em;
@@ -561,6 +562,7 @@ body {
     .secret-control button,
     .session-list li button,
     .skill-authoring-catalog-entry button,
+    .skills-workspace button,
     .report-list button
   ):hover:not(:disabled) {
   background: var(--color-accent);

@@ -98,6 +98,10 @@ describe("teacher host executable", () => {
       );
     });
     expect(deps.stdout).toContain("Student connection: marea --server http://localhost:18787\n");
+    expect(deps.stdout.filter((line) => line.startsWith("Teacher host ready at"))).toEqual([
+      "Teacher host ready at http://localhost:18787\n",
+    ]);
+    expect(deps.stdout).toContain("Teacher dashboard: http://192.168.1.20:18787/dashboard/\n");
     expect(deps.stderr).toEqual([
       "HTTP LAN mode: listening on all IPv4 interfaces without transport encryption.\n",
     ]);
@@ -172,7 +176,11 @@ describe("teacher host executable", () => {
     });
     const exit = runTeacherHost(ARGV, ready.ports);
     await vi.waitFor(() => {
-      expect(ready.stdout).toEqual(["Teacher host ready at http://127.0.0.1:3\n"]);
+      expect(ready.stdout).toEqual([
+        "Teacher host ready at http://127.0.0.1:3\n",
+        "Teacher dashboard: http://127.0.0.1:3/dashboard/\n",
+        "Student connection: marea --server http://127.0.0.1:3\n",
+      ]);
     });
     ready.signals.emit("SIGTERM");
     expect(await exit).toBe(0);
@@ -191,6 +199,8 @@ describe("teacher host executable", () => {
       expect(stop).toHaveBeenCalledTimes(1);
       expect(early.stdout).toEqual([
         "Teacher host ready at http://127.0.0.1:4\n",
+        "Teacher dashboard: http://127.0.0.1:4/dashboard/\n",
+        "Student connection: marea --server http://127.0.0.1:4\n",
         "Teacher host stopped.\n",
       ]);
       expect(["SIGINT", "SIGTERM"].map((name) => early.signals.listenerCount(name))).toEqual([
@@ -212,7 +222,11 @@ describe("teacher host executable", () => {
       });
       const exit = runTeacherHost(ARGV, running.ports);
       await vi.waitFor(() => {
-        expect(running.stdout).toEqual(["Teacher host ready at http://127.0.0.1:1\n"]);
+        expect(running.stdout).toEqual([
+          "Teacher host ready at http://127.0.0.1:1\n",
+          "Teacher dashboard: http://127.0.0.1:1/dashboard/\n",
+          "Student connection: marea --server http://127.0.0.1:1\n",
+        ]);
       });
       expect(stop).not.toHaveBeenCalled();
       running.signals.emit(signal);
@@ -240,7 +254,7 @@ describe("teacher host executable", () => {
       mocks.start.mockResolvedValueOnce({ state: "ready", url: "http://127.0.0.1:1", stop });
       const exit = runTeacherHost(ARGV, f.ports);
       await vi.waitFor(() => {
-        expect(f.stdout).toHaveLength(1);
+        expect(f.stdout).toHaveLength(3);
       });
       f.signals.emit("SIGINT");
       await vi.waitFor(() => {

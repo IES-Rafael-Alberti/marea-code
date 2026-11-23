@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { managerPorts, state } from "./preview-manager.fixture.js";
 import { previewMain } from "./preview-manager.boundary.js";
+import { InstallerUsageError } from "./installer-cli.boundary.js";
 const ports = managerPorts();
 const run = (...args: string[]) =>
   previewMain(["run", state.selected, "--root", "/private", "--", ...args]);
@@ -76,7 +77,11 @@ it("requires consent for a protocol repair and blocks connection after refusal o
   expect(ports.offeredVersion).not.toHaveBeenCalled();
   ports.acceptUpdate.mockResolvedValue(true);
   ports.downloadPreview.mockRejectedValueOnce(new Error("invalid signature"));
-  await expect(run()).rejects.toThrow("versión 0.1.0-preview.2 necesaria");
+  await expect(run()).rejects.toEqual(
+    new InstallerUsageError(
+      "No se ha podido instalar la versión 0.1.0-preview.2 necesaria para este servidor.",
+    ),
+  );
   expect(ports.runForeground).not.toHaveBeenCalled();
   await run();
   expect(ports.runForeground).toHaveBeenCalledWith(

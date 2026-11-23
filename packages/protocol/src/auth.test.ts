@@ -33,6 +33,27 @@ const enrollmentRequest = {
 } as const;
 
 describe("authentication protocol", () => {
+  it.each([false, true])("preserves existing Unicode passwords (jitless=%s)", (jitless) => {
+    for (const count of [6, 128]) {
+      const password = "😀".repeat(count);
+      expect(CredentialPasswordSchema.parse(password, { jitless })).toBe(password);
+      expect(
+        CredentialLoginRequestSchema.parse(
+          {
+            kind: "credential-login",
+            protocolVersion: "0.1",
+            requestId: "request:unicode-login",
+            credentials: { ...credentials, password },
+          },
+          { jitless },
+        ).credentials.password,
+      ).toBe(password);
+    }
+    for (const count of [5, 129])
+      expect(CredentialPasswordSchema.safeParse("😀".repeat(count), { jitless }).success).toBe(
+        false,
+      );
+  });
   it("enrolls an invited student without accepting authority identifiers", () => {
     const request = EnrollStudentRequestSchema.parse(enrollmentRequest);
     const response = EnrollStudentResponseSchema.parse({

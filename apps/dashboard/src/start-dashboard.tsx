@@ -1,3 +1,5 @@
+import { AccountLanguage } from "./account-language.js";
+import { createAccountLanguageClient } from "./account-language-client.boundary.js";
 import type { ProfileRuntime } from "./profiles/profile-shell.js";
 import type { SessionsClient } from "./modules/sessions/sessions-client.boundary.js";
 import { SessionsController } from "./modules/sessions/sessions-controller.js";
@@ -71,6 +73,7 @@ export function startDashboard(
   let preference: LocalePreference = readDashboardPreference(browser.storage) ?? "automatic";
   let locale = selectLocaleFromPreference(preference, browser.languages ?? [browser.language]);
   let languageSaveWarning = false;
+  let languageBusy = false;
   browser.document.documentElement.lang = locale;
 
   const root = createDashboardRoot(container);
@@ -85,13 +88,21 @@ export function startDashboard(
         locale={locale}
         preference={preference}
         languageSaveWarning={languageSaveWarning}
+        languageBusy={languageBusy}
         onPreferenceChange={(next) => {
-          if (session !== undefined && session.state.status !== "signed-out") return;
+          if (
+            languageBusy ||
+            (session !== undefined &&
+              session.state.status !== "signed-out" &&
+              !(session.state.status === "signed-in" && accountLanguage !== undefined))
+          )
+            return;
           preference = next;
           locale = selectLocaleFromPreference(next, browser.languages ?? [browser.language]);
           languageSaveWarning = !writeDashboardPreference(browser.storage, next);
           browser.document.documentElement.lang = locale;
           render();
+          void accountLanguage?.save(next);
         }}
         navigation={{
           section,
@@ -127,6 +138,21 @@ export function startDashboard(
       />,
     );
   };
+
+  const accountLanguage =
+    profiles === undefined
+      ? undefined
+      : new AccountLanguage(createAccountLanguageClient(profiles.fetch), (next, warning, busy) => {
+          if (next !== null) {
+            preference = next;
+            locale = selectLocaleFromPreference(next, browser.languages ?? [browser.language]);
+            writeDashboardPreference(browser.storage, next);
+            browser.document.documentElement.lang = locale;
+          }
+          languageSaveWarning = warning;
+          languageBusy = busy;
+          render();
+        });
 
   /** Creates and loads every module for the signed-in teacher; disposing cancels their requests. */
   const startModules = (): DashboardModules => {
@@ -166,6 +192,7 @@ export function startDashboard(
           );
     return {
       ready: Promise.all([
+        accountLanguage?.connect(),
         runsReady,
         workspace?.start(),
         teaching?.loadClasses(),
@@ -179,6 +206,8 @@ export function startDashboard(
       authoring,
       governance,
       dispose() {
+        accountLanguage?.disconnect();
+        languageBusy = false;
         requests.abort();
         workspace?.dispose();
         evaluation?.dispose();

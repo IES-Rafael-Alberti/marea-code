@@ -16,6 +16,7 @@ import { downloadPreview } from "./preview-download.boundary.ts";
 import { verifyFiles } from "./files.boundary.ts";
 import { verifySignature } from "./install.boundary.ts";
 import { manifestSchema } from "./manifest.ts";
+import { verifySlowTransfer } from "./preview-slow-transfer-smoke.mjs";
 
 // Exercise the real native inventory and verifier with compressed transport and cache misses.
 const source = realpathSync(resolve(process.argv[2]));
@@ -73,6 +74,22 @@ try {
   writeFileSync(join(unchanged, programs[0]), "damaged cached installer");
   await download("repaired", unchanged);
   assert.deepEqual(requested, [programs[0]], "Only the damaged cached artifact needs downloading");
+  const slowDestination = join(scratch, "slow-network");
+  mkdirSync(slowDestination, { mode: 0o700 });
+  const application = manifest.files.find(
+    (file) => file.path === `marea${suffix}` || file.path === `marea-teacher${suffix}`,
+  );
+  assert.ok(application, "Native application must be present in the signed inventory");
+  await verifySlowTransfer(
+    { ...settings, version: manifest.version, target: manifest.target },
+    slowDestination,
+    { fetch, verify },
+    `sha256-${application.sha256}.gz`,
+  );
+  verifyFiles(slowDestination, manifest);
+  process.stdout.write(
+    "Real HTTP: signed native inventory downloaded with a 36-second application transfer; stalled transfer aborted.\n",
+  );
   process.stdout.write(
     `Native ${manifest.component}: compressed installation ${(initialBytes / 1048576).toFixed(1)} MiB; bootstrap reused, unchanged update downloaded 0 artifacts, damaged cache repaired.\n`,
   );

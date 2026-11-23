@@ -1,6 +1,13 @@
 import type { DashboardLocale } from "../messages.js";
 
-export const workspaceSections = ["sessions", "map", "progress", "reports", "settings"] as const;
+export const workspaceSections = [
+  "sessions",
+  "skills",
+  "map",
+  "progress",
+  "reports",
+  "settings",
+] as const;
 export type WorkspaceSection = (typeof workspaceSections)[number];
 export function workspaceSection(value: string | null): WorkspaceSection {
   return workspaceSections.find((section) => section === value) ?? "sessions";
@@ -33,7 +40,7 @@ const messages = {
     administrationNote: "Profesores, alumnos, clases y sus miembros.",
     appearance: "Apariencia y vistas",
     diagnostics: "Diagnóstico y consumo",
-    skills: "Edición de skills",
+    skills: "Skills",
     choose: "Selecciona una clase para empezar",
     unavailable: "Esta vista no está habilitada en tu panel.",
     configure: "Activar en Mi panel",
@@ -60,7 +67,7 @@ const messages = {
     administrationNote: "Teachers, students, classes and their members.",
     appearance: "Appearance and views",
     diagnostics: "Diagnostics and usage",
-    skills: "Skill editing",
+    skills: "Skills",
     choose: "Select a class to get started",
     unavailable: "This view is not enabled in your dashboard.",
     configure: "Enable in My dashboard",
@@ -88,7 +95,7 @@ const messages = {
     administrationNote: "Irakasleak, ikasleak, klaseak eta kideak.",
     appearance: "Itxura eta ikuspegiak",
     diagnostics: "Diagnostikoa eta kontsumoa",
-    skills: "Skillen edizioa",
+    skills: "Skillak",
     choose: "Hautatu ikasgela bat hasteko",
     unavailable: "Ikuspegi hau ez dago gaituta zure panelean.",
     configure: "Gaitu Nire panelean",

@@ -28,13 +28,31 @@ const captured = () => ({
 });
 const signal = () => new AbortController().signal;
 
+function controllerWithSkills(agent: StartupFixtureAgent, free = false) {
+  const server = new StartupFixtureServer();
+  server.free = free;
+  const open = server.openRun.bind(server);
+  vi.spyOn(server, "openRun").mockImplementation(async (token, request) => {
+    const opened = await open(token, request);
+    return {
+      ...opened,
+      snapshot: { ...opened.snapshot, didacticSkills: captured().didacticSkills },
+    };
+  });
+  return createFixtureController({ agent, server });
+}
+
 describe("mandatory didactic context", () => {
   it("loads every complete SKILL.md in selection order without paginating or loading auxiliary files", async () => {
     const content = "á".repeat(10_000) + " final rule";
     const read = vi.fn().mockResolvedValue(content);
     const result = await loadRequiredSkills(captured(), { read }, signal());
     expect(read.mock.calls).toEqual(captured().didacticSkills.map(({ id }) => [id, "SKILL.md"]));
-    expect(result.split(content)).toHaveLength(3);
+    expect(result.split("\n").slice(1)).toEqual(
+      captured().didacticSkills.map(({ id, digest }) =>
+        JSON.stringify({ skillId: id, digest, content }),
+      ),
+    );
     expect(result).toContain("Explicit class instructions");
   });
 
@@ -75,6 +93,7 @@ describe("mandatory didactic context", () => {
       context.prepare(runId, captured(), signal(), () => Promise.resolve("x".repeat(48_000))),
     ).rejects.toThrow("reduce");
     expect(() => context.content(runId, captured())).toThrow();
+    expect(new RequiredSkillsError().name).toBe("RequiredSkillsError");
     const failure = classifyTurnFailure(new RequiredSkillsError());
     expect(failure).toMatchObject({ kind: "request-failed", retryable: true, recoverable: true });
     expect(failure.detail).not.toContain("teacher/ana");
@@ -141,16 +160,7 @@ describe("mandatory didactic context", () => {
       .mockRejectedValueOnce(new RequiredSkillsError())
       .mockResolvedValue(undefined);
     const agent = Object.assign(startup, { prepare });
-    const server = new StartupFixtureServer();
-    const open = server.openRun.bind(server);
-    vi.spyOn(server, "openRun").mockImplementation(async (token, request) => {
-      const opened = await open(token, request);
-      return {
-        ...opened,
-        snapshot: { ...opened.snapshot, didacticSkills: captured().didacticSkills },
-      };
-    });
-    const test = createFixtureController({ agent, server });
+    const test = controllerWithSkills(agent);
     await test.controller.start("Project One");
     await expect(test.controller.sendStartup(signal())).rejects.toThrow();
     expect(startup.startups).toHaveLength(0);
@@ -173,4 +183,77 @@ it("checks the complete assembled prompt, including project context, without cha
   );
   expect(() => context.prompt(runId, value, "x".repeat(60_000))).toThrow("reduce");
   expect(value.prompt.content).toBe("Teach clearly.");
+});
+
+it("honors cancellation after the final skill read and before any preparation", async () => {
+  const controller = new AbortController();
+  const reason = new Error("loading cancelled");
+  const value = { ...captured(), didacticSkills: captured().didacticSkills.slice(0, 1) };
+  await expect(
+    loadRequiredSkills(
+      value,
+      {
+        read: () => {
+          controller.abort(reason);
+          return Promise.resolve("complete skill");
+        },
+      },
+      controller.signal,
+    ),
+  ).rejects.toBe(reason);
+  await expect(
+    new RequiredSkillContext().prepare(runId, snapshot(), controller.signal),
+  ).rejects.toBe(reason);
+});
+
+it("preserves cancellation when the loader rejects and never caches the failure", async () => {
+  const controller = new AbortController();
+  const reason = new Error("cancelled while offline");
+  const context = new RequiredSkillContext();
+  await expect(
+    context.prepare(runId, captured(), controller.signal, () => {
+      controller.abort(reason);
+      return Promise.reject(new Error("private network details"));
+    }),
+  ).rejects.toBe(reason);
+  expect(() => context.content(runId, captured())).toThrow(RequiredSkillsError);
+});
+
+it("admits the exact material and assembled prompt ceilings without losing any content", async () => {
+  const context = new RequiredSkillContext();
+  const value = captured();
+  const material = "x".repeat(48_000 - value.prompt.content.length);
+  await context.prepare(runId, value, signal(), () => Promise.resolve(material));
+  expect(context.content(runId, value)).toBe(material);
+  const project = "y".repeat(60_000 - material.length - value.prompt.content.length - 4);
+  expect(context.prompt(runId, value, project)).toBe(
+    `${material}\n\n${value.prompt.content}\n\n${project}`,
+  );
+  expect(() => context.prompt(runId, value, project + "y")).toThrow("reduce");
+});
+
+it.each([false, true])("shows skill loading only in tutoring mode (free: %s)", async (free) => {
+  const agent = new StartupFixtureAgent();
+  const test = controllerWithSkills(agent, free);
+  await test.controller.start("Project One");
+  if (free) await test.controller.sendMessage("message:free", "Help me", signal());
+  else await test.controller.sendStartup(signal());
+  expect(test.studentInterface.events.some((event) => event.type === "skills-loading")).toBe(!free);
+});
+
+it("does not announce thinking or start the tutor after preparation is cancelled", async () => {
+  const controller = new AbortController();
+  const startup = new StartupFixtureAgent();
+  const agent = Object.assign(startup, {
+    prepare: () => {
+      controller.abort();
+      return Promise.resolve();
+    },
+  });
+  const test = controllerWithSkills(agent);
+  await test.controller.start("Project One");
+  await test.controller.sendStartup(controller.signal);
+  expect(startup.startups).toEqual([]);
+  expect(test.studentInterface.events.some((event) => event.type === "skills-loading")).toBe(true);
+  expect(test.studentInterface.events.some((event) => event.type === "thinking")).toBe(false);
 });

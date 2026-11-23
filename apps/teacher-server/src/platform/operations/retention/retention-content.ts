@@ -25,6 +25,7 @@ const SNAPSHOT_DELETIONS = [
 ] as const;
 
 const ACCOUNT_DELETIONS = [
+  "DELETE FROM marea_metadata WHERE key = 'dashboard-language:' || ?1",
   "DELETE FROM marea_auth_sessions WHERE user_id = ?1",
   "DELETE FROM marea_invitations WHERE consumed_by = ?1",
   "DELETE FROM marea_governance_memberships WHERE user_id = ?1",

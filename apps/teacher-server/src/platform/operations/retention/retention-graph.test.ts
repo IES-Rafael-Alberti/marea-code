@@ -26,6 +26,28 @@ function identities(result: ReturnType<typeof graphOf>) {
 }
 
 describe("retention reference graph", () => {
+  it("includes the account language in retention counts and the stable preview fingerprint", () => {
+    const h = retentionHarness();
+    const account = h.observe("account", "teacher:one");
+    const before = graphOf(h, [account]);
+    h.database.execute("INSERT INTO marea_metadata (key, value) VALUES (?1, ?2)", [
+      "dashboard-language:teacher:one",
+      "es",
+    ]);
+    const localized = graphOf(h, [account]);
+    expect(localized.counts.rows).toBe(before.counts.rows + 1);
+    expect(localized.bytes.database).toBe(before.bytes.database + 2);
+    expect(localized.graph.digest).toMatchInlineSnapshot(
+      `"sha256:1f0869e7cce4a086b351b57bc9ba4b9247558b6c907c878f6db1200f323ef458"`,
+    );
+    h.database.execute("UPDATE marea_metadata SET value = ?1 WHERE key = ?2", [
+      "en",
+      "dashboard-language:teacher:one",
+    ]);
+    const changed = graphOf(h, [account]);
+    expect(changed.counts).toEqual(localized.counts);
+    expect(changed.graph.digest).not.toBe(localized.graph.digest);
+  });
   it("measures the complete closure of a closed run with an exclusive snapshot", () => {
     const h = retentionHarness();
     const result = graphOf(h, [h.observe("run", "run:closed")]);

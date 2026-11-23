@@ -3,12 +3,24 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { initializeSqliteStorage } from "@marea/sqlite-storage";
 import { acquireInstallation } from "../../apps/teacher-server/src/platform/operator-cli/installation-lock.js";
+import { OperatorCliError } from "../../apps/teacher-server/src/platform/operator-cli/errors.js";
+import { acquireWithLockRecovery } from "../../apps/teacher-server/src/platform/installation/abandoned-lock-recovery.js";
+import { processLockRecovery } from "../../apps/teacher-server/src/platform/installation/lock-recovery-terminal.boundary.js";
 import { createOperationsApplication } from "../../apps/teacher-server/src/platform/operations-cli/operations-application.js";
 import { readOperationsConfig } from "../../apps/teacher-server/src/platform/operations-cli/operations-config.js";
 import { readTeacherHostConfig } from "../../apps/teacher-server/src/platform/teacher-host/teacher-host-config.js";
 import { installExampleSkill } from "./preview-skills.boundary.js";
 
 export const updateJournal = "preview-update-pending.json";
+
+/** Review abandoned locks before downloading. Activation still takes its own exclusive lock. */
+export async function assertPreviewServerIdle(installation: string): Promise<void> {
+  const owner = await acquireWithLockRecovery(
+    acquireInstallation,
+    processLockRecovery(),
+  )(installation);
+  if (!owner.release()) throw new OperatorCliError("installation-lost");
+}
 
 /** One installation owner covers backup, migration, config and activation; interrupted updates fail closed. */
 export async function activatePreviewServer<T>(
@@ -41,7 +53,7 @@ export async function activatePreviewServer<T>(
     owner.capability.assertOwned();
     initializeSqliteStorage({
       databasePath: config.databasePath,
-      schema: "observability",
+      schema: "skill-assignments",
     }).close();
     const result = await activate();
     installExampleSkill(installation, destination);

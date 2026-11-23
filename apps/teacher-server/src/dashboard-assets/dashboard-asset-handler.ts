@@ -8,7 +8,8 @@ export type DashboardAssetHandler = (request: Request) => Response;
 
 export function createDashboardAssetHandler(source: DashboardAssetSource): DashboardAssetHandler {
   return (request): Response => {
-    const assetPath = selectAssetPath(new URL(request.url).pathname);
+    const pathname = new URL(request.url).pathname;
+    const assetPath = selectAssetPath(pathname);
     if (assetPath === null) {
       return notFound();
     }
@@ -20,6 +21,11 @@ export function createDashboardAssetHandler(source: DashboardAssetSource): Dashb
       });
     }
 
+    if (pathname === "/")
+      return new Response(null, {
+        status: 302,
+        headers: { location: "/dashboard/", "cache-control": "no-store" },
+      });
     const asset = source.find(assetPath);
     if (asset === null) {
       return notFound();
@@ -36,7 +42,11 @@ export function createDashboardAssetHandler(source: DashboardAssetSource): Dashb
 }
 
 function selectAssetPath(pathname: string): string | null {
-  if (pathname === DASHBOARD_MOUNT_PATH || pathname === `${DASHBOARD_MOUNT_PATH}/`) {
+  if (
+    pathname === "/" ||
+    pathname === DASHBOARD_MOUNT_PATH ||
+    pathname === `${DASHBOARD_MOUNT_PATH}/`
+  ) {
     return "index.html";
   }
 

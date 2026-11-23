@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { DashboardLocale } from "../messages.js";
 import { ProfileShell, type ProfileRuntime } from "./profile-shell.js";
 import { ClassSettings } from "./class-settings.js";
@@ -6,7 +7,7 @@ import { ServerSettingsView } from "../modules/server-settings/view.js";
 import { ExternalAccessView } from "../modules/external-access/view.js";
 import { TeachingModule } from "../modules/teaching/teaching-module.js";
 import type { TeachingModuleProperties } from "../modules/teaching/teaching-contracts.js";
-import { SkillAuthoringModule } from "../modules/skill-authoring/skill-authoring-module.js";
+import { SkillsWorkspace } from "../modules/skill-workspace/view.js";
 import type { SkillAuthoringModuleProperties } from "../modules/skill-authoring/skill-authoring-contracts.js";
 import {
   GovernanceModule,
@@ -15,12 +16,14 @@ import {
 export function TeacherWorkspace({
   locale,
   profiles,
+  languageControl,
   teaching,
   authoring,
   governance,
 }: {
   readonly locale: DashboardLocale;
   readonly profiles: ProfileRuntime;
+  readonly languageControl?: ReactNode;
   readonly teaching: Omit<TeachingModuleProperties, "locale"> | undefined;
   readonly authoring: Omit<SkillAuthoringModuleProperties, "locale"> | undefined;
   readonly governance: Omit<GovernanceModuleProperties, "locale"> | undefined;
@@ -40,12 +43,28 @@ export function TeacherWorkspace({
         await authoring?.controller.confirmNavigation(true);
       }}
       settings={{
+        language: languageControl,
+        skills: (
+          <SkillsWorkspace
+            classId={selectedClassId}
+            fetchRequest={profiles.fetch}
+            locale={locale}
+            teachingChanged={async () => {
+              await teaching?.controller.reload();
+            }}
+          />
+        ),
         classroom: (
           <ClassSettings
             locale={locale}
             content={{
               tutor: teaching && (
-                <TeachingModule locale={locale} {...teaching} classSelection={false} />
+                <TeachingModule
+                  locale={locale}
+                  {...teaching}
+                  classSelection={false}
+                  showSkills={false}
+                />
               ),
               access: (
                 <ExternalAccessView
@@ -61,9 +80,6 @@ export function TeacherWorkspace({
                   locale={locale}
                   fetchRequest={profiles.fetch}
                 />
-              ),
-              library: authoring && (
-                <SkillAuthoringModule locale={locale} {...authoring} classSelection={false} />
               ),
             }}
           />

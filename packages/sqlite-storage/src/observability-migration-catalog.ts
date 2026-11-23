@@ -1,10 +1,6 @@
-import { compareMigrationText } from "./audit-migration-catalog.js";
+import { extendMigrationCatalog } from "./extend-migration-catalog.js";
 import { createStudentIdentityMigrationCatalog } from "./student-identity-migration-catalog.js";
-import {
-  calculateMigrationChecksum,
-  validateKnownMigrationCatalog,
-  type SchemaObjectDefinition,
-} from "./migration-catalog.js";
+import { type SchemaObjectDefinition } from "./migration-catalog.js";
 
 /** Queue stores references, never a second copy of session content or credentials. */
 const objects: readonly SchemaObjectDefinition[] = [
@@ -51,18 +47,10 @@ const objects: readonly SchemaObjectDefinition[] = [
   },
 ];
 export function createObservabilityMigrationCatalog() {
-  const base = createStudentIdentityMigrationCatalog();
-  const previous = base.reduce((_, migration) => migration);
-  const migration = {
-    name: "durable_session_trace_delivery",
-    version: 13,
-    schemaAfter: [...previous.schemaAfter, ...objects].sort(
-      (a, b) => compareMigrationText(a.type, b.type) || compareMigrationText(a.name, b.name),
-    ),
-    statements: objects.map(({ sql }) => sql),
-  };
-  return validateKnownMigrationCatalog([
-    ...base,
-    { ...migration, checksum: calculateMigrationChecksum(migration) },
-  ]);
+  return extendMigrationCatalog(
+    createStudentIdentityMigrationCatalog(),
+    13,
+    "durable_session_trace_delivery",
+    objects,
+  );
 }

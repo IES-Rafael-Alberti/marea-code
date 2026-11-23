@@ -7,7 +7,7 @@ import {
   readIdentityProviderSettings,
   systemIdentityRuntime,
 } from "../../apps/teacher-server/src/platform/teacher-host/identity-provider-composition.js";
-import { initializeSqliteStorage } from "@marea/sqlite-storage";
+import { createDashboardLanguageStore, initializeSqliteStorage } from "@marea/sqlite-storage";
 import { completeModeInstructions, type ServerSetupRequest } from "@marea/protocol";
 import type { ServerSettings } from "../../apps/teacher-server/src/server-settings/contracts.js";
 import { serverSettingsStore } from "../../apps/teacher-server/src/platform/teacher-host/server-settings-store.boundary.js";
@@ -57,9 +57,11 @@ export async function provisionOnboarding(
   try {
     const storage = initializeSqliteStorage({
       databasePath: join(stage, "marea.sqlite"),
-      schema: "observability",
+      schema: "skill-assignments",
     });
     try {
+      if (request.language !== undefined)
+        createDashboardLanguageStore(storage.database).write(setupTeacher.userId, request.language);
       const store = serverSettingsStore(stage);
       store.write(settings, 0);
       const policy = serverSettingsOperator({ forClass: () => null }, store).forClass("class:main");

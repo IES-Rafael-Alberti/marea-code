@@ -114,10 +114,13 @@ export async function runTeacherHost(
     dependencies.stderr(`Teacher host did not start: ${host.reason}.\n`);
     return START_EXIT[host.reason];
   }
-  dependencies.stdout(`Teacher host ready at ${host.url}\n`);
-  if (httpHosts !== undefined)
-    for (const url of httpConnectionUrls(httpHosts, host.url))
-      dependencies.stdout(`Student connection: marea --server ${url}\n`);
+  const connectionUrls =
+    httpHosts === undefined ? [host.url] : httpConnectionUrls(httpHosts, host.url);
+  for (const [index, url] of connectionUrls.entries()) {
+    if (index === 0) dependencies.stdout(`Teacher host ready at ${url}\n`);
+    dependencies.stdout(`Teacher dashboard: ${url}/dashboard/\n`);
+    dependencies.stdout(`Student connection: marea --server ${url}\n`);
+  }
   await stopRequested.promise;
   // A terminal and its managed launcher can both deliver the same interruption.
   // Keep handling signals until draining completes, so a duplicate cannot kill cleanup.

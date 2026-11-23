@@ -73,6 +73,7 @@ export interface TeachingActions {
 
 export interface TeachingModuleProperties {
   readonly classSelection?: boolean;
+  readonly showSkills?: boolean;
   readonly locale: DashboardLocale;
   readonly state: TeachingState;
   readonly controller: TeachingActions;

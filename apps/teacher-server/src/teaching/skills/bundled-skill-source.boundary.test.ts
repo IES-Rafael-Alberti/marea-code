@@ -92,9 +92,9 @@ describe("BundledSkillSource", () => {
       compatibility: "Marea Code",
     });
     expect(testing?.criteria.map((criterion) => criterion.code)).toEqual([
-      "RA5.c",
-      "RA5.d",
-      "RA5.e",
+      "testing-casos",
+      "testing-unitarias",
+      "testing-limites",
     ]);
     expect(evaluation.every((skill) => skill.criteria.length === 0)).toBe(true);
   });

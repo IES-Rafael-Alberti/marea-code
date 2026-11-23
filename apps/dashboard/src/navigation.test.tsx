@@ -156,7 +156,8 @@ it("keeps customization reachable without teaching classes or module data", asyn
       }}
     />,
   );
-  expect(html.match(/<option/gu)).toHaveLength(1);
+  expect(html.match(/<option/gu)).toHaveLength(5);
+  expect(html).toContain("Interface language");
   expect(html).toContain("Select a class");
   expect(html).toContain("Main navigation");
 });

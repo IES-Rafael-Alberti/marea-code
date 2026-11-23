@@ -1,50 +1,12 @@
 import { parseDocument } from "yaml";
-import * as z from "zod";
+import type * as z from "zod";
+import { SkillFrontmatterSchema } from "@marea/protocol";
 
 import { BundledSkillError } from "./errors.js";
 import type { SkillCriterion, SkillKind } from "./skill-source.js";
 import { isValidSkillName } from "./skill-source.js";
 
-const MAX_DESCRIPTION_LENGTH = 1_024;
-const MAX_COMPATIBILITY_LENGTH = 500;
-const MAX_CRITERIA = 64;
-const MAX_CRITERION_CODE_LENGTH = 64;
-const MAX_CRITERION_TEXT_LENGTH = 1_024;
 const FRONTMATTER = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/u;
-const CONTROL_CHARACTER = /\p{Cc}/u;
-
-const trimmedText = z.string().trim().min(1);
-const criterionCode = trimmedText
-  .max(MAX_CRITERION_CODE_LENGTH)
-  .refine(withoutControlCharacters, "Control characters are not allowed.");
-const criterionStatement = z
-  .string()
-  .trim()
-  .max(MAX_CRITERION_TEXT_LENGTH)
-  .refine(withoutControlCharacters, "Control characters are not allowed.");
-const criterionLevel = trimmedText
-  .max(MAX_CRITERION_TEXT_LENGTH)
-  .refine(withoutControlCharacters, "Control characters are not allowed.");
-const criterionSchema = z
-  .object({
-    codigo: criterionCode,
-    enunciado: criterionStatement.default(""),
-    niveles: z.tuple([criterionLevel, criterionLevel, criterionLevel, criterionLevel]).optional(),
-  })
-  .strict();
-
-const frontmatterSchema = z
-  .object({
-    name: trimmedText,
-    description: trimmedText.max(MAX_DESCRIPTION_LENGTH),
-    license: trimmedText.optional(),
-    compatibility: trimmedText.max(MAX_COMPATIBILITY_LENGTH).optional(),
-    metadata: z.record(z.string(), z.string()).optional(),
-    "allowed-tools": z.unknown().optional(),
-    module: trimmedText.optional(),
-    criterios: z.array(criterionSchema).max(MAX_CRITERIA).optional(),
-  })
-  .strict();
 
 export interface ParsedSkillFrontmatter {
   readonly name: string;
@@ -70,7 +32,7 @@ export function parseSkillFrontmatter(
   }
 
   const raw = parseYamlMapping(source, location);
-  const result = frontmatterSchema.safeParse(raw);
+  const result = SkillFrontmatterSchema.safeParse(raw);
   if (!result.success) {
     const issues = result.error.issues
       .map((issue) => {
@@ -125,11 +87,9 @@ export function parseSkillFrontmatter(
   });
 }
 
-function withoutControlCharacters(value: string): boolean {
-  return !CONTROL_CHARACTER.test(value);
-}
-
-function hasDuplicateCriterionCode(criteria: readonly z.infer<typeof criterionSchema>[]): boolean {
+function hasDuplicateCriterionCode(
+  criteria: readonly NonNullable<z.infer<typeof SkillFrontmatterSchema>["criterios"]>[number][],
+): boolean {
   const codes = criteria.map((criterion) => criterion.codigo);
   return new Set(codes).size !== codes.length;
 }
@@ -163,7 +123,9 @@ function parseYamlDocument(source: string, location: string): ReturnType<typeof 
   }
 }
 
-function toCriterion(criterion: z.infer<typeof criterionSchema>): SkillCriterion {
+function toCriterion(
+  criterion: NonNullable<z.infer<typeof SkillFrontmatterSchema>["criterios"]>[number],
+): SkillCriterion {
   return Object.freeze({
     code: criterion.codigo,
     statement: criterion.enunciado,

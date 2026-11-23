@@ -69,7 +69,14 @@ export function bootstrapScript(
   if (windows)
     return `param([ValidateSet('student','server')][string]$Component='student', [string]$Server='', [string]$Version='')
 $ErrorActionPreference='Stop'
-$architecture=[System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
+# Query Windows itself: .NET Framework in Windows PowerShell 5.1 can return a null
+# OSArchitecture, and an emulated shell may report its own architecture instead.
+$nativeMachine=@(Get-CimInstance -ClassName Win32_Processor -Property Architecture)[0].Architecture
+$architecture=switch ($nativeMachine) {
+  9 { 'x64' }
+  12 { 'arm64' }
+  default { throw "Unsupported native Windows architecture: $nativeMachine" }
+}
 switch ("$Component-win32-$architecture") {
 ${bootstrapCases(manifests, true)}
   default { throw 'Unsupported native platform' }
@@ -90,9 +97,15 @@ try {
   $arguments=@('preview','install',$Component,'--repository',${powershellLiteral(repository)},'--cosign',(Join-Path $temp 'cosign.exe'))
   if ($Version) { $arguments+=@('--version',$Version) }
   if ($Server) { $arguments+=@('--server',$Server) }
-  & (Join-Path $temp 'marea-install.exe') @arguments
-  if ($LASTEXITCODE -ne 0) { throw 'Marea installation failed' }
-} finally { Remove-Item -LiteralPath $temp -Recurse -Force }
+  # Windows PowerShell may return before an ARM64 child has finished. Wait for
+  # the process explicitly, keep its console, and preserve literal argv values.
+  $commandLine=($arguments | ForEach-Object { '"'+($_ -replace '(\\\\*)"', '$1$1\\"' -replace '(\\\\+)$', '$1$1')+'"' }) -join ' '
+  $installer=Start-Process -FilePath (Join-Path $temp 'marea-install.exe') -ArgumentList $commandLine -NoNewWindow -Wait -PassThru
+  if ($installer.ExitCode -ne 0) { throw "Marea installation failed (exit $($installer.ExitCode))" }
+} finally {
+  try { Remove-Item -LiteralPath $temp -Recurse -Force }
+  catch { Write-Warning "Could not remove Marea temporary directory '$temp': $_" }
+}
 `;
   return `#!/bin/sh
 set -eu

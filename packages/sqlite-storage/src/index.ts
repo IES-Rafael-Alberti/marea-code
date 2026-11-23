@@ -41,3 +41,7 @@ export { createEducationalMigrationCatalog } from "./educational-migration-catal
 
 export { createStudentIdentityMigrationCatalog } from "./student-identity-migration-catalog.js";
 export { createObservabilityMigrationCatalog } from "./observability-migration-catalog.js";
+
+export { createSkillAssignmentMigrationCatalog } from "./skill-assignment-migration-catalog.js";
+
+export { createDashboardLanguageStore } from "./dashboard-language-store.js";

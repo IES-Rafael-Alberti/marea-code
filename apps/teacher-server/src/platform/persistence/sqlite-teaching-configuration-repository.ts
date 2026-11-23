@@ -1,3 +1,4 @@
+import { individualTeachingConfiguration } from "./sqlite-skill-assignments.js";
 import type { SqliteApplicationDatabase } from "@marea/sqlite-storage";
 
 import type { AuthenticatedIdentity } from "../../identity/contracts.js";
@@ -58,7 +59,11 @@ export class SqliteTeachingConfigurationRepository implements TeachingConfigurat
     );
     return row === undefined
       ? null
-      : rowJson(row, "configuration_json", StoredTeachingConfigurationSchema);
+      : individualTeachingConfiguration(
+          this.#database,
+          identity,
+          rowJson(row, "configuration_json", StoredTeachingConfigurationSchema),
+        );
   }
 
   saveRevision(input: SaveTeachingRevision): StoredTeachingConfiguration {

@@ -364,7 +364,7 @@ describe("recovery bundle boundaries", () => {
     makeArtifact(databaseHardLinkRoot);
     linkSync(
       join(databaseHardLinkRoot, "database.sqlite"),
-      join(databaseHardLinkRoot, "database-copy"),
+      join(root(), "database-hard-link-copy"),
     );
     expectRecoveryError(
       () => verifyArtifactFiles(databaseHardLinkRoot, manifest(), limits),
@@ -372,7 +372,7 @@ describe("recovery bundle boundaries", () => {
     );
     const stateHardLinkRoot = join(root(), "state-hard-link-artifact");
     makeArtifact(stateHardLinkRoot);
-    linkSync(join(stateHardLinkRoot, "state/file"), join(stateHardLinkRoot, "state/copy"));
+    linkSync(join(stateHardLinkRoot, "state/file"), join(root(), "state-hard-link-copy"));
     expectRecoveryError(
       () => verifyArtifactFiles(stateHardLinkRoot, manifest(), limits),
       "bundle-filesystem-invalid",

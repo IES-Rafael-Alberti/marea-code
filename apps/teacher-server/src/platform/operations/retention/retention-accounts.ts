@@ -41,6 +41,10 @@ function accountRows(): readonly DerivedQuery[] {
       "invitations",
       "SELECT code_hash, 1 AS rows, 0 AS bytes FROM marea_invitations WHERE consumed_by = ?1 ORDER BY code_hash",
     ],
+    [
+      "dashboardLanguage",
+      "SELECT value, 1 AS rows, length(CAST(value AS BLOB)) AS bytes FROM marea_metadata WHERE key = 'dashboard-language:' || ?1",
+    ],
   ];
 }
 

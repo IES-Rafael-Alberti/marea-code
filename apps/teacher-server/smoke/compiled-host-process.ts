@@ -42,7 +42,7 @@ export async function startCompiledHost(
   const deadline = Date.now() + 30_000;
   while (!output.stdout.includes("Teacher host ready at ") && Date.now() < deadline)
     await Bun.sleep(50);
-  const origin = /Teacher host ready at (http:\/\/(?:127\.0\.0\.1|0\.0\.0\.0):\d+)/u.exec(
+  const origin = /Teacher host ready at (http:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0):\d+)/u.exec(
     output.stdout,
   )?.[1];
   assert.ok(origin, `host did not report readiness: ${output.stderr}`);

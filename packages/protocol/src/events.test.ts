@@ -27,6 +27,19 @@ const request = {
 } as const;
 
 describe("canonical run event protocol", () => {
+  it.each([false, true])("retains protocol 0.1 Unicode event bounds (jitless=%s)", (jitless) => {
+    const accepted = {
+      ...request,
+      events: [{ ...studentMessage, content: "😀".repeat(32_768) }],
+    };
+    expect(AppendRunEventsRequestSchema.parse(accepted, { jitless })).toEqual(accepted);
+    expect(
+      AppendRunEventsRequestSchema.safeParse(
+        { ...request, events: [{ ...studentMessage, content: "😀".repeat(32_769) }] },
+        { jitless },
+      ).success,
+    ).toBe(false);
+  });
   it("parses every canonical event discriminant", () => {
     const events = [
       studentMessage,

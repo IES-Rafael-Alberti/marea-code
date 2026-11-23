@@ -1,6 +1,76 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.28`. Downloads are now compressed,
+The commands below target `0.1.0-preview.42`.
+
+This preview fixes installation and update downloads on slow connections (PR #15).
+Transfers now stop after 30 seconds without receiving data, rather than after
+30 seconds in total. Signature, hash and size checks remain unchanged. Release
+acceptance exercises a signed native inventory over real HTTP, including an
+application transfer lasting 36 seconds and a stalled transfer that must abort.
+Older installed updaters use their existing download behavior for the first update.
+Preview 40 and 41 were not published. Their immutable tags are retained for
+traceability: preview 40 encountered retired macOS 14 runners, and preview 41
+exposed missing mutation assertions in the new skill/context checks. Preview 42
+uses macOS 15 ARM64 runners and strengthens those assertions, including exact
+capacity boundaries, cancellation and accounting after partial inference.
+The complete native acceptance matrix remains required before publication.
+
+Selected didactic skills are now loaded in full before the tutor starts. Missing,
+unverifiable or oversized required materials block the turn with a clear error;
+resumed sessions retain their captured versions. Private evaluation materials
+remain separate from the tutor context. The protocol remains 0.1 and the database
+schema remains 14.
+
+Preview 39 updated Zod to 4.6.7 throughout the application and dependency tree,
+fixing [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
+Oversized constrained collections are rejected before validating their elements.
+An included compatibility patch preserves existing Unicode passwords and protocol
+text limits while keeping the upstream collection-size security fix.
+It also updates both server Hono dependencies to 4.13.11 for
+[GHSA-5r4p-p66f-jhc7](https://github.com/advisories/GHSA-5r4p-p66f-jhc7).
+The protocol remains 0.1 and the database schema remains 14. Existing installations
+retain their data, credentials and settings when updated.
+
+Preview 35 validated the existing direct OTLP exporter against Langfuse 4.68.0
+and added a repeatable check of the stored observations through the modern API.
+No Langfuse SDK or collector migration is needed in Marea. See
+[Observability](OBSERVABILITY.md) for verified fields, retry semantics and costs.
+It also updated the dashboard build tool to Vite 8.2.4 to address
+[GHSA-587h-7wmj-h5pm](https://github.com/advisories/GHSA-587h-7wmj-h5pm).
+
+Preview 34 fixed Windows installation and startup, including Windows PowerShell
+5.1 on ARM64. Architecture detection uses the native processor, the bootstrap waits
+for installation in the same console, and cleanup warnings preserve the installer's
+result. All Marea executables explicitly run with the invoking user's privileges,
+so installation and ordinary startup do not require administrator rights.
+The complete bootstrap, managed launcher and uninstall are tested under a standard
+Windows account on x64 and ARM64, with both PowerShell 5.1 and PowerShell 7.
+
+Preview 33 added optional curriculum links to didactic `SKILL.md` files. Modules
+can be identified by name, quoted code, or both; learning outcomes use numeric `ra`
+values. Library search and module filters use these references. The bundled Testing
+example corrects its former RA5 labels and links its own indicators to Programación
+0485, RA3.f, with the normative source recorded in the Markdown.
+If a class already uses the previous Testing revision, open Testing in Library,
+choose **Use in this class**, and save the selection to use the corrected version
+for new sessions. Existing sessions and individual selections retain their captured
+version until the teacher changes those selections.
+
+Generated skill drafts now appear directly in the editor with an undo action.
+Creation belongs in Library; assigning and removing class skills have distinct labels.
+The dashboard restores each teacher's saved language, including the choice made in
+web setup. Visiting the server root opens the dashboard, and startup prints its URLs.
+
+Managed server updates check installation ownership and offer abandoned-lock recovery
+before downloading. The activation step still rechecks ownership to protect against
+a server starting during the download. The database remains at schema 14, existing
+sessions keep their frozen skill content, and compatible students continue to connect.
+
+Download progress now distinguishes files received from verified files reused locally,
+and reports the transferred bytes. The counter covers the whole signed inventory;
+reused files are not presented as additional downloads.
+
+Downloads are compressed,
 and initial installations reuse the installer and signature verifier already
 fetched by the bootstrap script. Updates reuse installed files only after their
 bytes match the newly signed inventory; damaged or changed files are downloaded.
@@ -31,13 +101,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.28/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.42/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.28/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.42/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -117,7 +187,11 @@ select **Unlimited usage** for the relevant purpose and save. Open sessions reta
 the configuration they captured when they started.
 
 Fresh installs and updates add `testing` only when the installation has no skill
-with that name; an edited local copy is preserved.
+with that name; an edited local copy is preserved. Manage selections and authoring in
+**Skills → This class / By student / Library**. Personal selections replace the class
+selection until **Use the class selection** is chosen. Updates to a selected personal
+skill apply to new sessions; existing conversations retain their frozen content. See
+[Skills workspace](SETUP-UX.md#skills-workspace).
 
 The optional Google fields accept a desktop OAuth client ID, client secret and
 school domain. Domain administration, OAuth consent and trusting the application
@@ -148,7 +222,7 @@ configure **Settings → Server → External traces**, test a synthetic connecti
 explicitly enable delivery with content. Langfuse supports self-hosted base URLs;
 OTLP accepts an HTTP collector. No student-side credentials are needed.
 
-Managed updates back up and migrate the database to schema 13. Export authorization,
+Managed updates back up and migrate the database to schema 14. Export authorization,
 content limits, retries and local/external retention are documented in
 [Observability](OBSERVABILITY.md). Existing clients remain compatible; their traces
 contain only the diagnostic detail they actually recorded.
@@ -173,14 +247,40 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.28/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.42/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.28/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.42/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
+
+Use **PowerShell**, identified by a prompt such as `PS C:\Users\david>`, for the
+installation command. From Command Prompt (`cmd.exe`), first run
+`powershell -NoProfile`. Reopen the terminal after installation to load the new
+per-user PATH entry. Normal installation and startup use an ordinary, non-elevated
+terminal.
+
+Preview 34 queries the native Windows architecture through CIM, including from an
+emulated shell, and waits for the installer in the same console. A temporary-file
+cleanup failure produces a warning without replacing the installer's result.
+The Windows executable manifests explicitly request `asInvoker`; Bun's existing
+manifest settings are preserved before the files are hashed and signed.
+
+If an existing **preview 33** installation requests elevation or opens a console
+that immediately closes when running `marea`, its old launcher must be updated once.
+Open PowerShell as administrator **using the same Windows account that installed
+Marea** and run:
+
+```powershell
+marea update --version 0.1.0-preview.34
+```
+
+Accept the update, close that administrator terminal, and run `marea` from an
+ordinary terminal. Do not reinstall over the existing root or delete its student
+state. If Windows asks for credentials belonging to a different administrator
+account, cancel rather than updating that account's installation.
 
 Run `marea` from the project directory. The managed installation keeps student
 session state under `~/.marea-preview/student/student-state`; it does not reuse
@@ -193,7 +293,7 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
 - `status` (or `--status`): managed installation details, with no credentials.
 - `update` (or `--update`): check the latest **published** preview and ask to install
   it, without starting the application. Publishing alone does not notify everyone.
-- `update --version 0.1.0-preview.28`: try a specific published preview.
+- `update --version 0.1.0-preview.31`: try a specific published preview.
 - Ordinary startup offers only a **recommended** version for this component and
   wire protocol. Declining keeps the installed version. A noninteractive start
   never accepts updates; discovery failures leave the current installation usable.
@@ -208,13 +308,21 @@ the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
   student version or a required protocol repair may select an older signed client.
   Server downgrades require backup recovery; they cannot open migrated data.
 
-For a fresh pilot install before recommendation, append `--version 0.1.0-preview.28`
-to the POSIX command, or `-Version 0.1.0-preview.28` on PowerShell. With no explicit
+For a fresh pilot install before recommendation, append `--version 0.1.0-preview.31`
+to the POSIX command, or `-Version 0.1.0-preview.31` on PowerShell. With no explicit
 version and no recommendation, installation stops with a useful message.
 
 Stop the server before accepting an update. Its existing exclusive installation
 lock prevents an update while a teacher host or another offline operation owns
-the data. A deletion-aware backup precedes migration; the matching dashboard and
+the data. Before downloading, the managed updater offers the same abandoned-lock
+recovery as server startup. Accepting an update is not consent to remove a lock:
+recovery requires its own explicit confirmation in a terminal. Declining, losing
+input, or detecting a changed lock stops the update before any release download.
+Close a running host with Ctrl+C before retrying; do not remove its lock while it
+owns the installation. Activation checks ownership again in case a process started
+during the download. There is no need to start and stop the server to recover an
+abandoned lock before updating.
+A deletion-aware backup precedes migration; the matching dashboard and
 server version change together. Settings and credentials are preserved.
 
 An interrupted server update leaves `installation/state/preview-update-pending.json`
@@ -301,7 +409,7 @@ the empty root allows the same installation command to run again. Do not delete
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.28`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.42`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
@@ -329,7 +437,7 @@ Run the **Recommend preview** workflow on `main`, choosing the published version
 and `student`, `server`, or `both`. From a maintainer terminal:
 
 ```sh
-gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.28 -f component=both
+gh workflow run recommend-preview.yml --ref main -f version=0.1.0-preview.31 -f component=both
 ```
 
 Promotion requires successful native publication for the exact source,

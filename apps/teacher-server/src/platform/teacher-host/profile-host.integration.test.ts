@@ -1,3 +1,4 @@
+import { inspectAccount } from "../operations/retention/retention-accounts.js";
 import * as z from "zod";
 import { emptyServerSettings } from "../../../test-support/server-settings.fixture.js";
 import { serverSettingsStore } from "./server-settings-store.boundary.js";
@@ -19,6 +20,7 @@ import {
   initializeSqliteStorage,
   restoreSqliteBackup,
   createDashboardProfileStore,
+  createDashboardLanguageStore,
 } from "@marea/sqlite-storage";
 import { join } from "node:path";
 import {
@@ -35,6 +37,7 @@ it.each([
   ["educational-insights", 11],
   ["student-identities", 12],
   ["observability", 13],
+  ["skill-assignments", 14],
 ] as const)(
   "starts the production host on %s, authenticates, persists, reopens and restores profiles",
   async (schema, version) => {
@@ -82,8 +85,8 @@ it.each([
       { operation: "read" },
       cookie,
     );
-    expect(observability.status).toBe(version === 13 ? 200 : 503);
-    if (version === 13) {
+    expect(observability.status).toBe(version >= 13 ? 200 : 503);
+    if (version >= 13) {
       const value = z
         .object({ enabled: z.boolean(), plugins: z.array(z.object({ id: z.string() })) })
         .parse(await observability.json());
@@ -92,6 +95,22 @@ it.each([
         expect.arrayContaining(["org.marea.langfuse", "org.marea.otlp"]),
       );
     }
+    const languagePath = "/api/v1/dashboard/profiles/language";
+    const languageRead = { protocolVersion: "0.1", requestId: "language-request", kind: "read" };
+    expect((await post(languagePath, languageRead)).status).toBe(401);
+    expect(await (await post(languagePath, languageRead, cookie)).json()).toMatchObject({
+      preference: null,
+    });
+    expect(
+      await (
+        await post(languagePath, { ...languageRead, kind: "save", preference: "eu" }, cookie)
+      ).json(),
+    ).toMatchObject({ preference: "eu" });
+    expect(
+      await (
+        await post(languagePath, { ...languageRead, kind: "save", preference: "es" }, cookie)
+      ).json(),
+    ).toMatchObject({ preference: "es" });
     const saved = await post(
       "/api/v1/dashboard/profiles/save",
       {
@@ -114,9 +133,24 @@ it.each([
       databasePath: f.databasePath,
       schema,
     });
+    expect(createDashboardLanguageStore(reopened.database).read("user:teacher")).toBe("es");
+    expect(createDashboardLanguageStore(reopened.database).read("user:other")).toBeNull();
     const store = createDashboardProfileStore(reopened.database);
     expect(store.read("user:teacher", null)?.revision).toBe("profile-host-revision");
     expect(profileRetentionRows(reopened.database)).toHaveLength(1);
+    const before = inspectAccount(reopened.database, "user:teacher", "2026-09-22T12:00:00Z");
+    reopened.database.execute("DELETE FROM marea_metadata WHERE key = ?1", [
+      "dashboard-language:user:teacher",
+    ]);
+    const withoutLanguage = inspectAccount(
+      reopened.database,
+      "user:teacher",
+      "2026-09-22T12:00:00Z",
+    );
+    expect(before?.rows).toBe((withoutLanguage?.rows ?? 0) + 1);
+    expect(before?.bytes).toBe((withoutLanguage?.bytes ?? 0) + 2);
+    expect(before?.fingerprint).not.toBe(withoutLanguage?.fingerprint);
+    createDashboardLanguageStore(reopened.database).write("user:teacher", "es");
     const backup = reopened.createBackup();
     expect(backup.schemaVersion).toBe(version);
     reopened.close();
@@ -128,6 +162,7 @@ it.each([
     expect(
       createDashboardProfileStore(restored.database).read("user:teacher", null)?.serializedValue,
     ).toBe(JSON.stringify(release.defaults));
+    expect(createDashboardLanguageStore(restored.database).read("user:teacher")).toBe("es");
     restored.database.execute("DELETE FROM marea_auth_sessions");
     expect(
       removeRemainingRetentionContent(restored.database, {
@@ -135,7 +170,8 @@ it.each([
         runIds: [],
         snapshotIds: [],
       }),
-    ).toBe(2);
+    ).toBe(3);
+    expect(createDashboardLanguageStore(restored.database).read("user:teacher")).toBeNull();
     expect(createDashboardProfileStore(restored.database).read("user:teacher", null)).toBeNull();
     restored.close();
     expect(() =>
@@ -149,6 +185,7 @@ it.each([
   ["educational-insights", 11],
   ["student-identities", 12],
   ["observability", 13],
+  ["skill-assignments", 14],
 ] as const)(
   "includes %s in the authorized operations backup and restore workflow",
   async (schema, version) => {

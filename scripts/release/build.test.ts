@@ -359,6 +359,7 @@ it("records dirty and clean source distinctly, normalizes git whitespace and ret
     [" M source\n", true],
   ] as const) {
     mocks.writeFileSync.mockClear();
+    mocks.spawnSync.mockClear();
     mocks.spawnSync.mockImplementation((_command: string, args: string[]) => ({
       status: 0,
       stdout:
@@ -399,6 +400,26 @@ it("records dirty and clean source distinctly, normalizes git whitespace and ret
         `& 'bun' 'build' 'apps/student/src/marea-entry.boundary.ts' '--compile' '--minify' '--outfile' '${root}/marea.exe'; exit $LASTEXITCODE`,
       ],
       { cwd: "/isolated", encoding: "utf8" },
+    );
+    const commands = mocks.spawnSync.mock.calls as [string, string[], unknown][];
+    expect(commands.filter(([, args]) => args.includes("-Executable"))).toEqual(
+      ["marea", "marea-install"].map((name) => [
+        "powershell.exe",
+        [
+          "-NoProfile",
+          "-NonInteractive",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-File",
+          "/isolated/scripts/release/windows-executable-manifest.ps1",
+          "-Executable",
+          `${root}/${name}.exe`,
+        ],
+        { cwd: "/isolated", encoding: "utf8" },
+      ]),
+    );
+    expect(commands.findLastIndex(([, args]) => args.includes("-Executable"))).toBeLessThan(
+      commands.findIndex(([command]) => command === "syft"),
     );
   }
 });

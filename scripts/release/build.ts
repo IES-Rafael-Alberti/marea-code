@@ -87,6 +87,24 @@ export function buildCandidate(argv: readonly string[]): string {
       ],
       workspace,
     );
+    if (process.platform === "win32") {
+      for (const name of [...Object.keys(entries), "marea-install"]) {
+        run(
+          [
+            "powershell.exe",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            join(workspace, "scripts/release/windows-executable-manifest.ps1"),
+            "-Executable",
+            join(root, `${name}.exe`),
+          ],
+          workspace,
+        );
+      }
+    }
     if (selected === "server") {
       run(["bun", "run", "build"], join(workspace, "apps/dashboard"), {
         ...process.env,

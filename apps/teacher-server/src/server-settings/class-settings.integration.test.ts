@@ -53,7 +53,11 @@ it("unlocks a fresh class after saving a server model and saves the bundled test
   expect(await service.read(teacher, readQuery())).toMatchObject({ operatorReady: false });
   const lesson = await source.load(SkillIdSchema.parse("marea/testing"));
   if (!lesson) throw new Error("missing testing lesson");
-  expect(lesson.criteria.map((criterion) => criterion.code)).toEqual(["RA5.c", "RA5.d", "RA5.e"]);
+  expect(lesson.criteria.map((criterion) => criterion.code)).toEqual([
+    "testing-casos",
+    "testing-unitarias",
+    "testing-limites",
+  ]);
   const selected = teachingSettings("tutoring", [lesson], []);
   await expect(service.save(teacher, saveRequest(selected))).rejects.toMatchObject({
     code: "operator-unconfigured",

@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { createDeepAgentsStudentRuntime } from "../../apps/student/src/deepagents-runtime.boundary.js";
 import { createHttpStudentServer } from "../../apps/student/src/http-client.boundary.js";
+import { loadRequiredSkills } from "../../apps/student/src/required-skill-context.js";
 import { RunSkillReader } from "../../apps/student/src/run-skill-reader.js";
 import { createRuntimeReadTools } from "../../apps/student/src/runtime-read-tools.js";
 import {
@@ -116,6 +117,18 @@ describe("teaching content through the actual runtime", () => {
           )
           .respond(new AIMessage("Proposed exercise."));
         const runtime = createDeepAgentsStudentRuntime({
+          loadSkills: (runId, snapshot, signal) =>
+            loadRequiredSkills(
+              snapshot,
+              new RunSkillReader({
+                runId,
+                snapshot,
+                server,
+                nextRequestId: () => RequestIdSchema.parse("request:required-runtime-skill"),
+                runToken: () => Promise.resolve(resumed.lease.token),
+              }),
+              signal,
+            ),
           checkpoint: createInMemoryCheckpointForTest(),
           model: bindTestModel(model),
           readOnlyTools: (runId, snapshot) =>
@@ -131,6 +144,10 @@ describe("teaching content through the actual runtime", () => {
               }),
             }),
         });
+        await runtime.prepare?.(
+          { runId: resumed.lease.runId, snapshot: resumed.snapshot },
+          new AbortController().signal,
+        );
         const events = [];
         for await (const event of runtime.streamMessage(
           {
@@ -165,7 +182,10 @@ describe("teaching content through the actual runtime", () => {
               totalLength: "Frozen didactic resource.\n".length,
             }),
           );
-          expect(traffic).toHaveLength(2);
+          expect(traffic).toHaveLength(4);
+          expect(JSON.stringify(model.calls[0]?.messages)).toContain(
+            "All SKILL.md files below have already been loaded in full",
+          );
         } else {
           expect(model.boundToolNames.flat()).not.toContain("marea_read_skill");
           expect(traffic).toEqual([]);

@@ -52,6 +52,20 @@ const item = {
 };
 
 describe("canonical history wire contract", () => {
+  it.each([false, true])(
+    "keeps Unicode history readable by older clients (jitless=%s)",
+    (jitless) => {
+      const message = { ...event, eventType: "student-message", content: "😀".repeat(32_768) };
+      const accepted = { ...page, events: [message] };
+      expect(RunHistoryResponseSchema.parse(accepted, { jitless })).toEqual(accepted);
+      expect(
+        RunHistoryResponseSchema.safeParse(
+          { ...page, events: [{ ...message, content: "😀".repeat(32_769) }] },
+          { jitless },
+        ).success,
+      ).toBe(false);
+    },
+  );
   it("bounds queries, validates identifiers and rejects caller authority", () => {
     for (const limit of [1, 32])
       expect(RunHistoryQuerySchema.parse({ ...query, limit }).limit).toBe(limit);

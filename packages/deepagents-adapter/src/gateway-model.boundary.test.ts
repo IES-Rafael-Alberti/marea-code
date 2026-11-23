@@ -476,9 +476,13 @@ describe("Marea gateway model boundary", () => {
 it("reports oversized complete prompts before any gateway request, without truncating", async () => {
   const gateway = new ScriptedGateway(textResponse("ok"));
   const model = new MareaGatewayChatModel({ gateway, nextRequestId: requestIds() });
-  await expect(model.invoke([new SystemMessage("x".repeat(65_537))])).rejects.toMatchObject({
+  await expect(
+    model.invoke([new SystemMessage("x".repeat(65_537)), new HumanMessage("hello")]),
+  ).rejects.toMatchObject({
     streamCode: "context-exceeded",
     streamRetryable: false,
+    streamMessage:
+      "The full prompt exceeds the supported message size. Ask your teacher to reduce the materials and start a new session. Nothing was truncated.",
   });
   expect(gateway.requests).toHaveLength(0);
   await model.invoke([new SystemMessage("x".repeat(65_536))]);
