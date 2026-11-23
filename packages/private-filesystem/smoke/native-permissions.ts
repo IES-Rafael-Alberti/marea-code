@@ -144,8 +144,8 @@ try {
       "$rules = $acl.GetAccessRules",
       "[Console]::Error.WriteLine($acl.Sddl); [Console]::Error.WriteLine($sid.Value); $rules = $acl.GetAccessRules",
     ).replace(
-      "catch { [Console]::Out.Write('unsafe'); exit 1 }",
-      "catch { [Console]::Error.WriteLine($_.Exception.Message); [Console]::Error.WriteLine($_.ScriptStackTrace); exit 1 }",
+      "$reason = $_.Exception.Message",
+      "$reason = $_.Exception.Message; [Console]::Error.WriteLine($_.Exception.Message); [Console]::Error.WriteLine($_.ScriptStackTrace)",
     );
     const result = spawnSync(
       "powershell.exe",

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { currentOwnerId, inspectPrivatePath, securePrivatePath } from "./index.js";
+import { PrivateFilesystemError } from "./private-filesystem-error.js";
 import * as windows from "./windows-acl.boundary.js";
 
 const platform = process.platform;
@@ -62,18 +63,55 @@ describe("Windows dispatch", () => {
     expect(inspect).toHaveBeenCalledWith("C:\\state", "inspect");
     expect(inspectPrivatePath("C:\\state", 123)).toBeUndefined();
     expect(inspect).toHaveBeenCalledTimes(1);
+    expect(inspectPrivatePath("C:\\root")).toBe("file");
+  });
+
+  it("secures directories and files through the throwing Windows check", () => {
+    Object.defineProperty(process, "platform", { value: "win32" });
+    const check = vi.spyOn(windows, "checkWindowsPrivatePath").mockReturnValue("directory");
+    securePrivatePath("C:\\state", 0o700);
+    expect(check).toHaveBeenLastCalledWith("C:\\state", "secure");
+    check.mockReturnValue("file");
     securePrivatePath("C:\\state", 0o600);
-    expect(inspect).toHaveBeenLastCalledWith("C:\\state", "secure");
-    inspect.mockReturnValue("directory");
-    securePrivatePath("C:\\root", 0o700);
-    expect(inspect).toHaveBeenLastCalledWith("C:\\root", "secure");
+    expect(check).toHaveBeenLastCalledWith("C:\\state", "secure");
+  });
+
+  it("throws a typed error with the reason and the secure message", () => {
+    Object.defineProperty(process, "platform", { value: "win32" });
+    vi.spyOn(windows, "checkWindowsPrivatePath").mockImplementation(() => {
+      throw new PrivateFilesystemError("private-fs.reparse-point");
+    });
+    try {
+      securePrivatePath("C:\\state", 0o700);
+      throw new Error("Expected securePrivatePath to throw.");
+    } catch (error) {
+      expect(error).toBeInstanceOf(PrivateFilesystemError);
+      expect((error as PrivateFilesystemError).diagnosticCode).toBe("private-fs.reparse-point");
+      expect((error as PrivateFilesystemError).message).toBe(
+        "Private filesystem permissions could not be established.",
+      );
+    }
+  });
+
+  it("reports an unexpected kind mismatch as a typed error", () => {
+    Object.defineProperty(process, "platform", { value: "win32" });
+    vi.spyOn(windows, "checkWindowsPrivatePath").mockReturnValue("file");
+    try {
+      securePrivatePath("C:\\state", 0o700);
+      throw new Error("Expected securePrivatePath to throw.");
+    } catch (error) {
+      expect(error).toBeInstanceOf(PrivateFilesystemError);
+      expect((error as PrivateFilesystemError).diagnosticCode).toBe("private-fs.unexpected");
+    }
+  });
+
+  it("rethrows a non-private error unchanged", () => {
+    Object.defineProperty(process, "platform", { value: "win32" });
+    vi.spyOn(windows, "checkWindowsPrivatePath").mockImplementation(() => {
+      throw new Error("internal failure");
+    });
     expect(() => {
-      securePrivatePath("C:\\root", 0o600);
-    }).toThrow("Private filesystem permissions could not be established.");
-    inspect.mockReturnValue(undefined);
-    expect(() => {
-      securePrivatePath("C:\\root", 0o700);
-    }).toThrow();
-    expect(inspectPrivatePath("C:\\root")).toBeUndefined();
+      securePrivatePath("C:\\state", 0o700);
+    }).toThrow("internal failure");
   });
 });
