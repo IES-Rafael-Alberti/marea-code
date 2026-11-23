@@ -176,7 +176,7 @@ const StoredTurnsSchema = z
   .refine((turns) => hasUniqueValues(turns, (turn) => turn.messageId))
   .readonly();
 
-const StoredRunSchema = z
+const StoredRunBaseSchema = z
   .object({
     clientSessionId: ClientSessionIdSchema,
     closeReason: CloseRunReasonSchema.nullable(),
@@ -211,6 +211,12 @@ const StoredRunSchema = z
     snapshotId: SnapshotIdSchema.nullable(),
     turns: StoredTurnsSchema,
   })
+  .strict();
+const StoredAbandonedRunSchema = StoredRunBaseSchema.readonly();
+const StoredRunSchema = StoredRunBaseSchema.extend({
+  // Bound set-aside data and forbid recursive nesting on disk.
+  abandoned: z.array(StoredAbandonedRunSchema).max(1).optional(),
+})
   .strict()
   .readonly();
 
@@ -389,29 +395,7 @@ export function parseStudentState(value: unknown): StudentState {
       ? null
       : (() => {
           const runRecord = z.record(z.string(), z.unknown()).parse(rawRun);
-          const runKnownKeys = new Set([
-            "clientSessionId",
-            "closeReason",
-            "closeRequestId",
-            "approvals",
-            "effects",
-            "eventKeys",
-            "idempotencyKey",
-            "leaseExpiresAt",
-            "leaseIssuedAt",
-            "nextSequence",
-            "openIntent",
-            "outbox",
-            "pendingApprovals",
-            "pendingDelivery",
-            "phase",
-            "projectDisplayName",
-            "runId",
-            "runToken",
-            "snapshot",
-            "snapshotId",
-            "turns",
-          ]);
+          const runKnownKeys = new Set([...Object.keys(StoredRunBaseSchema.shape), "abandoned"]);
           const legacy = collectLegacy(runRecord, runKnownKeys);
           const known: Record<string, unknown> = Object.fromEntries(
             Object.entries(runRecord).filter(([key]) => runKnownKeys.has(key)),
