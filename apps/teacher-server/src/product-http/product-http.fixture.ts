@@ -129,6 +129,9 @@ function loginResponse(request: CredentialLoginRequest) {
 /** Session tokens the fixture identity service was asked to revoke, in order. */
 export const loggedOut: string[] = [];
 
+/** Session token and run pairs the fixture identity service was asked to extend, in order. */
+export const extendedSessions: (readonly [token: string, runId: string])[] = [];
+
 export function createServices(provider: InferenceProvider): TeacherProductServices {
   return {
     teachingConfiguration: unavailableTeachingConfiguration,
@@ -232,6 +235,10 @@ export function createServices(provider: InferenceProvider): TeacherProductServi
             },
           }),
         );
+      },
+      extendForRunActivity(token, runId) {
+        extendedSessions.push([token, runId]);
+        return "2026-09-04T08:30:00.000Z";
       },
       login(request) {
         return Promise.resolve(loginResponse(request));

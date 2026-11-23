@@ -9,6 +9,7 @@ import {
   createServices,
   enrollmentRequest,
   eventRequest,
+  extendedSessions,
   fetchJson,
   modelRequest,
   openRequest,
@@ -19,7 +20,46 @@ import {
   TEACHER_TOKEN,
 } from "./product-http.fixture.js";
 
+const renewalRequest = {
+  kind: "run-lease-renewal",
+  protocolVersion: "0.1",
+  requestId: "request:renew",
+  runId: "run:one",
+} as const;
+
 describe("teacher product HTTP boundary", () => {
+  it("extends the student session only after a lease renewal succeeds", async () => {
+    extendedSessions.length = 0;
+    const services = createServices(new RecordingProvider());
+    const renewed = await fetchJson(
+      createApplication(services),
+      request("/v1/runs/lease-renew", renewalRequest, SESSION_TOKEN),
+    );
+    expect(renewed.response.status).toBe(200);
+    expect(extendedSessions).toEqual([[SESSION_TOKEN, "run:one"]]);
+
+    extendedSessions.length = 0;
+    const refusing = {
+      ...services,
+      runs: {
+        ...services.runs,
+        renew: () => {
+          throw new TeacherDomainError("run.unavailable");
+        },
+      },
+    };
+    const refused = await fetchJson(
+      createApplication(refusing),
+      request("/v1/runs/lease-renew", renewalRequest, SESSION_TOKEN),
+    );
+    const unauthenticated = await fetchJson(
+      createApplication(services),
+      request("/v1/runs/lease-renew", renewalRequest, "not-a-session"),
+    );
+    expect([refused.response.status, unauthenticated.response.status]).not.toContain(200);
+    expect(extendedSessions).toEqual([]);
+  });
+
   it("serves the complete authenticated base route surface without private routing data", async () => {
     const provider = new RecordingProvider();
     const app = createApplication(createServices(provider));

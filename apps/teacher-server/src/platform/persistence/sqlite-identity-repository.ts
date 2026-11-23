@@ -21,6 +21,8 @@ const LIVE_SESSION = `FROM marea_auth_sessions sessions
   JOIN marea_users users ON users.id = sessions.user_id
   WHERE sessions.token_hash = ?1 AND sessions.revoked_at IS NULL AND sessions.expires_at > ?2
     AND ${activeGovernanceAccount("users.id")}`;
+/** Absolute session limit from issue time, in the same ISO-8601 UTC form as stored timestamps. */
+const SESSION_LIFETIME_LIMIT = "strftime('%Y-%m-%dT%H:%M:%fZ', issued_at, ?6)";
 const READ_SESSION = `SELECT users.id, users.role, users.display_name, users.class_id ${LIVE_SESSION}`;
 /** A student session acts only for its own class, and only while the student may act for it. */
 const READ_CLASS_SCOPED_SESSION = `SELECT users.id, users.role, users.display_name,
@@ -234,6 +236,42 @@ export class SqliteIdentityRepository implements IdentityRepository {
 
   public studentClasses(userId: string): readonly StudentClassChoice[] {
     return readStudentClasses(this.#database, userId);
+  }
+
+  public extendSessionForRunActivity(input: {
+    readonly activitySince: string;
+    readonly expiresAt: string;
+    readonly maxLifetimeSeconds: number;
+    readonly now: string;
+    readonly runId: string;
+    readonly tokenHash: string;
+  }): string | undefined {
+    // One statement: a concurrent revocation or expiry can never be overwritten.
+    const extended = this.#database.readAll(
+      `UPDATE marea_auth_sessions
+          SET expires_at = min(?5, ${SESSION_LIFETIME_LIMIT})
+        WHERE token_hash = ?1 AND revoked_at IS NULL AND expires_at > ?2
+          AND min(?5, ${SESSION_LIFETIME_LIMIT}) > expires_at
+          AND EXISTS (SELECT 1 FROM marea_users users
+            WHERE users.id = marea_auth_sessions.user_id AND users.role = 'student'
+              AND ${activeGovernanceAccount("users.id")})
+          AND EXISTS (SELECT 1 FROM marea_active_runs active
+            JOIN marea_runs runs ON runs.id = active.run_id
+            WHERE active.run_id = ?3 AND runs.state = 'active'
+              AND runs.student_id = marea_auth_sessions.user_id
+              AND active.last_activity_at >= ?4)
+        RETURNING expires_at`,
+      [
+        input.tokenHash,
+        input.now,
+        input.runId,
+        input.activitySince,
+        input.expiresAt,
+        `+${String(input.maxLifetimeSeconds)} seconds`,
+      ],
+    );
+    const [row] = extended;
+    return row === undefined ? undefined : rowText(row, "expires_at");
   }
 
   public revokeSession(tokenHash: string, revokedAt: string): boolean {

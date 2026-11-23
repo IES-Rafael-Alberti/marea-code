@@ -100,6 +100,19 @@ export interface IdentityRepository {
     readonly tokenHash: string;
     readonly userId: string;
   }): void;
+  /**
+   * Slides a live student session forward while one of its own active runs shows recent
+   * activity. Never revives an expired or revoked session nor passes its absolute lifetime.
+   * Returns the new expiry, or undefined when the session was left unchanged.
+   */
+  extendSessionForRunActivity(input: {
+    readonly activitySince: string;
+    readonly expiresAt: string;
+    readonly maxLifetimeSeconds: number;
+    readonly now: string;
+    readonly runId: string;
+    readonly tokenHash: string;
+  }): string | undefined;
   findCredential(login: string): StoredCredential | undefined;
   resolveSession(tokenHash: string, now: string): AuthenticatedIdentity | undefined;
   revokeSession(tokenHash: string, revokedAt: string): boolean;

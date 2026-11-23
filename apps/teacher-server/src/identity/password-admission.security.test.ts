@@ -40,6 +40,7 @@ describe("password admission security boundary", () => {
       applyBootstrap: () => true,
       consumeInvitation: () => ({ enrolled: true, identity }),
       createSession,
+      extendSessionForRunActivity: () => undefined,
       findCredential,
       resolveSession: () => identity,
       revokeSession: () => true,
