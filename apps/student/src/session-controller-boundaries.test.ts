@@ -169,7 +169,7 @@ describe("StudentSessionController boundaries", () => {
     await fixture.controller.start("Project One");
 
     expect(fixture.server.authenticatedCloseCalls).toBe(1);
-    expect(fixture.server.bootstrapCalls).toBe(2);
+    expect(fixture.server.bootstrapCalls).toBe(3); // Authentication, close validation, and reopen bootstrap.
     expect(fixture.server.openRequests).toHaveLength(2);
     expect(fixture.state.state.run?.phase).toBe("active");
   });

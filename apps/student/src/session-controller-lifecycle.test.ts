@@ -2,6 +2,7 @@ import { EventIdSchema, MessageIdSchema, RunIdSchema } from "@marea/protocol";
 import { describe, expect, it, vi } from "vitest";
 
 import { DIGEST, FixtureAgent, createFixtureController } from "./student.fixture.js";
+import type { ReopenStoredRun } from "./local-session.js";
 
 type Fixture = ReturnType<typeof createFixtureController>;
 
@@ -333,6 +334,12 @@ describe("StudentSessionController lifecycle races", () => {
   it("resumes the exact local run and retains its outbox when bootstrap points elsewhere", async () => {
     const fixture = createFixtureController();
     await fixture.controller.start("Project One");
+    const run = fixture.state.state.run;
+    if (run === null) throw new Error("Fixture run missing.");
+    fixture.state.state = {
+      ...fixture.state.state,
+      run: { ...run, userId: "user:one", classId: "class:one" } as ReopenStoredRun,
+    };
     await fixture.localSession.appendEvent("local:pending", (sequence, occurredAt) => ({
       content: "Pending locally",
       eventId: EventIdSchema.parse("event:local-pending"),
@@ -349,6 +356,8 @@ describe("StudentSessionController lifecycle races", () => {
         authenticated: true,
         value: {
           ...response.value,
+          userId: "user:one",
+          classId: "class:one",
           activeRun: {
             projectDisplayName: "Another Project",
             runId: RunIdSchema.parse("run:unrelated"),
