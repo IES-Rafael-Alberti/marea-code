@@ -99,6 +99,9 @@ describe("marea command", () => {
     async ({ arguments: arguments_ }) => {
       const exit = Promise.withResolvers<{ readonly exitCode: 0; readonly reason: "closed" }>();
       const session = conversationSession(exit.promise);
+      const suspendedOperation = vi.fn(async () => "suspended result");
+      const withTerminalSuspended = vi.spyOn(session, "withTerminalSuspended");
+      let earlyAuthentication: Promise<unknown> | undefined;
       const controller = {
         close: vi.fn(() => Promise.resolve()),
         sendMessage: vi.fn(() => Promise.resolve()),
@@ -118,6 +121,10 @@ describe("marea command", () => {
       const runtime: MareaCommandRuntime = {
         createApplication(options) {
           compositions.push(options);
+          // Authentication can run before the conversation has been bound.
+          earlyAuthentication = options.studentInterface.withAuthentication?.(() =>
+            Promise.resolve("early result"),
+          );
           return (
             options.studentInterface.withAuthentication?.(() =>
               Promise.resolve({ controller, dispose }),
@@ -152,6 +159,11 @@ describe("marea command", () => {
         output: options.output,
       });
       expect(composition.externalAuthorization).toBeDefined();
+      await expect(earlyAuthentication).resolves.toBe("early result");
+      await expect(
+        composition.studentInterface.withAuthentication?.(suspendedOperation),
+      ).resolves.toBe("suspended result");
+      expect(withTerminalSuspended).toHaveBeenCalledWith(suspendedOperation);
       await expect(
         composition.studentInterface.withAuthentication?.(() => Promise.resolve("signed in")),
       ).resolves.toBe("signed in");
