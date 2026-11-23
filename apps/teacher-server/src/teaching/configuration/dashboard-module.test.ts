@@ -253,6 +253,20 @@ describe("teaching configuration module", () => {
     await expect(rejection).rejects.toMatchObject({ code: "invalid-request" });
   });
 
+  it("rejects field-valid instructions whose composed prompt exceeds the budget", async () => {
+    const harness = build();
+    const settings = defaultSettings(harness);
+    const rejection = harness.service.save(
+      teacher,
+      saveRequest({
+        ...settings,
+        classInstructions: { ...settings.classInstructions, tutoring: "x".repeat(262_144) },
+      }),
+    );
+    await expect(rejection).rejects.toBeInstanceOf(TeachingConfigurationError);
+    await expect(rejection).rejects.toMatchObject({ code: "invalid-request" });
+  });
+
   it("blocks first creation and updates while operator prerequisites are absent or invalid", async () => {
     const harness = build({ operator: operatorConfiguration({}) });
     await expect(
