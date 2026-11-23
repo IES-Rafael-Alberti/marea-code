@@ -50,6 +50,8 @@ const spanishCatalog = {
     "No se ha podido abrir la interfaz de terminal. Prueba en otra terminal y comunica este código si vuelve a fallar.",
   "student.cli.local-state-invalid":
     "Marea no puede leer los datos guardados de este proyecto. Conserva esos datos y comunica este código al profesor para poder recuperarlos.",
+  "student.cli.local-state-recovered":
+    "Marea no ha podido leer algunos datos guardados en este equipo, así que los ha apartado y ha iniciado una sesión nueva. No se ha borrado nada y puede que tengas que iniciar sesión de nuevo.",
   "student.cli.failure-code":
     "Código de diagnóstico: {{code}}. Inclúyelo al comunicar el problema.",
   "student.cli.unexpected-error": "Marea no ha podido iniciarse. Inténtalo de nuevo.",

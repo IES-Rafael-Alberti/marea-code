@@ -47,6 +47,8 @@ const basqueCatalog = {
     "Ezin izan da terminaleko interfazea ireki. Probatu beste terminal batean eta eman kode hau berriro huts egiten badu.",
   "student.cli.local-state-invalid":
     "Mareak ezin ditu proiektu honen gordetako datuak irakurri. Gorde datuak eta eman kode hau irakasleari, berreskuratu ahal izateko.",
+  "student.cli.local-state-recovered":
+    "Mareak ezin izan ditu ordenagailu honetako datu gordetu batzuk irakurri; beraz, alde batera utzi ditu eta saio berri bat hasi du. Ez da ezer ezabatu, eta agian saioa berriro hasi beharko duzu.",
   "student.cli.failure-code": "Diagnostiko-kodea: {{code}}. Sartu arazoaren berri ematean.",
   "student.cli.unexpected-error": "Marea ezin izan da hasi. Saiatu berriro.",
   "student.feedback.ack-hint":
