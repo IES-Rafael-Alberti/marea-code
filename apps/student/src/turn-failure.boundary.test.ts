@@ -93,6 +93,16 @@ describe("classifyTurnFailure", () => {
     });
   });
 
+  it("keeps a class configuration refusal as a recoverable request failure", () => {
+    expect(classifyTurnFailure(new StudentHttpError(409, "run.unavailable", false, true))).toEqual({
+      detail: "",
+      hasPrefix: false,
+      kind: "request-failed",
+      recoverable: true,
+      retryable: false,
+    });
+  });
+
   it("offers a retry for a retryable refusal without a prefix", () => {
     expect(classifyTurnFailure(new StudentHttpError(503, "server.error", true))).toEqual({
       detail: "",
@@ -107,6 +117,8 @@ describe("classifyTurnFailure", () => {
     for (const error of [
       new NoActiveRunError("No active student run is available."),
       new TurnAttemptFailed("", new NoActiveRunError("No active student run is available.")),
+      new StudentHttpError(409, "run.unavailable", false),
+      new TurnAttemptFailed("", new StudentHttpError(409, "run.unavailable", false)),
     ]) {
       expect(classifyTurnFailure(error)).toEqual({
         detail: "",

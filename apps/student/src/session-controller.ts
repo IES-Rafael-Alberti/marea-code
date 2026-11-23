@@ -26,6 +26,7 @@ import type {
   StudentServer,
 } from "./contracts.js";
 import { NoActiveRunError } from "./contracts.js";
+import { StudentHttpError } from "./http-error.js";
 import { LocalSession } from "./local-session.js";
 import { SerialOperationQueue } from "./serial-operation-queue.js";
 import { negotiateSessionCapabilities } from "./session-capabilities.js";
@@ -37,6 +38,12 @@ import {
 } from "./session-turn-executor.js";
 
 const RENEWAL_LEAD_TIME_MS = 60 * 1_000;
+
+/** The server refused the run itself, not the class configuration it needs. */
+function isUnavailableRun(error: StudentHttpError): boolean {
+  return error.code === "run.unavailable" && !error.classConfigurationRequired;
+}
+
 export interface SessionControllerOptions {
   readonly liveProgress?: boolean;
   readonly evidence?: ProjectEvidence;
@@ -225,7 +232,7 @@ export class StudentSessionController {
       desiredIntent,
       resumeRunId,
     );
-    const opened = await this.options.server.openRun(authenticated.token, this.openRequest(local));
+    const opened = await this.openOrStartAfresh(authenticated.token, local, projectDisplayName);
     await this.options.localSession.activate(opened);
     await this.flushOutbox();
     return {
@@ -234,6 +241,32 @@ export class StudentSessionController {
       runId: opened.lease.runId,
       snapshot: opened.snapshot,
     };
+  }
+
+  /**
+   * A run the server no longer offers (for example, closed by the teacher) cannot be resumed.
+   * Rather than retrying that resume on every start, open a fresh run for the project once;
+   * its undeliverable local events belong to the closed run and are discarded with it.
+   */
+  private async openOrStartAfresh(
+    token: SessionToken,
+    local: StoredRun,
+    projectDisplayName: string,
+  ) {
+    try {
+      return await this.options.server.openRun(token, this.openRequest(local));
+    } catch (error) {
+      if (
+        local.openIntent.kind !== "resume" ||
+        !(error instanceof StudentHttpError) ||
+        !isUnavailableRun(error)
+      )
+        throw error;
+      const fresh = await this.options.localSession.ensureOpening(projectDisplayName, {
+        kind: "new",
+      });
+      return this.options.server.openRun(token, this.openRequest(fresh));
+    }
   }
 
   private async authenticate(): Promise<{
