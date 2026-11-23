@@ -110,6 +110,10 @@ export function createConversationTuiSession(
 
   const active = (operation: () => boolean): boolean => !settled && operation();
   const session: ConversationTuiSession = Object.freeze({
+    withTerminalSuspended<T>(operation: () => Promise<T>): Promise<T> {
+      if (settled) return Promise.reject(new Error("The conversation is already closed."));
+      return options.view.withTerminalSuspended?.(operation) ?? operation();
+    },
     appendAssistantText: (text: string, messageId?: string, attemptId?: ConversationAttemptId) =>
       active(() => controller.appendAssistantText(text, messageId, attemptId)),
     cancel: (messageId?: string, attemptId?: ConversationAttemptId) =>

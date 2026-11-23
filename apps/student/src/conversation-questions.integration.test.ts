@@ -69,6 +69,7 @@ it("supplies and flushes persistent history in the command lifecycle", async () 
       ready.resolve(undefined);
       return Promise.resolve({
         ...controller,
+        withTerminalSuspended: <T>(operation: () => Promise<T>) => operation(),
         close: () => controller.dispose(),
         outcome: exit.promise,
       });

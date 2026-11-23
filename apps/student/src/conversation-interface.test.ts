@@ -281,3 +281,30 @@ it.each(["execute", "edit_file"])(
     );
   },
 );
+
+it("protects class selection with the same authentication ownership scope", async () => {
+  let owned = false;
+  const authentication: AuthenticationPrompt = {
+    authenticate: vi.fn(),
+    chooseClass: vi.fn(async () => {
+      expect(owned).toBe(true);
+      return "class:two";
+    }),
+  };
+  const student = createConversationStudentInterface({
+    authentication,
+    conversation: conversation(),
+    async withAuthentication<T>(operation: () => Promise<T>): Promise<T> {
+      owned = true;
+      try {
+        return await operation();
+      } finally {
+        owned = false;
+      }
+    },
+  });
+  await expect(student.chooseClass([{ classId: "class:two", displayName: "Two" }])).resolves.toBe(
+    "class:two",
+  );
+  expect(owned).toBe(false);
+});

@@ -11,6 +11,7 @@ import {
 import { describe, expect, it } from "vitest";
 
 import type { ExternalAuthorization } from "./contracts.js";
+import { setFixtureLeaseExpiry } from "./session-test.fixture.js";
 import { FixtureServer, SESSION_TOKEN, createFixtureController } from "./student.fixture.js";
 
 const PROVIDER = {
@@ -176,3 +177,47 @@ describe("external sign-in from the student client", () => {
     expect((test.server as ExternalServer).completed).toEqual([]);
   });
 });
+
+it.each([false, true])(
+  "keeps the provider callback inside authentication ownership (timeout: %s)",
+  async (timeout) => {
+    const test = fixture();
+    await test.controller.start("Project One");
+    const before = structuredClone(test.state.state.run);
+    setFixtureLeaseExpiry(test.state);
+    test.server.rejectStored = true;
+    let owned = false;
+    Object.assign(test.studentInterface, {
+      async withAuthentication<T>(operation: () => Promise<T>): Promise<T> {
+        owned = true;
+        try {
+          return await operation();
+        } finally {
+          owned = false;
+        }
+      },
+    });
+    const authorization = test.authorization;
+    if (authorization === null) throw new Error("Missing browser receiver.");
+    const authorize = authorization.authorize.bind(authorization);
+    authorization.authorize = (start) => {
+      expect(owned).toBe(true);
+      return timeout ? Promise.reject(new Error("Provider callback timed out")) : authorize(start);
+    };
+    const turn = test.controller.sendMessage(
+      "message:after-external",
+      "Continue here.",
+      new AbortController().signal,
+    );
+    if (timeout) await expect(turn).rejects.toThrow("Provider callback timed out");
+    else await turn;
+    expect(owned).toBe(false);
+    expect(test.studentInterface.authenticationReasons).toEqual(["missing", "rejected"]);
+    expect(test.server.openRequests).toHaveLength(1);
+    expect(test.state.state.run).toMatchObject({
+      runId: before?.runId,
+      snapshot: before?.snapshot,
+    });
+    expect(test.agent.messages).toBe(timeout ? 0 : 1);
+  },
+);

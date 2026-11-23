@@ -234,6 +234,7 @@ async function runStudent(
   const { projectRoot, stateDirectory } = studentLocations(options, serverUrl);
   await runtime.ensureWorkspace?.(projectRoot, translator);
   stage("local-state");
+  let session: ConversationTuiSession | null = null;
   const conversation = createBindableConversationPort();
   const authentication = createAuthenticationPrompt(
     createInquirerAuthenticationQuestions(translator),
@@ -247,12 +248,12 @@ async function runStudent(
     stateDirectory,
     studentInterface: createConversationStudentInterface({
       authentication,
+      withAuthentication: (operation) => session?.withTerminalSuspended(operation) ?? operation(),
       conversation,
       getExecuteWarning: () => translator.t("student.tui.approval.execute-warning"),
     }),
   });
   stage("session");
-  let session: ConversationTuiSession | null = null;
   let startedSession: object | null = null;
   await runInteractiveMarea({
     controller: application.controller,

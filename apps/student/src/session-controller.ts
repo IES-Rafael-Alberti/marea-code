@@ -254,12 +254,15 @@ export class StudentSessionController {
     readonly bootstrap: Awaited<ReturnType<StudentSessionController["bootstrap"]>>;
     readonly token: SessionToken;
   }> {
-    const input = await this.options.studentInterface.authenticate(reason, {
-      providers: await discoverProviders(this.options, this.externalSignIn),
-    });
-    const token = await this.exchangeAuthentication(input);
-    await this.options.credentials.save(token);
-    return { bootstrap: await this.bootstrap(token), token };
+    const authenticate = async () => {
+      const input = await this.options.studentInterface.authenticate(reason, {
+        providers: await discoverProviders(this.options, this.externalSignIn),
+      });
+      const token = await this.exchangeAuthentication(input);
+      await this.options.credentials.save(token);
+      return { bootstrap: await this.bootstrap(token), token };
+    };
+    return this.options.studentInterface.withAuthentication?.(authenticate) ?? authenticate();
   }
 
   private async exchangeAuthentication(input: AuthenticationInput): Promise<SessionToken> {
