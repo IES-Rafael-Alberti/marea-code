@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ApprovalIdSchema } from "@marea/protocol";
 
@@ -176,12 +176,14 @@ describe("student composition", () => {
 
       expect(application.controller).toBeDefined();
       const closures: string[] = [];
+      const onStartupStage = vi.fn();
       const observed = await createProductionStudentApplication(
         {
           clientVersion: "1.0.0",
           projectRoot,
           serverUrl: "https://teacher.example",
           stateDirectory: join(root, "observed-state"),
+          onStartupStage,
           studentInterface: new FixtureInterface(),
           externalAuthorization: { authorize: () => Promise.reject(new Error("unused")) },
         },
@@ -189,6 +191,13 @@ describe("student composition", () => {
           closures.push(checkpoint.kind);
         },
       );
+      const fetch = vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("offline"));
+      try {
+        await expect(observed.controller.start("Project")).rejects.toThrow();
+        expect(onStartupStage).toHaveBeenCalledExactlyOnceWith("capabilities");
+      } finally {
+        fetch.mockRestore();
+      }
       observed.dispose();
       observed.dispose();
       expect(closures).toEqual(["marea-agent-checkpoint"]);
