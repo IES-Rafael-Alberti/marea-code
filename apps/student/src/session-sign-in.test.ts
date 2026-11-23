@@ -61,7 +61,10 @@ class ExternalFixtureServer extends FixtureServer {
 
 const authorization: ExternalAuthorization = {
   async authorize(start) {
-    await start("http://127.0.0.1:4321/callback");
+    expect(await start("http://127.0.0.1:4321/callback")).toEqual({
+      authorizationUrl: "https://accounts.example.test/auth",
+      expiresAt: "2026-09-03T10:10:00.000Z",
+    });
     return { code: "4/code", state: "s".repeat(32) };
   },
 };

@@ -7,6 +7,7 @@ import type { Translator } from "@marea/i18n";
 import type { ExternalAuthorization, ExternalAuthorizationCallback } from "./contracts.js";
 
 const DEFAULT_TIMEOUT_MS = 5 * 60 * 1_000;
+const MAX_TIMEOUT_MS = 10 * 60 * 1_000;
 const CALLBACK_PATH = "/callback";
 const VISIBLE_ASCII = /^[\x21-\x7e]{1,2048}$/u;
 
@@ -100,6 +101,13 @@ function callbackOf(url: URL): ExternalAuthorizationCallback | undefined {
     : undefined;
 }
 
+function remainingTimeout(expiresAt: string): number {
+  const remaining = Date.parse(expiresAt) - Date.now();
+  return Number.isFinite(remaining)
+    ? Math.max(1, Math.min(MAX_TIMEOUT_MS, remaining))
+    : DEFAULT_TIMEOUT_MS;
+}
+
 export function createLoopbackAuthorization(
   options: LoopbackAuthorizationOptions,
 ): ExternalAuthorization {
@@ -107,7 +115,7 @@ export function createLoopbackAuthorization(
   const openBrowser = options.openBrowser ?? openSystemBrowser;
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   return Object.freeze({
-    async authorize(start: (redirectUri: string) => Promise<string>) {
+    async authorize(start: Parameters<ExternalAuthorization["authorize"]>[0]) {
       const { promise: answered, resolve: settle } = Promise.withResolvers<
         ExternalAuthorizationCallback | Error
       >();
@@ -129,11 +137,17 @@ export function createLoopbackAuthorization(
         );
         settle(callback ?? new Error("The external sign-in was not completed."));
       });
-      const timer = setTimeout(() => {
+      const expire = () => {
         settle(new Error("The external sign-in timed out."));
-      }, timeoutMs);
+      };
+      let timer = setTimeout(expire, timeoutMs);
       try {
-        const url = await start(`http://127.0.0.1:${String(listener.port)}${CALLBACK_PATH}`);
+        const started = await start(`http://127.0.0.1:${String(listener.port)}${CALLBACK_PATH}`);
+        const url = typeof started === "string" ? started : started.authorizationUrl;
+        if (typeof started !== "string") {
+          clearTimeout(timer);
+          timer = setTimeout(expire, options.timeoutMs ?? remainingTimeout(started.expiresAt));
+        }
         options.output.error(`${options.translator.t("student.auth.external-open", { url })}\n`);
         openBrowser(url);
         const result = await answered;

@@ -105,7 +105,7 @@ export async function exchangeExternal(
       redirectUri,
     });
     flowId = started.flowId;
-    return started.authorizationUrl;
+    return { authorizationUrl: started.authorizationUrl, expiresAt: started.expiresAt };
   });
   if (flowId === undefined) throw new Error("The external sign-in did not start.");
   const response = await completeWithRetry(
