@@ -37,10 +37,15 @@ import {
 } from "./session-turn-executor.js";
 
 const RENEWAL_LEAD_TIME_MS = 60 * 1_000;
+
+export type StudentStartupStage =
+  "capabilities" | "authentication" | "bootstrap" | "run-open" | "outbox";
+
 export interface SessionControllerOptions {
   readonly liveProgress?: boolean;
   readonly evidence?: ProjectEvidence;
   readonly operations?: OperationExecutor;
+  readonly onStartupStage?: (stage: StudentStartupStage) => void;
   readonly agent: AgentRuntime;
   readonly classPreference?: ClassPreferenceStore;
   readonly clientVersion: string;
@@ -70,6 +75,7 @@ export class StudentSessionController {
   private closeAttempt: Promise<void> | null = null;
   private closeRequested: StoredCloseReason | null = null;
   private leaseCheck: Promise<StoredRun> | null = null;
+  private startupComplete = false;
   private sessionToken: SessionToken | null = null;
   /** Set from the negotiated capabilities before any interactive sign-in. */
   private externalSignIn!: boolean;
@@ -121,6 +127,7 @@ export class StudentSessionController {
         this.presenceTimer.unref();
         void send();
       }
+      this.startupComplete = true;
       return active;
     });
   }
@@ -185,12 +192,15 @@ export class StudentSessionController {
   }
 
   private async startInternal(projectDisplayName: string): Promise<ActiveStudentSession> {
+    this.startupComplete = false;
+    this.options.onStartupStage?.("capabilities");
     const capabilities = await negotiateSessionCapabilities({
       clientVersion: this.options.clientVersion,
       ids: this.options.ids,
       server: this.options.server,
     });
     this.externalSignIn = capabilities.includes("marea.auth.external");
+    this.options.onStartupStage?.("authentication");
     const authenticated = await this.authenticate();
     this.sessionToken = authenticated.token;
     let bootstrap = authenticated.bootstrap;
@@ -225,6 +235,7 @@ export class StudentSessionController {
       desiredIntent,
       resumeRunId,
     );
+    this.options.onStartupStage?.("run-open");
     const opened = await this.options.server.openRun(authenticated.token, this.openRequest(local));
     await this.options.localSession.activate(opened);
     await this.flushOutbox();
@@ -242,6 +253,7 @@ export class StudentSessionController {
   }> {
     const storedToken = await this.options.credentials.load();
     if (storedToken !== null) {
+      this.options.onStartupStage?.("bootstrap");
       const result = await bootstrapClass(this.options, storedToken);
       if (result.authenticated) return { bootstrap: result.value, token: storedToken };
       await this.options.credentials.clear();
@@ -254,6 +266,7 @@ export class StudentSessionController {
     readonly bootstrap: Awaited<ReturnType<StudentSessionController["bootstrap"]>>;
     readonly token: SessionToken;
   }> {
+    this.options.onStartupStage?.("authentication");
     const input = await this.options.studentInterface.authenticate(reason, {
       providers: await discoverProviders(this.options, this.externalSignIn),
     });
@@ -288,6 +301,7 @@ export class StudentSessionController {
   }
 
   private async bootstrap(token: SessionToken) {
+    this.options.onStartupStage?.("bootstrap");
     const response = await bootstrapClass(this.options, token);
     if (!response.authenticated) throw new Error("The new student session was rejected.");
     return response.value;
@@ -365,6 +379,7 @@ export class StudentSessionController {
   }
 
   private flushOutbox(): Promise<void> {
+    if (!this.startupComplete) this.options.onStartupStage?.("outbox");
     return this.deliveries.run(() => this.deliverOutbox());
   }
 
@@ -408,6 +423,7 @@ export class StudentSessionController {
   private async recoverOpeningForClose(run: StoredRun): Promise<StoredRun> {
     if (run.closeReason === null) throw new Error("The pending run close has no reason.");
     const token = this.sessionToken ?? (await this.authenticationForRenewal());
+    this.options.onStartupStage?.("run-open");
     const opened = await this.options.server.openRun(token, this.openRequest(run));
     await this.options.localSession.activate(opened);
     return this.options.localSession.beginClose(run.closeReason);

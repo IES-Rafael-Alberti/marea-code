@@ -50,3 +50,30 @@ it("explains a rejected session before opening a terminal interface", async () =
   expect(options.errors.join("")).toContain("Ajustes → Esta clase");
   expect(options.errors.join("")).toContain("session/class-configuration-required/HTTP-409");
 });
+
+it.each(["capabilities", "authentication", "bootstrap", "run-open", "outbox"] as const)(
+  "uses the controller-reported %s stage in the public diagnostic",
+  async (stage) => {
+    const options = commandOptions();
+    const result = await executeMareaCommand(options, {
+      createApplication: (composition) =>
+        Promise.resolve({
+          controller: {
+            start: () => {
+              composition.onStartupStage?.(stage);
+              return Promise.reject(new Error("private startup failure"));
+            },
+            close: vi.fn(),
+            sendMessage: vi.fn(),
+            pendingTurn: vi.fn(),
+          },
+          dispose: vi.fn(),
+        }),
+      ...testConversationRuntime(vi.fn()),
+    });
+
+    expect(result).toBe(1);
+    expect(options.errors.join("")).toContain(`${stage}/unexpected`);
+    expect(options.errors.join("")).not.toContain("private startup failure");
+  },
+);

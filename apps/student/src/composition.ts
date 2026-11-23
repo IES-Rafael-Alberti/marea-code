@@ -28,7 +28,7 @@ import { createDeepAgentsStudentRuntime } from "./deepagents-runtime.boundary.js
 import { createHttpModelGateway, createHttpStudentServer } from "./http-client.boundary.js";
 import { LocalSession } from "./local-session.js";
 import { createSystemClock, createSystemIdSource } from "./platform.boundary.js";
-import { StudentSessionController } from "./session-controller.js";
+import { StudentSessionController, type StudentStartupStage } from "./session-controller.js";
 import { createCrashSafeWorkspaceWriter } from "./workspace-writer.js";
 import { RunSkillReader } from "./run-skill-reader.js";
 import { createRuntimeReadTools } from "./runtime-read-tools.js";
@@ -46,6 +46,7 @@ export interface StudentCompositionOptions {
 export interface ProductionStudentCompositionOptions {
   readonly clientVersion: string;
   readonly externalAuthorization?: ExternalAuthorization;
+  readonly onStartupStage?: (stage: StudentStartupStage) => void;
   readonly projectRoot: string;
   readonly serverUrl: string;
   readonly stateDirectory: string;
@@ -166,6 +167,7 @@ export async function createProductionStudentApplication(
   });
   const controller = new StudentSessionController({
     liveProgress: true,
+    ...(options.onStartupStage === undefined ? {} : { onStartupStage: options.onStartupStage }),
     agent,
     classPreference: createFileClassPreferenceStore(stateDirectory),
     clientVersion,

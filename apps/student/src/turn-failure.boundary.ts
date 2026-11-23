@@ -13,6 +13,7 @@ import {
 } from "./contracts.js";
 import { StudentHttpError } from "./http-client.boundary.js";
 import { sanitizeContextField } from "./session-context.js";
+import { diagnosticCodeFor } from "./startup-failure.boundary.js";
 
 /**
  * Classifies typed failures without parsing prose. The server's retry flag
@@ -162,18 +163,31 @@ function classifyTopLevel(error: unknown, prefix: string): TurnFailureInfo {
   };
 }
 
+function withDiagnosticCode(error: unknown, failure: TurnFailureInfo): TurnFailureInfo {
+  const diagnosticCode = diagnosticCodeFor(error);
+  if (diagnosticCode === null) return failure;
+  return {
+    ...failure,
+    code: failure.code ?? diagnosticCode,
+    detail: failure.detail.length === 0 ? diagnosticCode : `${failure.detail}\n${diagnosticCode}`,
+  };
+}
+
 function classifyAttempt(error: unknown, prefix: string): TurnFailureInfo {
-  if (error instanceof RequiredSkillsError)
-    return {
+  if (error instanceof RequiredSkillsError) {
+    return withDiagnosticCode(error, {
       detail: error.message,
       hasPrefix: prefix !== "",
       kind: "request-failed",
       recoverable: true,
       retryable: true,
-    };
+    });
+  }
   const recognized = deepestRecognized(error);
-  if (recognized !== null) return classifyRecognized(recognized, prefix);
-  return classifyTopLevel(error, prefix);
+  return withDiagnosticCode(
+    error,
+    recognized !== null ? classifyRecognized(recognized, prefix) : classifyTopLevel(error, prefix),
+  );
 }
 
 export function classifyTurnFailure(error: unknown): TurnFailureInfo {

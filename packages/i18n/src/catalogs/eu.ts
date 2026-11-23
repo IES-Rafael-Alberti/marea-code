@@ -3,6 +3,8 @@ const basqueCatalog = {
   "bootstrap.checking-connection": "Irakaslearen zerbitzariarekiko konexioa egiaztatzen…",
   "bootstrap.connection-failed":
     "Ezin izan da irakaslearen zerbitzariarekin konektatu. Egiaztatu konexioa eta saiatu berriro.",
+  "bootstrap.connection-failed-at":
+    "Ezin izan da konektatu {{origin}} helbideko irakaslearen zerbitzariarekin. Egiaztatu helbidea eta konexioa, eta zerbitzaria martxan dagoela.",
   "bootstrap.login-required": "Hasi saioa Marea irakaslearen zerbitzariarekin konektatzeko.",
   "bootstrap.ready": "Marea prest dago.",
   "bootstrap.resuming-session": "Zure saioarekin jarraitzen…",

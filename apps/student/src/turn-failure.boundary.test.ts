@@ -165,6 +165,50 @@ describe("classifyTurnFailure", () => {
     });
   });
 
+  it("shows a safe diagnostic code carried by a mid-turn failure", () => {
+    const error = Object.assign(
+      new Error("Private filesystem permissions could not be established."),
+      { diagnosticCode: "private-fs.timeout" },
+    );
+    expect(classifyTurnFailure(error)).toEqual({
+      code: "private-fs.timeout",
+      detail: "Error: Private filesystem permissions could not be established.\nprivate-fs.timeout",
+      hasPrefix: false,
+      kind: "unexpected",
+      recoverable: true,
+      retryable: false,
+    });
+  });
+
+  it("keeps a nested diagnostic code visible when a recognized failure has no detail", () => {
+    const cause = Object.assign(new Error("private transport details"), {
+      diagnosticCode: "private-fs.unavailable",
+    });
+    const error = new StudentHttpError(0, "transport.unavailable", true, false);
+    error.cause = cause;
+    expect(classifyTurnFailure(error)).toEqual({
+      code: "private-fs.unavailable",
+      detail: "private-fs.unavailable",
+      hasPrefix: false,
+      kind: "request-failed",
+      recoverable: true,
+      retryable: true,
+    });
+  });
+
+  it("ignores an invalid mid-turn diagnostic code", () => {
+    const error = Object.assign(new Error("private failure"), {
+      diagnosticCode: "PRIVATE/SECRET",
+    });
+    expect(classifyTurnFailure(error)).toEqual({
+      detail: "Error: private failure",
+      hasPrefix: false,
+      kind: "unexpected",
+      recoverable: true,
+      retryable: false,
+    });
+  });
+
   it("reports unknown failures with sanitized text", () => {
     expect(classifyTurnFailure(new Error("a\u001Bb"))).toEqual({
       detail: "Error: ab",
