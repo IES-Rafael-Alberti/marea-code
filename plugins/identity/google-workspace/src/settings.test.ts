@@ -11,6 +11,30 @@ const groups = {
 };
 
 describe("Google Workspace settings", () => {
+  it("publishes the same domain and email constraints used by the parser", () => {
+    const validations = googleWorkspaceSettings.fields.filter(
+      (field) => field.validation !== undefined,
+    );
+    expect(
+      validations.map((field) => [
+        field.key,
+        field.validation?.maxLength,
+        field.validation?.normalize,
+      ]),
+    ).toEqual([
+      ["domain", 253, "lowercase-trim"],
+      ["serviceAccountEmail", 320, "none"],
+      ["adminEmail", 320, "none"],
+    ]);
+    for (const field of validations) {
+      const rule = field.validation;
+      if (!rule) throw new Error("Missing field validation");
+      const valid = field.key === "domain" ? "school.test" : "admin@school.test";
+      expect(new RegExp(rule.pattern, "u").test(valid)).toBe(true);
+      expect(new RegExp(rule.pattern, "u").test("invalid")).toBe(false);
+      for (const locale of ["en", "es", "eu"] as const) expect(rule.message[locale]).not.toBe("");
+    }
+  });
   it("declares a valid server settings form", () => {
     expect(
       ProviderSettingsDescriptorSchema.parse(googleWorkspaceSettings).fields.map((field) => [

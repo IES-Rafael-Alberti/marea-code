@@ -1,5 +1,5 @@
 import type { ProviderModel } from "@marea/plugin-api";
-import type { UsagePolicy } from "@marea/protocol";
+import { UsagePolicySchema, type UsagePolicy } from "@marea/protocol";
 import type { serverSettingsMessages } from "./messages.js";
 const unlimitedBudget: UsagePolicy = {
   version: "server:1",
@@ -58,7 +58,12 @@ export function BudgetFields({
               {dollars ? m.costUsd : m[label]}
               <input
                 type="number"
-                min={0}
+                min={
+                  UsagePolicySchema.unwrap().shape[key as keyof typeof fields].safeParse(0).success
+                    ? 0
+                    : 1
+                }
+                max={key === "maxRequestDurationMs" ? 2_147_483_647 : undefined}
                 required
                 step={dollars ? 0.001 : 1}
                 value={value[key as keyof typeof fields] / (dollars ? 1000000000 : 1)}

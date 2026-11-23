@@ -9,6 +9,37 @@ import { SetupFeatures } from "./features.js";
 import { SetupReview } from "./review.js";
 import { SetupModel, isSetupModelReady } from "./model.js";
 const m = setupMessages("en");
+it.each([
+  ["center", "Bad_name", "Use 1–120"],
+  ["classroom", "!Class", "Use 1–120"],
+  ["teacher", " ", "Use 1–120"],
+  ["login", "Teacher", "Use 3–64"],
+  ["login", "ab", "Use 3–64"],
+  ["login", "a".repeat(65), "Use 3–64"],
+  ["center", "a".repeat(121), "Use 1–120"],
+  ["teacher", "Ana María", ""],
+  ["center", "a".repeat(120), ""],
+  ["login", "a".repeat(64), ""],
+  ["login", "ana", ""],
+] as const)("validates setup %s with the server schema: %s", (key, value, error) => {
+  const nodes = tree(
+    <SchoolFields
+      value={setupInput({ [key]: value })}
+      change={vi.fn()}
+      confirmation=""
+      confirm={vi.fn()}
+      m={m}
+      locale="en"
+    />,
+  );
+  const ref = nodes.find((node) => node.props["aria-describedby"] === `setup-${key}-error`)?.props
+    .ref as (input: object) => void;
+  const input = { dataset: {}, setCustomValidity: vi.fn() };
+  ref(input);
+  const message = input.setCustomValidity.mock.lastCall?.[0] as string;
+  if (error === "") expect(message).toBe("");
+  else expect(message.startsWith(error)).toBe(true);
+});
 afterEach(() => {
   vi.unstubAllGlobals();
 });

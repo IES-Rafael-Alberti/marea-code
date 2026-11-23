@@ -8,6 +8,25 @@ import { serverSettingsMessages } from "./messages.js";
 import type { EditableSettings } from "./client.boundary.js";
 import { tree, text, control, change } from "./forms.fixture.js";
 const m = serverSettingsMessages("en");
+it("keeps zero budgets where valid and requires positive execution ceilings", () => {
+  const nodes = tree(
+    <BudgetFields value={{ ...emptyBudget(), unlimited: false }} change={vi.fn()} m={m} />,
+  );
+  const numeric = nodes.filter((node) => node.type === "input" && node.props.type === "number");
+  expect(numeric.map((node) => node.props.min)).toEqual([0, 0, 1, 1, 1, 1, 0, 0, 0, 0]);
+  expect(numeric.map((node) => node.props.max)).toEqual([
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    2147483647,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+  ]);
+});
 const pricing = {
   costUnit: "nanoUSD",
   inputCostUnitsPerToken: 1250,

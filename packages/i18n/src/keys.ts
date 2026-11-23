@@ -1,4 +1,8 @@
 export const MESSAGE_KEYS = Object.freeze([
+  "dashboard.validation.name",
+  "dashboard.validation.login",
+  "dashboard.validation.id",
+
   "bootstrap.checking-connection",
   "bootstrap.connection-failed",
   "bootstrap.connection-failed-at",

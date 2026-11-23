@@ -1,3 +1,4 @@
+import { SchemaInput } from "../../forms/schema-input.js";
 import type { ReactElement } from "react";
 
 import {
@@ -57,15 +58,21 @@ export function GovernanceAccountsView({
       >
         <label>
           {m.userId}
-          <input name="userId" maxLength={128} />
+          <SchemaInput kind="id" message={m.idHelp} name="userId" maxLength={128} />
         </label>
         <label>
           {m.displayName}
-          <input name="displayName" maxLength={120} />
+          <SchemaInput kind="name" message={m.nameHelp} name="displayName" maxLength={120} />
         </label>
         <label>
           {m.login}
-          <input name="login" maxLength={64} autoComplete="off" />
+          <SchemaInput
+            kind="login"
+            message={m.loginHelp}
+            name="login"
+            maxLength={64}
+            autoComplete="off"
+          />
         </label>
         <label>
           {m.role}

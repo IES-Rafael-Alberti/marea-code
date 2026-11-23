@@ -5,6 +5,54 @@ import { IdentityFields } from "./identity-fields.js";
 import { setupIdentity, present } from "./setup.fixture.js";
 import { setupMessages } from "./messages.js";
 const label = { es: "Opcional", en: "Optional", eu: "Aukerakoa" };
+it("sets provider validation errors on mounted and touched fields", () => {
+  const descriptor = {
+    ...setupIdentity.descriptor,
+    fields: [
+      {
+        key: "domain",
+        kind: "text" as const,
+        required: true,
+        label,
+        validation: {
+          maxLength: 253,
+          pattern: "^[a-z]+$",
+          normalize: "none" as const,
+          message: label,
+        },
+      },
+    ],
+  };
+  const nodes = tree(
+    <IdentityFields
+      providers={[{ id: "test", descriptor }]}
+      values={{ test: { domain: "INVALID" } }}
+      change={vi.fn()}
+      locale="en"
+      m={setupMessages("en")}
+    />,
+  );
+  const field = present(nodes.find((node) => node.props.maxLength === 253));
+  const ref = field.props.ref as (element: typeof input | null) => void;
+  const blur = field.props.onBlur as (event: object) => void;
+  const input = {
+    dataset: {} as Record<string, string>,
+    setCustomValidity: vi.fn(),
+    setAttribute: vi.fn(),
+    validity: { valid: false },
+    validationMessage: "Optional",
+    closest: () => null,
+  };
+  ref(null);
+  ref(input);
+  expect(input.setCustomValidity).toHaveBeenLastCalledWith("Optional");
+  expect(input.setAttribute).not.toHaveBeenCalled();
+  blur({ currentTarget: input });
+  expect(input.dataset.touched).toBe("true");
+  input.setAttribute.mockClear();
+  ref(input);
+  expect(input.setAttribute).toHaveBeenLastCalledWith("aria-invalid", "true");
+});
 const provider = {
   ...setupIdentity,
   descriptor: {

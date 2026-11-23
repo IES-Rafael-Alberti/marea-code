@@ -1,5 +1,11 @@
 import type { CompleteCatalog } from "../keys.js";
 const basqueCatalog = {
+  "dashboard.validation.name":
+    "Erabili 1–120 letra, zenbaki, zuriune, puntu, apostrofo edo marratxo; hasi letra edo zenbaki batekin.",
+  "dashboard.validation.login":
+    "Erabili 3–64 letra xehe, zenbaki, puntu, azpimarra edo marratxo; hasi letra edo zenbaki batekin.",
+  "dashboard.validation.id":
+    "Erabili 1–128 letra, zenbaki, puntu, azpimarra, bi puntu edo marratxo; hasi letra edo zenbaki batekin.",
   "bootstrap.checking-connection": "Irakaslearen zerbitzariarekiko konexioa egiaztatzen…",
   "bootstrap.connection-failed":
     "Ezin izan da irakaslearen zerbitzariarekin konektatu. Egiaztatu konexioa eta saiatu berriro.",
