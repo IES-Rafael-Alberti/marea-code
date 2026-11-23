@@ -171,9 +171,14 @@ describe("loopback external authorization", () => {
     const initialTimer = vi
       .mocked(setTimeout)
       .mock.calls.findIndex(([, delay]) => delay === 300_000);
-    expect(clearTimeout).not.toHaveBeenCalledWith(
-      vi.mocked(setTimeout).mock.results[initialTimer]?.value,
-    );
+    // Compare by identity: Bun timer objects are deeply equal to each other.
+    expect(
+      vi
+        .mocked(clearTimeout)
+        .mock.calls.some(
+          ([handle]) => handle === vi.mocked(setTimeout).mock.results[initialTimer]?.value,
+        ),
+    ).toBe(false);
     expect(test.call("/elsewhere").status).toBe(404);
     expect(test.call("/callback?code=a&state=b", "POST").status).toBe(404);
     const done = test.call("/callback?code=4%2Fcode&state=xyz");
