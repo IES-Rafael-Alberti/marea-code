@@ -394,8 +394,12 @@ export function createTeacherProductHttp(
     const parsed = await parseJsonRequest(context.req.raw, RenewRunLeaseRequestSchema);
     if (!parsed.ok) return parsed.response;
     return safeOperation(parsed.value.requestId, () => {
-      const session = options.services.identity.authenticate(bearer(context.req.raw));
-      return jsonResponse(options.services.runs.renew(session.identity, parsed.value));
+      const token = bearer(context.req.raw);
+      const session = options.services.identity.authenticate(token);
+      const renewed = options.services.runs.renew(session.identity, parsed.value);
+      // Only after the renewal succeeded: a refused run never keeps the student signed in.
+      options.services.identity.extendForRunActivity(token, parsed.value.runId);
+      return jsonResponse(renewed);
     });
   });
 

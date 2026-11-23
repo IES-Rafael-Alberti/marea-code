@@ -50,6 +50,7 @@ export interface ExternalIdentityServices {
 export interface ProductIdentityService {
   authenticate(token: string): AuthenticatedSession;
   enroll(request: EnrollStudentRequest): Promise<EnrollStudentResponse>;
+  extendForRunActivity(token: string, runId: string): string | undefined;
   login(request: CredentialLoginRequest): Promise<CredentialLoginResponse>;
   logout(token: string, requestId: string): CredentialLogoutResponse;
   selectClass(token: string, classId: string): AuthenticatedIdentity;
