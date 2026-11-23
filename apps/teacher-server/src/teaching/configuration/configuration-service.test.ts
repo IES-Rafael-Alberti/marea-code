@@ -264,3 +264,40 @@ it("freezes the selected writing gate and preserves it when an older editor omit
   f.repository.loadForTeacher.mockReturnValue(null);
   expect((await f.service.save(teacher, base)).publicTemplate).not.toHaveProperty("socraticMode");
 });
+
+it.each(["x", "é", "😀"])(
+  "rejects oversized %s instructions before persisting a revision",
+  async (character) => {
+    const { service, repository } = fixture();
+    const input = teachingInput("tutoring");
+    await expect(
+      service.save(teacher, {
+        ...input,
+        classInstructions: {
+          ...input.classInstructions,
+          tutoring: character.repeat(131_072) + "x".repeat(131_072),
+        },
+      }),
+    ).rejects.toThrow();
+    expect(repository.saveRevision).not.toHaveBeenCalled();
+  },
+);
+
+it("accepts the exact composed UTF-8 budget and rejects one byte more without writing", async () => {
+  const { service, repository, configuration } = fixture();
+  const input = teachingInput("tutoring");
+  const bytes = (text: string) => new TextEncoder().encode(text).byteLength;
+  const available =
+    262_144 -
+    bytes(configuration.publicTemplate.prompt.content) +
+    bytes(input.classInstructions.tutoring);
+  const save = (length: number) =>
+    service.save(teacher, {
+      ...input,
+      classInstructions: { ...input.classInstructions, tutoring: "x".repeat(length) },
+    });
+  expect(bytes((await save(available)).publicTemplate.prompt.content)).toBe(262_144);
+  repository.saveRevision.mockClear();
+  await expect(save(available + 1)).rejects.toThrow("UTF-8 bytes");
+  expect(repository.saveRevision).not.toHaveBeenCalled();
+});

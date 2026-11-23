@@ -174,6 +174,7 @@ describe("Bun HTTP listener", () => {
     expect(serve).toHaveBeenCalledWith({
       hostname: "127.0.0.1",
       port: 0,
+      idleTimeout: 150,
       fetch: expect.any(Function) as typeof fetch,
       websocket: expect.objectContaining({
         idleTimeout: 60,

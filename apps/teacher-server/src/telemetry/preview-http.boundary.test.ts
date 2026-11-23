@@ -34,7 +34,9 @@ describe("authenticated telemetry preview", () => {
     const cookie = await f.cookie();
     const writes = vi.spyOn(f.database, "execute");
     const response = await f.app.fetch(previewHttpRequest(cookie));
-    expect(writes).not.toHaveBeenCalled();
+    // Authentication may slide the teacher session; preview itself performs no writes.
+    expect(writes).toHaveBeenCalledTimes(1);
+    expect(writes.mock.calls[0]?.[0]).toContain("UPDATE marea_auth_sessions");
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toBe("no-store");
     const text = await response.text();

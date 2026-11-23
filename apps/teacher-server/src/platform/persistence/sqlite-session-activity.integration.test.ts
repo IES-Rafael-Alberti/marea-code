@@ -115,13 +115,14 @@ describe("SQLite student session activity", () => {
       runId: "run:alice",
       studentId: "user:alice",
     });
+    expect(extend("alice", "2026-09-12T10:50:00.000Z")).toBe("2026-09-12T11:20:00.000Z");
     runs.appendEvents({
       events: [
         CanonicalRunEventSchema.parse({
           content: "Hello",
           eventId: "event:alice:working",
           eventType: "student-message",
-          occurredAt: "2026-09-12T10:51:00.000Z",
+          occurredAt: "2026-09-11T10:51:00.000Z",
           sequence: 2,
         }),
       ],
@@ -147,4 +148,52 @@ describe("SQLite student session activity", () => {
     });
     expect(extend("closing", "2026-09-12T10:56:00.000Z")).toBeUndefined();
   });
+});
+
+it("slides authenticated teacher activity without reviving sessions or exceeding eight hours", () => {
+  const { f, signIn } = classroom();
+  signIn("teacher", "user:teacher", OPENED, "2026-09-12T10:30:00.000Z");
+  const expiry = () =>
+    f.database.readOne("SELECT expires_at FROM marea_auth_sessions WHERE token_hash = 'teacher'");
+  expect(f.identities.resolveSession("teacher", "2026-09-12T10:29:00.000Z")?.role).toBe("teacher");
+  expect(expiry()).toEqual({ expires_at: "2026-09-12T10:59:00.000Z" });
+  expect(f.identities.resolveSession("teacher", "2026-09-12T10:59:00.000Z")).toBeUndefined();
+  expect(expiry()).toEqual({ expires_at: "2026-09-12T10:59:00.000Z" });
+  signIn("capped-teacher", "user:teacher", "2026-09-12T02:40:00.000Z", "2026-09-12T10:30:00.000Z");
+  expect(f.identities.resolveSession("capped-teacher", "2026-09-12T10:29:00.000Z")?.role).toBe(
+    "teacher",
+  );
+  expect(
+    f.database.readOne(
+      "SELECT expires_at FROM marea_auth_sessions WHERE token_hash = 'capped-teacher'",
+    ),
+  ).toEqual({ expires_at: "2026-09-12T10:40:00.000Z" });
+  f.identities.revokeSession("capped-teacher", "2026-09-12T10:30:00.000Z");
+  expect(f.identities.resolveSession("capped-teacher", "2026-09-12T10:31:00.000Z")).toBeUndefined();
+  signIn("disabled-teacher", "user:teacher", OPENED, "2026-09-12T10:30:00.000Z");
+  f.database.execute(
+    "UPDATE marea_governance_accounts SET state = 'disabled' WHERE user_id = 'user:teacher'",
+  );
+  expect(
+    f.identities.resolveSession("disabled-teacher", "2026-09-12T10:29:00.000Z"),
+  ).toBeUndefined();
+  expect(
+    f.database.readOne(
+      "SELECT expires_at FROM marea_auth_sessions WHERE token_hash = 'disabled-teacher'",
+    ),
+  ).toEqual({ expires_at: "2026-09-12T10:30:00.000Z" });
+});
+
+it("counts only current owned lease presence using the server clock", () => {
+  const { f, extend } = classroom();
+  const activity = () =>
+    f.database.readOne("SELECT last_activity_at FROM marea_active_runs WHERE run_id = 'run:alice'");
+  expect(extend("missing", "2026-09-12T10:01:00.000Z")).toBeUndefined();
+  expect(activity()).toEqual({ last_activity_at: OPENED });
+  expect(extend("lease:alice:opened", "2026-09-12T10:02:00.000Z", "run:other")).toBeUndefined();
+  expect(activity()).toEqual({ last_activity_at: OPENED });
+  expect(extend("lease:alice:opened", "2026-09-12T10:02:00.000Z")).toBeUndefined();
+  expect(activity()).toEqual({ last_activity_at: "2026-09-12T10:02:00.000Z" });
+  expect(extend("lease:alice:opened", "2026-09-12T10:10:00.000Z")).toBeUndefined();
+  expect(activity()).toEqual({ last_activity_at: "2026-09-12T10:02:00.000Z" });
 });

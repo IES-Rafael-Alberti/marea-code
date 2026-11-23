@@ -108,8 +108,8 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
         const inserted = this.appendEvent(runId, event, highest);
         if (inserted) {
           highest = event.sequence;
-          // Stryker disable next-line EqualityOperator: Equal timestamps select the same immutable string.
-          lastActivity = event.occurredAt > lastActivity ? event.occurredAt : lastActivity;
+          // Activity time comes from the server, never the student's clock.
+          lastActivity = input.now > lastActivity ? input.now : lastActivity;
           pending = pendingAfter(pending, event);
         }
       }
@@ -207,6 +207,10 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
           input.issuedAt,
           input.expiresAt,
         ],
+      );
+      this.#database.execute(
+        "UPDATE marea_active_runs SET last_activity_at = max(last_activity_at, ?2) WHERE run_id = ?1",
+        [input.runId, input.issuedAt],
       );
       return {
         expiresAt: input.expiresAt,

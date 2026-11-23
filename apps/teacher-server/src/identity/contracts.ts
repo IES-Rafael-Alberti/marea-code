@@ -103,6 +103,7 @@ export interface IdentityRepository {
   /**
    * Slides a live student session forward while one of its own active runs shows recent
    * activity. Never revives an expired or revoked session nor passes its absolute lifetime.
+   * A current run lease token instead records presence for that owned run.
    * Returns the new expiry, or undefined when the session was left unchanged.
    */
   extendSessionForRunActivity(input: {
