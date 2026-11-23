@@ -25,7 +25,8 @@ import type {
 
 const FLOW_DURATION_MS = 10 * 60 * 1_000;
 const MAX_PENDING_FLOWS = 256;
-const MAX_CONCURRENT_COMPLETIONS = 4;
+const DEFAULT_MAX_CONCURRENT_COMPLETIONS = 16;
+const COMPLETION_SLOT_WAIT_MS = 15_000;
 const PROVIDER_TIMEOUT_MS = 20_000;
 
 interface PendingFlow {
@@ -45,6 +46,10 @@ export interface ExternalIdentityServiceDependencies {
   readonly ids: IdGenerator;
   readonly secrets: SecretIssuer;
   readonly timeout?: (milliseconds: number) => AbortSignal;
+  /** Upper bound of simultaneous provider verifications; defaults to 16. */
+  readonly maxConcurrentCompletions?: number;
+  /** How long a completion waits for a slot before returning auth.busy; defaults to 15 s. */
+  readonly completionWaitTimeoutMs?: number;
 }
 
 function sameSecret(left: string, right: string): boolean {
@@ -74,6 +79,7 @@ export function externalDisplayName(identity: ExternalIdentity): string {
 export class ExternalIdentityService {
   readonly #dependencies: ExternalIdentityServiceDependencies;
   readonly #flows = new Map<string, PendingFlow>();
+  readonly #completionWaiters: (() => void)[] = [];
   #completing = 0;
 
   public constructor(dependencies: ExternalIdentityServiceDependencies) {
@@ -133,16 +139,14 @@ export class ExternalIdentityService {
   public async complete(
     request: ExternalAuthCompleteRequest,
   ): Promise<ExternalAuthCompleteResponse> {
+    const now = Date.parse(this.#dependencies.clock.now());
     const flow = this.#flows.get(request.flowId);
-    this.#flows.delete(request.flowId);
-    if (
-      flow === undefined ||
-      flow.expiresAt <= Date.parse(this.#dependencies.clock.now()) ||
-      !sameSecret(flow.state, request.state)
-    )
+    if (flow === undefined || flow.expiresAt <= now || !sameSecret(flow.state, request.state))
       throw new TeacherDomainError("auth.invalid");
-    if (this.#completing >= MAX_CONCURRENT_COMPLETIONS) throw new TeacherDomainError("auth.busy");
-    this.#completing += 1;
+    // Validate before waiting and consume only once a slot is held, so a busy
+    // or timed-out completion keeps its flow for the same code/state to retry.
+    if (!(await this.acquireCompletionSlot())) throw new TeacherDomainError("auth.busy");
+    this.#flows.delete(request.flowId);
     try {
       const identity = await this.verifiedAccount(flow, request.code);
       const opened = this.#dependencies.sessions.openExternalSession(identity);
@@ -154,8 +158,53 @@ export class ExternalIdentityService {
         session: opened.session,
       });
     } finally {
-      this.#completing -= 1;
+      this.releaseCompletionSlot();
     }
+  }
+
+  private acquireCompletionSlot(): Promise<boolean> {
+    const configured = this.#dependencies.maxConcurrentCompletions;
+    const limit =
+      configured !== undefined && Number.isSafeInteger(configured) && configured > 0
+        ? configured
+        : DEFAULT_MAX_CONCURRENT_COMPLETIONS;
+    if (this.#completing < limit) {
+      this.#completing += 1;
+      return Promise.resolve(true);
+    }
+    const configuredWait = this.#dependencies.completionWaitTimeoutMs;
+    const waitMs =
+      configuredWait !== undefined && Number.isSafeInteger(configuredWait) && configuredWait > 0
+        ? configuredWait
+        : COMPLETION_SLOT_WAIT_MS;
+    return new Promise<boolean>((resolve) => {
+      let settled = false;
+      const state = { timer: undefined as ReturnType<typeof setTimeout> | undefined };
+      const settle = (acquired: boolean): void => {
+        if (settled) return;
+        settled = true;
+        if (state.timer !== undefined) clearTimeout(state.timer);
+        resolve(acquired);
+      };
+      const grant = (): void => {
+        if (settled) return;
+        this.#completing += 1;
+        settle(true);
+      };
+      const expire = (): void => {
+        const index = this.#completionWaiters.indexOf(grant);
+        if (index >= 0) this.#completionWaiters.splice(index, 1);
+        settle(false);
+      };
+      state.timer = setTimeout(expire, waitMs);
+      this.#completionWaiters.push(grant);
+    });
+  }
+
+  private releaseCompletionSlot(): void {
+    this.#completing -= 1;
+    const next = this.#completionWaiters.shift();
+    if (next !== undefined) next();
   }
 
   private async verifiedAccount(flow: PendingFlow, code: string) {
