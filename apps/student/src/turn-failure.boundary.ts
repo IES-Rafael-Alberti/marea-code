@@ -94,7 +94,12 @@ function classifyRecognized(recognized: RecognizedFailure, prefix: string): Turn
       retryable: recognized.streamRetryable,
     };
   }
-  if (recognized instanceof StudentHttpError) {
+  // A run the server refuses (closed by the teacher or its leases revoked) cannot be retried
+  // from this process; it is the same unavailable session as having no active run.
+  if (
+    recognized instanceof StudentHttpError &&
+    (recognized.code !== "run.unavailable" || recognized.classConfigurationRequired)
+  ) {
     return {
       detail: "",
       hasPrefix,

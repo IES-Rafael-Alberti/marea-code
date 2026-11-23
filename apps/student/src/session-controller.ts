@@ -47,8 +47,9 @@ const RENEWAL_LEAD_TIME_MS = 60 * 1_000;
 export type StudentStartupStage =
   "capabilities" | "authentication" | "bootstrap" | "run-open" | "outbox";
 
+/** The server refused the run itself, not the class configuration it needs. */
 function isRunUnavailable(error: StudentHttpError): boolean {
-  return error.status === 409 && error.code === "run.unavailable";
+  return error.code === "run.unavailable" && !error.classConfigurationRequired;
 }
 
 function isRejectedPendingClose(error: StudentHttpError): boolean {
@@ -254,9 +255,8 @@ export class StudentSessionController {
     );
     this.reportStartupStage("run-open");
     const opened = await this.openOrSetAside(authenticated.token, local, {
-      fallbackRunId: serverRunId === matchingLocal?.runId ? null : serverRunId,
       projectDisplayName,
-      reusedLocal: matchingLocal !== null,
+      serverRunId,
     });
     await this.options.localSession.activate(opened);
     await this.flushOutbox();
@@ -269,28 +269,35 @@ export class StudentSessionController {
   }
 
   /**
-   * Local state is keyed by server and folder, not by student. When the server refuses the
-   * reused local run (another account, another class, or already closed), set it aside once
-   * and continue with this student's own active run or a new one instead of failing forever.
+   * Local state is keyed by server and folder, not by student, and the server may close runs
+   * (for example, the teacher). When the server refuses the run being resumed (another account,
+   * another class, or already closed), set it aside once and continue with this student's own
+   * active run or a fresh one instead of retrying the refused resume on every start. Its
+   * undeliverable events stay set aside locally and are never sent. A class configuration
+   * refusal keeps the stored run, because the run itself is still valid.
    */
   private async openOrSetAside(
     token: SessionToken,
     local: StoredRun,
-    fallback: {
-      readonly fallbackRunId: RunId | null;
+    context: {
       readonly projectDisplayName: string;
-      readonly reusedLocal: boolean;
+      readonly serverRunId: RunId | null;
     },
   ): Promise<OpenRunResponse> {
     try {
       return await this.options.server.openRun(token, this.openRequest(local));
     } catch (error) {
-      if (!fallback.reusedLocal || !(error instanceof StudentHttpError) || !isRunUnavailable(error))
+      if (
+        local.openIntent.kind !== "resume" ||
+        !(error instanceof StudentHttpError) ||
+        !isRunUnavailable(error)
+      )
         throw error;
+      const fallbackRunId = context.serverRunId === local.runId ? null : context.serverRunId;
       const fresh = await this.options.localSession.ensureOpening(
-        fallback.projectDisplayName,
-        fallback.fallbackRunId === null ? { kind: "new" } : { kind: "resume" },
-        fallback.fallbackRunId,
+        context.projectDisplayName,
+        fallbackRunId === null ? { kind: "new" } : { kind: "resume" },
+        fallbackRunId,
         true,
       );
       return this.options.server.openRun(token, this.openRequest(fresh));

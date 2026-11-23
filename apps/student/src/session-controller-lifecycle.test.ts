@@ -1,6 +1,7 @@
 import { EventIdSchema, MessageIdSchema, RunIdSchema } from "@marea/protocol";
 import { describe, expect, it, vi } from "vitest";
 
+import { StudentHttpError } from "./http-error.js";
 import { DIGEST, FixtureAgent, createFixtureController } from "./student.fixture.js";
 
 type Fixture = ReturnType<typeof createFixtureController>;
@@ -373,5 +374,68 @@ describe("StudentSessionController lifecycle races", () => {
       expect.objectContaining({ content: "Pending locally", sequence: 2 }),
     ]);
     expect(fixture.state.state.run?.outbox).toEqual([]);
+  });
+
+  async function restartRefusingResume(error: Error) {
+    const fixture = createFixtureController();
+    await fixture.controller.start("Project One");
+    await fixture.localSession.appendEvent("local:closed", (sequence, occurredAt) => ({
+      content: "Written before the teacher closed the run",
+      eventId: EventIdSchema.parse("event:local-closed"),
+      eventType: "student-message",
+      messageId: MessageIdSchema.parse("message:local-closed"),
+      occurredAt,
+      sequence,
+    }));
+    const open = fixture.server.openRun.bind(fixture.server);
+    const intents: string[] = [];
+    fixture.server.openRun = (token, request) => {
+      intents.push(request.intent.kind);
+      return request.intent.kind === "resume" ? Promise.reject(error) : open(token, request);
+    };
+    const restarted = createFixtureController({
+      credentials: fixture.credentials,
+      server: fixture.server,
+      state: fixture.state,
+    });
+    return { fixture, intents, start: () => restarted.controller.start("Project One") };
+  }
+
+  it("starts a fresh run once when the server no longer offers the run to resume", async () => {
+    const { fixture, intents, start } = await restartRefusingResume(
+      new StudentHttpError(409, "run.unavailable", false),
+    );
+
+    await expect(start()).resolves.toMatchObject({ runId: "run:1" });
+
+    expect(intents).toEqual(["resume", "new"]);
+    expect(fixture.state.state.run).toMatchObject({ phase: "active", outbox: [] });
+    expect(JSON.stringify(fixture.server.appendRequests)).not.toContain("Written before");
+  });
+
+  it.each([
+    ["a class configuration refusal", new StudentHttpError(409, "run.unavailable", false, true)],
+    ["another refusal", new StudentHttpError(403, "auth.forbidden", false)],
+    ["a transport failure", new Error("offline")],
+  ])("keeps the run to resume after %s", async (_name, error) => {
+    const { fixture, intents, start } = await restartRefusingResume(error);
+
+    await expect(start()).rejects.toBe(error);
+
+    expect(intents).toEqual(["resume"]);
+    expect(fixture.state.state.run).toMatchObject({ runId: "run:1" });
+  });
+
+  it("does not retry a refused fresh run", async () => {
+    const fixture = createFixtureController();
+    const refusal = new StudentHttpError(409, "run.unavailable", false);
+    let attempts = 0;
+    fixture.server.openRun = () => {
+      attempts += 1;
+      return Promise.reject(refusal);
+    };
+
+    await expect(fixture.controller.start("Project One")).rejects.toBe(refusal);
+    expect(attempts).toBe(1);
   });
 });
