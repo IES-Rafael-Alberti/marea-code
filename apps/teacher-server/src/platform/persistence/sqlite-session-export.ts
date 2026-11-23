@@ -15,6 +15,8 @@ const ACCESS = `EXISTS (SELECT 1 FROM marea_teacher_classes access
     AND ${activeGovernanceMembership("?1", "runs.class_id", "'teacher'")})`;
 const MAX_BYTES = 32 * 1024 * 1024;
 const MAX_EVENTS = 20_000;
+// Keep row materialization bounded while allowing several lessons for a full class.
+const MAX_RUNS = 2_000;
 
 export function exportUsage(row: SqliteRow): ExportUsage {
   const settled = ["settled", "breached"].includes(rowText(row, "state"));
@@ -85,7 +87,7 @@ export class SqliteSessionExportRepository implements SessionExportRepository {
         WHERE ${ACCESS} AND (?2 IS NULL OR runs.id = ?2) AND (?3 IS NULL OR runs.class_id = ?3)
           AND (?4 IS NULL OR runs.student_id = ?4) AND (?5 IS NULL OR runs.opened_at >= ?5)
           AND (?6 IS NULL OR runs.opened_at < ?6)
-        ORDER BY runs.opened_at, runs.id LIMIT 101`,
+        ORDER BY runs.opened_at, runs.id LIMIT ${MAX_RUNS + 1}`,
         [
           identity.userId,
           query.runId ?? null,
@@ -95,7 +97,7 @@ export class SqliteSessionExportRepository implements SessionExportRepository {
           query.until ?? null,
         ],
       );
-      if (rows.length > 100) throw new SessionExportError(413);
+      if (rows.length > MAX_RUNS) throw new SessionExportError(413);
       if (query.runId !== undefined && rows.length === 0) throw new SessionExportError(404);
       let bytes = 0;
       let events = 0;
