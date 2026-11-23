@@ -1,4 +1,4 @@
-import { securePrivatePath } from "@marea/private-filesystem";
+import { securePrivateDirectory } from "./private-file-windows.boundary.js";
 import { createHash } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -22,7 +22,7 @@ export async function openInputHistory(stateDirectory: string): Promise<Persiste
   const account = createHash("sha256").update(credential.token).digest("hex");
   const directory = join(stateDirectory, "input-history");
   await mkdir(directory, { recursive: true, mode: 0o700 });
-  securePrivatePath(directory, 0o700);
+  securePrivateDirectory(directory);
   const path = join(directory, `${account}.json`);
   const content = await readPrivateTextFile(path);
   let entries = content === null ? [] : EntriesSchema.parse(JSON.parse(content));

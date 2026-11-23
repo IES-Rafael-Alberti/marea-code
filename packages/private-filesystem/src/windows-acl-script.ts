@@ -11,15 +11,15 @@ try {
   $path = [IO.Path]::GetFullPath($path)
   $volume = [IO.Path]::GetPathRoot($path)
   $drive = [IO.DriveInfo]::new($volume)
-  if ($drive.DriveType -notin @([IO.DriveType]::Fixed, [IO.DriveType]::Removable, [IO.DriveType]::Ram)) { throw 'unsafe' }
+  if ($drive.DriveType -notin @([IO.DriveType]::Fixed, [IO.DriveType]::Removable, [IO.DriveType]::Ram)) { throw 'unsupported-volume' }
   $cursor = $volume
   $attributes = [IO.File]::GetAttributes($cursor)
-  if (($attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'unsafe' }
+  if (($attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'reparse-point' }
   $parts = $path.Substring($volume.Length).Split([char[]]@([IO.Path]::DirectorySeparatorChar), [StringSplitOptions]::RemoveEmptyEntries)
   foreach ($part in $parts) {
     $cursor = [IO.Path]::Combine($cursor, $part)
     $attributes = [IO.File]::GetAttributes($cursor)
-    if (($attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'unsafe' }
+    if (($attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'reparse-point' }
   }
   $isDirectory = ($attributes -band [IO.FileAttributes]::Directory) -ne 0
   $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
@@ -33,24 +33,37 @@ try {
       $rule = [Security.AccessControl.FileSystemAccessRule]::new($identity, [Security.AccessControl.FileSystemRights]::FullControl, $inherit, [Security.AccessControl.PropagationFlags]::None, [Security.AccessControl.AccessControlType]::Allow)
       $acl.AddAccessRule($rule)
     }
-    Set-Acl -LiteralPath $path -AclObject $acl
+    try {
+      Set-Acl -LiteralPath $path -AclObject $acl
+    } catch {
+      # Antivirus can hold the object open briefly; the caller retries once.
+      throw 'set-acl-failed'
+    }
   }
   $acl = if ($isDirectory) { [IO.Directory]::GetAccessControl($path) } else { [IO.File]::GetAccessControl($path) }
   # Elevated Windows processes create children owned by Administrators, already a trusted ACL principal.
-  if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin @($sid.Value, 'S-1-5-32-544')) { throw 'unsafe' }
+  if ($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin @($sid.Value, 'S-1-5-32-544')) { throw 'owner-mismatch' }
   $rules = $acl.GetAccessRules($true, $true, [Security.Principal.SecurityIdentifier])
-  if ($rules.Count -eq 0) { throw 'unsafe' }
+  if ($rules.Count -eq 0) { throw 'missing-user-access' }
   $userAccess = $false
   foreach ($rule in $rules) {
-    if ($rule.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow) { throw 'unsafe' }
-    if ($rule.IdentityReference.Value -notin @($sid.Value, 'S-1-5-18', 'S-1-5-32-544')) { throw 'unsafe' }
+    if ($rule.AccessControlType -ne [Security.AccessControl.AccessControlType]::Allow) { throw 'foreign-ace' }
+    if ($rule.IdentityReference.Value -notin @($sid.Value, 'S-1-5-18', 'S-1-5-32-544')) { throw 'foreign-ace' }
     if ($rule.IdentityReference.Value -eq $sid.Value -and ($rule.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -eq 0 -and ($rule.FileSystemRights -band [Security.AccessControl.FileSystemRights]::FullControl) -eq [Security.AccessControl.FileSystemRights]::FullControl) {
-      if ($isDirectory -and $rule.PropagationFlags -ne [Security.AccessControl.PropagationFlags]::None) { throw 'unsafe' }
-      if ($isDirectory -and ($rule.InheritanceFlags -band [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit') -ne [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit') { throw 'unsafe' }
+      if ($isDirectory -and $rule.PropagationFlags -ne [Security.AccessControl.PropagationFlags]::None) { throw 'foreign-ace' }
+      if ($isDirectory -and ($rule.InheritanceFlags -band [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit') -ne [Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit') { throw 'foreign-ace' }
       $userAccess = $true
     }
   }
-  if (-not $userAccess) { throw 'unsafe' }
+  if (-not $userAccess) { throw 'missing-user-access' }
   if ($isDirectory) { [Console]::Out.Write('directory') } else { [Console]::Out.Write('file') }
-} catch { [Console]::Out.Write('unsafe'); exit 1 }
+} catch {
+  # Print only an allowlisted reason; never the raw exception text (it may hold paths).
+  $reason = $_.Exception.Message
+  if ($reason -notin @('unsupported-volume', 'reparse-point', 'owner-mismatch', 'foreign-ace', 'missing-user-access', 'set-acl-failed')) {
+    $reason = 'unexpected'
+  }
+  [Console]::Out.Write($reason)
+  exit 1
+}
 `;

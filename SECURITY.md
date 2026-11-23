@@ -53,6 +53,34 @@ Repository administrators must enable the dependency graph, Dependabot alerts,
 secret scanning, and private vulnerability reporting in repository settings
 where available.
 
+## Private state file protection
+
+Student state, credentials and input history are stored outside the project
+workspace in a per-account private directory. On Windows, that directory is
+protected by a PowerShell ACL boundary (`packages/private-filesystem`): it
+rejects network and other unsupported volumes, reparse points, foreign owners,
+and foreign access-control entries, then grants access only to the current user,
+`SYSTEM` and `Administrators`.
+
+A directory is secured and verified **once per process** (memoized by its
+resolved realpath). Files created inside a verified directory inherit its
+protected ACL, so the model is _private directory = no foreign writers_: after
+securing, a foreign principal has no write access to the directory, and
+re-verifying every file that lives inside it would add PowerShell latency
+without closing an attack surface. Atomic writes therefore verify the containing
+directory instead of re-securing each temporary file, and reads skip the
+per-file ACL inspect only when the parent directory was verified this process
+and the file is a regular, non-link file. This optimization never skips the
+directory checks themselves: volume, reparse-point, owner and ACE rejection
+still run on first verification.
+
+Failures surface as a typed `PrivateFilesystemError` whose `diagnosticCode` is
+`private-fs.<reason>` from a fixed allowlist (for example `private-fs.timeout`,
+`private-fs.reparse-point`, `private-fs.set-acl-failed`). Diagnostic codes never
+carry paths, tokens or user content. Only transient failures (spawn failure,
+timeout, or an antivirus sharing violation during `Set-Acl`) are retried once;
+owner, ACE, volume and reparse-point failures are rejected immediately.
+
 ## Preview baseline CodeQL review
 
 The CodeQL report for commit `622226e` was reviewed on 2026-10-05. Its three
