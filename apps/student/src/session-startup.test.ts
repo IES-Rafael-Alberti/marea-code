@@ -52,8 +52,11 @@ describe("durable internal tutor startup", () => {
       await pending;
       await closing;
       await refused;
-      expect(test.state.state.run?.turns[0]?.state).toBe("cancelled");
-      expect(test.state.state.run?.turns[0]?.text).toBeUndefined();
+      if (source === "close") expect(test.state.state.run).toBeNull();
+      else {
+        expect(test.state.state.run?.turns[0]?.state).toBe("cancelled");
+        expect(test.state.state.run?.turns[0]?.text).toBeUndefined();
+      }
       const delivered = test.studentInterface.events.length;
       if (source === "close") {
         expect(rejectedBeforeRelease).toBe(true);
