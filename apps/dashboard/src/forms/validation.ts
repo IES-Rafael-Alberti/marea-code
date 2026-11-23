@@ -1,5 +1,5 @@
 /** Use the browser's localized constraint messages beside the field, including on blur. */
-export function showFieldValidity(input: HTMLInputElement): void {
+export function showFieldValidity(input: HTMLInputElement | HTMLTextAreaElement): void {
   input.dataset.touched = "true";
   const invalid = !input.validity.valid;
   input.setAttribute("aria-invalid", String(invalid));

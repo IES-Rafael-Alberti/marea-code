@@ -8,6 +8,35 @@ const key = { key: "apiKey", label, kind: "secret", required: true };
 const endpoint = { key: "endpoint", label, kind: "url", required: false, defaultValue: "x" };
 const region = { key: "region_2", label, kind: "text", required: false };
 
+it("accepts optional validation metadata with bounded values", () => {
+  const validation = { maxLength: 1, pattern: "x", normalize: "none", message: label };
+  expect(parse([{ ...region, validation }]).data?.fields[0]?.validation).toEqual(validation);
+  expect(
+    parse([
+      {
+        ...region,
+        validation: {
+          ...validation,
+          maxLength: 16384,
+          pattern: "x".repeat(1024),
+          normalize: "lowercase-trim",
+        },
+      },
+    ]).success,
+  ).toBe(true);
+  for (const invalid of [
+    { maxLength: 0 },
+    { maxLength: 16385 },
+    { maxLength: 1.5 },
+    { pattern: "" },
+    { pattern: "x".repeat(1025) },
+    { normalize: "uppercase" },
+    { message: { ...label, eu: "" } },
+    { extra: true },
+  ])
+    expect(parse([{ ...region, validation: { ...validation, ...invalid } }]).success).toBe(false);
+});
+
 it("accepts localized text, secret and URL fields", () => {
   expect(parse([key, endpoint, region]).success).toBe(true);
 });

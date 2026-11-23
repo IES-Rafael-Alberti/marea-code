@@ -1,3 +1,5 @@
+import { translate } from "@marea/i18n";
+import { CredentialLoginSchema, SafeDisplayNameSchema } from "@marea/protocol";
 import { Fragment } from "react";
 import type { ServerSetupRequest } from "@marea/protocol";
 import { SecretInput } from "../forms/secret-input.js";
@@ -40,12 +42,23 @@ export function SchoolFields({
               required
               aria-describedby={`setup-${key}-error`}
               ref={(input) => {
-                if (input?.dataset.touched) showFieldValidity(input);
+                if (!input) return;
+                const schema = key === "login" ? CredentialLoginSchema : SafeDisplayNameSchema;
+                input.setCustomValidity(
+                  schema.safeParse(value[key]).success
+                    ? ""
+                    : translate(
+                        key === "login"
+                          ? "dashboard.validation.login"
+                          : "dashboard.validation.name",
+                        locale,
+                      ),
+                );
+                if (input.dataset.touched) showFieldValidity(input);
               }}
               value={value[key]}
               maxLength={key === "login" ? 64 : 120}
               minLength={key === "login" ? 3 : 1}
-              pattern={key === "login" ? "[a-z0-9][a-z0-9._-]*" : undefined}
               autoComplete={key === "login" ? "username" : "off"}
               onChange={(event) => {
                 change({ ...value, [key]: event.currentTarget.value });

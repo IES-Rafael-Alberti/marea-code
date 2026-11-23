@@ -16,7 +16,7 @@ const messages = {
     done: "Descarga preparada.",
     error: "No se pudo exportar. Comprueba tu acceso e inténtalo de nuevo.",
     large:
-      "La selección es demasiado grande. Reduce las fechas o elige un alumno (máximo 100 sesiones y 32 MiB de eventos).",
+      "La selección es demasiado grande. Reduce las fechas o elige un alumno (máximo 2000 sesiones y 32 MiB de eventos).",
   },
   en: {
     title: "Export sessions",
@@ -34,7 +34,7 @@ const messages = {
     done: "Download ready.",
     error: "Export failed. Check your access and try again.",
     large:
-      "Selection is too large. Narrow the dates or choose a student (maximum 100 sessions and 32 MiB of events).",
+      "Selection is too large. Narrow the dates or choose a student (maximum 2,000 sessions and 32 MiB of events).",
   },
   eu: {
     title: "Esportatu saioak",
@@ -52,7 +52,7 @@ const messages = {
     done: "Deskarga prest.",
     error: "Ezin izan da esportatu. Egiaztatu sarbidea eta saiatu berriro.",
     large:
-      "Hautaketa handiegia da. Mugatu datak edo aukeratu ikasle bat (gehienez 100 saio eta 32 MiB gertaera).",
+      "Hautaketa handiegia da. Mugatu datak edo aukeratu ikasle bat (gehienez 2000 saio eta 32 MiB gertaera).",
   },
 };
 export const exportMessages = (locale: DashboardLocale) => messages[locale];

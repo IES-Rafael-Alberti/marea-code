@@ -1,3 +1,4 @@
+import { SchemaInput } from "../../forms/schema-input.js";
 import type { ReactElement } from "react";
 
 import { GovernanceExchangeView } from "./governance-exchange-view.js";
@@ -50,11 +51,11 @@ export function GovernanceClassesView({
       >
         <label>
           {m.classId}
-          <input name="classId" maxLength={128} />
+          <SchemaInput kind="id" message={m.idHelp} name="classId" maxLength={128} />
         </label>
         <label>
           {m.displayName}
-          <input name="displayName" maxLength={120} />
+          <SchemaInput kind="name" message={m.nameHelp} name="displayName" maxLength={120} />
         </label>
         <button type="submit" disabled={state.busy}>
           {m.create}

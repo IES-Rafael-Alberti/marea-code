@@ -199,7 +199,7 @@ it("rejects oversized selections before loading content", () => {
       .spyOn(database, "readAll")
       .mockImplementation((sql, args) =>
         sql.startsWith("SELECT runs.*")
-          ? Array.from({ length: 101 }, () => ({}))
+          ? Array.from({ length: 2001 }, () => ({}))
           : original(sql, args),
       );
     expect(() => repository.read(teacher, q)).toThrow(expect.objectContaining({ status: 413 }));

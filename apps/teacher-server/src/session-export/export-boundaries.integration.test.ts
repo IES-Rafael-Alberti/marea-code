@@ -47,7 +47,7 @@ it("accepts exact selection limits and binds each aggregate to the selected sess
     if (!row) throw new Error("fixture");
     vi.spyOn(database, "readAll").mockImplementation((sql, args) =>
       sql.startsWith("SELECT runs.*")
-        ? Array.from({ length: 100 }, () => row)
+        ? Array.from({ length: 2000 }, () => row)
         : sql.includes("SELECT DISTINCT")
           ? Array.from({ length: 2000 }, () => ({
               student_id: "s",
@@ -58,7 +58,7 @@ it("accepts exact selection limits and binds each aggregate to the selected sess
     );
     expect(
       repository.read(teacher, SessionExportQuerySchema.parse({ identities: "names" })),
-    ).toHaveLength(100);
+    ).toHaveLength(2000);
     expect(repository.students(teacher)).toHaveLength(2000);
   } finally {
     vi.restoreAllMocks();

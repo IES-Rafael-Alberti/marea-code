@@ -1,6 +1,12 @@
 import type { CompleteCatalog } from "../keys.js";
 
 const spanishCatalog = {
+  "dashboard.validation.name":
+    "Usa entre 1 y 120 letras, números, espacios, puntos, apóstrofos o guiones; empieza por una letra o número.",
+  "dashboard.validation.login":
+    "Usa entre 3 y 64 letras minúsculas, números, puntos, guiones bajos o guiones; empieza por una letra o número.",
+  "dashboard.validation.id":
+    "Usa entre 1 y 128 letras, números, puntos, guiones bajos, dos puntos o guiones; empieza por una letra o número.",
   "bootstrap.checking-connection": "Comprobando la conexión con el servidor del profesor…",
   "bootstrap.connection-failed":
     "No se ha podido conectar con el servidor del profesor. Comprueba la conexión e inténtalo de nuevo.",

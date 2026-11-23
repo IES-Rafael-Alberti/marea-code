@@ -4,6 +4,23 @@ import * as z from "zod";
 
 const text = (es: string, en: string, eu: string) => ({ es, en, eu });
 
+const domainPattern = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/u;
+const emailPattern = /^[^\s@]+@[^\s@]+$/u;
+const domainLength = 253;
+const emailLength = 320;
+const emailValidation = {
+  maxLength: emailLength,
+  pattern: emailPattern.source,
+  normalize: "none" as const,
+  message: text(
+    "Introduce una dirección de correo válida de hasta 320 caracteres.",
+    "Enter a valid email address of up to 320 characters.",
+    "Sartu gehienez 320 karaktereko baliozko helbide elektroniko bat.",
+  ),
+};
+const DomainSchema = z.string().trim().toLowerCase().max(domainLength).regex(domainPattern);
+const EmailSchema = z.string().max(emailLength).regex(emailPattern);
+
 export const googleWorkspaceSettings: ProviderSettingsDescriptor = {
   version: 1,
   guides: googleSetupGuides,
@@ -27,12 +44,23 @@ export const googleWorkspaceSettings: ProviderSettingsDescriptor = {
     },
     {
       key: "domain",
+      validation: {
+        maxLength: domainLength,
+        pattern: domainPattern.source,
+        normalize: "lowercase-trim",
+        message: text(
+          "Introduce un dominio válido de hasta 253 caracteres, como centro.edu.",
+          "Enter a valid domain of up to 253 characters, such as school.edu.",
+          "Sartu gehienez 253 karaktereko baliozko domeinu bat, adibidez eskola.eus.",
+        ),
+      },
       kind: "text",
       required: true,
       label: text("Dominio del centro", "School domain", "Ikastetxearen domeinua"),
     },
     {
       key: "serviceAccountEmail",
+      validation: emailValidation,
       kind: "text",
       required: false,
       label: text(
@@ -54,6 +82,7 @@ export const googleWorkspaceSettings: ProviderSettingsDescriptor = {
     },
     {
       key: "adminEmail",
+      validation: emailValidation,
       kind: "text",
       required: false,
       label: text(
@@ -64,17 +93,6 @@ export const googleWorkspaceSettings: ProviderSettingsDescriptor = {
     },
   ],
 };
-
-const DomainSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .max(253)
-  .regex(/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/u);
-const EmailSchema = z
-  .string()
-  .max(320)
-  .regex(/^[^\s@]+@[^\s@]+$/u);
 
 const GroupSettingsSchema = z
   .object({

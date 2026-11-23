@@ -1,6 +1,12 @@
 import type { CompleteCatalog } from "../keys.js";
 
 const englishCatalog = {
+  "dashboard.validation.name":
+    "Use 1–120 letters, numbers, spaces, periods, apostrophes or hyphens; start with a letter or number.",
+  "dashboard.validation.login":
+    "Use 3–64 lowercase letters, numbers, periods, underscores or hyphens; start with a letter or number.",
+  "dashboard.validation.id":
+    "Use 1–128 letters, numbers, periods, underscores, colons or hyphens; start with a letter or number.",
   "bootstrap.checking-connection": "Checking the connection to the teacher server…",
   "bootstrap.connection-failed":
     "Could not connect to the teacher server. Check your connection and try again.",
