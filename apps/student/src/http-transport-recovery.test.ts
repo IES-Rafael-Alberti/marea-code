@@ -1,6 +1,6 @@
 import { CapabilitiesRequestSchema } from "@marea/protocol";
 import { expect, it } from "vitest";
-import { createHttpStudentServer, StudentHttpError } from "./http-client.boundary.js";
+import { createHttpStudentServer } from "./http-client.boundary.js";
 
 it("keeps a broken successful JSON response retryable without a cancellation signal", async () => {
   const server = createHttpStudentServer({
@@ -10,7 +10,9 @@ it("keeps a broken successful JSON response retryable without a cancellation sig
         new Response(
           new ReadableStream<Uint8Array>({
             pull(controller) {
-              controller.error(new Error("Private socket error"));
+              controller.error(
+                Object.assign(new Error("Private socket error"), { code: "ECONNRESET" }),
+              );
             },
           }),
           { headers: { "content-type": "application/json" } },
@@ -25,5 +27,12 @@ it("keeps a broken successful JSON response retryable without a cancellation sig
         supportedProtocolVersions: ["0.1"],
       }),
     ),
-  ).rejects.toEqual(new StudentHttpError(0, "transport.interrupted", true));
+  ).rejects.toMatchObject({
+    cause: { name: "Error", code: "ECONNRESET" },
+    code: "transport.interrupted",
+    endpoint: "/v1/capabilities",
+    retryable: true,
+    serverOrigin: "https://teacher.example",
+    status: 0,
+  });
 });
