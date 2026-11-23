@@ -1,10 +1,14 @@
 import { createTranslator } from "@marea/i18n";
 import { StudentTuiStartupError } from "@marea/student-tui";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as z from "zod";
 
 import { StudentHttpError } from "./http-error.js";
-import { startupFailure, StudentWorkspaceError } from "./startup-failure.boundary.js";
+import {
+  diagnosticCodeFor,
+  startupFailure,
+  StudentWorkspaceError,
+} from "./startup-failure.boundary.js";
 
 const translator = createTranslator("en");
 
@@ -203,4 +207,63 @@ describe("safe startup diagnostics", () => {
     expect(result).toContain("session/unexpected");
     expect(result).not.toContain("synthetic-secret");
   });
+});
+
+describe("diagnostic discovery contracts", () => {
+  it("does not read diagnostic properties on functions", () => {
+    const error = Object.assign(() => undefined, { diagnosticCode: "private-fs.timeout" });
+    expect(diagnosticCodeFor(error)).toBeNull();
+  });
+
+  it("visits a cyclic cause only once", () => {
+    const read = vi.fn(() => null);
+    const error = {
+      get diagnosticCode() {
+        return read();
+      },
+      get cause() {
+        return this;
+      },
+    };
+    expect(diagnosticCodeFor(error)).toBeNull();
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["AgentAdapterError", "OtherError"])("restricts checkpoint mapping for %s", (name) => {
+    const error = { name, code: "invalid-checkpoint-state" };
+    expect(diagnosticCodeFor(error)).toBeNull();
+    expect(startupFailure(error, translator, "state")).toBe(
+      translator.t("student.cli.unexpected-error") +
+        "\n" +
+        translator.t("student.cli.failure-code", {
+          code: "state/" + (name === "AgentAdapterError" ? "checkpoint.invalid" : "unexpected"),
+        }) +
+        "\n",
+    );
+  });
+
+  it.each(["transport.interrupted", "auth.invalid"])(
+    "uses transport context only for transport codes: %s",
+    (code) => {
+      const error = Object.assign(new StudentHttpError(0, code, true), {
+        cause: { name: "Error", code: "ECONNRESET" },
+        elapsedMs: 0,
+        endpoint: "/v1/events",
+        serverOrigin: "https://teacher.test",
+      });
+      const interrupted = code === "transport.interrupted";
+      expect(startupFailure(error, translator, "connect")).toBe(
+        (interrupted
+          ? translator.t("bootstrap.connection-failed-at", { origin: "https://teacher.test" })
+          : translator.t("errors.auth.invalid")) +
+          "\n" +
+          translator.t("student.cli.failure-code", {
+            code: interrupted
+              ? "connect/transport.interrupted/HTTP-0/v1/events/Error:ECONNRESET"
+              : "connect/auth.invalid/HTTP-0",
+          }) +
+          "\n",
+      );
+    },
+  );
 });

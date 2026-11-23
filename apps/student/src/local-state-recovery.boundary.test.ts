@@ -277,7 +277,9 @@ describe("local state recovery", () => {
   });
 
   it("rethrows a typed private filesystem failure without quarantining", async () => {
-    await expectProbeFailureToPropagate(new PrivateFilesystemFailure());
+    await expectProbeFailureToPropagate(
+      Object.assign(new SyntaxError("damaged"), { diagnosticCode: "private-fs.timeout" }),
+    );
   });
 
   it("rethrows a plain error instead of setting state aside", async () => {
@@ -319,7 +321,9 @@ describe("local state recovery", () => {
     expect(quarantineFailure?.diagnosticCode).toBe("local-state.quarantine-failed");
     expect(quarantineFailure?.diagnosticCode).toMatch(DIAGNOSTIC_CODE_PATTERN);
     expect(quarantineFailure?.cause).toBe(failure);
-    expect(quarantineFailure?.message).not.toContain(stateDirectory);
+    expect(quarantineFailure?.message).toBe(
+      "Damaged local state could not be set aside for recovery.",
+    );
     expect(await readFile(join(stateDirectory, "session.json"), "utf8")).toBe('{"run":');
     expect(recovery.report().recovered).toBe(false);
   });
@@ -399,32 +403,45 @@ describe("local state recovery", () => {
     expect(notices).toEqual([createTranslator("en").t(RECOVERY_MESSAGE_KEY)]);
   });
 
-  it("announces with the saved interface language from the configured state root", async () => {
-    const stateDirectory = await createStateDirectory("recovery-saved-language");
-    const stateRoot = await temporaryDirectories.create("recovery-state-root");
-    await writeFile(
-      join(stateRoot, "settings.json"),
-      JSON.stringify({ "marea.interface-language.v1": "eu" }),
-    );
-    await writeFile(join(stateDirectory, "credential.json"), "{}");
-    const notices: string[] = [];
-    const recovery = createLocalStateRecovery({
-      environment: { MAREA_STATE_HOME: stateRoot },
-      homeDirectory: join(stateRoot, "unused-home"),
-      nextQuarantineId: () => "id8",
-      notice: (text) => {
-        notices.push(text);
-      },
-      now: () => NOW,
-      probes: [damaged("credential")],
-      stateDirectory,
-    });
+  it.each(["configured", "missing", "blank"])(
+    "announces with saved language using %s state root",
+    async (rootKind) => {
+      const stateDirectory = await createStateDirectory("recovery-saved-language");
+      const stateRoot = await temporaryDirectories.create("recovery-state-root");
+      const homeDirectory = await temporaryDirectories.create("saved-home");
+      const settingsRoot = rootKind === "configured" ? stateRoot : join(homeDirectory, ".marea");
+      await mkdir(settingsRoot, { recursive: true });
+      await writeFile(
+        join(settingsRoot, "settings.json"),
+        JSON.stringify({ "marea.interface-language.v1": "eu" }),
+      );
+      await writeFile(join(stateDirectory, "credential.json"), "{}");
+      const notices: string[] = [];
+      const recovery = createLocalStateRecovery({
+        environment: {
+          MAREA_STATE_HOME:
+            rootKind === "configured"
+              ? "  " + stateRoot + "  "
+              : rootKind === "blank"
+                ? "  "
+                : undefined,
+        },
+        homeDirectory,
+        nextQuarantineId: () => "id8",
+        notice: (text) => {
+          notices.push(text);
+        },
+        now: () => NOW,
+        probes: [damaged("credential")],
+        stateDirectory,
+      });
 
-    await recovery.prepare();
-    await recovery.announce();
+      await recovery.prepare();
+      await recovery.announce();
 
-    expect(notices).toEqual([createTranslator("eu").t(RECOVERY_MESSAGE_KEY)]);
-  });
+      expect(notices).toEqual([createTranslator("eu").t(RECOVERY_MESSAGE_KEY)]);
+    },
+  );
 
   it("writes the notice to the start output when no sink is given", async () => {
     const stateDirectory = await createStateDirectory("recovery-stdout");

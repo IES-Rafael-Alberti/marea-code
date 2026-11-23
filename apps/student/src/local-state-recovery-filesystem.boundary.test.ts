@@ -1,4 +1,4 @@
-import { lstat, writeFile } from "node:fs/promises";
+import { chmod, lstat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -27,6 +27,10 @@ describe("node local state filesystem", () => {
     expect(await filesystem.list(join(root, "missing"))).toEqual([]);
     await expect(filesystem.list(file)).rejects.toThrow();
 
+    await filesystem.secureDirectory(join(root, "quarantine", "id"));
+    expect((await lstat(join(root, "quarantine", "id"))).mode & 0o777).toBe(0o700);
+
+    await chmod(join(root, "quarantine", "id"), 0o755);
     await filesystem.secureDirectory(join(root, "quarantine", "id"));
     expect((await lstat(join(root, "quarantine", "id"))).mode & 0o777).toBe(0o700);
 

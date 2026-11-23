@@ -2,7 +2,10 @@ import { CapabilitiesRequestSchema } from "@marea/protocol";
 import { describe, expect, it, vi } from "vitest";
 
 import { createHttpStudentServer, StudentHttpError } from "./http-client.boundary.js";
-import type { StudentHttpTransportError } from "./http-transport-diagnostics.boundary.js";
+import {
+  transportFailure,
+  type StudentHttpTransportError,
+} from "./http-transport-diagnostics.boundary.js";
 
 const capabilitiesRequest = CapabilitiesRequestSchema.parse({
   requestId: "request:capabilities",
@@ -84,5 +87,64 @@ describe("HTTP transport diagnostics", () => {
     } finally {
       clock.mockRestore();
     }
+  });
+});
+
+describe("transport diagnostic traversal boundaries", () => {
+  function cause(error: object) {
+    return transportFailure(new Request("https://teacher.test/"), error, 0, false).cause;
+  }
+
+  it.each(
+    "AbortError DOMException Error FetchError NetworkError SystemError TimeoutError TypeError".split(
+      " ",
+    ),
+  )("preserves the allowlisted error name %s", (name) => {
+    expect(cause({ name })).toEqual({ name, code: "other" });
+  });
+
+  it.each(
+    "ABORT_ERR DEPTH_ZERO_SELF_SIGNED_CERT EAI_AGAIN ECONNABORTED ECONNREFUSED ECONNRESET EHOSTUNREACH ENETDOWN ENETUNREACH ENOTFOUND EPIPE ERR_SOCKET_CLOSED ERR_STREAM_PREMATURE_CLOSE ESOCKETTIMEDOUT ETIMEDOUT SELF_SIGNED_CERT_IN_CHAIN UNABLE_TO_GET_ISSUER_CERT UNABLE_TO_GET_ISSUER_CERT_LOCALLY UNABLE_TO_VERIFY_LEAF_SIGNATURE UND_ERR_BODY_TIMEOUT UND_ERR_CONNECT_TIMEOUT UND_ERR_HEADERS_TIMEOUT UND_ERR_SOCKET redirect-rejected".split(
+      " ",
+    ),
+  )("preserves the allowlisted transport code %s", (code) => {
+    expect(cause({ code })).toEqual({ name: "other", code });
+  });
+
+  it.each(["!CERT_EXPIRED", "CERT_EXPIRED!", "!ERR_TLS_ALERT", "TLS_ALERT!"])(
+    "rejects decorated TLS codes %s",
+    (code) => {
+      expect(cause({ code })).toEqual({ name: "other", code: "other" });
+    },
+  );
+
+  it("does not inspect functions as error objects", () => {
+    const error = Object.assign(() => undefined, { code: "ECONNRESET" });
+    expect(cause(error)).toEqual({ name: "other", code: "other" });
+  });
+
+  it("reads a cyclic object's properties only once", () => {
+    const message = vi.fn(() => "ordinary failure");
+    const error = {
+      get message() {
+        return message();
+      },
+      get cause() {
+        return this;
+      },
+    };
+    expect(cause(error)).toEqual({ name: "other", code: "other" });
+    expect(message).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [248, "redirect-rejected"],
+    [249, "other"],
+    [256, "other"],
+  ])("limits redirect inspection at offset %i", (offset, code) => {
+    expect(cause({ message: " ".repeat(offset) + "redirect" })).toEqual({
+      name: "other",
+      code,
+    });
   });
 });

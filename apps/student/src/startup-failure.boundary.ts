@@ -12,15 +12,18 @@ function errorProperty(value: object, key: string): unknown {
   try {
     return Reflect.get(value, key);
   } catch {
-    return undefined;
+    // Unreadable properties have no diagnostic value.
   }
+  return undefined;
 }
 
 function findDiagnosticCode(error: unknown, includeCheckpoint: boolean): string | null {
   let current = error;
   const seen = new Set<unknown>();
   for (let depth = 0; depth < MAX_DIAGNOSTIC_DEPTH; depth += 1) {
-    if (typeof current !== "object" || current === null || seen.has(current)) break;
+    if (typeof current !== "object" || seen.has(current)) break;
+    // Stryker disable next-line ConditionalExpression: Reflect.get(null) is caught and yields no properties, so traversing null also returns no diagnostic.
+    if (current === null) break;
     seen.add(current);
     const candidate = errorProperty(current, "diagnosticCode");
     if (typeof candidate === "string" && DIAGNOSTIC_CODE.test(candidate)) return candidate;

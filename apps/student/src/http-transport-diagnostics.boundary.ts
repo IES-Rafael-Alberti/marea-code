@@ -57,8 +57,9 @@ function objectProperty(value: object, key: string): unknown {
   try {
     return Reflect.get(value, key);
   } catch {
-    return undefined;
+    // Unreadable properties have no diagnostic value.
   }
+  return undefined;
 }
 
 function allowlistedTransportCode(value: unknown): string | null {
@@ -75,12 +76,14 @@ function transportCause(error: unknown): StudentHttpTransportCause {
   let redirected = false;
   const seen = new Set<unknown>();
   for (let depth = 0; depth < MAX_TRANSPORT_CAUSE_DEPTH; depth += 1) {
-    if (typeof current !== "object" || current === null || seen.has(current)) break;
+    if (typeof current !== "object" || seen.has(current)) break;
+    // Stryker disable next-line ConditionalExpression: Reflect.get(null) is caught and yields no properties, so traversing null also returns no diagnostic.
+    if (current === null) break;
     seen.add(current);
     if (name === "other") {
       const candidate = objectProperty(current, "name");
-      if (typeof candidate === "string" && TRANSPORT_ERROR_NAMES.has(candidate)) {
-        name = candidate;
+      if (TRANSPORT_ERROR_NAMES.has(candidate as string)) {
+        name = candidate as string;
       }
     }
     code ??= allowlistedTransportCode(objectProperty(current, "code"));
@@ -144,6 +147,7 @@ export function studentHttpTransportDiagnostics(
   const serverOrigin = objectProperty(error, "serverOrigin");
   if (
     endpoint === null ||
+    // Stryker disable next-line ConditionalExpression: Number.isFinite also rejects every non-number; this guard supplies TypeScript narrowing.
     typeof elapsedMs !== "number" ||
     !Number.isFinite(elapsedMs) ||
     elapsedMs < 0 ||
