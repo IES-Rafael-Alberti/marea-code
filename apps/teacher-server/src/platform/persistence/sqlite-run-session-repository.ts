@@ -208,6 +208,10 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
           input.expiresAt,
         ],
       );
+      this.#database.execute(
+        "UPDATE marea_active_runs SET last_activity_at = max(last_activity_at, ?2) WHERE run_id = ?1",
+        [input.runId, input.issuedAt],
+      );
       return {
         expiresAt: input.expiresAt,
         issuedAt: input.issuedAt,

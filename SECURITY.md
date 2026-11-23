@@ -82,11 +82,13 @@ Repository administrators must enable the dependency graph, Dependabot alerts,
 secret scanning, and private vulnerability reporting in repository settings
 where available.
 
-Bearer sessions are issued for 30 minutes. A student session is extended to 30
-minutes from now only when an authenticated lease renewal succeeds
-for one of the student's own active runs with recent durable activity, and never
-beyond 8 hours after sign-in. Teacher revocation, account deactivation, closed
-runs, and expired sessions are never extended or revived.
+Bearer sessions have a 30-minute idle timeout and an absolute lifetime of 8 hours
+from sign-in. Authenticated teacher dashboard activity, including live connection
+checks, slides teacher sessions. Authenticated presence heartbeats and successful
+lease renewals for a student's own active run count as activity using the server
+clock; lease renewal slides the student's session. Closing the terminal stops
+heartbeats and renewal, so the session lapses after 30 minutes. Teacher revocation,
+account deactivation, closed runs, and expired sessions are never extended or revived.
 
 ## Private state file protection
 

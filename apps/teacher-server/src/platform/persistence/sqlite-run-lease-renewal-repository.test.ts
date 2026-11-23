@@ -35,6 +35,7 @@ describe("SQLite run session repository lease recovery", () => {
         RENEWAL.issuedAt,
         RENEWAL.expiresAt,
       ],
+      ["run:1", RENEWAL.issuedAt],
     ]);
     expect(database.executions[0]?.sql).toContain("revoked_at");
     expect(database.executions[1]?.sql).toContain("INSERT INTO marea_run_leases");
