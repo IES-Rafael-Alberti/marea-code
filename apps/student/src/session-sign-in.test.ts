@@ -81,6 +81,34 @@ function options(
 }
 
 describe("external sign-in completion retry", () => {
+  it("uses real default delay and random jitter at each retry", async () => {
+    vi.useFakeTimers();
+    const random = vi.spyOn(Math, "random").mockReturnValueOnce(0.001).mockReturnValueOnce(0.999);
+    const server: ExternalFixtureServer = new ExternalFixtureServer((request) =>
+      server.completed.length < 3
+        ? Promise.reject(new StudentHttpError(503, "server.error", true))
+        : Promise.resolve(successfulResponse(request)),
+    );
+    const configuration = options(server, () => Promise.resolve());
+    Reflect.deleteProperty(configuration, "sleep");
+    Reflect.deleteProperty(configuration, "retryJitter");
+    try {
+      const result = exchangeExternal(configuration, PROVIDER_ID);
+      await vi.advanceTimersByTimeAsync(999);
+      expect(server.completed).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(server.completed).toHaveLength(2);
+      await vi.advanceTimersByTimeAsync(2498);
+      expect(server.completed).toHaveLength(2);
+      await vi.advanceTimersByTimeAsync(1);
+      await expect(result).resolves.toBe(SESSION_TOKEN);
+      expect(server.completed).toHaveLength(3);
+      expect(random).toHaveBeenCalledTimes(2);
+    } finally {
+      random.mockRestore();
+      vi.useRealTimers();
+    }
+  });
   it("retries a retryable 503 completion with the same flow and succeeds", async () => {
     const sleep = vi.fn<(milliseconds: number) => Promise<void>>(() => Promise.resolve());
     let calls = 0;
