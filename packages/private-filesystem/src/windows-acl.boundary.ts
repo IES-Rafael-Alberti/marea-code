@@ -91,7 +91,10 @@ export function checkWindowsPrivatePath(
 ): "directory" | "file" {
   // Only local absolute DOS paths: no UNC, device aliases, ADS or NULs.
   if (!/^[a-zA-Z]:[\\/][^:\0]*$/.test(path)) {
-    throw privateFilesystemError("unexpected");
+    // UNC shares (redirected or roaming profiles) are network storage, not a local volume.
+    throw privateFilesystemError(
+      /^[\\/]{2}[^\\/]/.test(path) ? "unsupported-volume" : "unexpected",
+    );
   }
   let result = runAclCheck(path, action);
   let kind = resultKind(result);

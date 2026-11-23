@@ -166,6 +166,15 @@ describe("checkWindowsPrivatePath", () => {
     expect(error.diagnosticCode).toBe("private-fs.unexpected-output");
   });
 
+  it.each(["\\\\server\\share\\state", "//server/share/state"])(
+    "reports a UNC profile path %s as an unsupported volume without spawning",
+    (path) => {
+      const error = capturePrivateError(() => checkWindowsPrivatePath(path, "inspect"));
+      expect(error.diagnosticCode).toBe("private-fs.unsupported-volume");
+      expect(spawn).not.toHaveBeenCalled();
+    },
+  );
+
   it("rejects a non-local path without spawning", () => {
     const error = capturePrivateError(() => checkWindowsPrivatePath("relative", "inspect"));
     expect(error.diagnosticCode).toBe("private-fs.unexpected");
