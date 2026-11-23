@@ -4,6 +4,7 @@ import {
   AppendRunEventsRequestSchema,
   AppendRunEventsResponseSchema,
   CanonicalRunEventSchema,
+  RelativeWorkspacePathSchema,
 } from "./events.js";
 
 const digest = `sha256:${"a".repeat(64)}`;
@@ -27,6 +28,35 @@ const request = {
 } as const;
 
 describe("canonical run event protocol", () => {
+  it("accepts backend-compatible classroom filenames and rejects unsafe paths", () => {
+    for (const path of [
+      "Unidad 2/ejercicio.py",
+      "trabajo (copia).txt",
+      "año/niñoº.py",
+      "C++/tarea#2 & @.txt",
+      "l'été.txt",
+    ]) {
+      expect(RelativeWorkspacePathSchema.parse(path)).toBe(path);
+    }
+    for (const path of [
+      "",
+      ".",
+      "..",
+      "a//b",
+      "/absolute",
+      "a\\b",
+      "a:b",
+      "a/../b",
+      "x.",
+      "x ",
+      ".marea-secret",
+      "aux.txt",
+      "bad\u202e.txt",
+      "bad\u0000.txt",
+    ]) {
+      expect(RelativeWorkspacePathSchema.safeParse(path).success).toBe(false);
+    }
+  });
   it.each([false, true])("retains protocol 0.1 Unicode event bounds (jitless=%s)", (jitless) => {
     const accepted = {
       ...request,
