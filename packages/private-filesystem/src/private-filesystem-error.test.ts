@@ -16,9 +16,12 @@ describe("PrivateFilesystemError", () => {
     expect(error.message).toBe("Private filesystem permissions could not be established.");
   });
 
-  it("rejects diagnostic codes that do not match the shared contract", () => {
-    expect(() => new PrivateFilesystemError("Private Fs!")).toThrow(
-      "Invalid private filesystem diagnostic code.",
-    );
-  });
+  it.each(["Private Fs!", "!private-fs.timeout", "private-fs.timeout!"])(
+    "rejects invalid diagnostic code %s",
+    (code) => {
+      expect(() => new PrivateFilesystemError(code)).toThrow(
+        "Invalid private filesystem diagnostic code.",
+      );
+    },
+  );
 });

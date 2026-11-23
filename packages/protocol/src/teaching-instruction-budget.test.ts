@@ -7,7 +7,13 @@ it.each(["tutoring", "free"])(
     const parse = (text: string) =>
       ClassInstructionsSchema.safeParse({ tutoring: "Ask", free: "Help", [field]: text });
     expect(parse("é".repeat(131_072)).success).toBe(true);
-    expect(parse("é".repeat(131_072) + "x").success).toBe(false);
+    expect(parse("é".repeat(131_072) + "x").error?.issues).toEqual([
+      {
+        code: "custom",
+        path: [field],
+        message: "Instructions must fit within 256 KiB of UTF-8 text before prompt composition.",
+      },
+    ]);
     expect(parse("😀".repeat(65_536)).success).toBe(true);
     expect(parse("😀".repeat(65_536) + "x").success).toBe(false);
   },

@@ -31,6 +31,10 @@ describe("canonical run event protocol", () => {
   it("accepts backend-compatible classroom filenames and rejects unsafe paths", () => {
     for (const path of [
       "Unidad 2/ejercicio.py",
+      "xcon",
+      "console.txt",
+      "com0",
+      "lpt0",
       "trabajo (copia).txt",
       "año/niñoº.py",
       "C++/tarea#2 & @.txt",
@@ -324,3 +328,10 @@ describe("canonical run event protocol", () => {
     ).toThrow();
   });
 });
+
+it.each(["con", "com1", "lpt9", "./file", "../file", "/file"])(
+  "rejects reserved or traversing path %s",
+  (path) => {
+    expect(RelativeWorkspacePathSchema.safeParse(path).success).toBe(false);
+  },
+);

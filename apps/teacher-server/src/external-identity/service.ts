@@ -53,6 +53,10 @@ export interface ExternalIdentityServiceDependencies {
   readonly completionWaitTimeoutMs?: number;
 }
 
+function isSafeInteger(value: number | undefined): value is number {
+  return Number.isSafeInteger(value);
+}
+
 function sameSecret(left: string, right: string): boolean {
   const expected = Buffer.from(left);
   const actual = Buffer.from(right);
@@ -176,16 +180,14 @@ export class ExternalIdentityService {
   private acquireCompletionSlot(): Promise<boolean> {
     const configured = this.#dependencies.maxConcurrentCompletions;
     const limit =
-      configured !== undefined && Number.isSafeInteger(configured) && configured > 0
-        ? configured
-        : DEFAULT_MAX_CONCURRENT_COMPLETIONS;
+      isSafeInteger(configured) && configured > 0 ? configured : DEFAULT_MAX_CONCURRENT_COMPLETIONS;
     if (this.#completing < limit) {
       this.#completing += 1;
       return Promise.resolve(true);
     }
     const configuredWait = this.#dependencies.completionWaitTimeoutMs;
     const waitMs =
-      configuredWait !== undefined && Number.isSafeInteger(configuredWait) && configuredWait > 0
+      isSafeInteger(configuredWait) && configuredWait > 0
         ? configuredWait
         : COMPLETION_SLOT_WAIT_MS;
     return new Promise<boolean>((resolve) => {

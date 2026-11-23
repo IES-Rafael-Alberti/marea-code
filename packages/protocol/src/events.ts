@@ -26,9 +26,9 @@ export const RelativeWorkspacePathSchema = z
   );
 
 function isValidRelativeWorkspacePath(path: string): boolean {
-  if (path.startsWith("/") || path.includes("\\") || /[\p{Cc}\p{Cf}]/u.test(path)) return false;
+  if (path.includes("\\") || /[\p{Cc}\p{Cf}]/u.test(path)) return false;
   return path.split("/").every((segment) => {
-    if (segment.length === 0 || segment === "." || segment === "..") return false;
+    if (segment.length === 0) return false;
     if (segment.includes(":") || segment.endsWith(".") || segment.endsWith(" ")) return false;
     if (segment.toLowerCase().startsWith(".marea-")) return false;
     return !/^(?:aux|con|nul|prn|com[1-9]|lpt[1-9])(?:\..*)?$/iu.test(segment);

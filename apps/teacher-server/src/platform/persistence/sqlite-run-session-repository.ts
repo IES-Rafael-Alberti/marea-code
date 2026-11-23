@@ -109,6 +109,7 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
         if (inserted) {
           highest = event.sequence;
           // Activity time comes from the server, never the student's clock.
+          // Stryker disable next-line EqualityOperator: Equal timestamps select the same string with either comparison.
           lastActivity = input.now > lastActivity ? input.now : lastActivity;
           pending = pendingAfter(pending, event);
         }
