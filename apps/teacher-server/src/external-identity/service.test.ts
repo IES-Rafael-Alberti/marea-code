@@ -13,7 +13,7 @@ import {
   ExternalAuthCompleteRequestSchema,
   ExternalAuthProvidersRequestSchema,
 } from "@marea/protocol";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { AuthenticatedIdentity } from "../identity/contracts.js";
 import type {
@@ -365,16 +365,25 @@ describe("external identity service", () => {
   });
 
   it("queues concurrent completions beyond the configured limit until slots free", async () => {
-    const test = fixture({ maxCompletions: 4 });
-    const release = Promise.withResolvers<undefined>();
-    test.provider.pending = release.promise.then(() => undefined);
-    const flows = Array.from({ length: 6 }, () => started(test));
-    const completions = flows.map(({ response, request }) =>
-      test.service.complete(completion(response.flowId, request.state)),
-    );
-    release.resolve(undefined);
-    await expect(Promise.all(completions)).resolves.toHaveLength(6);
-    expect(test.opened).toHaveLength(6);
+    vi.useFakeTimers();
+    try {
+      const test = fixture({ maxCompletions: 4 });
+      const release = Promise.withResolvers<undefined>();
+      test.provider.pending = release.promise.then(() => undefined);
+      const flows = Array.from({ length: 6 }, () => started(test));
+      const completions = flows.map(({ response, request }) =>
+        test.service.complete(completion(response.flowId, request.state)),
+      );
+      expect(vi.getTimerCount()).toBe(2);
+      await vi.advanceTimersByTimeAsync(0);
+      expect(test.provider.responses).toHaveLength(4);
+      release.resolve(undefined);
+      await expect(Promise.all(completions)).resolves.toHaveLength(6);
+      expect(test.opened).toHaveLength(6);
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("keeps a completion whose slot wait times out retryable with the same flow", async () => {
