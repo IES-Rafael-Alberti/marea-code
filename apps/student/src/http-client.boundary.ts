@@ -12,6 +12,7 @@ import {
 import {
   RequestIdSchema,
   AppendRunEventsResponseSchema,
+  MAX_JSON_REQUEST_BYTES,
   MAX_RUN_EVENTS_REQUEST_BYTES,
   CapabilitiesResponseSchema,
   ClassBootstrapOutcomeSchema,
@@ -54,7 +55,6 @@ import * as z from "zod";
 import type { AuthenticationResult, StudentServer } from "./contracts.js";
 
 const MAX_JSON_RESPONSE_BYTES = 1_048_576;
-const MAX_REQUEST_BYTES = 1_048_576;
 const MAX_MODEL_REQUEST_BYTES = 2_097_152;
 const MAX_STREAM_LINE_BYTES = 131_072;
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -180,7 +180,7 @@ function createRequest(
   body: object,
   signal: AbortSignal,
   credential?: string,
-  maxBytes = MAX_REQUEST_BYTES,
+  maxBytes = MAX_JSON_REQUEST_BYTES,
 ): Request {
   // A fresh connection per request: Bun re-sends a POST whose reused connection closes
   // mid-response and splices both bodies, which would replay turns and model streams.
@@ -302,7 +302,7 @@ export function createHttpClient(options: StudentHttpOptions): HttpClient {
       schema: z.ZodType<T>,
       credential?: string,
       maxResponseBytes = MAX_JSON_RESPONSE_BYTES,
-      maxRequestBytes = MAX_REQUEST_BYTES,
+      maxRequestBytes = MAX_JSON_REQUEST_BYTES,
       minimumTimeoutMs = 0,
     ): Promise<T> {
       const request = createRequest(

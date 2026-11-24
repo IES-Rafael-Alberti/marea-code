@@ -8,6 +8,7 @@ import {
   EnrollStudentRequestSchema,
   EventIdSchema,
   IdempotencyKeySchema,
+  MAX_JSON_REQUEST_BYTES,
   OpenRunRequestSchema,
   RequestIdSchema,
   RenewRunLeaseRequestSchema,
@@ -393,12 +394,10 @@ describe("HTTP student server boundary", () => {
       baseUrl: "https://teacher.example",
       fetch: fetchRequest,
     });
-    await expect(
-      server.capabilities({
-        ...requests.capabilities,
-        clientVersion: "x".repeat(1_048_577),
-      }),
-    ).rejects.toThrow("The teacher server request exceeds its size limit.");
+    const oversized = { ...requests.capabilities, clientVersion: "x".repeat(65_537) };
+    await expect(server.capabilities(oversized)).rejects.toThrow(
+      "The teacher server request exceeds its size limit.",
+    );
     expect(fetchRequest).not.toHaveBeenCalled();
   });
 
@@ -407,7 +406,7 @@ describe("HTTP student server boundary", () => {
     const overhead = new TextEncoder().encode(JSON.stringify(emptyVersionRequest)).byteLength;
     const exactRequest = {
       ...emptyVersionRequest,
-      clientVersion: "x".repeat(1_048_576 - overhead),
+      clientVersion: "x".repeat(MAX_JSON_REQUEST_BYTES - overhead),
     };
     const response = responseFor(STUDENT_HTTP_PATHS.capabilities, requests.capabilities.requestId);
     const bytes = new Uint8Array(await response.arrayBuffer());
