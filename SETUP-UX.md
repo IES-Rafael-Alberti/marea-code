@@ -140,7 +140,7 @@ the account preference overrides browser detection and local storage; teachers c
 change it immediately in **Settings → My dashboard**. The dedicated authenticated
 `/api/v1/dashboard/profiles/language` endpoint leaves strict profile documents unchanged.
 The preference is namespaced account metadata in the existing SQLite database, included
-in backups and removed by account retention. Database schema 14 remains unchanged.
+in backups and removed by account retention. Database schema 15 only adds the closing teacher of a session.
 
 ## Identity providers
 
