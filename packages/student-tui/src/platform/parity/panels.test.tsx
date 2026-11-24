@@ -96,6 +96,50 @@ describe("approval panel", () => {
     expect(onAction.mock.calls).toEqual([[{ type: "approve" }], [{ type: "start-reject" }]]);
   });
 
+  it("shows the batch position, what follows and an approve-all button", () => {
+    const batch: ApprovalRequest = {
+      ...SHELL,
+      batch: { position: 1, total: 3, remaining: ["execute cd src", "delete a.txt"] },
+    };
+    const { onAction, rendered } = approval(batch);
+    const lines = textLines(rendered);
+    expect(lines[0]).toBe("Autorizar · execute · Acción 1 de 3");
+    expect(lines).toContain("Después:\n  · execute cd src\n  · delete a.txt");
+    const buttons = nodesOfType(rendered, "referenceBox").filter(
+      (node) => typeof node.props.onMouseDown === "function",
+    );
+    expect(buttons).toHaveLength(3);
+    clickButton(buttons[1]);
+    expect(onAction).toHaveBeenCalledWith({ type: "approve-all" });
+    const last = approval({ ...batch, batch: { position: 3, total: 3, remaining: [] } });
+    expect(textLines(last.rendered)[0]).toBe("Autorizar · execute · Acción 3 de 3");
+    expect(
+      nodesOfType(last.rendered, "referenceBox").filter(
+        (node) => typeof node.props.onMouseDown === "function",
+      ),
+    ).toHaveLength(2);
+    const focusedPanel = ApprovalPanel({
+      copy: approvalCopy,
+      onAction: vi.fn(),
+      state: openApproval(batch),
+      interaction: {
+        focus: "approve-all",
+        scroll: { current: null },
+        activate: vi.fn(),
+        focusOn: vi.fn(),
+      },
+    });
+    const [, focusedButton] = nodesOfType(focusedPanel, "referenceBox").filter(
+      (node) => typeof node.props.onMouseDown === "function",
+    );
+    expect(focusedButton?.props.backgroundColor).toBe(PALETTE.buttonApproveFocused);
+    const decided = approval(batch, { type: "approve-all" });
+    expect(textLines(decided.rendered)).not.toContain(
+      "Después:\n  · execute cd src\n  · delete a.txt",
+    );
+    expect(textLines(decided.rendered)).toContain(approvalCopy.approvedAll);
+  });
+
   it("asks for a reason only after rejecting, and confirms it from the field", () => {
     expect(nodesOfType(approval(SHELL).rendered, "input")).toHaveLength(0);
     const { onAction, rendered } = approval(SHELL, { type: "start-reject" });

@@ -366,15 +366,17 @@ export function createConversationController(
       if (action.type === "exit") {
         return exit();
       }
-      if (action.type === "approve" || action.type === "reject") {
+      if (action.type === "approve" || action.type === "approve-all" || action.type === "reject") {
         if (action.interruptId !== undefined && action.interruptId !== current.approval?.approvalId)
           return false;
         return resolveApproval(
           action.type === "approve"
             ? "approved"
-            : action.reason === undefined
-              ? "rejected"
-              : { decision: "rejected", reason: action.reason.slice(0, 2048) },
+            : action.type === "approve-all"
+              ? { decision: "approved", remaining: true }
+              : action.reason === undefined
+                ? "rejected"
+                : { decision: "rejected", reason: action.reason.slice(0, 2048) },
           "streaming",
           undefined,
         );

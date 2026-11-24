@@ -60,7 +60,12 @@ export interface ToolCopy {
 
 export interface ApprovalCopy {
   readonly approve: string;
+  readonly approveAll: string;
   readonly approved: string;
+  readonly approvedAll: string;
+  /** Takes `{{position}}` and `{{total}}`. */
+  readonly position: string;
+  readonly remaining: string;
   readonly cancelled: string;
   readonly collapse: string;
   readonly editAfter: string;

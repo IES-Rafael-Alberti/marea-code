@@ -175,6 +175,20 @@ it("expands a mixed turn together, records normalized history, and binds legacy 
   });
 });
 
+it("carries the batch position into the approval and dispatches approve all", () => {
+  const dispatch = vi.fn();
+  const view = createPresentation(context, copy, dispatch);
+  const batch = { position: 1, total: 2, remaining: ["execute cd"] };
+  view.sync({
+    approval: { approvalId: "review:batch-0", path: "", summary: "dir", batch },
+    messages: [],
+    status: "approval",
+  });
+  expect(view.snapshot().transcript.at(-1)).toMatchObject({ approval: { request: { batch } } });
+  view.approve({ type: "approve-all" });
+  expect(dispatch).toHaveBeenLastCalledWith({ type: "approve-all", interruptId: "review:batch-0" });
+});
+
 it("does not retry an old offer once the conversation is ready again", () => {
   const dispatch = vi.fn();
   const view = createPresentation(context, copy, dispatch);

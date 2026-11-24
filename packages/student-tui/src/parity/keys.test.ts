@@ -51,6 +51,8 @@ describe("application keys", () => {
 describe("approval keys", () => {
   it("decides only while an approval is waiting outside a field", () => {
     expect(act("y", {}, { approvalKeys: true })).toEqual({ type: "approve" });
+    expect(act("a", {}, { approvalKeys: true })).toEqual({ type: "approve-all" });
+    expect(act("a")).toBeNull();
     expect(act("n", {}, { approvalKeys: true })).toEqual({ type: "reject" });
     expect(act("y")).toBeNull();
     expect(act("n")).toBeNull();

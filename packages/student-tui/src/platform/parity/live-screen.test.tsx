@@ -329,6 +329,8 @@ it("activates tools, preview, retry and question navigation through the focus co
   expect(test.presentation.snapshot().transcript.at(-1)).toMatchObject({
     approval: { expanded: true },
   });
+  node.props.interaction?.activate("approve-all");
+  expect(approve).toHaveBeenLastCalledWith({ type: "approve-all" });
   node.props.interaction?.activate("approve");
   expect(approve).toHaveBeenLastCalledWith({ type: "approve" });
   expect(test.dispatch).toHaveBeenLastCalledWith({ type: "approve", interruptId: "review" });

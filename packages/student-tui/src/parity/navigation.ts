@@ -34,8 +34,13 @@ export function nextFocus(targets: readonly string[], current: string, backwards
 
 function pendingTargets(state: SessionState): string[] {
   const entry = state.transcript.find((candidate) => candidate.id === state.pendingId);
-  if (entry?.kind === "approval")
-    return entry.approval.stage === "rejecting" ? ["reason"] : ["preview", "approve", "reject"];
+  if (entry?.kind === "approval") {
+    if (entry.approval.stage === "rejecting") return ["reason"];
+    const batch = entry.approval.request.batch;
+    return batch !== undefined && batch.position < batch.total
+      ? ["preview", "approve", "approve-all", "reject"]
+      : ["preview", "approve", "reject"];
+  }
   if (entry?.kind === "questions")
     return entry.questions.index > 0 ? ["answer", "previous", "next"] : ["answer", "next"];
   return [];

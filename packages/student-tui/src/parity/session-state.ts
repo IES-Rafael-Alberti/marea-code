@@ -248,8 +248,8 @@ export function applyApproval(state: SessionState, action: ApprovalAction): Pend
   const decision: ParityDecision | null =
     made === null
       ? null
-      : made.type === "approve"
-        ? { interruptId, type: "approve" }
+      : made.type === "approve" || made.type === "approve-all"
+        ? { interruptId, type: made.type }
         : made.type === "reject"
           ? { interruptId, reason: made.reason, type: "reject" }
           : { type: "cancel" };
