@@ -7,6 +7,7 @@ import {
   SIGN_IN_HTTP_PATHS,
   authenticatedJson,
   signInMethods,
+  type JsonClient,
   type SignInHttpPaths,
 } from "./http-sign-in.boundary.js";
 import {
@@ -100,17 +101,7 @@ export interface ModelGatewayHttpOptions extends StudentHttpOptions {
   readonly runToken: () => Promise<RunToken>;
 }
 
-export interface HttpClient {
-  json<T extends { readonly requestId: RequestId }>(
-    path: string,
-    requestId: RequestId,
-    body: object,
-    schema: z.ZodType<T>,
-    credential?: string,
-    maxResponseBytes?: number,
-    maxRequestBytes?: number,
-    minimumTimeoutMs?: number /** Raises, never lowers, the client timeout. */,
-  ): Promise<T>;
+export interface HttpClient extends JsonClient {
   stream(
     path: string,
     body: ModelGatewayRequest,

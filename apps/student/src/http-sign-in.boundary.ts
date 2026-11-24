@@ -20,7 +20,7 @@ import type { AuthenticationResult, StudentServer } from "./contracts.js";
 import { StudentHttpError } from "./http-error.js";
 
 /** The bounded JSON exchange of the student HTTP client. */
-interface JsonClient {
+export interface JsonClient {
   json<T extends { readonly requestId: RequestId }>(
     path: string,
     requestId: RequestId,
@@ -29,6 +29,7 @@ interface JsonClient {
     credential?: string,
     maxResponseBytes?: number,
     maxRequestBytes?: number,
+    /** Raises, never lowers, the client timeout for this one request. */
     minimumTimeoutMs?: number,
   ): Promise<T>;
 }
