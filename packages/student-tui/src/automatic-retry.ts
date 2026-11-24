@@ -16,25 +16,20 @@ export function withoutSettledRetry(snapshot: ConversationSnapshot): Conversatio
     : snapshot;
 }
 
-/** Counts automatic retries of one message; any other attempt starts a fresh allowance. */
+/** Counts automatic retries of the turn in progress; every turn the student starts resets it. */
 export class AutomaticRetries {
-  private messageId = "";
   private count = 0;
 
   constructor(private readonly limit = DEFAULT_AUTOMATIC_RETRIES) {}
 
   /** The number of the next automatic retry of this failure, or null when none is due. */
-  next(messageId: string, failure: TurnFailureInfo | undefined): number | null {
-    if (failure?.retryable !== true) return null;
-    const count = this.messageId === messageId ? this.count : 0;
-    if (count >= this.limit) return null;
-    this.messageId = messageId;
-    this.count = count + 1;
+  next(failure: TurnFailureInfo | undefined): number | null {
+    if (failure?.retryable !== true || this.count >= this.limit) return null;
+    this.count += 1;
     return this.count;
   }
 
-  reset(messageId: string): void {
-    this.messageId = messageId;
+  reset(): void {
     this.count = 0;
   }
 }

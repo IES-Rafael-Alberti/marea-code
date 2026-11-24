@@ -174,7 +174,7 @@ export function createConversationController(
       pendingApproval?.messageId === failed.messageId
     )
       return false;
-    const attempt = automaticRetries.next(failed.messageId, failure);
+    const attempt = automaticRetries.next(failure);
     if (attempt === null) return false;
     failed.phase = "failed";
     settleTurn(failed);
@@ -187,7 +187,7 @@ export function createConversationController(
     appendStudent: boolean,
     automaticRetry?: number,
   ): boolean => {
-    if (automaticRetry === undefined) automaticRetries.reset(messageId);
+    if (automaticRetry === undefined) automaticRetries.reset();
     const activeTurn: ActiveTurn = {
       abortController: new AbortController(),
       attemptId: nextAttemptId(),

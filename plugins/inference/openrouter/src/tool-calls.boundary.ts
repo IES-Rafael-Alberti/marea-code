@@ -65,8 +65,8 @@ function parseArguments(
 /** A short stable digest so repaired call ids of different responses do not collide. */
 function digest(text: string): string {
   let hash = 0x811c9dc5;
-  for (const character of text) {
-    hash = Math.imul(hash ^ (character.codePointAt(0) ?? 0), 0x01000193) >>> 0;
+  for (let index = 0; index < text.length; index += 1) {
+    hash = Math.imul(hash ^ text.charCodeAt(index), 0x01000193) >>> 0;
   }
   return hash.toString(16).padStart(8, "0");
 }
