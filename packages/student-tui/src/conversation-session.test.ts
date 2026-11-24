@@ -26,6 +26,7 @@ function createTarget(
   const exits: number[] = [];
   const binding = createConversationTuiSession({
     ...(initialTurn === undefined ? {} : { initialTurn }),
+    automaticRetries: 0,
     onMessage,
     setExitCode(code): void {
       exits.push(code);

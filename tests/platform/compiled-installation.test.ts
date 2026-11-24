@@ -409,18 +409,20 @@ describe("compiled pilot", () => {
     await free.waitForText(PILOT_REPLY_TEXT, 60_000);
     expect(systemText(lastRequest())).toContain("PILOT-FREE-V2");
 
-    // P3-09: a provider stream lost after a prefix is shown as failed and retried explicitly.
+    // P3-09: a provider stream lost after a prefix is retried automatically from its checkpoint.
     await idleRun(1);
     provider.partialMarker = "PilotPartialQuestion";
     const beforePartial = tutoring().length;
     await submit(free, "PilotPartialQuestion", async () => (await turnCount()) >= 2);
-    await free.waitForText("Retry / continue", 120_000);
-    expect(tutoring()).toHaveLength(beforePartial + 1);
-    await free.waitForQuiet(500);
-    expect(tutoring()).toHaveLength(beforePartial + 1);
+    await free.waitForText("Retrying the interrupted turn", 120_000);
     // A retry must continue the shown prefix; a divergent continuation is refused, not replayed.
-    await submit(free, "/retry", () => tutoring().length >= beforePartial + 2);
-    await free.waitForText("Retry started", 120_000);
+    await until(
+      "the automatic retry to reach the provider",
+      () => tutoring().length >= beforePartial + 2,
+    );
+    await free.waitForText("could not complete the request", 120_000);
+    await free.waitForQuiet(500);
+    expect(tutoring()).toHaveLength(beforePartial + 2);
     expect(
       lastRequest().messages.filter((message) => message.content === "PilotPartialQuestion"),
     ).toHaveLength(1);

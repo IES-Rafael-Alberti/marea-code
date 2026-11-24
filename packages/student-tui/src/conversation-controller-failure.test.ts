@@ -112,6 +112,7 @@ it("refuses a reentrant retry until the failed operation has settled", async () 
   const result = Promise.withResolvers<undefined>();
   const attempts: boolean[] = [];
   const controller = createConversationController({
+    automaticRetries: 0,
     onExit: vi.fn(),
     onMessage: () => result.promise,
     view: {

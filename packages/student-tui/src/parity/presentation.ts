@@ -91,6 +91,12 @@ export function createPresentation(
       ],
     };
   };
+  /** A discreet notice while Marea retries on its own; it disappears once the turn settles. */
+  const syncAutomaticRetry = (snapshot: ConversationSnapshot): void => {
+    if (snapshot.automaticRetry === undefined || retryNoticeId !== null) return;
+    retryNoticeId = `e${String(state.nextId)}`;
+    notice(copy.notices.retrying);
+  };
   const syncActivity = (snapshot: ConversationSnapshot): void => {
     if (
       snapshot.status === "streaming" &&
@@ -256,6 +262,7 @@ export function createPresentation(
         const cancelled = applyQuestions(state, { type: "cancel" });
         if (cancelled !== null) state = cancelled.state;
       }
+      syncAutomaticRetry(snapshot);
       const busy =
         snapshot.status === "streaming" ||
         snapshot.status === "approval" ||
