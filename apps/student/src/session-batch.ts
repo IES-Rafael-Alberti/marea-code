@@ -16,7 +16,7 @@ import type {
 import { TeacherActivity } from "./teacher-activity.js";
 import { interactionAfterAbort } from "./turn-interaction.js";
 
-export interface BatchWriteChoice {
+interface BatchWriteChoice {
   readonly decision: ApprovalDecision;
   readonly reason: string | undefined;
   readonly remaining: boolean;

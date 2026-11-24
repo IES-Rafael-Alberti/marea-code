@@ -38,7 +38,7 @@ const pendingStateSchema = z.object({
   ),
 });
 
-export type ApprovalAction = ApprovalEvent["actions"][number];
+type ApprovalAction = ApprovalEvent["actions"][number];
 
 export type ApprovalEvent = Extract<AgentEvent, { readonly type: "tool-approval-required" }>;
 

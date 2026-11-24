@@ -89,7 +89,7 @@ export function assertDurableApprovalContext(
   }
 }
 
-export function durableApprovalContext(turn: DurableAgentApprovalTurn): DurableApprovalContext {
+function durableApprovalContext(turn: DurableAgentApprovalTurn): DurableApprovalContext {
   return {
     content: turn.content,
     path: turn.path,

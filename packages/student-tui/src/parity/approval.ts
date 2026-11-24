@@ -29,7 +29,7 @@ export interface ApprovalRequest {
   readonly batch?: ApprovalBatch | undefined;
 }
 
-export interface ApprovalBatch {
+interface ApprovalBatch {
   /** 1-based. */
   readonly position: number;
   readonly total: number;
