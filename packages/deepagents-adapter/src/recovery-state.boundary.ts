@@ -19,10 +19,12 @@ const graphStateSchema = z
   .object({
     values: z.record(z.string(), z.unknown()),
     next: z.array(z.string()),
+    // Reading a checkpoint never depends on understanding its interrupts: one this adapter
+    // cannot parse only means that checkpoint is not completed, so later messages continue.
     tasks: z.array(
       z
         .object({
-          interrupts: z.array(approvalInterruptSchema),
+          interrupts: z.array(z.unknown()),
         })
         .loose(),
     ),
@@ -63,10 +65,12 @@ export async function recoverGraphTurn(
   const textEvents = assistantEventsFor(parsed.data.values.messages, turn.messageId);
   const reconciled = reconcileGraphAndJournalEvents(textEvents, recorded);
   const interrupts = parsed.data.tasks.flatMap((task) => task.interrupts);
-  const [interrupt, ...additionalInterrupts] = interrupts;
+  const [pending, ...additionalInterrupts] = interrupts;
   if (additionalInterrupts.length > 0) throw contractChanged();
-  if (interrupt !== undefined) {
-    const approval = approvalEventFor(interrupt);
+  if (pending !== undefined) {
+    const interrupt = approvalInterruptSchema.safeParse(pending);
+    if (!interrupt.success) throw contractChanged();
+    const approval = approvalEventFor(interrupt.data);
     return {
       approval,
       type: "pending-approval",

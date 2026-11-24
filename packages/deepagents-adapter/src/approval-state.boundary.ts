@@ -2,22 +2,27 @@ import * as z from "zod";
 
 import { AgentAdapterError, type AgentEvent } from "./contracts.js";
 
+/** One interrupt may ask about several actions of the same model message, in call order. */
 export const approvalInterruptSchema = z.object({
   id: z.string().min(1),
   value: z.object({
-    actionRequests: z.tuple([
-      z.object({
-        name: z.string().min(1),
-        args: z.record(z.string(), z.string()),
-        description: z.string().min(1),
-      }),
-    ]),
-    reviewConfigs: z.tuple([
-      z.object({
-        actionName: z.string().min(1),
-        allowedDecisions: z.tuple([z.literal("approve"), z.literal("edit"), z.literal("reject")]),
-      }),
-    ]),
+    actionRequests: z
+      .array(
+        z.object({
+          name: z.string().min(1),
+          args: z.record(z.string(), z.string()),
+          description: z.string().min(1),
+        }),
+      )
+      .min(1),
+    reviewConfigs: z
+      .array(
+        z.object({
+          actionName: z.string().min(1),
+          allowedDecisions: z.array(z.enum(["approve", "edit", "reject"])),
+        }),
+      )
+      .min(1),
   }),
 });
 
@@ -33,6 +38,8 @@ const pendingStateSchema = z.object({
   ),
 });
 
+export type ApprovalAction = ApprovalEvent["actions"][number];
+
 export type ApprovalEvent = Extract<AgentEvent, { readonly type: "tool-approval-required" }>;
 
 export function assertPendingReview(
@@ -40,6 +47,7 @@ export function assertPendingReview(
   reviewId: string,
   toolName: string,
   messageId: string,
+  decisions = 1,
 ): void {
   const parsed = pendingStateSchema.safeParse(input);
   if (!parsed.success) {
@@ -73,9 +81,24 @@ export function assertPendingReview(
       "The pending tool approval does not match this message.",
     );
   }
-  if (approvalEventFor(interrupt).toolName !== toolName) {
+  const event = approvalEventFor(interrupt);
+  if (event.toolName !== toolName) {
     throw approvalContractChanged();
   }
+  if (event.actions.length !== decisions) {
+    throw new AgentAdapterError(
+      "approval-review-mismatch",
+      "Every pending action needs exactly one decision.",
+    );
+  }
+}
+
+/** The approval that a checkpoint is waiting for; its shape was checked before resuming. */
+export function pendingApproval(input: unknown): ApprovalEvent {
+  const [interrupt] = pendingStateSchema.parse(input).tasks.flatMap((task) => task.interrupts) as [
+    z.infer<typeof approvalInterruptSchema>,
+  ];
+  return approvalEventFor(interrupt);
 }
 
 export function parseApprovalEvent(input: unknown): AgentEvent | null {
@@ -94,18 +117,32 @@ export function parseApprovalEvent(input: unknown): AgentEvent | null {
 export function approvalEventFor(
   interrupt: z.infer<typeof approvalInterruptSchema>,
 ): ApprovalEvent {
-  const [request] = interrupt.value.actionRequests;
-  const [review] = interrupt.value.reviewConfigs;
-  if (request.name !== review.actionName) {
-    throw approvalContractChanged();
-  }
+  const { actionRequests, reviewConfigs } = interrupt.value;
+  // Each action is reviewed by the configuration of its own tool, found by name.
+  const actions = actionRequests.map((request, index) => {
+    const review = reviewConfigs.find((config) => config.actionName === request.name);
+    if (
+      review === undefined ||
+      !review.allowedDecisions.includes("approve") ||
+      !review.allowedDecisions.includes("reject")
+    )
+      throw approvalContractChanged();
+    return Object.freeze({
+      index,
+      toolName: request.name,
+      arguments: Object.freeze({ ...request.args }),
+      description: request.description,
+    });
+  });
+  const [first] = actions as [ApprovalAction, ...ApprovalAction[]];
   return {
     type: "tool-approval-required",
     reviewId: interrupt.id,
-    toolName: request.name,
-    arguments: Object.freeze({ ...request.args }),
-    description: request.description,
+    toolName: first.toolName,
+    arguments: first.arguments,
+    description: first.description,
     allowedDecisions: ["approve", "amend", "reject"],
+    actions: Object.freeze(actions),
   };
 }
 

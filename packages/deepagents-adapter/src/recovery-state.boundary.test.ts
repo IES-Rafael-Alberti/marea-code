@@ -20,6 +20,14 @@ const approval: Extract<AgentEvent, { readonly type: "tool-approval-required" }>
   arguments: { path: "notes.txt" },
   description: "Confirm the change.",
   allowedDecisions: ["approve", "amend", "reject"],
+  actions: [
+    {
+      index: 0,
+      toolName: "confirm_change",
+      arguments: { path: "notes.txt" },
+      description: "Confirm the change.",
+    },
+  ],
 };
 
 describe("graph recovery state", () => {
@@ -53,6 +61,13 @@ describe("graph recovery state", () => {
     await expect(recoverFrom(saver, { ...graphState(), tasks: [{}] })).rejects.toMatchObject({
       code: "upstream-contract-changed",
     });
+    // Its own message cannot be recovered, though later messages skip it (see isCompletedGraphState).
+    await expect(
+      recoverFrom(saver, {
+        ...graphState(),
+        tasks: [{ interrupts: [{ id: "x", value: {} }] }],
+      }),
+    ).rejects.toMatchObject({ code: "upstream-contract-changed" });
 
     await recordJournal(saver, "journal");
     await expect(

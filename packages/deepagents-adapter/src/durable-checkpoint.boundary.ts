@@ -349,8 +349,33 @@ function createPersistedStateSchema() {
         arguments: z.record(z.string(), z.string()),
         description: z.string().min(1),
         allowedDecisions: z.tuple([z.literal("approve"), z.literal("amend"), z.literal("reject")]),
+        actions: z
+          .array(
+            z
+              .object({
+                index: z.number().int().nonnegative(),
+                toolName: z.string().min(1),
+                arguments: z.record(z.string(), z.string()),
+                description: z.string().min(1),
+              })
+              .strict(),
+          )
+          .min(1)
+          .optional(),
       })
-      .strict(),
+      .strict()
+      // Journals written before approvals listed their actions describe exactly one.
+      .transform((event) => ({
+        ...event,
+        actions: event.actions ?? [
+          {
+            index: 0,
+            toolName: event.toolName,
+            arguments: event.arguments,
+            description: event.description,
+          },
+        ],
+      })),
     z
       .object({
         type: z.literal("tool-approval-submitted"),

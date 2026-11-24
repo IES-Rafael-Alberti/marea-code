@@ -266,3 +266,45 @@ it("keeps blocked attempts in a real checkpoint file after closing and reopening
   expect(f.model.callCount).toBe(5);
   closeAgentCheckpoint(reopened);
 });
+
+it("keeps a blocked exercise write out of a batch that also asks to run a command", async () => {
+  const f = fixture("normal");
+  const run = vi.fn(() => Promise.resolve("listing"));
+  const options = {
+    ...f.options,
+    effectTools: [{ name: "run_command", description: "Run a command", execute: run }],
+  };
+  f.model
+    .respondWithTools([
+      call("write-1"),
+      { id: "command-1", name: "run_command", args: { command: "dir" } },
+    ])
+    .respond(new AIMessage("Done"));
+  const runtime = createAgentRuntime(options);
+  const events = await collect(runtime.streamMessage(f.turn, signal()));
+  const approval = events.at(-1);
+  expect(approval).toMatchObject({ type: "tool-approval-required", toolName: "run_command" });
+  expect(approval?.type === "tool-approval-required" ? approval.actions : []).toHaveLength(1);
+  const resumed = await collect(
+    runtime.resumeApproval(
+      {
+        ...f.turn,
+        reviewId: approvalReviewId(events),
+        toolName: "run_command",
+        decision: { type: "approve" },
+      },
+      signal(),
+    ),
+  );
+  expect(resumed.at(-1)).toEqual({ type: "turn-completed" });
+  expect(run).toHaveBeenCalledOnce();
+  expect(f.execute).not.toHaveBeenCalled();
+  const results = f.model.calls
+    .at(-1)
+    ?.messages.filter((message) => ToolMessage.isInstance(message))
+    .map((message) => [message.tool_call_id, message.content]);
+  expect(results).toEqual([
+    ["write-1", expect.stringContaining("no file was changed") as string],
+    ["command-1", "listing"],
+  ]);
+});
