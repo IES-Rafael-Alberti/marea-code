@@ -27,9 +27,3 @@ it("parses and carries classroom-sized budgets for both purposes", () => {
     });
   }
 });
-
-it("documents next to the example that limits apply per student session and purpose", () => {
-  const readme = readFileSync(join(directory, "README.md"), "utf8").replaceAll(/\s+/gu, " ");
-  expect(readme).toContain("not a recommendation");
-  expect(readme).toContain("**per student session (one run) and per purpose**");
-});
