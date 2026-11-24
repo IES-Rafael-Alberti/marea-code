@@ -27,6 +27,7 @@ import { TelemetryPreviewResponseSchema } from "@marea/protocol";
 import {
   bundledDashboardProfileAuthority,
   bundledDashboardProfileRelease,
+  bundledReleaseFor,
 } from "./bundled-profile-composition.js";
 import { validateDashboardProfileRelease } from "../../dashboard-profiles/release.js";
 import {
@@ -278,4 +279,12 @@ it("uses each discovered plugin validator and normalized defaults, including non
   expect(
     release.selection.safeParse({ ...selection, settings: { limit: 5, extra: true } }).success,
   ).toBe(false);
+});
+
+it("offers educational insights only where their tables exist", () => {
+  const without = bundledReleaseFor({ readOne: () => undefined });
+  expect(without.capabilities).not.toContain("educational-insights/v1");
+  expect(without.capabilities).toContain("sessions/v1");
+  const withTables = bundledReleaseFor({ readOne: () => ({ name: "marea_learning_settings" }) });
+  expect(withTables.capabilities).toContain("educational-insights/v1");
 });

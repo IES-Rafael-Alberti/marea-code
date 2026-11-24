@@ -132,6 +132,21 @@ describe("unexpected server failure log", () => {
       }),
     );
     expect((await throwing.request("/x")).status).toBe(500);
+    const stackless = new Hono();
+    const seen: UnhandledErrorRecord[] = [];
+    stackless.use(
+      "*",
+      unhandledErrorLog((record) => seen.push(record)),
+    );
+    const failure = new Error("no stack");
+    delete failure.stack;
+    stackless.get("/y", () =>
+      safeOperation("request:y" as never, () => {
+        throw failure;
+      }),
+    );
+    await stackless.request("/y");
+    expect(seen).toMatchObject([{ name: "Error", message: "no stack", stack: null }]);
   });
 
   it("writes the default record as one JSON line on stderr", () => {

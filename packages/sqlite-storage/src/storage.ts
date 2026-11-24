@@ -63,15 +63,10 @@ export function currentSqliteSchema(): {
   readonly catalog: ReleaseSchemaCatalogKey;
   readonly version: number;
 } {
-  let current = { catalog: "retention-audit" as ReleaseSchemaCatalogKey, version: 0 };
-  for (const [catalog, create] of Object.entries(RELEASE_CATALOGS) as [
-    ReleaseSchemaCatalogKey,
-    () => readonly MigrationDefinition[],
-  ][]) {
-    const version = create().length;
-    if (version > current.version) current = { catalog, version };
-  }
-  return current;
+  const [current] = (Object.keys(RELEASE_CATALOGS) as ReleaseSchemaCatalogKey[])
+    .map((catalog) => ({ catalog, version: RELEASE_CATALOGS[catalog]().length }))
+    .toSorted((left, right) => right.version - left.version);
+  return current as { readonly catalog: ReleaseSchemaCatalogKey; readonly version: number };
 }
 
 /** Selects the explicitly requested release catalog; omission retains the legacy application catalog. */
