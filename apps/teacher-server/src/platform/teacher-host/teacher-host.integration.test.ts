@@ -58,6 +58,17 @@ function start(
   });
 }
 
+function startRecordingMigrations(f: ReturnType<typeof installation>, events: object[]) {
+  return startTeacherHost({
+    installationRoot: f.root,
+    releaseId: "release:host",
+    serve: f.serve,
+    passwords,
+    onEvaluationError: () => undefined,
+    onSchemaMigration: (event) => events.push(event),
+  });
+}
+
 /** Every connection the host opened, including the deletion index, is closed again. */
 function expectConnectionsClosed(): void {
   expect(nativeOpens.filter((open) => !open.closed)).toEqual([]);
@@ -71,15 +82,8 @@ describe("production teacher host", () => {
   it("migrates an older activated schema at startup after a backup, then serves", async () => {
     const f = installation();
     initializeSqliteStorage({ databasePath: f.databasePath, schema: "skill-assignments" }).close();
-    const events: unknown[] = [];
-    const host = await startTeacherHost({
-      installationRoot: f.root,
-      releaseId: "release:host",
-      serve: f.serve,
-      passwords,
-      onEvaluationError: () => undefined,
-      onSchemaMigration: (event) => events.push(event),
-    });
+    const events: object[] = [];
+    const host = await startRecordingMigrations(f, events);
     if (host.state !== "ready") throw new Error(`host failed: ${host.reason}`);
     const current = currentSqliteSchema().version;
     expect(status(f)).toMatchObject({ status: "ready", schemaVersion: current });
@@ -95,14 +99,7 @@ describe("production teacher host", () => {
     await host.stop();
     expectConnectionsClosed();
     // The next start of the same binary finds nothing to migrate and takes no new backup.
-    const again = await startTeacherHost({
-      installationRoot: f.root,
-      releaseId: "release:host",
-      serve: f.serve,
-      passwords,
-      onEvaluationError: () => undefined,
-      onSchemaMigration: (event) => events.push(event),
-    });
+    const again = await startRecordingMigrations(f, events);
     if (again.state !== "ready") throw new Error(`host failed: ${again.reason}`);
     expect(events).toHaveLength(1);
     expect(readdirSync(join(f.root, "backups"))).toHaveLength(1);
@@ -121,14 +118,7 @@ describe("production teacher host", () => {
       { mode: 0o600 },
     );
     const events: { outcome?: string }[] = [];
-    const host = await startTeacherHost({
-      installationRoot: f.root,
-      releaseId: "release:host",
-      serve: f.serve,
-      passwords,
-      onEvaluationError: () => undefined,
-      onSchemaMigration: (event) => events.push(event),
-    });
+    const host = await startRecordingMigrations(f, events);
     expect(host).toEqual({ state: "failed", reason: "storage" });
     expect(f.served.fetch).toBeUndefined();
     expect(events.map((event) => event.outcome)).toEqual(["backup-failed"]);
