@@ -1,5 +1,6 @@
 import { ActivityDetails } from "./conversation-activity.js";
 import { Markdown } from "./markdown.js";
+import { TurnDiagnostic } from "./turn-diagnostic.js";
 import type { CanonicalRunEvent } from "@marea/protocol";
 import type { SessionsMessages } from "./sessions-messages.js";
 /** Model text remains React text, never HTML or executable links. */
@@ -11,6 +12,7 @@ export function ConversationEvent({
   readonly messages: SessionsMessages;
 }) {
   if (event.eventType === "model-diagnostic") return null;
+  if (event.eventType === "turn-diagnostic") return <TurnDiagnostic event={event} messages={m} />;
   if (isEvidenceEvent(event)) return <EvidenceEvent event={event} messages={m} />;
   let heading: string;
   let content = "";

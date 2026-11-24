@@ -4,6 +4,8 @@ import type { SessionTurnExecutorOptions, StableTurnIdentity } from "./session-t
 import { TeacherActivity } from "./teacher-activity.js";
 import { TurnAttemptFailed } from "./contracts.js";
 import { attemptFailure, classifyTurnFailure } from "./turn-failure.boundary.js";
+import { failureCategory } from "./turn-diagnostics.boundary.js";
+import { reportTurnDiagnostic } from "./turn-diagnostic-report.js";
 
 export async function finishTurn(
   options: SessionTurnExecutorOptions,
@@ -32,12 +34,14 @@ export async function failTurn(
     const failed = error instanceof TurnAttemptFailed ? error : attemptFailure(initialText, error);
     if (current?.state === "started") {
       const failure = classifyTurnFailure(failed);
+      const category = failureCategory(failed, failure);
       await options.localSession.recordTurnFailure(identity.messageId, failure);
       await new TeacherActivity(options).terminal(identity, {
         eventType: "turn-failed",
-        category: failure.kind,
+        category,
         retryable: failure.retryable,
       });
+      await reportTurnDiagnostic(options, identity, failed, failure, category);
     }
     // Delivery can be offline; keep the original failure and durable outbox.
     await options.flushOutbox().catch(() => undefined);

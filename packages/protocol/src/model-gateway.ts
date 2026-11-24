@@ -84,6 +84,11 @@ export const ModelGatewayRequestSchema = z
         "Model tool names must be unique.",
       )
       .readonly(),
+    /**
+     * Asks for repair detail on tool calls. Sent only to servers announcing
+     * `marea.runs.turn-diagnostics`, which then answer with it.
+     */
+    diagnostics: z.literal(true).optional(),
   })
   .strict()
   .readonly();
@@ -117,6 +122,16 @@ const ModelStreamToolCallSchema = z
     callId: ToolCallIdSchema,
     tool: ToolNameSchema,
     arguments: z.record(z.string(), z.string()),
+    /** Present only for a request with `diagnostics`: how the provider's call was repaired. */
+    repair: z
+      .object({
+        causes: z.array(z.string().min(1).max(64)).min(1).max(8).readonly(),
+        rawName: z.string().max(256).nullable(),
+        rawArguments: z.string().max(4_096),
+      })
+      .strict()
+      .readonly()
+      .optional(),
   })
   .strict()
   .readonly();

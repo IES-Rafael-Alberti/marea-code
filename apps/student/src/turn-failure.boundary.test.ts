@@ -186,12 +186,19 @@ describe("classifyTurnFailure", () => {
         new TurnAttemptFailed("", new AgentAdapterError("upstream-contract-changed", "boom")),
       ),
     ).toEqual({
+      code: "upstream-contract-changed",
       detail: "AgentAdapterError: boom",
       hasPrefix: false,
       kind: "unexpected",
       recoverable: true,
       retryable: false,
     });
+  });
+
+  it("keeps other adapter failures without a student-facing code", () => {
+    expect(
+      classifyTurnFailure(new AgentAdapterError("invalid-checkpoint-state", "corrupt")),
+    ).not.toHaveProperty("code");
   });
 
   it("reports a wrapped failure without runtime diagnostics", () => {

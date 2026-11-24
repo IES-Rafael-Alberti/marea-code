@@ -128,6 +128,9 @@ const englishCatalog = {
     "Another request is in progress. Wait for it to finish.",
   "student.tui.failure.provider-interrupted": "The provider interrupted the answer.",
   "student.tui.failure.resume-detail": "You can resume the turn from the last saved point.",
+  "student.tui.failure.action-not-prepared": "Marea could not prepare that action. Ask for it again step by step.",
+  "student.tui.failure.invalid-response": "Marea could not complete the action. Type /retry to try again.",
+  "student.tui.failure.log-location": "Failure log on this computer: {{path}}",
   "student.tui.failure.session-ended-by-teacher":
     "Your teacher has ended this session. Run marea again to start a new one.",
   "student.tui.failure.session-expired":

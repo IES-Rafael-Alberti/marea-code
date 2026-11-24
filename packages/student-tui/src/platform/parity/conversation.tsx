@@ -126,6 +126,9 @@ function ConversationEntry({
               {entry.detail}
             </text>
           )}
+          {entry.expanded && entry.technicalDetail !== "" ? (
+            <text fg={PALETTE.dimOnSurface}>{entry.technicalDetail}</text>
+          ) : null}
           {entry.retryable ? (
             <box marginTop={1}>
               <ReferenceButton

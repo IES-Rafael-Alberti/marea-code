@@ -1,5 +1,7 @@
 /* eslint-disable max-lines -- Lease, close, and reopen recovery are one serial lifecycle state machine. */
 import type { OperationExecutor } from "./operation-contracts.js";
+import { TURN_DIAGNOSTICS_CAPABILITY } from "@marea/protocol";
+import type { TurnDiagnosticsOptions } from "./turn-diagnostic-report.js";
 import type { ProjectEvidence } from "./project-evidence.js";
 import {
   CURRENT_PROTOCOL_VERSION,
@@ -59,6 +61,10 @@ function isRejectedPendingClose(error: StudentHttpError): boolean {
 
 export interface SessionControllerOptions {
   readonly liveProgress?: boolean;
+  /** Where failed attempts are recorded; the controller says whether the server stores them. */
+  readonly diagnostics?: Omit<TurnDiagnosticsOptions, "reportToServer"> & {
+    readonly onServerSupport?: (supported: boolean) => void;
+  };
   readonly evidence?: ProjectEvidence;
   readonly operations?: OperationExecutor;
   readonly onStartupStage?: ((stage: StudentStartupStage) => void) | undefined;
@@ -95,10 +101,15 @@ export class StudentSessionController {
   private sessionToken: SessionToken | null = null;
   /** Set from the negotiated capabilities before any interactive sign-in. */
   private externalSignIn!: boolean;
+  private turnDiagnostics = false;
   private readonly turns: SessionTurnExecutor;
 
   constructor(private readonly options: SessionControllerOptions) {
+    const diagnostics = options.diagnostics;
     this.turns = new SessionTurnExecutor({
+      ...(diagnostics === undefined
+        ? {}
+        : { diagnostics: { ...diagnostics, reportToServer: () => this.turnDiagnostics } }),
       agent: options.agent,
       liveProgress: options.liveProgress,
       operations: options.operations,
@@ -221,6 +232,8 @@ export class StudentSessionController {
       server: this.options.server,
     });
     this.externalSignIn = capabilities.includes("marea.auth.external");
+    this.turnDiagnostics = capabilities.includes(TURN_DIAGNOSTICS_CAPABILITY);
+    this.options.diagnostics?.onServerSupport?.(this.turnDiagnostics);
     this.reportStartupStage("authentication");
     const authenticated = await this.authenticate();
     this.sessionToken = authenticated.token;

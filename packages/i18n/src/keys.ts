@@ -103,6 +103,9 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.tui.failure.concurrency-limited",
   "student.tui.failure.provider-interrupted",
   "student.tui.failure.resume-detail",
+  "student.tui.failure.action-not-prepared",
+  "student.tui.failure.invalid-response",
+  "student.tui.failure.log-location",
   "student.tui.failure.session-ended-by-teacher",
   "student.tui.failure.session-expired",
   "student.tui.help",
@@ -186,6 +189,7 @@ export interface MessageParameterMap {
   readonly "student.tui.approval.lines.other": { readonly count: number };
   readonly "student.tui.approval.rejected-with-reason": { readonly reason: string };
   readonly "student.tui.approval.title": { readonly name: string };
+  readonly "student.tui.failure.log-location": { readonly path: string };
   readonly "student.tui.approval.position": { readonly position: number; readonly total: number };
   readonly "student.tui.question.progress": { readonly index: number; readonly total: number };
   readonly "student.tui.status.detail": { readonly seconds: number };

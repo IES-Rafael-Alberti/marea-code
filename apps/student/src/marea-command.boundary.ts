@@ -1,4 +1,5 @@
 import { parseServerArguments } from "./server-arguments.js";
+import { FAILURE_LOG_FILE } from "./failure-log.boundary.js";
 import { startupFailure } from "./startup-failure.boundary.js";
 import { ensureGitWorkspace } from "./git-workspace.boundary.js";
 import { openInputHistory, type PersistentInputHistory } from "./input-history.boundary.js";
@@ -284,6 +285,7 @@ async function runStudent(
             history,
             context: createSessionContext({
               cwd: projectRoot,
+              failureLog: join(stateDirectory, FAILURE_LOG_FILE),
               git: runtime.readGitContext(projectRoot),
               model: sessionModelAlias(startedSession),
             }),

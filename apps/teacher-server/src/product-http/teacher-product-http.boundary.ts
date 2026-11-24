@@ -32,6 +32,7 @@ import {
   RunHistoryQuerySchema,
   SessionHistoryQuerySchema,
   SoftwareVersionSchema,
+  TURN_DIAGNOSTICS_CAPABILITY,
   type RequestId,
 } from "@marea/protocol";
 import { parseBearerCredential, RequestPolicy } from "@marea/transport-server";
@@ -63,6 +64,7 @@ const CAPABILITIES = [
   "marea.runs.lease-renewal",
   "marea.runs.skills",
   "marea.tutoring.socratic-gate",
+  TURN_DIAGNOSTICS_CAPABILITY,
   "marea.runs.history",
   "marea.teacher.notices",
 ] as const;

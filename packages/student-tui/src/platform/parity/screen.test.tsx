@@ -212,6 +212,8 @@ describe("conversation", () => {
     const live = conversation([
       {
         detail: "Puedes reanudarlo.",
+        technicalDetail: "",
+        expanded: false,
         id: "e0",
         kind: "error",
         message: "falló",
@@ -223,6 +225,8 @@ describe("conversation", () => {
     const spent = conversation([
       {
         detail: "",
+        technicalDetail: "",
+        expanded: false,
         id: "e0",
         kind: "error",
         message: "falló",
@@ -233,10 +237,32 @@ describe("conversation", () => {
     expect(textLines(spent)).toEqual(["falló", copy.turn.retryStarted]);
   });
 
+  it("shows technical failure detail only while expanded with /details", () => {
+    const entry = {
+      detail: "",
+      technicalDetail: "TypeError: synthetic",
+      id: "e0",
+      kind: "error" as const,
+      message: "falló",
+      retryOffered: false,
+      retryable: false,
+    };
+    expect(textLines(conversation([{ ...entry, expanded: false }]))).toEqual(["falló"]);
+    expect(textLines(conversation([{ ...entry, expanded: true }]))).toEqual([
+      "falló",
+      "TypeError: synthetic",
+    ]);
+    expect(textLines(conversation([{ ...entry, technicalDetail: "", expanded: true }]))).toEqual([
+      "falló",
+    ]);
+  });
+
   it("offers nothing on a failure with no checkpoint", () => {
     const rendered = conversation([
       {
         detail: "",
+        technicalDetail: "",
+        expanded: false,
         id: "e0",
         kind: "error",
         message: "falló",

@@ -136,6 +136,7 @@ export async function createProductionStudentApplication(
   const server = createHttpStudentServer(httpOptions);
   const tokenBinding = new StudentRunTokenBinding();
   const localSession = new LocalSession(stores.state, ids, clock);
+  const serverDiagnostics = { supported: false };
   const gateway = diagnosticGateway(
     createHttpModelGateway({
       ...httpOptions,
@@ -143,6 +144,7 @@ export async function createProductionStudentApplication(
     }),
     localSession,
     ids,
+    serverDiagnostics,
   );
   const projectContext = await describeProject(projectRoot);
   const checkpoint = await openRecoverableCheckpoint(localState, {
@@ -191,6 +193,14 @@ export async function createProductionStudentApplication(
   });
   const controller = new StudentSessionController({
     liveProgress: true,
+    diagnostics: {
+      client: { version: clientVersion, platform: `${process.platform}-${process.arch}` },
+      log: stores.failures,
+      lastModelResponse: gateway.lastResponse,
+      onServerSupport: (supported) => {
+        serverDiagnostics.supported = supported;
+      },
+    },
     onStartupStage: options.onStartupStage,
     agent,
     classPreference: createFileClassPreferenceStore(stateDirectory),

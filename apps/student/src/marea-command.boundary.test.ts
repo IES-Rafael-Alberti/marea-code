@@ -251,6 +251,7 @@ describe("marea command", () => {
       expect(conversationOptions.nextMessageId).toBe(runtime.nextMessageId);
       expect(conversationOptions.nextAttemptId).toBe(runtime.nextAttemptId);
       expect(conversationOptions.copy.parity.context).toEqual({
+        failureLog: expect.stringMatching(/turn-failures\.jsonl$/u) as string,
         branch: "trunk",
         cwd: "/courses/physics/project-one",
         model: "marea",

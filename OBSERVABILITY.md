@@ -138,6 +138,28 @@ external exporters above. When a new server starts on an older database, one
 `schema-migration` line records the detected schema, the final schema and the backup
 path, or why startup was refused.
 
+## Failed turn diagnostics
+
+When a student turn fails, `turn-failed` names the student-facing kind and the origin,
+for example `unexpected/adapter.upstream-execution-failed/ZodError` or
+`request-failed/provider.invalid-response`. Attempts Marea retries on its own are recorded
+the same way, so a turn that recovered still shows its failed attempts.
+
+Servers announcing `marea.runs.turn-diagnostics` also receive one `turn-diagnostic` event per
+failed attempt, stored and retained with the session like its conversation: exception, cause
+chain, stack, client version and platform, the model request id and what the model returned
+in that call. For those requests the server also returns how the provider's tool calls were
+repaired (causes and the raw name and arguments as sent), and the client records it in the
+`model-diagnostic` response. The session view shows each diagnostic collapsed, with a button
+that copies the technical detail for an issue report; session exports include it.
+`marea-teacher` writes one JSON line to stderr per failed turn with the run, message,
+category and model request id. Older servers receive only `turn-failed`.
+
+The student never sees this technical text in the conversation; `/details` shows it, with the
+path of a private local copy kept beside `session.json` (`turn-failures.jsonl`, at most
+256 KiB, oldest records dropped first), which also covers failures that never reached the
+teacher server.
+
 ## Developer acceptance
 
 The trace extension belongs to `@marea/plugin-api`. Installed telemetry exporters

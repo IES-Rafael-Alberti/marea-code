@@ -57,6 +57,9 @@ interface QuestionsEntry {
 
 interface ErrorEntry {
   readonly detail: string;
+  /** Technical diagnostic text; visible while expanded with /details. */
+  readonly technicalDetail: string;
+  readonly expanded: boolean;
   readonly id: string;
   readonly kind: "error";
   readonly message: string;

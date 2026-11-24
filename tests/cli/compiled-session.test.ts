@@ -330,6 +330,7 @@ function coreEvents(value: Parameters<typeof storedEvents>[0]) {
         "model-diagnostic",
         "turn-ended",
         "turn-failed",
+        "turn-diagnostic",
       ].includes(event.event_type),
   );
 }

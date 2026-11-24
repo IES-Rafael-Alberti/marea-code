@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createFailureLog, FAILURE_LOG_FILE, type FailureLog } from "./failure-log.boundary.js";
 import { lstat, mkdir, open, readFile, realpath, rename, rm } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
@@ -240,6 +241,7 @@ export interface FileStudentStoresOptions {
 
 export interface FileStudentStores {
   readonly credentials: CredentialStore;
+  readonly failures: FailureLog;
   readonly state: StudentStateStore;
 }
 
@@ -491,6 +493,7 @@ export async function createFileStudentStores(
   privateWindows.securePrivateDirectory(stateDirectory);
   return Object.freeze({
     credentials: new FileCredentialStore(join(stateDirectory, "credential.json")),
+    failures: createFailureLog(join(stateDirectory, FAILURE_LOG_FILE), writePrivateFileAtomically),
     state: new FileStateStore(join(stateDirectory, "session.json")),
   });
 }

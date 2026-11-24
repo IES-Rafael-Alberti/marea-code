@@ -10,12 +10,18 @@ import type {
 } from "../conversation-contracts.js";
 import { type ApprovalAction } from "./approval.js";
 import { localCommand } from "./commands.js";
-import type { ParityCopy } from "./copy.js";
+import { fill, type ParityCopy } from "./copy.js";
 import type { ParityDecision, ParityEvent, SessionContext } from "./events.js";
 import type { QuestionsAction } from "./questions.js";
 import { applyApproval, applyEvent, applyQuestions, openSession } from "./session-state.js";
 import { filterToolArguments } from "./tool.js";
 import { finishAssistantText } from "./transcript.js";
+
+/** Failures the student can act on get their own words instead of the kind's message. */
+const CODE_MESSAGES: Readonly<Record<string, (copy: ParityCopy) => string>> = {
+  "upstream-contract-changed": (copy) => copy.failure.actionNotPrepared,
+  "invalid-response": (copy) => copy.failure.invalidResponse,
+};
 
 const FAILURE_MESSAGES: Record<TurnFailureKind, (copy: ParityCopy) => string> = {
   "provider-interrupted": (copy) => copy.failure.providerInterrupted,
@@ -42,12 +48,14 @@ function failedEvent(failure: TurnFailureInfo | undefined, copy: ParityCopy): Fa
       type: "turn-failed",
     };
   }
+  // Technical text, often English, never mixes into the message; /details shows it.
   return {
     detail:
       failure.kind === "provider-interrupted" && failure.hasPrefix && failure.retryable
         ? copy.failure.resumeDetail
-        : failure.detail,
-    message: FAILURE_MESSAGES[failure.kind](copy),
+        : "",
+    technicalDetail: failure.detail,
+    message: (CODE_MESSAGES[failure.code ?? ""] ?? FAILURE_MESSAGES[failure.kind])(copy),
     recoverable: failure.recoverable,
     retryable: failure.retryable,
     type: "turn-failed",
@@ -334,7 +342,15 @@ export function createPresentation(
         return true;
       }
       if (command === "details") {
-        state = { ...state, detailedOutputs: !state.detailedOutputs };
+        const detailed = !state.detailedOutputs;
+        state = {
+          ...state,
+          detailedOutputs: detailed,
+          // Failure detail follows the same switch as tool outputs.
+          transcript: state.transcript.map((entry) =>
+            entry.kind === "error" ? { ...entry, expanded: detailed } : entry,
+          ),
+        };
         toggleOutputs(
           state.transcript.map((entry) => entry.id),
           state.detailedOutputs,
@@ -345,7 +361,16 @@ export function createPresentation(
             .map((entry) => entry.id),
           true,
         );
-        notice(state.detailedOutputs ? copy.notices.outputsDetailed : copy.notices.outputsCompact);
+        notice(
+          state.detailedOutputs
+            ? [
+                copy.notices.outputsDetailed,
+                ...(context.failureLog === undefined
+                  ? []
+                  : [fill(copy.failure.logLocation, { path: context.failureLog })]),
+              ].join("\n")
+            : copy.notices.outputsCompact,
+        );
         return true;
       }
       if (command === "retry") {

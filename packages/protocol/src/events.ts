@@ -41,6 +41,48 @@ const eventBaseShape = {
   occurredAt: UtcTimestampSchema,
 };
 
+/** The name and message of one exception on a cause chain. */
+const DiagnosticExceptionSchema = z
+  .object({
+    name: z.string().min(1).max(128),
+    message: z.string().max(2_048),
+  })
+  .strict()
+  .readonly();
+
+/** Servers announcing it store `turn-diagnostic` events and model-response repair detail. */
+export const TURN_DIAGNOSTICS_CAPABILITY = "marea.runs.turn-diagnostics";
+
+/**
+ * Technical detail of one failed turn attempt (including attempts Marea then retried on its own),
+ * for the teacher who maintains Marea. Sent only to servers announcing
+ * `marea.runs.turn-diagnostics`; stored and retained with the session like its conversation, and
+ * never shown to the student.
+ */
+export const TurnDiagnosticEventSchema = z
+  .object({
+    ...eventBaseShape,
+    eventType: z.literal("turn-diagnostic"),
+    messageId: MessageIdSchema,
+    category: z.string().min(1).max(128),
+    retryable: z.boolean(),
+    exception: DiagnosticExceptionSchema,
+    causes: z.array(DiagnosticExceptionSchema).max(8).readonly(),
+    stack: z.string().max(8_192),
+    requestId: RequestIdSchema.optional(),
+    /** What the model returned in the last call of the attempt, as recorded by the client. */
+    modelResponse: z.string().max(16_384).optional(),
+    client: z
+      .object({
+        version: z.string().min(1).max(64),
+        platform: z.string().min(1).max(64),
+      })
+      .strict()
+      .readonly(),
+  })
+  .strict()
+  .readonly();
+
 const StudentMessageEventSchema = z
   .object({
     ...eventBaseShape,
@@ -186,6 +228,7 @@ export const CanonicalRunEventSchema = z.discriminatedUnion("eventType", [
     })
     .strict()
     .readonly(),
+  TurnDiagnosticEventSchema,
 
   z
     .object({

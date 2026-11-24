@@ -1,4 +1,5 @@
 import { TurnProgress } from "./turn-progress.js";
+import type { TurnDiagnosticsOptions } from "./turn-diagnostic-report.js";
 import { resolvedReply } from "./approval-reply.js";
 import { finishTurn, failTurn, startupStream } from "./turn-outcome.boundary.js";
 import { resolveOperation } from "./session-operation.js";
@@ -36,10 +37,8 @@ import type {
 import { StoredTurnFailure } from "./contracts.js";
 import { attemptFailure } from "./turn-failure.boundary.js";
 import { LocalSession } from "./local-session.js";
-type ApprovalRequest = Omit<
-  Extract<AgentEvent, { readonly type: "write-approval-required" }>,
-  "type"
->;
+type WriteApprovalEvent = Extract<AgentEvent, { readonly type: "write-approval-required" }>;
+type ApprovalRequest = Omit<WriteApprovalEvent, "type">;
 export interface ActiveRun {
   readonly runId: RunId;
   readonly runToken: RunToken;
@@ -48,6 +47,7 @@ export interface ActiveRun {
 export type StableTurnIdentity = TurnAttemptIdentity & { readonly messageId: MessageId };
 export interface SessionTurnExecutorOptions {
   readonly liveProgress?: boolean | undefined;
+  readonly diagnostics?: TurnDiagnosticsOptions | undefined;
   readonly evidence?: ProjectEvidence | undefined;
   readonly operations?: OperationExecutor | undefined;
   readonly agent: AgentRuntime;

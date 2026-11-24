@@ -151,6 +151,8 @@ function failed(
       ...transcript,
       {
         detail: event.detail,
+        technicalDetail: event.technicalDetail ?? "",
+        expanded: state.detailedOutputs,
         id,
         kind: "error",
         message: event.message,

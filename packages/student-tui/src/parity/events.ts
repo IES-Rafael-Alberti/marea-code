@@ -14,6 +14,8 @@ import type { ToolArguments } from "./tool.js";
 export interface SessionContext {
   readonly branch: string;
   readonly cwd: string;
+  /** Where this computer keeps failed attempts; named by /details. */
+  readonly failureLog?: string | undefined;
   readonly model: string;
   readonly repositoryUrl: string;
 }
@@ -38,7 +40,10 @@ export type ParityEvent =
   | { readonly type: "questions-asked"; readonly request: QuestionsRequest }
   | {
       readonly type: "turn-failed";
+      /** Student-facing explanation in the interface language, or empty. */
       readonly detail: string;
+      /** Technical diagnostic text, shown only with /details. */
+      readonly technicalDetail?: string | undefined;
       readonly message: string;
       /** Whether the session can carry on at all after this. */
       readonly recoverable: boolean;

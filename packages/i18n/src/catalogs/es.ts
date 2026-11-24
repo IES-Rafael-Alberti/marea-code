@@ -130,6 +130,9 @@ const spanishCatalog = {
   "student.tui.failure.concurrency-limited": "Hay otra petición en curso. Espera a que termine.",
   "student.tui.failure.provider-interrupted": "El proveedor ha interrumpido la respuesta.",
   "student.tui.failure.resume-detail": "Puedes reanudar el turno desde el último punto guardado.",
+  "student.tui.failure.action-not-prepared": "Marea no pudo preparar esa acción. Vuelve a pedirla paso a paso.",
+  "student.tui.failure.invalid-response": "Marea no pudo completar la acción. Escribe /retry para intentarlo de nuevo.",
+  "student.tui.failure.log-location": "Registro de fallos en este equipo: {{path}}",
   "student.tui.failure.session-ended-by-teacher":
     "Tu docente ha finalizado esta sesión. Ejecuta marea de nuevo para empezar una nueva.",
   "student.tui.failure.session-expired":

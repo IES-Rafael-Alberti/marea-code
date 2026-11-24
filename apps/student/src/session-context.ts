@@ -54,6 +54,8 @@ export function sessionModelAlias(started: object | null): string {
 
 export interface SessionContextInput {
   readonly cwd: string;
+  /** The private log of failed attempts, which /details names. */
+  readonly failureLog?: string | undefined;
   readonly git: ProjectGitContext;
   readonly model: string;
 }
@@ -70,6 +72,9 @@ export function createProjectContext(input: Omit<SessionContextInput, "model">) 
 export function createSessionContext(input: SessionContextInput): ParityContext {
   return {
     ...createProjectContext(input),
+    ...(input.failureLog === undefined
+      ? {}
+      : { failureLog: sanitizeContextField(input.failureLog, MAX_PATH_LENGTH) }),
     model: sanitizeContextField(input.model, MAX_SHORT_FIELD_LENGTH),
   };
 }

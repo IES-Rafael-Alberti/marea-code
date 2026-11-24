@@ -352,7 +352,8 @@ it.each([
   expect(view.snapshot().transcript.at(-1)).toMatchObject({
     kind: "error",
     message,
-    detail: "Safe detail",
+    detail: "",
+    technicalDetail: "Safe detail",
     retryable: false,
     retryOffered: false,
   });
@@ -380,7 +381,8 @@ it.each([
       },
     });
     expect(view.snapshot().transcript.at(-1)).toMatchObject({
-      detail: resume ? copy.failure.resumeDetail : "Original failure",
+      detail: resume ? copy.failure.resumeDetail : "",
+      technicalDetail: "Original failure",
     });
   },
 );

@@ -109,8 +109,26 @@ describe("tool rows", () => {
 describe("retry offers", () => {
   it("withdraws a live offer and leaves a spent one alone", () => {
     const transcript: Transcript = [
-      { detail: "", id: "e0", kind: "error", message: "a", retryOffered: false, retryable: true },
-      { detail: "", id: "e1", kind: "error", message: "b", retryOffered: true, retryable: true },
+      {
+        detail: "",
+        technicalDetail: "",
+        expanded: false,
+        id: "e0",
+        kind: "error",
+        message: "a",
+        retryOffered: false,
+        retryable: true,
+      },
+      {
+        detail: "",
+        technicalDetail: "",
+        expanded: false,
+        id: "e1",
+        kind: "error",
+        message: "b",
+        retryOffered: true,
+        retryable: true,
+      },
       { id: "e2", kind: "user", text: "hola" },
     ];
     const withdrawn = withdrawRetryOffers(transcript);
