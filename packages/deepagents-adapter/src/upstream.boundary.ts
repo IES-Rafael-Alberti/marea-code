@@ -1,4 +1,5 @@
 import { createSocraticGate } from "./socratic-gate.boundary.js";
+import { createCompactionMiddleware } from "./compaction.boundary.js";
 import { createControlledTools } from "./controlled-tools.boundary.js";
 import {
   createQuestionTools,
@@ -119,8 +120,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const batchRejections = createBatchRejections();
   const agent = createDeepAgent({
     model,
-    middleware:
-      options.readOnly === true
+    middleware: [
+      // Same name as DeepAgents' summarization, so it replaces that default in place.
+      createCompactionMiddleware(),
+      ...(options.readOnly === true
         ? [
             createMiddleware({
               name: "MareaReadOnlyStartup",
@@ -136,7 +139,8 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             }),
             unknownTool,
           ]
-        : [unknownTool, batchRejections.middleware, ...(gate === null ? [] : [gate.middleware])],
+        : [unknownTool, batchRejections.middleware, ...(gate === null ? [] : [gate.middleware])]),
+    ],
     tools,
     systemPrompt: options.systemPrompt,
     checkpointer,
