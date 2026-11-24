@@ -3,11 +3,11 @@ import { Hono } from "hono";
 import { EDUCATIONAL_INSIGHTS_PATH } from "@marea/protocol";
 import { registerEducationalInsightsRoutes } from "../product-http/educational-insights-http.boundary.js";
 import { TeacherDomainError } from "../identity/errors.js";
+import { ReportRefusal } from "./reports-model.js";
 import { fixture } from "./insights.fixture.js";
 import { teacher } from "../../test-support/evaluation-fixture.js";
-it("authorizes every request and serializes SQL-backed reports without exposing stored inputs", async () => {
-  const f = fixture(),
-    app = new Hono();
+function insightsApp(f: ReturnType<typeof fixture>) {
+  const app = new Hono();
   registerEducationalInsightsRoutes({
     app,
     service: f.service,
@@ -22,20 +22,27 @@ it("authorizes every request and serializes SQL-backed reports without exposing 
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
+  const generate = () =>
+    post(
+      f.query({
+        kind: "generate",
+        from: "2026-09-06T00:00:00.000Z",
+        to: "2026-09-07T12:00:00.000Z",
+        locale: "es",
+      }),
+    );
+  return { post, generate };
+}
+it("authorizes every request and serializes SQL-backed reports without exposing stored inputs", async () => {
+  const f = fixture();
+  const { post, generate } = insightsApp(f);
   const settings = await post(f.query({ kind: "settings" }));
   expect(settings.status).toBe(200);
   expect(await settings.json()).toMatchObject({
     data: { settings: { map: false, adaptive: false } },
   });
   expect((await post({ ...f.query({ kind: "settings" }), classId: "class:two" })).status).toBe(403);
-  const generated = await post(
-    f.query({
-      kind: "generate",
-      from: "2026-09-06T00:00:00.000Z",
-      to: "2026-09-07T12:00:00.000Z",
-      locale: "es",
-    }),
-  );
+  const generated = await generate();
   expect(generated.status).toBe(200);
   const list = await post(f.query({ kind: "reports" }));
   expect(list.status).toBe(200);
@@ -76,4 +83,27 @@ it("returns unavailable when educational insights are not configured", async () 
     protocolVersion: "0.1",
     error: { code: "auth.invalid", retryable: false },
   });
+});
+it.each([
+  ["in-progress", 409],
+  ["invalid-period", 422],
+  ["too-large", 413],
+] as const)("maps a %s generate refusal to its own status", async (reason, status) => {
+  const f = fixture();
+  vi.spyOn(f.service.reports, "generate").mockImplementation(() => {
+    throw new ReportRefusal(reason);
+  });
+  const response = await insightsApp(f).generate();
+  expect(response.status).toBe(status);
+  expect(await response.json()).toEqual({
+    protocolVersion: "0.1",
+    error: { code: "request.invalid", retryable: false },
+  });
+});
+it("keeps unexpected generate failures generic", async () => {
+  const f = fixture();
+  vi.spyOn(f.service.reports, "generate").mockImplementation(() => {
+    throw new Error("boom");
+  });
+  expect((await insightsApp(f).generate()).status).toBe(500);
 });

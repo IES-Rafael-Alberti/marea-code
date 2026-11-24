@@ -21,6 +21,8 @@ const FAILURE_MESSAGES: Record<TurnFailureKind, (copy: ParityCopy) => string> = 
   "provider-interrupted": (copy) => copy.failure.providerInterrupted,
   "request-failed": (copy) => copy.failure.requestFailed,
   "session-unavailable": (copy) => copy.failure.sessionUnavailable,
+  "session-ended-by-teacher": (copy) => copy.failure.sessionEndedByTeacher,
+  "session-expired": (copy) => copy.failure.sessionExpired,
   "deadline-exceeded": (copy) => copy.failure.deadlineExceeded,
   "budget-exhausted": (copy) => copy.failure.budgetExhausted,
   "concurrency-limited": (copy) => copy.failure.concurrencyLimited,

@@ -10,7 +10,7 @@ import { EvaluationDraftSchema, StudentRunSnapshotSchema } from "@marea/protocol
 import { EVALUATION_DRAFT, NOW, teacher } from "../../test-support/evaluation-fixture.js";
 import { student } from "../../test-support/teaching-integration.fixture.js";
 import { renderReport } from "./service.js";
-import { validateFindings } from "./reports.js";
+import { validateFindings } from "./report-findings.js";
 import { captureEvaluationInput } from "../platform/persistence/sqlite-evaluation-input.js";
 
 import { fixture } from "./insights.fixture.js";
@@ -189,8 +189,8 @@ describe("class report lifecycle", () => {
     f.service.recover();
     expect(f.service.reports.read(retry.id, "class:one").state).toBe("interrupted");
   });
-  it("rejects invented aliases and cross-mode evidence", () => {
-    expect(() => {
+  it("drops findings citing invented aliases and cross-mode evidence", () => {
+    expect(
       validateFindings(
         {
           summary: "",
@@ -218,8 +218,8 @@ describe("class report lifecycle", () => {
             evaluation: EVALUATION_DRAFT,
           },
         ],
-      );
-    }).toThrow();
+      ),
+    ).toMatchObject({ adjusted: 1, synthesis: { findings: [] } });
   });
   it("invalidates report payloads when their source is removed", () => {
     const f = fixture();

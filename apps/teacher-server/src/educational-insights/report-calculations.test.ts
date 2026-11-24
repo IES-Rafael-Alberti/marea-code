@@ -1,9 +1,9 @@
 import { SkillIdSchema } from "@marea/protocol";
 import { it, expect } from "vitest";
-import { computedDenominators } from "./reports.js";
+import { computedDenominators } from "./report-findings.js";
 import { anonymizeDraft } from "./anonymize.js";
 import { EVALUATION_DRAFT } from "../../test-support/evaluation-fixture.js";
-it("counts students once by assessed mode and rejects unobserved affected learners", () => {
+it("counts students once by assessed mode and drops unobserved affected learners", () => {
   const synthesis = {
     summary: "Summary",
     recommendation: "Practice",
@@ -36,10 +36,12 @@ it("counts students once by assessed mode and rejects unobserved affected learne
     { ...source, runId: "run:three", alias: "B" },
     { ...source, runId: "run:free", alias: "C", mode: "free" as const },
   ];
-  expect(computedDenominators(synthesis, evidence).findings[0]?.evaluable).toEqual(["A", "B"]);
-  expect(() => computedDenominators(synthesis, [{ ...source, status: "unavailable" }])).toThrow(
-    "invalid-denominator",
-  );
+  const computed = computedDenominators(synthesis, evidence);
+  expect(computed.synthesis.findings[0]?.evaluable).toEqual(["A", "B"]);
+  expect(computed.adjusted).toBe(0);
+  const unobserved = computedDenominators(synthesis, [{ ...source, status: "unavailable" }]);
+  expect(unobserved.adjusted).toBe(1);
+  expect(unobserved.synthesis.findings[0]).toMatchObject({ evaluable: [], affected: [] });
   expect(
     computedDenominators(
       {
@@ -47,7 +49,7 @@ it("counts students once by assessed mode and rejects unobserved affected learne
         findings: [{ ...finding, skillIds: ["skill:a"], affected: [] }],
       },
       evidence,
-    ).findings[0]?.evaluable,
+    ).synthesis.findings[0]?.evaluable,
   ).toEqual([]);
 });
 it("pseudonymizes feedback without changing skill and criterion identifiers", () => {

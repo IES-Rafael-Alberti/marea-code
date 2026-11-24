@@ -1,10 +1,11 @@
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
 import { createEducationalMigrationCatalog } from "@marea/sqlite-storage/catalogs";
 import { InsightsRequestSchema } from "@marea/protocol";
 import { evaluationFixture, NOW } from "../../test-support/evaluation-fixture.js";
 import { SYNTHETIC_ROUTE_BUDGET } from "../../test-support/usage-fixture.js";
 import { LearningProgress } from "./progress.js";
 import { EducationalInsightsService } from "./service.js";
+import type { ReportDiagnostic } from "./reports.js";
 const disposers: (() => void)[] = [];
 afterEach(() => {
   for (const dispose of disposers.splice(0)) dispose();
@@ -30,6 +31,8 @@ export function fixture() {
     { resolve: () => undefined },
     { map: route, reports: route },
   );
+  const diagnostics = vi.fn<(entry: ReportDiagnostic) => void>();
+  service.reports.diagnostics = diagnostics;
   const query = (input: object) =>
     InsightsRequestSchema.parse({
       classId: "class:one",
@@ -40,7 +43,9 @@ export function fixture() {
   return {
     ...f,
     progress,
+    route,
     service,
+    diagnostics,
     query,
     now: (value: string) => {
       now = value;

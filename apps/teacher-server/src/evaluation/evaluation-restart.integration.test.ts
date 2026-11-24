@@ -50,6 +50,7 @@ describe("evaluation host durable recovery", () => {
         ids: { createId: () => `event:restart:${String(++id)}` },
         createReservationId: () => `reservation:restart:${String(++id)}`,
         intervalMs: 5,
+        closeAbandonedRuns: () => 0,
         onError,
         providers: {
           resolve: () => ({

@@ -1,6 +1,7 @@
 import { expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ReportList } from "./report-list.js";
+import { ReportList, failureMessage, reasonLabel } from "./report-list.js";
+import { failureMessages } from "./failure-messages.js";
 import { insightsMessages } from "./messages.js";
 import { button, elements } from "./interactions.fixture.js";
 
@@ -70,4 +71,18 @@ it("pages back to the newest reports and forward after the last one shown", () =
   expect(() => button(last.node, m.more)).toThrow();
   button(last.node, m.back).onClick?.();
   expect(last.props.setPage).toHaveBeenCalledExactlyOnceWith(null);
+});
+
+it("explains a failure by its code and falls back to the generic message", () => {
+  expect(failureMessage("budget", "es")).toBe(failureMessages("es").failures.budget);
+  expect(failureMessage("provider", "eu")).toBe(failureMessages("eu").failures.provider);
+  expect(failureMessage("toString", "en")).toBe(failureMessages("en").failures["analysis-failed"]);
+  expect(failureMessage("other", "en")).toBe(failureMessages("en").failures["analysis-failed"]);
+});
+
+it("explains why a session was unavailable and shows an unknown reason unchanged", () => {
+  expect(reasonLabel("no-material", "es")).toBe(failureMessages("es").reasons["no-material"]);
+  expect(reasonLabel("deadline", "en")).toBe(failureMessages("en").reasons.deadline);
+  expect(reasonLabel("toString", "en")).toBe("toString");
+  expect(reasonLabel("custom", "en")).toBe("custom");
 });

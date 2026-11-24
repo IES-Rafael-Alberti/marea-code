@@ -1,6 +1,7 @@
 import {
   createAuditMigrationCatalog,
   createObservabilityMigrationCatalog,
+  createSkillAssignmentMigrationCatalog,
   createEducationalMigrationCatalog,
   createStudentIdentityMigrationCatalog,
   createProfileMigrationCatalog,
@@ -25,6 +26,7 @@ export async function upgradeProfilesOffline(
     ![
       createAuditMigrationCatalog().length,
       createObservabilityMigrationCatalog().length,
+      createSkillAssignmentMigrationCatalog().length,
       createProfileMigrationCatalog().length,
       createEducationalMigrationCatalog().length,
       createStudentIdentityMigrationCatalog().length,
@@ -38,7 +40,7 @@ export async function upgradeProfilesOffline(
   capability.assertOwned();
   const upgraded = initializeSqliteStorage({
     databasePath: config.databasePath,
-    schema: "skill-assignments",
+    schema: "run-closure",
   });
   try {
     durable?.("migrated");

@@ -1,9 +1,11 @@
 import { insightsMessages } from "./modules/educational-insights/messages.js";
+import { failureMessages } from "./modules/educational-insights/failure-messages.js";
 import { describe, expect, it } from "vitest";
 
 import { governanceMessages } from "./modules/governance/governance-messages.js";
 import { evaluationMessages } from "./modules/evaluation/evaluation-messages.js";
 import { sessionMessages } from "./modules/session/session-messages.js";
+import { runClosureMessages } from "./modules/run-closure/run-closure-messages.js";
 import { sessionsMessages } from "./modules/sessions/sessions-messages.js";
 import { skillAuthoringMessages } from "./modules/skill-authoring/skill-authoring-messages.js";
 import { teachingMessages } from "./modules/teaching/teaching-messages.js";
@@ -15,12 +17,36 @@ import { serverSettingsMessages } from "./modules/server-settings/messages.js";
 import { workspaceMessages } from "./profiles/workspace-navigation.js";
 
 const catalogs = {
-  insights: insightsMessages,
+  insights: (locale: Parameters<typeof insightsMessages>[0]) => ({
+    ...insightsMessages(locale),
+    ...failureMessages(locale),
+  }),
   session: (locale: Parameters<typeof sessionMessages>[0]) => {
     const messages = sessionMessages(locale);
     return { ...messages, interpolated: { signedInAs: messages.signedInAs("Ada") } };
   },
   sessions: sessionsMessages,
+  "run-closure": (locale: Parameters<typeof runClosureMessages>[0]) => {
+    const messages = runClosureMessages(locale);
+    return {
+      endSession: messages.endSession,
+      endAllSessions: messages.endAllSessions,
+      cancel: messages.cancel,
+      ending: messages.ending,
+      failed: messages.failed,
+      oneTitle: messages.oneTitle,
+      classBody: messages.classBody,
+      evaluationNote: messages.evaluationNote,
+      confirmOne: messages.confirmOne,
+      interpolated: {
+        oneBody: messages.oneBody("Ana"),
+        onePending: messages.onePending("Ana"),
+        classTitle: [messages.classTitle(1), messages.classTitle(3)],
+        classPending: messages.classPending("Ana, Ben"),
+        confirmClass: [messages.confirmClass(1), messages.confirmClass(3)],
+      },
+    };
+  },
   teaching: (locale: Parameters<typeof teachingMessages>[0]) => {
     const messages = teachingMessages(locale);
     return {

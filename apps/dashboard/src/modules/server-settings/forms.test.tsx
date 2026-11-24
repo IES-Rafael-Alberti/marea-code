@@ -170,6 +170,21 @@ it("edits numeric limits and the configured cost unit", () => {
   expect(changed).toHaveBeenLastCalledWith({ ...emptyBudget(), costUnit: "credits" });
 });
 
+it.each([
+  ["es", "cada sesión de alumno (cada ejecución)"],
+  ["en", "each student session (each run)"],
+  ["eu", "ikasle-saio bakoitzari (exekuzio bakoitzari)"],
+] as const)("explains in %s that limits apply per session and purpose", (locale, phrase) => {
+  const scope = serverSettingsMessages(locale).budgetScope;
+  expect(scope).toContain(phrase);
+  for (const value of [emptyBudget(), { ...emptyBudget(), unlimited: false }]) {
+    const nodes = tree(
+      <BudgetFields m={serverSettingsMessages(locale)} value={value} change={vi.fn()} />,
+    );
+    expect(text(nodes)).toContain(scope);
+  }
+});
+
 it("connects, edits and protects provider connections", () => {
   const descriptor = {
     version: 1 as const,

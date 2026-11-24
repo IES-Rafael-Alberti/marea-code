@@ -71,6 +71,8 @@ const messages = {
     outputPrice: "Unidades por token de salida",
     budgetNote:
       "Por defecto no hay límites de uso. Al elegir un modelo del catálogo se rellenan sus precios, que puedes editar. Si escribes otro modelo, revisa los precios manualmente. Las tarifas son estimaciones y no incluyen descuentos ni caché.",
+    budgetScope:
+      "Los límites se aplican a cada sesión de alumno (cada ejecución) y por separado a cada función, como tutoría o evaluación. No son un total compartido por toda la clase.",
     unavailable:
       "Este proveedor no está disponible para configurarlo. Si se ha retirado, elige otro en Conexión y modelo. Sus ajustes guardados se conservan.",
     missing: "No hay proveedores instalados.",
@@ -144,6 +146,8 @@ const messages = {
     outputPrice: "Units per output token",
     budgetNote:
       "Usage is unlimited by default. Choosing a catalog model fills its editable prices. If you type a different model, review prices manually. Prices are estimates and exclude discounts and caching.",
+    budgetScope:
+      "Limits apply to each student session (each run) and separately to each purpose, such as tutoring or evaluation. They are not a total shared by the whole class.",
     unavailable:
       "This provider is unavailable for configuration. If it was removed, choose another connection and model. Its saved settings are preserved.",
     missing: "No providers installed.",
@@ -220,6 +224,8 @@ const messages = {
     outputPrice: "Unitateak irteerako token bakoitzeko",
     budgetNote:
       "Lehenespenez ez dago erabilera mugarik. Katalogoko eredu bat aukeratzean prezio editagarriak betetzen dira. Beste eredu bat idatziz gero, berrikusi prezioak eskuz. Prezioak estimazioak dira; deskontuak eta cachea ez dira sartzen.",
+    budgetScope:
+      "Mugak ikasle-saio bakoitzari (exekuzio bakoitzari) aplikatzen zaizkio, eta bereizita zeregin bakoitzari, hala nola tutoretzari edo ebaluazioari. Ez dira ikasgela osoak partekatzen duen guztizko bat.",
     unavailable:
       "Hornitzaile hau ezin da konfiguratu. Kendu bada, aukeratu beste konexio eta modelo bat. Gordetako ezarpenak mantentzen dira.",
     missing: "Ez dago hornitzailerik instalatuta.",

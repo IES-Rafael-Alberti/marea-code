@@ -38,6 +38,7 @@ it.each([
   ["student-identities", 12],
   ["observability", 13],
   ["skill-assignments", 14],
+  ["run-closure", 15],
 ] as const)(
   "starts the production host on %s, authenticates, persists, reopens and restores profiles",
   async (schema, version) => {
@@ -186,6 +187,7 @@ it.each([
   ["student-identities", 12],
   ["observability", 13],
   ["skill-assignments", 14],
+  ["run-closure", 15],
 ] as const)(
   "includes %s in the authorized operations backup and restore workflow",
   async (schema, version) => {

@@ -24,6 +24,7 @@ import {
   CredentialLoginRequestSchema,
   CURRENT_PROTOCOL_VERSION,
   EnrollStudentRequestSchema,
+  MAX_JSON_REQUEST_BYTES,
   ModelGatewayRequestSchema,
   OpenRunRequestSchema,
   RenewRunLeaseRequestSchema,
@@ -47,7 +48,6 @@ import { registerGovernanceRoutes } from "./governance-http.boundary.js";
 import { registerDashboardSessionRoutes } from "./dashboard-session-http.boundary.js";
 import { registerExternalIdentityRoutes } from "./external-identity-http.boundary.js";
 import { registerClassroomRoutes } from "./classroom-http.boundary.js";
-const JSON_REQUEST_LIMIT = 64 * 1_024;
 const MODEL_REQUEST_LIMIT = 2 * 1_024 * 1_024;
 const DEFAULT_COOKIE_NAME = "marea_teacher_session";
 const DASHBOARD_QUERY_KEYS = new Set(["cursor", "kind", "limit", "protocolVersion", "requestId"]);
@@ -107,7 +107,7 @@ async function authenticatedJson<T extends { readonly requestId: RequestId }>(
   schema: z.ZodType<T>,
   authenticate: (request: Request) => AuthenticatedIdentity,
   operation: (identity: AuthenticatedIdentity, query: T) => object,
-  maxBytes = JSON_REQUEST_LIMIT,
+  maxBytes = MAX_JSON_REQUEST_BYTES,
 ): Promise<Response> {
   const parsed = await parseJsonRequest(request, schema, maxBytes);
   if (!parsed.ok) return parsed.response;

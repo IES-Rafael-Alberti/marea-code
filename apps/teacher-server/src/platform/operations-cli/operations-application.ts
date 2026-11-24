@@ -22,12 +22,14 @@ import {
   createStudentIdentityMigrationCatalog,
   createObservabilityMigrationCatalog,
   createSkillAssignmentMigrationCatalog,
+  createRunClosureMigrationCatalog,
   createMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
   openSqliteDatabaseFile,
   type SqliteApplicationDatabase,
   type SqliteDatabaseFile,
+  type SqliteSchemaCatalog,
   type SqliteStorage,
 } from "@marea/sqlite-storage";
 
@@ -100,7 +102,9 @@ export function createOperationsApplication(
   const schemaVersion = existsSync(config.databasePath)
     ? inspectSqliteSchemaVersion({ databasePath: config.databasePath })
     : null;
-  let skillAssignments = schemaVersion === createSkillAssignmentMigrationCatalog().length;
+  let runClosure = schemaVersion === createRunClosureMigrationCatalog().length;
+  const skillAssignments =
+    runClosure || schemaVersion === createSkillAssignmentMigrationCatalog().length;
   const observability =
     skillAssignments || schemaVersion === createObservabilityMigrationCatalog().length;
   const identities =
@@ -108,6 +112,17 @@ export function createOperationsApplication(
   const educational = identities || schemaVersion === createEducationalMigrationCatalog().length;
   const profiles = educational || schemaVersion === profileVersion;
   const activated = schemaVersion === auditVersion || profiles;
+  const activatedSchema = (): SqliteSchemaCatalog =>
+    (
+      [
+        [runClosure, "run-closure"],
+        [skillAssignments, "skill-assignments"],
+        [observability, "observability"],
+        [identities, "student-identities"],
+        [educational, "educational-insights"],
+        [profiles, "dashboard-profiles"],
+      ] as const
+    ).find(([active]) => active)?.[1] ?? "retention-audit";
   const storageConfiguration = parseStorageConfiguration({
     installationRoot: capability.installationRoot,
     databasePath: config.databasePath,
@@ -123,17 +138,7 @@ export function createOperationsApplication(
     if (!activated) throw unavailable();
     storage ??= initializeSqliteStorage({
       databasePath: config.databasePath,
-      schema: skillAssignments
-        ? "skill-assignments"
-        : observability
-          ? "observability"
-          : identities
-            ? "student-identities"
-            : educational
-              ? "educational-insights"
-              : profiles
-                ? "dashboard-profiles"
-                : "retention-audit",
+      schema: activatedSchema(),
     });
     indexFile ??= openSqliteDatabaseFile({ databasePath: config.indexPath });
     return { storage, indexDatabase: indexFile.database };
@@ -288,17 +293,7 @@ export function createOperationsApplication(
       }
       const upgraded = initializeSqliteStorage({
         databasePath: config.databasePath,
-        schema: skillAssignments
-          ? "skill-assignments"
-          : observability
-            ? "observability"
-            : identities
-              ? "student-identities"
-              : educational
-                ? "educational-insights"
-                : profiles
-                  ? "dashboard-profiles"
-                  : "retention-audit",
+        schema: activatedSchema(),
       });
       try {
         return { schemaVersion: upgraded.schema.version };
@@ -319,7 +314,7 @@ export function createOperationsApplication(
         installations.profileUpgradeDurable,
       );
       // The newest schema selects its own catalog regardless of the older flags.
-      skillAssignments = true;
+      runClosure = true;
       return result;
     },
     async preview(input: PreviewInput) {
@@ -425,6 +420,7 @@ export function createOperationsApplication(
         [createStudentIdentityMigrationCatalog().length, "student-identities" as const],
         [createObservabilityMigrationCatalog().length, "observability" as const],
         [createSkillAssignmentMigrationCatalog().length, "skill-assignments" as const],
+        [createRunClosureMigrationCatalog().length, "run-closure" as const],
       ]).get(release.schemaVersion);
       if (catalog === undefined) throw unavailable();
       const blocked = (reasonCode: RestoreResult["reasonCode"], checked = 0, tombstoned = 0) => ({

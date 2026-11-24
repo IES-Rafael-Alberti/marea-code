@@ -15,6 +15,8 @@ export function createParityCopy(translator: Translator): ParityCopy {
       requestFailed: translator.t("errors.server.error"),
       resumeDetail: translator.t("student.tui.failure.resume-detail"),
       sessionUnavailable: translator.t("errors.run.unavailable"),
+      sessionEndedByTeacher: translator.t("student.tui.failure.session-ended-by-teacher"),
+      sessionExpired: translator.t("student.tui.failure.session-expired"),
     },
     help: translator.t("student.tui.help"),
     seconds: translator.t("student.tui.status.detail"),

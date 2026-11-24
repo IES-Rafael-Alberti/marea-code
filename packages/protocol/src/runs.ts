@@ -173,12 +173,28 @@ export const OpenRunResponseSchema = z
   .strict()
   .readonly();
 
+/** Reasons a student client may request when it closes its own run. */
 export const CloseRunReasonSchema = z.enum([
   "student-exit",
   "cancelled",
   "composition-failed",
   "fatal-error",
 ]);
+
+/** Reasons only the server may record, never accepted from a student close request. */
+export const ServerCloseReasonSchema = z.enum(["session-expired", "teacher-ended", "class-ended"]);
+
+/** Every stored close reason: the student-requestable set plus the server-recorded set. */
+export const RunClosedReasonSchema = z.enum([
+  ...CloseRunReasonSchema.options,
+  ...ServerCloseReasonSchema.options,
+]);
+
+/**
+ * Optional HTTP hint on a `run.unavailable` refusal naming why the server closed the run;
+ * the protocol 0.1 error body stays readable by older clients, which ignore it.
+ */
+export const RUN_CLOSED_REASON_HEADER = "x-marea-run-closed-reason";
 
 export const CloseRunRequestSchema = z
   .object({
@@ -222,6 +238,8 @@ export const RenewRunLeaseResponseSchema = z
   .readonly();
 
 export type AgentMode = z.infer<typeof AgentModeSchema>;
+export type ServerCloseReason = z.infer<typeof ServerCloseReasonSchema>;
+export type RunClosedReason = z.infer<typeof RunClosedReasonSchema>;
 export type CloseRunRequest = z.infer<typeof CloseRunRequestSchema>;
 export type CloseRunResponse = z.infer<typeof CloseRunResponseSchema>;
 export type ModelAlias = z.infer<typeof ModelAliasSchema>;

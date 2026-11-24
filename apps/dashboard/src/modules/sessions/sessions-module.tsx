@@ -11,6 +11,7 @@ import { sessionsMessages } from "./sessions-messages.js";
 import { ConversationEvent } from "./conversation-events.js";
 import { NoticePanel } from "./notice-panel.js";
 import { sessionTime } from "./session-time.js";
+import { ClassClosure, SelectedClosure } from "./sessions-closure.js";
 export interface SessionsModuleProperties {
   readonly locale: DashboardLocale;
   readonly classSelection?: boolean;
@@ -106,6 +107,7 @@ export function SessionsModule({
           <option value="active">{m.active}</option>
           <option value="closed">{m.closed}</option>
         </select>
+        <ClassClosure controller={controller} locale={locale} classId={state.classId} runs={runs} />
         {runs.length === 0 && <p>{m.empty}</p>}
         <ul>
           {runs.map((run) => (
@@ -161,6 +163,7 @@ export function SessionsModule({
           </button>
           <h2>{selected?.studentDisplayName ?? m.conversation}</h2>
           <p>{selected?.projectDisplayName}</p>
+          <SelectedClosure controller={controller} locale={locale} selected={selected} />
           {controller.exportClient && state.runId !== null && (
             <SessionExportPanel
               key={state.runId}

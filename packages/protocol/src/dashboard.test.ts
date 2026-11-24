@@ -5,6 +5,7 @@ import { ActiveRunDashboardQuerySchema, ActiveRunDashboardResponseSchema } from 
 const run = {
   runId: "run-1",
   studentDisplayName: "Ana María",
+  classId: "class-1",
   classDisplayName: "Programming 1",
   projectDisplayName: "Weather app",
   state: "active",

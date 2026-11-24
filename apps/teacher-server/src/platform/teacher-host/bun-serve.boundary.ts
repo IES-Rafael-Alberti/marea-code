@@ -6,7 +6,7 @@ interface LiveSession {
   checking: boolean;
 }
 const LIVE_PATH = "/api/v1/dashboard/live";
-/** Exceeds the 120-second skill-generation and 28-second external-login budgets. */
+/** Exceeds the 120-second skill-generation and 38-second external-login (8 s slot wait + 10 s exchange + 20 s admission) budgets. */
 const HTTP_IDLE_TIMEOUT_SECONDS = 150;
 const MUTATIONS = new Set([
   "/v1/runs/open",

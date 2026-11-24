@@ -34,6 +34,18 @@ describe("active runs dashboard client", () => {
     );
   });
 
+  it("composes the closing client over the same authenticated fetch", async () => {
+    const fetchRequest = vi.fn<DashboardFetch>(() => Promise.resolve(new Response("{}")));
+    const client = createActiveRunsClient(fetchRequest, () => "request:dashboard");
+    await expect(
+      client.closures?.closeRun("run:one", "close:1", new AbortController().signal),
+    ).rejects.toThrow();
+    expect(fetchRequest.mock.calls[0]?.[0]).toBe("/api/v1/dashboard/runs/close");
+    expect(JSON.parse(fetchRequest.mock.calls[0]?.[1].body as string)).toMatchObject({
+      requestId: "request:dashboard",
+    });
+  });
+
   it("rejects HTTP failures, invalid payloads, and invalid request identifiers", async () => {
     const failed = createActiveRunsClient(
       () => Promise.resolve(new Response(null, { status: 401 })),

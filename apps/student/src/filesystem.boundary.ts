@@ -142,6 +142,8 @@ const StoredFailureSchema = z
       "provider-interrupted",
       "request-failed",
       "session-unavailable",
+      "session-ended-by-teacher",
+      "session-expired",
       "unexpected",
       "deadline-exceeded",
       "budget-exhausted",

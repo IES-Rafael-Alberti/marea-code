@@ -177,6 +177,44 @@ describe("identity service", () => {
     );
   });
 
+  it.each([
+    ["too short", "a".repeat(11)],
+    ["with a forbidden character", "invitation 12345"],
+    ["too long", "a".repeat(129)],
+    ["empty", ""],
+  ])("fails loudly, before hashing or storing, on a seed invitation code %s", async (_, code) => {
+    const service = new IdentityService(dependencies);
+    const seed = {
+      accounts: [],
+      classes: [{ displayName: "Physics", key: "physics" }],
+      invitations: [
+        { classKey: "chemistry", code: "valid_code_12345" },
+        { classKey: "physics", code },
+      ],
+      seedId: "fixtures-v1",
+    };
+    await expect(service.bootstrap(seed)).rejects.toThrow(
+      'The seed invitation code for class "physics" is invalid: it needs 12 to 128 letters, digits, "-" or "_".',
+    );
+    expect(repository.seed).toBeUndefined();
+  });
+
+  it.each([12, 128])("accepts a seed invitation code of %s characters", async (length) => {
+    const service = new IdentityService(dependencies);
+    const code = "a".repeat(length);
+    await expect(
+      service.bootstrap({
+        accounts: [],
+        classes: [],
+        invitations: [{ classKey: "physics", code }],
+        seedId: "fixtures-v1",
+      }),
+    ).resolves.toBe(true);
+    expect(repository.seed?.invitations).toEqual([
+      { classKey: "physics", codeHash: `digest:${code}` },
+    ]);
+  });
+
   it("enrolls once, returns only a safe principal, and rejects an unavailable invitation", async () => {
     const service = new IdentityService(dependencies);
     const response = await service.enroll(enrollmentRequest());

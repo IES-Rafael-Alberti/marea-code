@@ -2,6 +2,7 @@ import { Children, isValidElement, type ReactNode, type ReactElement } from "rea
 import { vi } from "vitest";
 import { insightsMessages } from "./messages.js";
 import { insightsClient } from "./client.js";
+import { createRunClosureClient } from "../run-closure/run-closure-client.boundary.js";
 import type { useInsightModel, InsightViewProps } from "./model.js";
 interface Props {
   children?: ReactNode;
@@ -43,10 +44,12 @@ export function model(): ReturnType<typeof useInsightModel> {
   return {
     m: insightsMessages("es"),
     client: insightsClient(vi.fn()),
+    closures: createRunClosureClient(vi.fn()),
     abort: { current: new AbortController() },
     error: false,
     setError: vi.fn(),
     busy: false,
+    notice: null,
     data: null,
     setData: vi.fn(),
     page: null,

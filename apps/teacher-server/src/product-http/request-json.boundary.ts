@@ -1,13 +1,13 @@
+import { MAX_JSON_REQUEST_BYTES } from "@marea/protocol";
 import { isJson, readRequest } from "@marea/transport-server";
 import type * as z from "zod";
 import { protocolError } from "./response.js";
 export type ParseResult<T> =
   { readonly ok: true; readonly value: T } | { readonly ok: false; readonly response: Response };
-const JSON_REQUEST_LIMIT = 64 * 1024;
 export async function parseJsonRequest<T>(
   request: Request,
   schema: z.ZodType<T>,
-  maxBytes = JSON_REQUEST_LIMIT,
+  maxBytes = MAX_JSON_REQUEST_BYTES,
 ): Promise<ParseResult<T>> {
   if (!isJson(request.headers.get("content-type") ?? undefined)) {
     return { ok: false, response: protocolError(415, "request.invalid", false) };

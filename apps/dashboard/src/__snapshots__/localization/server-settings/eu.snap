@@ -3,6 +3,7 @@
   "advanced": "Ereduak eta mugak zereginaren arabera",
   "automaticPrices": "Hornitzailearen prezioak",
   "budgetNote": "Lehenespenez ez dago erabilera mugarik. Katalogoko eredu bat aukeratzean prezio editagarriak betetzen dira. Beste eredu bat idatziz gero, berrikusi prezioak eskuz. Prezioak estimazioak dira; deskontuak eta cachea ez dira sartzen.",
+  "budgetScope": "Mugak ikasle-saio bakoitzari (exekuzio bakoitzari) aplikatzen zaizkio, eta bereizita zeregin bakoitzari, hala nola tutoretzari edo ebaluazioari. Ez dira ikasgela osoak partekatzen duen guztizko bat.",
   "common": "Erabili konexio eta eredu hau ikasgela guztietako saio berrietan",
   "commonNote": "Saio berrietako ikasgelaren bideak ordezkatzen ditu. Irekitako saioak ez dira aldatzen.",
   "commonOff": "Ikasgela bakoitzak bere uneko eredua mantentzen du aukera hau aktibatu arte.",

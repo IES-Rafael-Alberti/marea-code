@@ -10,6 +10,7 @@ import {
   StoredTurnFailure,
   TurnAttemptFailed,
   type TurnFailureInfo,
+  type TurnFailureKind,
 } from "./contracts.js";
 import { StudentHttpError } from "./http-client.boundary.js";
 import { sanitizeContextField } from "./session-context.js";
@@ -111,10 +112,17 @@ function classifyRecognized(recognized: RecognizedFailure, prefix: string): Turn
   return {
     detail: "",
     hasPrefix,
-    kind: "session-unavailable",
+    kind: unavailableKind(recognized),
     recoverable: false,
     retryable: false,
   };
+}
+
+/** Says why the server refused the run when it told us; older servers never do. */
+function unavailableKind(recognized: RecognizedFailure): TurnFailureKind {
+  const reason = recognized instanceof StudentHttpError ? recognized.runClosedReason : undefined;
+  if (reason === "session-expired") return "session-expired";
+  return reason === undefined ? "session-unavailable" : "session-ended-by-teacher";
 }
 
 function classifyTopLevel(error: unknown, prefix: string): TurnFailureInfo {

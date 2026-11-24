@@ -1,0 +1,24 @@
+{
+  "cancel": "Cancelar",
+  "classBody": "Estos estudiantes verán que has finalizado la sesión y podrán empezar otra ejecutando Marea de nuevo.",
+  "confirmOne": "Finalizar esta sesión",
+  "endAllSessions": "Finalizar todas las sesiones",
+  "endSession": "Finalizar sesión",
+  "ending": "Finalizando…",
+  "evaluationNote": "Si la clase tiene activada la evaluación automática, la evaluación empieza cuando termina la sesión.",
+  "failed": "No se pudieron finalizar las sesiones. Comprueba la conexión e inténtalo de nuevo.",
+  "interpolated": {
+    "classPending": "Estos estudiantes tienen una autorización pendiente, que se descarta al finalizar la sesión: Ana, Ben.",
+    "classTitle": [
+      "¿Finalizar 1 sesión?",
+      "¿Finalizar 3 sesiones?",
+    ],
+    "confirmClass": [
+      "Finalizar 1 sesión",
+      "Finalizar 3 sesiones",
+    ],
+    "oneBody": "Ana verá que has finalizado la sesión y podrá empezar otra ejecutando Marea de nuevo.",
+    "onePending": "Ana tiene una autorización pendiente. Al finalizar la sesión se descarta.",
+  },
+  "oneTitle": "¿Finalizar esta sesión?",
+}

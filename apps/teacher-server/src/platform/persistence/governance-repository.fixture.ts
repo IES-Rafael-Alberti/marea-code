@@ -6,7 +6,10 @@ import {
   UtcTimestampSchema,
 } from "@marea/protocol";
 import { createMigrationCatalog } from "@marea/sqlite-storage/migrations";
-import { createStudentIdentityMigrationCatalog } from "@marea/sqlite-storage/catalogs";
+import {
+  createRunClosureMigrationCatalog,
+  createStudentIdentityMigrationCatalog,
+} from "@marea/sqlite-storage/catalogs";
 import { NodeSqliteTestDatabase } from "../../../test-support/node-sqlite-database.boundary.js";
 import type {
   GovernanceCommitContext,
@@ -28,12 +31,14 @@ export const GOVERNANCE_EXPIRES = UtcTimestampSchema.parse("2026-09-12T11:00:00.
 
 export function governanceFixture(
   creationGuard: IdentityCreationGuard = withoutDeletionAuthority(),
-  schema: "application" | "student-identities" = "application",
+  schema: "application" | "student-identities" | "run-closure" = "application",
 ) {
   const database = new NodeSqliteTestDatabase();
   for (const migration of schema === "application"
     ? createMigrationCatalog()
-    : createStudentIdentityMigrationCatalog()) {
+    : schema === "run-closure"
+      ? createRunClosureMigrationCatalog()
+      : createStudentIdentityMigrationCatalog()) {
     for (const sql of migration.statements) database.executeScript(sql);
   }
   let sequence = 0;

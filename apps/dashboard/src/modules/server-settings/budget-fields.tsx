@@ -50,6 +50,7 @@ export function BudgetFields({
         />
         {m.unlimited}
       </label>
+      <p className="server-help">{m.budgetScope}</p>
       {value.unlimited !== true &&
         Object.entries(fields).map(([key, label]) => {
           const dollars = key === "maxCostUnits" && value.costUnit === "nanoUSD";

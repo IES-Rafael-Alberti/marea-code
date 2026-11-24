@@ -53,7 +53,7 @@ export async function activatePreviewServer<T>(
     owner.capability.assertOwned();
     initializeSqliteStorage({
       databasePath: config.databasePath,
-      schema: "skill-assignments",
+      schema: "run-closure",
     }).close();
     const result = await activate();
     installExampleSkill(installation, destination);

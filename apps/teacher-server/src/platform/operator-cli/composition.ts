@@ -13,6 +13,7 @@ import {
   createStudentIdentityMigrationCatalog,
   createObservabilityMigrationCatalog,
   createSkillAssignmentMigrationCatalog,
+  createRunClosureMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
   type SqliteStorage,
@@ -199,6 +200,7 @@ export function composeInstallation(capability: InstallationCapability): Compose
 }
 
 function operatorSchema(version: number) {
+  if (version === createRunClosureMigrationCatalog().length) return "run-closure";
   if (version === createSkillAssignmentMigrationCatalog().length) return "skill-assignments";
   if (version === createObservabilityMigrationCatalog().length) return "observability";
   if (version === createStudentIdentityMigrationCatalog().length) return "student-identities";

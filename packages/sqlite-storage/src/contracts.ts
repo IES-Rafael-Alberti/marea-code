@@ -69,7 +69,8 @@ export type SqliteSchemaCatalog =
   | "educational-insights"
   | "student-identities"
   | "observability"
-  | "skill-assignments";
+  | "skill-assignments"
+  | "run-closure";
 
 export interface SqliteDatabaseFileOptions {
   readonly databasePath: string;

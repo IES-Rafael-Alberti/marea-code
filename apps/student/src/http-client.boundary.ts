@@ -1,17 +1,19 @@
-import { StudentHttpError } from "./http-error.js";
+import { StudentHttpError, httpErrorFromResponse } from "./http-error.js";
 import { transportFailure } from "./http-transport-diagnostics.boundary.js";
-import { CLASS_CONFIGURATION_REQUIRED_HEADER, SOCRATIC_GATE_HEADER } from "@marea/protocol";
+import { SOCRATIC_GATE_HEADER } from "@marea/protocol";
 export { StudentHttpError } from "./http-error.js";
 import { boundedEventDelivery } from "./event-delivery.js";
 import {
   SIGN_IN_HTTP_PATHS,
   authenticatedJson,
   signInMethods,
+  type JsonClient,
   type SignInHttpPaths,
 } from "./http-sign-in.boundary.js";
 import {
   RequestIdSchema,
   AppendRunEventsResponseSchema,
+  MAX_JSON_REQUEST_BYTES,
   MAX_RUN_EVENTS_REQUEST_BYTES,
   CapabilitiesResponseSchema,
   ClassBootstrapOutcomeSchema,
@@ -54,7 +56,6 @@ import * as z from "zod";
 import type { AuthenticationResult, StudentServer } from "./contracts.js";
 
 const MAX_JSON_RESPONSE_BYTES = 1_048_576;
-const MAX_REQUEST_BYTES = 1_048_576;
 const MAX_MODEL_REQUEST_BYTES = 2_097_152;
 const MAX_STREAM_LINE_BYTES = 131_072;
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -100,16 +101,7 @@ export interface ModelGatewayHttpOptions extends StudentHttpOptions {
   readonly runToken: () => Promise<RunToken>;
 }
 
-export interface HttpClient {
-  json<T extends { readonly requestId: RequestId }>(
-    path: string,
-    requestId: RequestId,
-    body: object,
-    schema: z.ZodType<T>,
-    credential?: string,
-    maxResponseBytes?: number,
-    maxRequestBytes?: number,
-  ): Promise<T>;
+export interface HttpClient extends JsonClient {
   stream(
     path: string,
     body: ModelGatewayRequest,
@@ -179,7 +171,7 @@ function createRequest(
   body: object,
   signal: AbortSignal,
   credential?: string,
-  maxBytes = MAX_REQUEST_BYTES,
+  maxBytes = MAX_JSON_REQUEST_BYTES,
 ): Request {
   // A fresh connection per request: Bun re-sends a POST whose reused connection closes
   // mid-response and splices both bodies, which would replay turns and model streams.
@@ -255,13 +247,7 @@ async function responseError(response: Response, request: Request): Promise<Stud
     const parsed = ProtocolErrorResponseSchema.parse(
       parseJson(await readBoundedBody(response, request)),
     );
-    return new StudentHttpError(
-      response.status,
-      parsed.error.code,
-      parsed.error.retryable,
-      parsed.error.code === "run.unavailable" &&
-        response.headers.get(CLASS_CONFIGURATION_REQUIRED_HEADER) === "true",
-    );
+    return httpErrorFromResponse(response.status, parsed.error, response.headers);
   } catch (error: unknown) {
     if (error instanceof StudentHttpError && error.code === "response.too-large") return error;
   }
@@ -301,13 +287,14 @@ export function createHttpClient(options: StudentHttpOptions): HttpClient {
       schema: z.ZodType<T>,
       credential?: string,
       maxResponseBytes = MAX_JSON_RESPONSE_BYTES,
-      maxRequestBytes = MAX_REQUEST_BYTES,
+      maxRequestBytes = MAX_JSON_REQUEST_BYTES,
+      minimumTimeoutMs = 0,
     ): Promise<T> {
       const request = createRequest(
         baseUrl,
         path,
         body,
-        AbortSignal.timeout(timeout),
+        AbortSignal.timeout(Math.max(timeout, minimumTimeoutMs)),
         credential,
         maxRequestBytes,
       );

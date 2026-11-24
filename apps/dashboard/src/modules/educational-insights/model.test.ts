@@ -272,10 +272,12 @@ it("starts idle with the last day selected and declares what each hook depends o
   ]);
   expect(hooks.dependencies).toEqual([
     [fetchRequest],
+    [fetchRequest],
     ["reports", "class:one", undefined, state.client, null, null],
     [state.load, "reports"],
     [state.client, "class:one", "reports"],
   ]);
+  expect(typeof state.closures.closeRun).toBe("function");
   vi.restoreAllMocks();
 });
 it("polls the map every 15 seconds until disposed, but never the progress overview", async () => {
@@ -332,4 +334,40 @@ it("clears an earlier error once a load succeeds and stays busy while a mutation
   pending.reject(new Error("offline"));
   await action;
   expect(render("reports").busy).toBe(false);
+});
+
+it.each([
+  [409, "reportInProgress"],
+  [413, "reportTooLarge"],
+  [422, "reportPeriod"],
+] as const)("explains a %i refusal without a generic error", async (status, notice) => {
+  const refused = () => Promise.resolve(new Response(null, { status }));
+  await render("reports", { fetchRequest: refused }).action({
+    kind: "generate",
+    from: report.from,
+    to: report.to,
+    locale: "es",
+  });
+  expect(render("reports").notice).toBe(notice);
+  expect(render("reports").error).toBe(false);
+  expect(render("reports").busy).toBe(false);
+});
+it.each([
+  ["another status", () => Promise.resolve(new Response(null, { status: 403 }))],
+  ["a transport failure", () => Promise.reject(new Error("offline"))],
+])("keeps the generic error for %s", async (_label, fetchRequest) => {
+  await render("reports", { fetchRequest }).action({ kind: "cancel", reportId: report.id });
+  expect(render("reports").notice).toBeNull();
+  expect(render("reports").error).toBe(true);
+});
+it("clears a refusal when the next action starts", async () => {
+  const refused = () => Promise.resolve(new Response(null, { status: 409 }));
+  await render("reports", { fetchRequest: refused }).action({
+    kind: "cancel",
+    reportId: report.id,
+  });
+  expect(render("reports").notice).toBe("reportInProgress");
+  await render("reports").action({ kind: "cancel", reportId: report.id });
+  expect(render("reports").notice).toBeNull();
+  expect(render("reports").error).toBe(false);
 });

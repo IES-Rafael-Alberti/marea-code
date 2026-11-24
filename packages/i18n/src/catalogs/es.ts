@@ -126,6 +126,10 @@ const spanishCatalog = {
   "student.tui.failure.concurrency-limited": "Hay otra petición en curso. Espera a que termine.",
   "student.tui.failure.provider-interrupted": "El proveedor ha interrumpido la respuesta.",
   "student.tui.failure.resume-detail": "Puedes reanudar el turno desde el último punto guardado.",
+  "student.tui.failure.session-ended-by-teacher":
+    "Tu docente ha finalizado esta sesión. Ejecuta marea de nuevo para empezar una nueva.",
+  "student.tui.failure.session-expired":
+    "Esta sesión ha caducado por inactividad o por alcanzar su límite de tiempo. Ejecuta marea de nuevo para empezar una nueva.",
   "student.tui.help": `## Comandos
 
 - \`/help\` — muestra esta ayuda.

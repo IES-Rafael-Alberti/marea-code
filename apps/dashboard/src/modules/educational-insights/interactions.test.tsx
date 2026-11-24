@@ -4,6 +4,7 @@ import { MapView } from "./map-view.js";
 import { ProgressView, StudentProgress } from "./progress-view.js";
 import { ReportsView } from "./reports-view.js";
 import { button, elements, model, props, report } from "./interactions.fixture.js";
+import { EndClassSessionsControl, EndSessionControl } from "../run-closure/run-closure-controls.js";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -46,6 +47,43 @@ it("shows loading, empty and disabled maps and reports failed navigation", async
   await Promise.resolve();
   expect(navigate).toHaveBeenCalledWith("run");
   expect(state.setError).toHaveBeenCalledExactlyOnceWith(true);
+});
+it("offers to end each listed session and all of the class's sessions, then reloads the map", () => {
+  const state = model();
+  state.data = {
+    enabled: true,
+    configured: true,
+    entries: ["run:ana", "run:ben"].map((runId) => ({
+      runId,
+      student: runId === "run:ana" ? "Ana" : "Ben",
+      project: "P",
+      state: "green" as const,
+      reason: "",
+      confidence: "high" as const,
+      analyzedAt: null,
+    })),
+  };
+  const tree = elements(MapView({ model: state, props, shared: null }));
+  const [all] = tree.filter((element) => element.type === EndClassSessionsControl);
+  expect(all?.props).toMatchObject({
+    client: state.closures,
+    locale: props.locale,
+    classId: props.classId,
+    runs: [
+      { runId: "run:ana", studentDisplayName: "Ana" },
+      { runId: "run:ben", studentDisplayName: "Ben" },
+    ],
+  });
+  const singles = tree.filter((element) => element.type === EndSessionControl);
+  expect(singles.map((element) => (element.props as { run: object }).run)).toEqual([
+    { runId: "run:ana", studentDisplayName: "Ana" },
+    { runId: "run:ben", studentDisplayName: "Ben" },
+  ]);
+  for (const control of [all, ...singles]) {
+    expect(control?.props).toMatchObject({ client: state.closures, locale: props.locale });
+    (control?.props as { onClosed: () => void }).onClosed();
+  }
+  expect(state.load).toHaveBeenCalledTimes(3);
 });
 it("lists every student of the page, opening only the first, and pages forward and back", () => {
   const state = model();

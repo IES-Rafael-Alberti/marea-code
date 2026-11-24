@@ -124,6 +124,10 @@ const englishCatalog = {
     "Another request is in progress. Wait for it to finish.",
   "student.tui.failure.provider-interrupted": "The provider interrupted the answer.",
   "student.tui.failure.resume-detail": "You can resume the turn from the last saved point.",
+  "student.tui.failure.session-ended-by-teacher":
+    "Your teacher has ended this session. Run marea again to start a new one.",
+  "student.tui.failure.session-expired":
+    "This session expired after being inactive or reaching its time limit. Run marea again to start a new one.",
   "student.tui.help": `## Commands
 
 - \`/help\` — shows this help.

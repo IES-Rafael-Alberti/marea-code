@@ -55,7 +55,7 @@ it("enforces the deadline and escalates when a shell ignores termination", async
     // Readiness polling can already have advanced the fake clock.
     await vi.advanceTimersByTimeAsync(250);
     await vi.advanceTimersToNextTimerAsync();
-    expect(Date.now() - started).toBe(30_000);
+    expect(Date.now() - started).toBe(600_000);
     let settled = false;
     void running.then(() => {
       settled = true;

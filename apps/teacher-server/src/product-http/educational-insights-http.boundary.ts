@@ -12,7 +12,15 @@ import {
   boundedSkillAuthoringJson,
 } from "./skill-authoring-http.boundary.js";
 import { classProjectionError } from "./class-projection-error.boundary.js";
+import { ReportRefusal } from "../educational-insights/reports-model.js";
 import { protocolError } from "./response.js";
+
+/** Distinct statuses let the dashboard explain a refused report without extra response fields. */
+const REFUSAL_STATUS: Record<ReportRefusal["reason"], number> = {
+  "in-progress": 409,
+  "too-large": 413,
+  "invalid-period": 422,
+};
 export function registerEducationalInsightsRoutes(options: {
   readonly app: Hono;
   readonly policy: MiddlewareHandler;
@@ -39,7 +47,9 @@ export function registerEducationalInsightsRoutes(options: {
         MAX_INSIGHTS_BYTES,
       );
     } catch (error) {
-      return classProjectionError(error);
+      return error instanceof ReportRefusal
+        ? protocolError(REFUSAL_STATUS[error.reason], "request.invalid", false)
+        : classProjectionError(error);
     }
   });
 }

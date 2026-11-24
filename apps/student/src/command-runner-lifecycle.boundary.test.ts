@@ -30,8 +30,8 @@ function fixture(pid: number | undefined = 42) {
   const running = runProjectCommand("/synthetic", "synthetic command", abort.signal);
   return { child, stdout, stderr, kill, group, abort, add, remove, running };
 }
-it.each([16384, 16385])(
-  "bounds %s characters across multiple stdout/stderr chunks",
+it.each([16384, 16385, 20000])(
+  "keeps the head and the tail of %s characters across multiple stdout/stderr chunks",
   async (size) => {
     const f = fixture();
     expect(spawn).toHaveBeenLastCalledWith("/bin/sh", ["-c", "synthetic command"], {
@@ -40,14 +40,20 @@ it.each([16384, 16385])(
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
     });
+    const body = Array.from({ length: size - 6 }, (_, index) => String(index % 10)).join("");
+    const full = `first ${body}`;
     f.stdout.write(Buffer.from("first "));
-    f.stderr.write(Buffer.from("x".repeat(size - 6)));
+    f.stderr.write(Buffer.from(body));
     f.child.emit("close", 7);
+    const omitted = size - 16384;
     expect(JSON.parse(await f.running)).toEqual({
       exitCode: 7,
       stopped: false,
-      truncated: size > 16384,
-      output: `first ${"x".repeat(16378)}`,
+      truncated: omitted > 0,
+      output:
+        omitted > 0
+          ? `${full.slice(0, 4096)}\n… ${String(omitted)} characters omitted …\n${full.slice(-12288)}`
+          : full,
     });
     expect(f.group).toHaveBeenCalledWith(-42, "SIGKILL");
     expect(f.add).toHaveBeenCalledWith("abort", expect.any(Function), { once: true });
@@ -57,6 +63,27 @@ it.each([16384, 16385])(
     expect(f.group).toHaveBeenCalledTimes(1);
   },
 );
+it("counts omitted characters across many chunks and keeps the newest tail", async () => {
+  const f = fixture();
+  f.stdout.write(Buffer.from("H".repeat(4096)));
+  for (let index = 0; index < 5; index += 1)
+    f.stdout.write(Buffer.from(String(index).repeat(5000)));
+  f.child.emit("close", 0);
+  const result = JSON.parse(await f.running) as { output: string; truncated: boolean };
+  expect(result.truncated).toBe(true);
+  expect(result.output).toBe(
+    `${"H".repeat(4096)}\n… 12712 characters omitted …\n${"2".repeat(2288)}${"3".repeat(5000)}${"4".repeat(5000)}`,
+  );
+});
+it("stops at the ten minute deadline and not before", async () => {
+  const f = fixture();
+  await vi.advanceTimersByTimeAsync(599_999);
+  expect(f.group).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1);
+  expect(f.group).toHaveBeenCalledWith(-42, "SIGTERM");
+  f.child.emit("close", null);
+  expect(JSON.parse(await f.running)).toMatchObject({ stopped: true });
+});
 it("falls back to the child handle and removes deadline/escalation after close", async () => {
   const f = fixture();
   f.group.mockImplementation(() => {

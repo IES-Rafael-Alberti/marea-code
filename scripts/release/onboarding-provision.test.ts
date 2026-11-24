@@ -136,7 +136,7 @@ it.each([false, true])(
     );
     expect(p.initializeSqliteStorage).toHaveBeenCalledWith({
       databasePath: "/stage/marea.sqlite",
-      schema: "skill-assignments",
+      schema: "run-closure",
     });
     expect(p.repository).toHaveBeenCalledWith("database");
     if (example) {

@@ -131,6 +131,34 @@ describe("classifyTurnFailure", () => {
   });
 
   it.each([
+    ["teacher-ended", "session-ended-by-teacher"],
+    ["class-ended", "session-ended-by-teacher"],
+    ["session-expired", "session-expired"],
+  ] as const)(
+    "explains a run the server closed as %s with a dedicated fatal failure",
+    (reason, kind) => {
+      const refusal = new StudentHttpError(409, "run.unavailable", false, false, reason);
+      for (const error of [refusal, new TurnAttemptFailed("partial", refusal)]) {
+        expect(classifyTurnFailure(error)).toEqual({
+          detail: "",
+          hasPrefix: error instanceof TurnAttemptFailed,
+          kind,
+          recoverable: false,
+          retryable: false,
+        });
+      }
+    },
+  );
+
+  it("keeps a class setup refusal recoverable even when a close reason is present", () => {
+    expect(
+      classifyTurnFailure(
+        new StudentHttpError(409, "run.unavailable", false, true, "teacher-ended"),
+      ),
+    ).toMatchObject({ kind: "request-failed", recoverable: true });
+  });
+
+  it.each([
     "invalid-replay-prefix",
     "approval-not-pending",
     "approval-review-mismatch",
