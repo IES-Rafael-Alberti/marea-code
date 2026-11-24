@@ -19,8 +19,8 @@ export class OperationMediator implements ApprovalTool {
   readonly lifecycle = "external";
   readonly name: string;
   readonly description: string;
-  private authorization: { arguments: Readonly<Record<string, string>>; result: string } | null =
-    null;
+  /** Every approved action of one turn; a batch may approve several of this operation. */
+  private authorizations: { arguments: Readonly<Record<string, string>>; result: string }[] = [];
   constructor(
     readonly operation: OperationName,
     platform: NodeJS.Platform = process.platform,
@@ -34,20 +34,24 @@ export class OperationMediator implements ApprovalTool {
           : "Replace an exact unique text fragment in a project file after student authorization. Arguments: file_path, old_string, new_string. The file is rechecked before applying.";
   }
   authorize(arguments_: Readonly<Record<string, string>>, result: string): void {
-    this.authorization = { arguments: arguments_, result };
+    this.authorizations.push({ arguments: arguments_, result });
   }
   clear(): void {
-    this.authorization = null;
+    this.authorizations = [];
   }
+  /** Consumes the authorization with exactly these arguments; any other call clears them all. */
   execute(arguments_: Readonly<Record<string, string>>): Promise<string> {
-    const authorization = this.authorization;
-    this.clear();
-    if (
-      authorization === null ||
-      Object.keys(arguments_).length !== Object.keys(authorization.arguments).length ||
-      Object.entries(arguments_).some(([key, value]) => authorization.arguments[key] !== value)
-    )
+    const index = this.authorizations.findIndex(
+      (authorization) =>
+        Object.keys(arguments_).length === Object.keys(authorization.arguments).length &&
+        Object.entries(arguments_).every(([key, value]) => authorization.arguments[key] === value),
+    );
+    const authorization = this.authorizations[index];
+    if (authorization === undefined) {
+      this.clear();
       return Promise.reject(new Error("The operation does not match its authorization."));
+    }
+    this.authorizations.splice(index, 1);
     return Promise.resolve(authorization.result);
   }
 }

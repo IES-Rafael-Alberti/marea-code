@@ -7,7 +7,11 @@ function expectedCopy(translator: Translator) {
   return {
     approval: {
       approve: text("student.tui.approval.approve"),
+      approveAll: text("student.tui.approval.approve-all"),
       approved: text("student.tui.approval.approved"),
+      approvedAll: text("student.tui.approval.approved-all"),
+      position: text("student.tui.approval.position"),
+      remaining: text("student.tui.approval.remaining"),
       cancelled: text("student.tui.approval.cancelled"),
       collapse: text("student.tui.approval.collapse"),
       editAfter: text("student.tui.approval.edit-after"),

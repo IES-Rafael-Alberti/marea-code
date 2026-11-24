@@ -22,7 +22,11 @@ export function createParityCopy(translator: Translator): ParityCopy {
     seconds: translator.t("student.tui.status.detail"),
     approval: {
       approve: translator.t("student.tui.approval.approve"),
+      approveAll: translator.t("student.tui.approval.approve-all"),
       approved: translator.t("student.tui.approval.approved"),
+      approvedAll: translator.t("student.tui.approval.approved-all"),
+      position: translator.t("student.tui.approval.position"),
+      remaining: translator.t("student.tui.approval.remaining"),
       cancelled: translator.t("student.tui.approval.cancelled"),
       collapse: translator.t("student.tui.approval.collapse"),
       editAfter: translator.t("student.tui.approval.edit-after"),

@@ -91,14 +91,25 @@ export async function collect(events: AsyncIterable<import("./contracts.js").Age
 export function approvalRequired(
   overrides: Partial<Extract<DeepAgentEvent, { readonly type: "tool-approval-required" }>> = {},
 ): Extract<DeepAgentEvent, { readonly type: "tool-approval-required" }> {
-  return {
-    type: "tool-approval-required",
+  const event = {
+    type: "tool-approval-required" as const,
     reviewId: approvalId,
     toolName: "marea_write_file",
     arguments: { path: "notes.txt", content: "content" },
     description: "Create notes.",
-    allowedDecisions: ["approve", "amend", "reject"],
+    allowedDecisions: ["approve", "amend", "reject"] as const,
     ...overrides,
+  };
+  return {
+    ...event,
+    actions: overrides.actions ?? [
+      {
+        index: 0,
+        toolName: event.toolName,
+        arguments: event.arguments,
+        description: event.description,
+      },
+    ],
   };
 }
 

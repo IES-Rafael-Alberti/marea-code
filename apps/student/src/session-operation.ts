@@ -1,4 +1,5 @@
 import type { AgentEvent } from "./contracts.js";
+import { resolvedReply } from "./approval-reply.js";
 import type { OperationRequest, OperationExecutor } from "./operation-contracts.js";
 import type {
   ActiveRun,
@@ -6,19 +7,28 @@ import type {
   StableTurnIdentity,
 } from "./session-turn-executor.js";
 import { interactionAfterAbort } from "./turn-interaction.js";
-import type { ApprovalReply } from "./contracts.js";
+import type { ApprovalBatchPosition, ApprovalReply } from "./contracts.js";
 
-export async function resolveOperation(
+export interface ApprovalChoice {
+  readonly decision: "approved" | "rejected";
+  readonly reason: string | undefined;
+  /** The student approved this action and the remaining actions of its batch. */
+  readonly remaining: boolean;
+}
+
+/**
+ * Checks policy, records the request, asks the student (unless a decision is stored or the batch
+ * was already approved) and records the decision. It never runs the operation.
+ */
+export async function decideOperation(
   options: SessionTurnExecutorOptions,
   operations: OperationExecutor,
   request: OperationRequest,
   active: ActiveRun,
   identity: StableTurnIdentity,
-  assistantText: string,
   signal: AbortSignal,
-): Promise<AsyncIterable<AgentEvent>> {
-  const resume = options.agent.resumeOperation?.bind(options.agent);
-  if (resume === undefined) throw new Error("The runtime cannot resume this operation.");
+  batch?: { readonly position: ApprovalBatchPosition; readonly approved: boolean },
+): Promise<ApprovalChoice> {
   if (
     active.snapshot.teacherToolPolicy.restrictions.some(
       (rule) => rule.tool === request.tool && rule.effect === "deny",
@@ -45,23 +55,25 @@ export async function resolveOperation(
   const stored = await options.localSession.findApproval(request.approvalId);
   const reply =
     stored ??
-    (await interactionAfterAbort<ApprovalReply>(
-      () =>
-        options.studentInterface.confirmWrite({
-          ...identity,
-          approvalId: request.approvalId,
-          toolName: request.tool,
-          arguments: request.arguments,
-          path: request.arguments.path ?? "",
-          content: JSON.stringify(request.arguments, null, 2),
-          summary: request.arguments.command ?? request.summary,
-        }),
-      signal,
-      "rejected",
-      "Operation authorization failed.",
-    ));
-  const { decision, reason: suppliedReason } =
-    typeof reply === "string" ? { decision: reply, reason: undefined } : reply;
+    (batch?.approved === true
+      ? ("approved" as const)
+      : await interactionAfterAbort<ApprovalReply>(
+          () =>
+            options.studentInterface.confirmWrite({
+              ...identity,
+              approvalId: request.approvalId,
+              toolName: request.tool,
+              arguments: request.arguments,
+              path: request.arguments.path ?? "",
+              content: JSON.stringify(request.arguments, null, 2),
+              summary: request.arguments.command ?? request.summary,
+              ...(batch === undefined ? {} : { batch: batch.position }),
+            }),
+          signal,
+          "rejected",
+          "Operation authorization failed.",
+        ));
+  const { decision, reason: suppliedReason, remaining } = resolvedReply(reply);
   const reason = suppliedReason?.slice(0, 2048);
   await options.localSession.resolveApproval(
     { approvalId: request.approvalId, decision, reason },
@@ -79,28 +91,63 @@ export async function resolveOperation(
   signal.throwIfAborted();
   await options.flushOutbox();
   signal.throwIfAborted();
+  return { decision, reason, remaining };
+}
+
+/** Runs one approved operation, presenting it as a tool row; returns its recorded result. */
+export async function* runOperation(
+  options: SessionTurnExecutorOptions,
+  operations: OperationExecutor,
+  request: OperationRequest,
+  identity: StableTurnIdentity,
+  signal: AbortSignal,
+): AsyncGenerator<AgentEvent, string> {
+  const callId = request.approvalId;
+  yield { type: "tool-started", callId, name: request.tool, arguments: request.arguments };
+  let result: string;
+  try {
+    signal.throwIfAborted();
+    await options.evidence?.beginAgent(identity.messageId);
+    result = await operations.execute(request, signal);
+    await options.evidence?.capture("agent", identity.messageId);
+    await options.flushOutbox();
+  } catch (error) {
+    yield {
+      type: "tool-finished",
+      callId,
+      failed: true,
+      result: error instanceof Error ? error.message : "The operation failed without an error.",
+    };
+    throw error;
+  }
+  yield { type: "tool-finished", callId, failed: false, result };
+  return result;
+}
+
+export async function resolveOperation(
+  options: SessionTurnExecutorOptions,
+  operations: OperationExecutor,
+  request: OperationRequest,
+  active: ActiveRun,
+  identity: StableTurnIdentity,
+  assistantText: string,
+  signal: AbortSignal,
+): Promise<AsyncIterable<AgentEvent>> {
+  const resume = options.agent.resumeOperation?.bind(options.agent);
+  if (resume === undefined) throw new Error("The runtime cannot resume this operation.");
+  const { decision, reason } = await decideOperation(
+    options,
+    operations,
+    request,
+    active,
+    identity,
+    signal,
+  );
   return (async function* () {
-    let result: string | null = null;
-    if (decision === "approved") {
-      const callId = request.approvalId;
-      yield { type: "tool-started", callId, name: request.tool, arguments: request.arguments };
-      try {
-        signal.throwIfAborted();
-        await options.evidence?.beginAgent(identity.messageId);
-        result = await operations.execute(request, signal);
-        await options.evidence?.capture("agent", identity.messageId);
-        await options.flushOutbox();
-      } catch (error) {
-        yield {
-          type: "tool-finished",
-          callId,
-          failed: true,
-          result: error instanceof Error ? error.message : "The operation failed without an error.",
-        };
-        throw error;
-      }
-      yield { type: "tool-finished", callId, failed: false, result };
-    }
+    const result =
+      decision === "approved"
+        ? yield* runOperation(options, operations, request, identity, signal)
+        : null;
     signal.throwIfAborted();
     yield* resume(
       { ...active, ...identity, ...request, assistantText, decision, reason, result },

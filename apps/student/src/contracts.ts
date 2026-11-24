@@ -123,7 +123,10 @@ export interface ClassPreferenceStore {
 }
 export type ApprovalDecision = "approved" | "rejected";
 export type ApprovalReply =
-  ApprovalDecision | { readonly decision: "rejected"; readonly reason: string };
+  | ApprovalDecision
+  | { readonly decision: "rejected"; readonly reason: string }
+  /** Approves this action and the remaining actions of the same batch; never questions. */
+  | { readonly decision: "approved"; readonly remaining: true };
 export type QuestionReply =
   { readonly type: "answers"; readonly values: readonly string[] } | { readonly type: "cancel" };
 export interface AgentQuestionTurn extends Omit<AgentMessageTurn, "text"> {
@@ -143,6 +146,16 @@ export interface ApprovalPrompt extends TurnAttemptIdentity {
   readonly content: string;
   readonly path: string;
   readonly summary: string;
+  /** Where this action sits in a batch of several approvals from one model message. */
+  readonly batch?: ApprovalBatchPosition | undefined;
+}
+
+export interface ApprovalBatchPosition {
+  /** 1-based position of this action. */
+  readonly position: number;
+  readonly total: number;
+  /** One line per action after this one, in order. */
+  readonly remaining: readonly string[];
 }
 
 export type StudentViewEvent =
@@ -260,8 +273,48 @@ export type AgentEvent =
       readonly content: string;
       readonly summary: string;
     }
+  | {
+      readonly type: "approval-batch-required";
+      readonly reviewId: string;
+      readonly actions: readonly BatchAction[];
+    }
   | { readonly type: "turn-completed" }
   | { readonly type: "turn-cancelled" };
+
+/** One action of a model message that asked for several approvals at once, in call order. */
+export type BatchAction =
+  | { readonly index: number; readonly kind: "operation"; readonly request: OperationRequest }
+  | {
+      readonly index: number;
+      readonly kind: "write";
+      readonly approvalId: ApprovalId;
+      readonly path: string;
+      readonly content: string;
+      readonly summary: string;
+    }
+  | { readonly index: number; readonly kind: "questions"; readonly request: QuestionRequest };
+
+/** The student's decision on one batch action, with what Marea already did for it. */
+export type BatchDecision =
+  | {
+      readonly kind: "operation";
+      readonly decision: ApprovalDecision;
+      readonly reason?: string | undefined;
+      readonly result: string | null;
+    }
+  | {
+      readonly kind: "write";
+      readonly decision: ApprovalDecision;
+      readonly reason?: string | undefined;
+      readonly effect: WorkspaceWrite | null;
+    }
+  | { readonly kind: "questions"; readonly values: readonly string[] };
+
+export interface AgentBatchTurn extends Omit<AgentMessageTurn, "text"> {
+  readonly reviewId: string;
+  readonly actions: readonly BatchAction[];
+  readonly decisions: readonly BatchDecision[];
+}
 
 export interface AgentMessageTurn {
   /** Exact assistant-text prefix already persisted for this turn. */
@@ -291,6 +344,8 @@ export interface AgentRuntime {
   prepare?(turn: Pick<AgentMessageTurn, "runId" | "snapshot">, signal: AbortSignal): Promise<void>;
   resumeOperation?(turn: OperationTurn, signal: AbortSignal): AsyncIterable<AgentEvent>;
   resumeQuestions?(turn: AgentQuestionTurn, signal: AbortSignal): AsyncIterable<AgentEvent>;
+  /** Resumes a batch once every action has a decision; present when batches can occur. */
+  resumeBatch?(turn: AgentBatchTurn, signal: AbortSignal): AsyncIterable<AgentEvent>;
   streamStartup?(
     turn: Omit<AgentMessageTurn, "text">,
     signal: AbortSignal,

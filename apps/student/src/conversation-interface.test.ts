@@ -80,6 +80,13 @@ describe("conversation student interface", () => {
       summary: "Write notes.",
     };
     await expect(studentInterface.confirmWrite(approvalPrompt)).resolves.toBe("approved");
+    const batch = { position: 1, total: 2, remaining: ["execute dir"] };
+    await studentInterface.confirmWrite({ ...approvalPrompt, batch });
+    expect(controller.requestApproval).toHaveBeenLastCalledWith(
+      expect.objectContaining({ batch }),
+      "message:one",
+      "attempt:one",
+    );
     const assistantEvent = {
       attemptId: "attempt:one",
       messageId: "message:one",
