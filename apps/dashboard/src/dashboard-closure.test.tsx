@@ -1,5 +1,5 @@
 import { ActiveRunDashboardResponseSchema } from "@marea/protocol";
-import { isValidElement } from "react";
+import { Children, isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
@@ -7,7 +7,9 @@ import type { DashboardAppProperties } from "./dashboard-app.js";
 import { createDocument, createRootRecorder, emptyResponse } from "./dashboard-root.fixture.js";
 import { getDashboardMessages } from "./messages.js";
 import { ActiveRunsModule } from "./modules/active-runs/active-runs-module.js";
+import { EndClassSessionsControl } from "./modules/run-closure/run-closure-controls.js";
 import { createRunClosureClient } from "./modules/run-closure/run-closure-client.boundary.js";
+import type { ProfileRuntime } from "./profiles/profile-shell.js";
 import { startDashboard } from "./start-dashboard.js";
 
 const run = {
@@ -26,6 +28,12 @@ const activeResponse = ActiveRunDashboardResponseSchema.parse({
   ...emptyResponse,
   runs: [run, { ...run, runId: "run:two", studentDisplayName: "Sam", pendingApproval: false }],
 });
+
+interface ClassControlProperties {
+  readonly classId: string;
+  readonly runs: readonly { readonly runId: string }[];
+  readonly children?: ReactNode;
+}
 
 describe("ending sessions from the active runs view", () => {
   it("offers to end sessions per run and per class only when a closing client is composed", () => {
@@ -65,6 +73,27 @@ describe("ending sessions from the active runs view", () => {
     );
     expect(grouped.match(/>End all sessions</gu)).toHaveLength(2);
     expect(grouped).toContain("<strong>Art</strong>");
+    const tree = ActiveRunsModule({
+      messages: getDashboardMessages("en"),
+      locale: "en",
+      state: { status: "ready", response: twoClasses },
+      closure,
+    });
+    const controls: ClassControlProperties[] = [];
+    const collect = (node: ReactNode): void => {
+      Children.forEach(node, (child) => {
+        if (!isValidElement<ClassControlProperties>(child)) return;
+        if (child.type === EndClassSessionsControl) controls.push(child.props);
+        collect(child.props.children);
+      });
+    };
+    collect(tree);
+    expect(
+      controls.map(({ classId, runs }) => [classId, runs.map((entry) => entry.runId)]),
+    ).toEqual([
+      ["class:computing", ["run:one"]],
+      ["class:art", ["run:two"]],
+    ]);
   });
   it("reloads the active runs after sessions were ended, only when a closing client exists", async () => {
     const recorder = createRootRecorder();
@@ -97,5 +126,31 @@ describe("ending sessions from the active runs view", () => {
     if (!isValidElement<DashboardAppProperties>(app)) throw new Error("Missing dashboard app");
     expect(app.props.activeRunsClosure).toBeUndefined();
     unclosable.dispose();
+  });
+
+  it("offers no closing to the profile-based workspace even when a closing client exists", async () => {
+    const recorder = createRootRecorder();
+    const handle = startDashboard(
+      { document: createDocument({} as HTMLElement), language: "en" },
+      { load: vi.fn().mockResolvedValue(emptyResponse), closures: createRunClosureClient(vi.fn()) },
+      () => recorder.root,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      {
+        fetch: vi.fn().mockRejectedValue(new Error("offline")),
+        sessions: {} as ProfileRuntime["sessions"],
+        notices: { publish: vi.fn(), query: vi.fn() },
+      },
+    );
+    await handle.ready;
+    const app = recorder.rendered.at(-1);
+    if (!isValidElement<DashboardAppProperties>(app)) throw new Error("Missing dashboard app");
+    expect(app.props.activeRunsClosure).toBeUndefined();
+    handle.dispose();
   });
 });

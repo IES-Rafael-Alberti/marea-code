@@ -91,6 +91,13 @@ describe("teacher run closure client", () => {
     ).rejects.toBeInstanceOf(RunClosureError);
   });
 
+  it("rejects a class answer that swaps a requested run for an unrequested one", async () => {
+    const { client } = setup((body) => answer(body, ["run:one", "run:intruder"]));
+    await expect(
+      client.closeClassRuns("class:a", ["run:one", "run:two"], "close:1", signal),
+    ).rejects.toBeInstanceOf(RunClosureError);
+  });
+
   it("rejects an answer that does not match the protocol", async () => {
     const { client } = setup(() => Response.json({ kind: "something-else" }));
     await expect(

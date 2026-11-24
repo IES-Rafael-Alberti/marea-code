@@ -12,6 +12,7 @@ const hooks = vi.hoisted(() => ({
   refs: [] as { current: Slot }[],
   refIndex: 0,
   effects: [] as (() => undefined | (() => void))[],
+  dependencies: [] as (readonly Slot[] | undefined)[],
   renders: 0,
 }));
 
@@ -35,11 +36,13 @@ vi.mock("react", async (original) => ({
     const index = hooks.refIndex++;
     return (hooks.refs[index] ??= { current: initial });
   },
-  useEffect: (effect: () => undefined | (() => void)) => {
+  useEffect: (effect: () => undefined | (() => void), dependencies?: readonly Slot[]) => {
     hooks.effects.push(effect);
+    hooks.dependencies.push(dependencies);
   },
 }));
 
+import { ClosureFlow } from "./run-closure-flow.js";
 import {
   EndClassSessionsControl,
   EndSessionControl,
@@ -82,6 +85,7 @@ function page(component: () => ReactNode) {
     hooks.index = 0;
     hooks.refIndex = 0;
     hooks.effects = [];
+    hooks.dependencies = [];
     return expand(component());
   };
   return {
@@ -103,6 +107,7 @@ const m = runClosureMessages("en");
 const ana = { runId: "run:ana", studentDisplayName: "Ana", pendingApproval: true };
 const ben = { runId: "run:ben", studentDisplayName: "Ben", pendingApproval: false };
 const cy = { runId: "run:cy", studentDisplayName: "Cy" };
+const dee = { runId: "run:dee", studentDisplayName: "Dee", pendingApproval: true };
 
 function client() {
   const closeRun = vi.fn();
@@ -238,6 +243,15 @@ describe("ending one session", () => {
     expect(signal.aborted).toBe(true);
   });
 
+  it("redraws when a confirmation opens and keeps the flow as the effect dependency", () => {
+    const view = page(() => (
+      <EndSessionControl client={client().closures} locale="en" run={ana} onClosed={vi.fn()} />
+    ));
+    view.button(m.endSession).onClick?.();
+    expect(hooks.values[0]).toBe(1);
+    expect(hooks.dependencies[0]?.[0]).toBeInstanceOf(ClosureFlow);
+  });
+
   it("is a plain button in server-rendered markup", () => {
     expect(
       renderToStaticMarkup(
@@ -267,21 +281,37 @@ describe("ending all sessions of a class", () => {
         client={client().closures}
         locale="en"
         classId="class:a"
-        runs={[ana, ben, cy]}
+        runs={[ana, ben, cy, dee]}
         onClosed={vi.fn()}
       />
     ));
     view.button(m.endAllSessions).onClick?.();
     const texts = view.texts();
-    expect(texts).toContain(m.classTitle(3));
+    expect(texts).toContain(m.classTitle(4));
     expect(texts).toContain(m.classBody);
     expect(texts).toContain("Ana");
     expect(texts).toContain("Ben");
     expect(texts).toContain("Cy");
-    expect(texts).toContain(m.classPending("Ana"));
-    expect(texts).toContain(m.confirmClass(3));
+    expect(texts).toContain("Dee");
+    expect(texts).toContain(m.classPending("Ana, Dee"));
+    expect(texts).toContain(m.confirmClass(4));
     const dialog = view.draw().find((host) => host.props.role === "alertdialog");
     expect(dialog?.props["aria-labelledby"]).toBe("close-class-class:a-title");
+  });
+
+  it("lists nobody before the dialog is opened with a run list", () => {
+    const view = page(() => (
+      <EndClassSessionsControl
+        client={client().closures}
+        locale="en"
+        classId="class:a"
+        runs={[ana]}
+        onClosed={vi.fn()}
+      />
+    ));
+    view.draw();
+    (hooks.refs[1]?.current as ClosureFlow).open();
+    expect(view.draw().some((host) => host.type === "li")).toBe(false);
   });
 
   it("shows no approval warning when nobody has one pending", () => {

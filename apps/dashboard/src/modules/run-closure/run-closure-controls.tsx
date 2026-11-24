@@ -19,6 +19,7 @@ function useClosureFlow(
   onClosed: () => void,
 ): ClosureFlow {
   const [, setVersion] = useState(0);
+  // Stryker disable next-line ObjectLiteral: the initial value is replaced on the next line before any use.
   const latest = useRef({ perform, onClosed });
   latest.current = { perform, onClosed };
   const flow = useRef<ClosureFlow | null>(null);

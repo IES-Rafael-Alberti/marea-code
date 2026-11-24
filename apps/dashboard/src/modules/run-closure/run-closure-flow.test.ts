@@ -79,6 +79,25 @@ describe("closing confirmation flow", () => {
     expect(perform.mock.calls[2]?.[0]).not.toBe(keys[0]);
   });
 
+  it("sends an empty key when confirmed before being opened", async () => {
+    const perform = vi.fn<(key: string, signal: AbortSignal) => Promise<void>>(() =>
+      Promise.resolve(),
+    );
+    const { flow } = setup(perform);
+    await flow.confirm();
+    expect(perform.mock.calls[0]?.[0]).toBe("");
+  });
+
+  it("asks for a redraw when a request fails, showing the failed phase", async () => {
+    const phases: string[] = [];
+    const perform = () => Promise.reject(new Error("offline"));
+    const changed = vi.fn(() => phases.push(flow.phase));
+    const flow = new ClosureFlow(perform, vi.fn(), changed);
+    flow.open();
+    await flow.confirm();
+    expect(phases).toEqual(["confirming", "busy", "failed"]);
+  });
+
   it("can still be cancelled after a failure", async () => {
     const { flow } = setup(() => Promise.reject(new Error("offline")));
     flow.open();
