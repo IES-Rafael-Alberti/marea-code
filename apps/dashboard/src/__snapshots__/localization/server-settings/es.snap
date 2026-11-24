@@ -3,6 +3,7 @@
   "advanced": "Modelos y límites por tarea",
   "automaticPrices": "Precios del proveedor",
   "budgetNote": "Por defecto no hay límites de uso. Al elegir un modelo del catálogo se rellenan sus precios, que puedes editar. Si escribes otro modelo, revisa los precios manualmente. Las tarifas son estimaciones y no incluyen descuentos ni caché.",
+  "budgetScope": "Los límites se aplican a cada sesión de alumno (cada ejecución) y por separado a cada función, como tutoría o evaluación. No son un total compartido por toda la clase.",
   "common": "Usar esta conexión y modelo en todas las clases para las sesiones nuevas",
   "commonNote": "Al activarlo sustituyes las rutas de las clases para las sesiones nuevas. Las sesiones abiertas no cambian.",
   "commonOff": "Cada clase conserva su modelo actual hasta que actives esta opción.",

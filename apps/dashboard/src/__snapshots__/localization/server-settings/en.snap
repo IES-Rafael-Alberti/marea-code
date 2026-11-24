@@ -3,6 +3,7 @@
   "advanced": "Models and limits by task",
   "automaticPrices": "Provider prices",
   "budgetNote": "Usage is unlimited by default. Choosing a catalog model fills its editable prices. If you type a different model, review prices manually. Prices are estimates and exclude discounts and caching.",
+  "budgetScope": "Limits apply to each student session (each run) and separately to each purpose, such as tutoring or evaluation. They are not a total shared by the whole class.",
   "common": "Use this connection and model for new sessions in every class",
   "commonNote": "Enabling this replaces class routes for new sessions. Open sessions remain unchanged.",
   "commonOff": "Each class keeps its current model until you enable this option.",
