@@ -312,6 +312,9 @@ describe("compiled marea OpenTUI acceptance", { concurrent: false }, () => {
     assertPublicWriteBoundary(value);
     assertRecoveredTurn(value, beforeRestart, identity);
     expect(value.database.readAll("SELECT id FROM marea_runs")).toEqual(runsBeforeRestart);
+    // Quit only once the fresh session is ready for input.
+    await restarted.waitForText("Write to Marea", 15_000);
+    await restarted.waitForQuiet(500);
     await closeWithQuit(restarted);
   }, 90_000);
 });
