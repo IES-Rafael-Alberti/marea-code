@@ -76,13 +76,16 @@ describe("DeepAgents compatibility boundary", () => {
 
     expect(events.at(-1)).toEqual({ type: "turn-completed" });
     expect(model.boundToolNames.flat()).not.toContain("task");
+    // Built-ins are answered as unavailable before their own permission check could run.
     expect(results.map((entry) => entry.content)).toEqual([
-      "Error: permission denied for read on /secret",
-      "Error: permission denied for write on /new",
+      "Error: read_file is not an available tool. Use one of: confirm_change.",
+      "Error: write_file is not an available tool. Use one of: confirm_change.",
     ]);
-    const profile = getHarnessProfile("openai:marea");
-    expect(profile?.generalPurposeSubagent?.enabled).toBe(false);
-    expect(profile?.excludedTools).toEqual(new Set(["task"]));
+    for (const key of ["openai:marea", "marea:gateway"]) {
+      const profile = getHarnessProfile(key);
+      expect(profile?.generalPurposeSubagent?.enabled).toBe(false);
+      expect(profile?.excludedTools).toEqual(new Set(["task"]));
+    }
   });
 
   it("emits one HITL request, approves it, and resumes its checkpoint", async () => {

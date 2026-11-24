@@ -74,7 +74,7 @@ describe("tool failures the model can correct", () => {
     expect((await events).at(-1)).toEqual({ type: "turn-completed" });
     const [result] = toolResults(gateway.requests[1]);
     expect(result?.content).toBe(
-      "Error: unknown_tool is not an available tool. Use one of: confirm_change, marea_search_project.",
+      "Error: unknown_tool is not an available tool. Use one of: confirm_change, grep.",
     );
   });
 
@@ -84,20 +84,32 @@ describe("tool failures the model can correct", () => {
       execute: (input) =>
         Promise.resolve(
           z
-            .object({ query: z.string({ error: "query is required" }) })
-            .strict()
+            .object({
+              query: z.string().min(5, { error: "query is too short" }),
+              path: z.string({ error: "path is required" }),
+            })
             .parse(input).query,
         ),
     };
     const { gateway, events } = run(
       [strict],
-      toolCalls({ tool: "marea_search_project", arguments: { pattern: "x" } }),
+      toolCalls({ tool: "grep", arguments: { pattern: "x" } }),
       textResponse("Retrying with query."),
     );
     expect((await events).at(-1)).toEqual({ type: "turn-completed" });
     expect(toolResults(gateway.requests[1])[0]?.content).toBe(
-      'Error: invalid arguments (query is required; Unrecognized key: "pattern").',
+      "Error: invalid arguments (query is too short; path is required).",
     );
+  });
+
+  it("answers a call missing a required parameter with a schema error and continues", async () => {
+    const { gateway, events } = run(
+      [search],
+      toolCalls({ tool: "grep", arguments: {} }),
+      textResponse("Retrying with a pattern."),
+    );
+    expect((await events).at(-1)).toEqual({ type: "turn-completed" });
+    expect(toolResults(gateway.requests[1])[0]?.content).toMatch(/did not match expected schema/u);
   });
 
   it("completes two parallel searches when one names a path that does not exist", async () => {

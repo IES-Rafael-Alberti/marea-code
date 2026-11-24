@@ -36,7 +36,7 @@ export function createRuntimeReadTools(options: RuntimeReadToolsOptions): readon
     tools.push({
       name: "marea_read_project",
       description:
-        "Read UTF-8 project text. Arguments: path, a virtual path such as /src/main.ts (root is the project)." +
+        "Read UTF-8 project text. Arguments: file_path, a virtual path such as /src/main.ts (root is the project)." +
         PAGING,
       execute: (input) => {
         const parsed = PathSchema.parse(input);

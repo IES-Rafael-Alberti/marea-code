@@ -31,3 +31,21 @@ it("describes the actual operation and rejects mixed matching/mismatching argume
   edit.authorize({ path: "main.ts", old_string: "before" }, "result");
   await expect(edit.execute({ path: "main.ts" })).rejects.toThrow("authorization");
 });
+
+it("names the interpreter of this machine in the command description", () => {
+  const windows = new OperationMediator("execute", "win32").description;
+  expect(windows).toContain(
+    'Shell: this computer runs Windows, so commands run in cmd.exe, not PowerShell or bash. Use cmd syntax (dir, type, cd /d, del, &&); quote paths with spaces in double quotes ("my file.txt"), never single quotes; one command per call is clearest.',
+  );
+  for (const platform of ["darwin", "linux"] as const) {
+    const posix = new OperationMediator("execute", platform).description;
+    expect(posix).toContain(
+      "Shell: this computer runs commands with /bin/sh. Quote paths with spaces.",
+    );
+    expect(posix).not.toContain("cmd.exe");
+  }
+  expect(new OperationMediator("delete", "win32").description).toContain("Arguments: file_path.");
+  expect(new OperationMediator("edit_file").description).toContain(
+    "Arguments: file_path, old_string, new_string.",
+  );
+});

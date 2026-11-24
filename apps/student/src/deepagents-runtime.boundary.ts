@@ -167,7 +167,7 @@ function durableApprovalContext(turn: DurableAgentApprovalTurn): DurableApproval
 class ApprovalToolMediator implements ApprovalTool {
   readonly name = INTERNAL_WRITE_TOOL_NAME;
   readonly description =
-    "Write approved text content to a file in the student workspace. Arguments: path, content. Use a project-relative path such as main.py or src/main.py; /main.py also refers to the project root. Parent traversal is not allowed.";
+    "Write approved text content to a file in the student workspace. Arguments: file_path, content. Use a project-relative path such as main.py or src/main.py; /main.py also refers to the project root. Parent traversal is not allowed.";
   private authorized: AuthorizedWrite | null = null;
 
   authorize(request: WriteRequest, result: WorkspaceWrite): void {
