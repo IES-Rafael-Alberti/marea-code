@@ -15,7 +15,12 @@ export {
   type SqliteStorageErrorCode,
   type SqliteStorageOptions,
 } from "./contracts.js";
-export { initializeSqliteStorage, openSqliteDatabaseFile, restoreSqliteBackup } from "./storage.js";
+export {
+  currentSqliteSchema,
+  initializeSqliteStorage,
+  openSqliteDatabaseFile,
+  restoreSqliteBackup,
+} from "./storage.js";
 export {
   activateRetentionAuditSchema,
   createSqliteAuditStore,

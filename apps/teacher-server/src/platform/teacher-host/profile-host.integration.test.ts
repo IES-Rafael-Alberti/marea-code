@@ -8,7 +8,7 @@ import {
   readOperatorCliConfig,
 } from "../operator-cli/composition.js";
 import { syntheticProfileHostServices } from "./profile-host-options.fixture.js";
-import { mkdtempSync, realpathSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { acquireInstallation } from "../operator-cli/installation-lock.js";
 import { createOperationsApplication } from "../operations-cli/operations-application.js";
@@ -17,7 +17,9 @@ import { readInstallationStatus } from "../operations-cli/installation-status.js
 import { afterEach, expect, it, vi } from "vitest";
 vi.mock("bun:sqlite", () => import("../operator-cli/bun-sqlite.fixture.js"));
 import {
+  currentSqliteSchema,
   initializeSqliteStorage,
+  inspectSqliteSchemaVersion,
   restoreSqliteBackup,
   createDashboardProfileStore,
   createDashboardLanguageStore,
@@ -40,8 +42,9 @@ it.each([
   ["skill-assignments", 14],
   ["run-closure", 15],
 ] as const)(
-  "starts the production host on %s, authenticates, persists, reopens and restores profiles",
+  "starts the production host on %s, migrates to the current schema, persists, reopens and restores profiles",
   async (schema, version) => {
+    const current = currentSqliteSchema();
     const f = teacherHostInstallation();
     const upgraded = initializeSqliteStorage({
       databasePath: f.databasePath,
@@ -58,6 +61,10 @@ it.each([
     });
     expect(host.state).toBe("ready");
     if (host.state !== "ready" || f.served.fetch === undefined) throw new Error("Host not ready");
+    expect(inspectSqliteSchemaVersion({ databasePath: f.databasePath })).toBe(current.version);
+    expect(
+      readdirSync(join(f.root, "backups")).filter((name) => name.startsWith("startup-migration-")),
+    ).toHaveLength(version < current.version ? 1 : 0);
     const fetch = f.served.fetch;
     const post = (path: string, body: object, cookie = "") =>
       fetch(
@@ -86,8 +93,8 @@ it.each([
       { operation: "read" },
       cookie,
     );
-    expect(observability.status).toBe(version >= 13 ? 200 : 503);
-    if (version >= 13) {
+    expect(observability.status).toBe(200);
+    {
       const value = z
         .object({ enabled: z.boolean(), plugins: z.array(z.object({ id: z.string() })) })
         .parse(await observability.json());
@@ -132,7 +139,7 @@ it.each([
     await host.stop();
     const reopened = initializeSqliteStorage({
       databasePath: f.databasePath,
-      schema,
+      schema: current.catalog,
     });
     expect(createDashboardLanguageStore(reopened.database).read("user:teacher")).toBe("es");
     expect(createDashboardLanguageStore(reopened.database).read("user:other")).toBeNull();
@@ -153,11 +160,11 @@ it.each([
     expect(before?.fingerprint).not.toBe(withoutLanguage?.fingerprint);
     createDashboardLanguageStore(reopened.database).write("user:teacher", "es");
     const backup = reopened.createBackup();
-    expect(backup.schemaVersion).toBe(version);
+    expect(backup.schemaVersion).toBe(current.version);
     reopened.close();
     const restored = restoreSqliteBackup({
       databasePath: join(f.root, "restored.sqlite"),
-      schema,
+      schema: current.catalog,
       backup,
     });
     expect(

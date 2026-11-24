@@ -40,7 +40,7 @@ reconstruct content that was never captured.
 
 ## Configure an external destination
 
-1. Update the server. Managed preview updates back up and migrate SQLite to the current schema.
+1. Update the server. On its first start the server backs up and migrates SQLite to the current schema.
    Manual installations must use the offline installation upgrade procedure.
 2. As an administrator, open **Settings → Server → Observability**.
 3. Select an installed exporter and complete its fields.

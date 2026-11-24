@@ -1,7 +1,6 @@
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
-import { initializeSqliteStorage } from "@marea/sqlite-storage";
 import { acquireInstallation } from "../../apps/teacher-server/src/platform/operator-cli/installation-lock.js";
 import { OperatorCliError } from "../../apps/teacher-server/src/platform/operator-cli/errors.js";
 import { acquireWithLockRecovery } from "../../apps/teacher-server/src/platform/installation/abandoned-lock-recovery.js";
@@ -22,7 +21,7 @@ export async function assertPreviewServerIdle(installation: string): Promise<voi
   if (!owner.release()) throw new OperatorCliError("installation-lost");
 }
 
-/** One installation owner covers backup, migration, config and activation; interrupted updates fail closed. */
+/** One installation owner covers backup, config and activation; interrupted updates fail closed. */
 export async function activatePreviewServer<T>(
   installation: string,
   destination: string,
@@ -51,10 +50,8 @@ export async function activatePreviewServer<T>(
       { flag: "wx", mode: 0o600 },
     );
     owner.capability.assertOwned();
-    initializeSqliteStorage({
-      databasePath: config.databasePath,
-      schema: "run-closure",
-    }).close();
+    // The new binary migrates its own schema at startup, after its own backup; an older manager
+    // running this update cannot know newer migrations.
     const result = await activate();
     installExampleSkill(installation, destination);
     const hostPath = join(installation, "config", "teacher-host.json");

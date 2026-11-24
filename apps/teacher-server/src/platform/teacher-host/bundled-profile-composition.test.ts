@@ -17,7 +17,11 @@ import { request } from "../../product-http/product-http.fixture.js";
 import { captured } from "./captured.js";
 import { afterEach, expect, it, vi } from "vitest";
 vi.mock("bun:sqlite", () => import("../operator-cli/bun-sqlite.fixture.js"));
-import { initializeSqliteStorage, inspectSqliteSchemaVersion } from "@marea/sqlite-storage";
+import {
+  currentSqliteSchema,
+  initializeSqliteStorage,
+  inspectSqliteSchemaVersion,
+} from "@marea/sqlite-storage";
 import { dashboardCatalogRevision } from "@marea/plugin-runtime";
 import { TelemetryPreviewResponseSchema } from "@marea/protocol";
 import {
@@ -176,22 +180,16 @@ it.each([9, 10, 11] as const)(
         cookie,
       );
       expect(read.status).toBe(upgraded ? 200 : 503);
-      expect(inspectSqliteSchemaVersion({ databasePath: f.databasePath })).toBe(version);
+      // Activated schemas older than this binary are migrated at startup; 9 keeps its offline upgrade.
+      expect(inspectSqliteSchemaVersion({ databasePath: f.databasePath })).toBe(
+        upgraded ? currentSqliteSchema().version : version,
+      );
       if (upgraded) {
         const release = validateDashboardProfileRelease(bundledDashboardProfileRelease());
         const state = release.schemas.state.parse(await read.json());
         expect(state.effective).toEqual({
           ...release.defaults,
-          modules: release.defaults.modules.filter(
-            (module) =>
-              module.enabled &&
-              (version === 11 ||
-                ![
-                  "org.marea.module.map",
-                  "org.marea.module.progress",
-                  "org.marea.module.reports",
-                ].includes(module.moduleId)),
-          ),
+          modules: release.defaults.modules.filter((module) => module.enabled),
         });
         const value = { themeId: "org.marea.theme.high-contrast", modules: [] };
         const save = {
@@ -215,13 +213,7 @@ it.each([9, 10, 11] as const)(
           { ...envelope, kind: "dashboard-profile-catalog" },
           cookie,
         );
-        expect(release.catalogSchema.parse(await catalog.json()).modules).toEqual(
-          release.modules.filter(
-            (module) =>
-              version === 11 ||
-              !module.requiredServerCapabilities.includes("educational-insights/v1"),
-          ),
-        );
+        expect(release.catalogSchema.parse(await catalog.json()).modules).toEqual(release.modules);
       } else {
         expect(read.headers.get("x-marea-profile-mode")).toBe("legacy");
       }

@@ -19,14 +19,11 @@ const ports = vi.hoisted(() => ({
   readOperationsConfig: vi.fn(),
   readTeacherHostConfig: vi.fn(),
   createOperationsApplication: vi.fn(),
-  initializeSqliteStorage: vi.fn(),
   release: vi.fn(),
   assertOwned: vi.fn(),
   createBackup: vi.fn(),
   close: vi.fn(),
-  closeStorage: vi.fn(),
 }));
-vi.mock("@marea/sqlite-storage", () => ports);
 vi.mock("../../apps/teacher-server/src/platform/operator-cli/installation-lock.js", () => ports);
 vi.mock("../../apps/teacher-server/src/platform/operations-cli/operations-config.js", () => ports);
 vi.mock(
@@ -64,7 +61,6 @@ beforeEach(() => {
     close: ports.close,
   });
   ports.createBackup.mockResolvedValue({ path: join(root, "backups/safety") });
-  ports.initializeSqliteStorage.mockReturnValue({ close: ports.closeStorage });
 });
 
 it("checks exclusive access before downloading without migrating or backing up, and refuses uncertain release", async () => {
@@ -72,7 +68,6 @@ it("checks exclusive access before downloading without migrating or backing up, 
   expect(ports.acquireInstallation).toHaveBeenCalledExactlyOnceWith(root);
   expect(ports.release).toHaveBeenCalledOnce();
   expect(ports.createBackup).not.toHaveBeenCalled();
-  expect(ports.initializeSqliteStorage).not.toHaveBeenCalled();
   ports.release.mockReturnValue(false);
   await expect(assertPreviewServerIdle(root)).rejects.toThrow("installation-lost");
 });
@@ -81,10 +76,10 @@ afterEach(() => {
   rmSync(root, { recursive: true, force: true });
 });
 
-it("backs up before migration and activation, preserves settings and clears the journal only after validation", async () => {
+it("backs up before activation without migrating, preserves settings and clears the journal only after validation", async () => {
   const writes = vi.spyOn(filesystem, "writeFileSync").mockClear();
   const activate = vi.fn(() => {
-    expect(ports.closeStorage).toHaveBeenCalledOnce();
+    expect(ports.close).toHaveBeenCalledOnce();
     expect(statSync(join(root, "state", updateJournal)).mode & 0o777).toBe(0o600);
     expect(JSON.parse(readFileSync(join(root, "state", updateJournal), "utf8"))).toMatchObject({
       format: 1,
@@ -103,10 +98,6 @@ it("backs up before migration and activation, preserves settings and clears the 
   expect(ports.createBackup).toHaveBeenCalledWith(expect.stringMatching(/^preview-/u));
   for (const call of writes.mock.calls) expect(call[2]).toEqual({ flag: "wx", mode: 0o600 });
   expect(ports.close).toHaveBeenCalledOnce();
-  expect(ports.initializeSqliteStorage).toHaveBeenCalledWith({
-    databasePath: join(root, "marea.sqlite"),
-    schema: "run-closure",
-  });
   expect(JSON.parse(readFileSync(join(root, "config/teacher-host.json"), "utf8"))).toEqual({
     releaseId: "release:preview",
     dashboardDistPath: "/programs/server-v2/dashboard",
@@ -126,7 +117,7 @@ it("backs up before migration and activation, preserves settings and clears the 
   expect(() => assertPreviewServerReady(root)).toThrow("Dashboard is missing");
 });
 
-it("refuses live owners, keeps interrupted updates blocked, and never migrates after a backup failure", async () => {
+it("refuses live owners, keeps interrupted updates blocked, and never activates after a backup failure", async () => {
   const activate = vi.fn(() => Promise.resolve());
   ports.acquireInstallation.mockImplementationOnce(() => {
     throw new Error("busy");
@@ -135,7 +126,7 @@ it("refuses live owners, keeps interrupted updates blocked, and never migrates a
   expect(ports.createBackup).not.toHaveBeenCalled();
   ports.createBackup.mockRejectedValueOnce(new Error("disk full"));
   await expect(activatePreviewServer(root, "new", "v2", activate)).rejects.toThrow("disk full");
-  expect(ports.initializeSqliteStorage).not.toHaveBeenCalled();
+  expect(activate).not.toHaveBeenCalled();
   expect(existsSync(join(root, "state", updateJournal))).toBe(false);
   expect(ports.close).toHaveBeenCalledOnce();
   await expect(
