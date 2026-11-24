@@ -5,6 +5,7 @@ import { parameterSchema } from "./tool-parameters.boundary.js";
 
 import { AgentAdapterError, ReadOnlyToolInputError, type ReadOnlyTool } from "./contracts.js";
 import { observeExecution, type ToolLifecycleEvent } from "./tool-events.boundary.js";
+import { boundToolResult } from "./tool-output.js";
 
 const ToolNameSchema = z.enum([
   "marea_read_project",
@@ -38,9 +39,10 @@ export function createReadOnlyTools(
     return tool(
       async (input) => {
         try {
-          return await observed(input);
+          return boundToolResult(await observed(input));
         } catch (error) {
-          if (error instanceof ReadOnlyToolInputError) return `Error: ${error.message}`;
+          if (error instanceof ReadOnlyToolInputError)
+            return boundToolResult(`Error: ${error.message}`);
           // Invalid arguments are the model's to correct, never a reason to lose the turn.
           if (error instanceof z.ZodError)
             return `Error: invalid arguments (${error.issues.map((issue) => issue.message).join("; ")}).`;
