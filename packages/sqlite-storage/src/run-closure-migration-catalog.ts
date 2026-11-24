@@ -1,4 +1,3 @@
-import { compareMigrationText } from "./audit-migration-catalog.js";
 import {
   calculateMigrationChecksum,
   validateKnownMigrationCatalog,
@@ -16,16 +15,10 @@ const CLOSED_BY_COLUMN = "closed_by TEXT REFERENCES marea_users(id) ON DELETE SE
 export function createRunClosureMigrationCatalog() {
   const base = createSkillAssignmentMigrationCatalog();
   const previous = base.reduce((_, migration) => migration);
-  const schemaAfter: SchemaObjectDefinition[] = previous.schemaAfter
-    .map((entry) =>
-      entry.name === "marea_runs"
-        ? withColumn(entry, "close_reason TEXT\n      ", CLOSED_BY_COLUMN)
-        : entry,
-    )
-    .sort(
-      (left, right) =>
-        compareMigrationText(left.type, right.type) || compareMigrationText(left.name, right.name),
-    );
+  // Only the runs table declares close_reason, so every other definition passes through as is.
+  const schemaAfter: SchemaObjectDefinition[] = previous.schemaAfter.map((entry) =>
+    withColumn(entry, "close_reason TEXT\n      ", CLOSED_BY_COLUMN),
+  );
   const migration = {
     name: "teacher_run_closure_actor",
     version: 15,

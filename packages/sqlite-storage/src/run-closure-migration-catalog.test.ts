@@ -16,4 +16,13 @@ it("appends the closing actor column without rewriting already published migrati
   expect(runs?.sql).toContain("close_reason TEXT");
   expect(runs?.sql).toContain("closed_by TEXT REFERENCES marea_users(id) ON DELETE SET NULL");
   expect(catalog[14]?.schemaAfter).toHaveLength(previous[13]?.schemaAfter.length ?? -1);
+  const after = catalog[14]?.schemaAfter ?? [];
+  const before = previous[13]?.schemaAfter ?? [];
+  expect(after.map((object) => [object.type, object.name])).toEqual(
+    before.map((object) => [object.type, object.name]),
+  );
+  for (const [index, object] of after.entries()) {
+    if (object.name === "marea_runs") expect(object).not.toEqual(before[index]);
+    else expect(object).toEqual(before[index]);
+  }
 });

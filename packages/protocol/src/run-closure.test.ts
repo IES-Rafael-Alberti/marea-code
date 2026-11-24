@@ -41,7 +41,7 @@ describe("teacher run closure protocol", () => {
     expect(() => ClassRunsCloseRequestSchema.parse({ ...request, classId: "" })).toThrow();
     expect(() =>
       ClassRunsCloseRequestSchema.parse({ ...request, runIds: ["run-1", "run-1"] }),
-    ).toThrow();
+    ).toThrow("Run identifiers must be unique.");
     const many = Array.from({ length: MAX_CLASS_CLOSE_RUNS }, (_, index) => `run-${String(index)}`);
     expect(ClassRunsCloseRequestSchema.parse({ ...request, runIds: many }).runIds).toHaveLength(
       MAX_CLASS_CLOSE_RUNS,

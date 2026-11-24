@@ -466,6 +466,18 @@ describe("refusing to reopen a closed run", () => {
     }
     expect((refusal as Error).constructor).toBe(TeacherDomainError);
   });
+
+  it("refuses a resume without a run identity when the student has no active run", () => {
+    const c = closureClassroom();
+    expect(() =>
+      c.open("user:alice", "class:a", CLOSURE_NOW, {
+        idempotencyKey: "resume:none",
+        intent: { kind: "resume" },
+      }),
+    ).toThrow(
+      expect.objectContaining({ code: "run.unavailable", constructor: TeacherDomainError }),
+    );
+  });
 });
 
 it("adds the nullable closing actor as the last column of the runs table", () => {
