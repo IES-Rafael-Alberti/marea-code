@@ -333,6 +333,24 @@ it.each([
       retryable: false,
     },
   },
+  ...(["session-ended-by-teacher", "session-expired"] as const).map((kind) => ({
+    failure: {
+      detail: "",
+      hasPrefix: false,
+      kind,
+      recoverable: false,
+      retryable: false,
+    },
+    expected: {
+      detail: "",
+      fatal: true,
+      message:
+        kind === "session-expired"
+          ? copy.failure.sessionExpired
+          : copy.failure.sessionEndedByTeacher,
+      retryable: false,
+    },
+  })),
   {
     failure: {
       detail: "Error: boom",

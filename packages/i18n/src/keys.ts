@@ -99,6 +99,8 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.tui.failure.concurrency-limited",
   "student.tui.failure.provider-interrupted",
   "student.tui.failure.resume-detail",
+  "student.tui.failure.session-ended-by-teacher",
+  "student.tui.failure.session-expired",
   "student.tui.help",
   "student.tui.hint.approval",
   "student.tui.hint.questions",

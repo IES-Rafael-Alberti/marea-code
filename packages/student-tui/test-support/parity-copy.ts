@@ -45,6 +45,8 @@ export const PARITY_TEST_COPY: ParityCopy = Object.freeze({
     requestFailed: "El servidor del profesor no ha podido completar la solicitud.",
     resumeDetail: "Puedes reanudar el turno desde el último punto guardado.",
     sessionUnavailable: "La sesión ya no está disponible.",
+    sessionEndedByTeacher: "Tu docente ha finalizado esta sesión.",
+    sessionExpired: "Esta sesión ha caducado.",
   }),
   help: "## Comandos\n",
   hints: Object.freeze({

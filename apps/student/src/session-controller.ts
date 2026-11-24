@@ -31,6 +31,7 @@ import type {
   StudentServer,
 } from "./contracts.js";
 import { NoActiveRunError } from "./contracts.js";
+import { alreadyClosedResponse } from "./closed-run-response.js";
 import { StudentHttpError } from "./http-error.js";
 import { LocalSession, type ReopenStoredRun } from "./local-session.js";
 import { SerialOperationQueue } from "./serial-operation-queue.js";
@@ -556,7 +557,17 @@ export class StudentSessionController {
     const runId = this.requireRunId(run);
     if (run.closeReason === null) throw new Error("The pending run close has no reason.");
     if (run.closeRequestId === null) throw new Error("The pending run close has no request ID.");
-    await this.flushOutbox();
+    const closed = alreadyClosedResponse(run.closeRequestId, runId);
+    try {
+      await this.flushOutbox();
+    } catch (error) {
+      if (!(error instanceof StudentHttpError) || !isRunUnavailable(error)) throw error;
+      // The server no longer accepts this run (a teacher ended it, or it expired), so nothing
+      // more can be delivered and leaving it is already complete. Its undeliverable events
+      // are discarded with the run, as after any other refused close.
+      await this.options.localSession.finishClose(closed);
+      return;
+    }
     const request = {
       protocolVersion: CURRENT_PROTOCOL_VERSION,
       requestId: run.closeRequestId,
@@ -581,13 +592,7 @@ export class StudentSessionController {
       ) {
         throw error;
       }
-      response = {
-        protocolVersion: CURRENT_PROTOCOL_VERSION,
-        requestId: run.closeRequestId,
-        runId,
-        state: "closed",
-        alreadyClosed: true,
-      };
+      response = closed;
     }
     await this.options.localSession.finishClose(response);
   }

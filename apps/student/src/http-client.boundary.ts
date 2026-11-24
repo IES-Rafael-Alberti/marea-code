@@ -1,6 +1,6 @@
-import { StudentHttpError } from "./http-error.js";
+import { StudentHttpError, httpErrorFromResponse } from "./http-error.js";
 import { transportFailure } from "./http-transport-diagnostics.boundary.js";
-import { CLASS_CONFIGURATION_REQUIRED_HEADER, SOCRATIC_GATE_HEADER } from "@marea/protocol";
+import { SOCRATIC_GATE_HEADER } from "@marea/protocol";
 export { StudentHttpError } from "./http-error.js";
 import { boundedEventDelivery } from "./event-delivery.js";
 import {
@@ -255,13 +255,7 @@ async function responseError(response: Response, request: Request): Promise<Stud
     const parsed = ProtocolErrorResponseSchema.parse(
       parseJson(await readBoundedBody(response, request)),
     );
-    return new StudentHttpError(
-      response.status,
-      parsed.error.code,
-      parsed.error.retryable,
-      parsed.error.code === "run.unavailable" &&
-        response.headers.get(CLASS_CONFIGURATION_REQUIRED_HEADER) === "true",
-    );
+    return httpErrorFromResponse(response.status, parsed.error, response.headers);
   } catch (error: unknown) {
     if (error instanceof StudentHttpError && error.code === "response.too-large") return error;
   }
