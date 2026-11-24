@@ -75,12 +75,24 @@ describe("OpenRouter tool-call boundary", () => {
     },
   );
 
-  it("drops argument names outside the gateway grammar", () => {
-    const long = "k".repeat(129);
-    expect(single(`{"":"a","${long}":"b","ok":"c"}`)).toMatchObject({
-      arguments: { ok: "c" },
-      repair: { causes: ["malformed-arguments"] },
-    });
+  it.each(["", "k".repeat(129)])(
+    "drops the argument name %j outside the gateway grammar",
+    (key) => {
+      expect(single(`{"${key}":"b","ok":"c"}`)).toEqual({
+        arguments: { ok: "c" },
+        callId: "call-1",
+        name: "grep",
+        type: "tool-call",
+        repair: {
+          causes: ["malformed-arguments"],
+          rawName: "grep",
+          rawArguments: `{"${key}":"b","ok":"c"}`,
+        },
+      });
+    },
+  );
+
+  it("keeps an argument name at the grammar limit", () => {
     expect(single(`{"${"k".repeat(128)}":"b"}`)).not.toHaveProperty("repair");
   });
 
@@ -98,9 +110,12 @@ describe("OpenRouter tool-call boundary", () => {
     const other = new ToolCallAccumulator("request:other");
     other.add([{ arguments: "{}", index: 3, name: "grep" }]);
     const id = first[0]?.type === "tool-call" ? first[0].callId : "";
-    expect(id).toMatch(/^call-[0-9a-f]{8}-3$/u);
+    expect(id).toBe("call-bf049563-3");
     expect(again[0]).toMatchObject({ callId: id, repair: { causes: ["missing-id"] } });
     expect(other.finish()[0]).not.toMatchObject({ callId: id });
+    const padded = new ToolCallAccumulator("request:0");
+    padded.add([{ arguments: "{}", index: 0, name: "grep" }]);
+    expect(padded.finish()[0]).toMatchObject({ callId: "call-0f58d1f8-0" });
     expect(finish({ arguments: "{}", id: "", index: 0, name: "grep" })[0]).toMatchObject({
       repair: { causes: ["missing-id"] },
     });

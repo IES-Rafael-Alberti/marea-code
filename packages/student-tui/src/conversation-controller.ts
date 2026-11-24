@@ -176,8 +176,7 @@ export function createConversationController(
       return false;
     const attempt = automaticRetries.next(failure);
     if (attempt === null) return false;
-    failed.phase = "failed";
-    settleTurn(failed);
+    // The retry installs a new attempt; the failed one is simply dropped.
     return runTurn(failed.text, failed.messageId, false, attempt);
   };
 
@@ -205,7 +204,7 @@ export function createConversationController(
       : current.messages;
     update({
       approval: null,
-      ...(automaticRetry === undefined ? {} : { automaticRetry }),
+      automaticRetry,
       messages,
       status: "streaming",
     });

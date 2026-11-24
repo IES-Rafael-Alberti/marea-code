@@ -22,10 +22,7 @@ export const UNKNOWN_TOOL_NAME = "unknown_tool";
 
 function argumentValue(value: unknown): string | null {
   if (typeof value === "string") return value;
-  if (value === null) return null;
-  return typeof value === "number" || typeof value === "boolean"
-    ? String(value)
-    : JSON.stringify(value);
+  return value === null ? null : JSON.stringify(value);
 }
 
 /**
@@ -38,12 +35,11 @@ function parseArguments(
   causes: Set<InferenceToolCallRepairCause>,
 ): Readonly<Record<string, string>> {
   if (text.trim().length === 0) return Object.freeze({});
-  let parsed: unknown;
+  let parsed: unknown = null;
   try {
     parsed = JSON.parse(text);
   } catch {
-    causes.add("malformed-arguments");
-    return Object.freeze({});
+    // Unreadable text is handled below like any other value that is not an object.
   }
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     causes.add("malformed-arguments");

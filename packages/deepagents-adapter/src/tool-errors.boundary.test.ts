@@ -82,7 +82,12 @@ describe("tool failures the model can correct", () => {
     const strict: ReadOnlyTool = {
       ...search,
       execute: (input) =>
-        Promise.resolve(z.object({ query: z.string() }).strict().parse(input).query),
+        Promise.resolve(
+          z
+            .object({ query: z.string({ error: "query is required" }) })
+            .strict()
+            .parse(input).query,
+        ),
     };
     const { gateway, events } = run(
       [strict],
@@ -90,7 +95,9 @@ describe("tool failures the model can correct", () => {
       textResponse("Retrying with query."),
     );
     expect((await events).at(-1)).toEqual({ type: "turn-completed" });
-    expect(toolResults(gateway.requests[1])[0]?.content).toMatch(/^Error: invalid arguments \(/u);
+    expect(toolResults(gateway.requests[1])[0]?.content).toBe(
+      'Error: invalid arguments (query is required; Unrecognized key: "pattern").',
+    );
   });
 
   it("completes two parallel searches when one names a path that does not exist", async () => {

@@ -111,6 +111,7 @@ it("distinguishes concurrent work without consuming another reservation", async 
       retryBlockedBy: "concurrency",
       settlement: "not-admitted",
     });
+    expect(diagnostic.mock.calls[0]?.[0]).not.toHaveProperty("toolCallRepairs");
     test.ledger.settle("held", { inputTokens: 0, outputTokens: 0 }, NOW);
     expect(await collect(metered.stream(request, cancellation()))).toEqual([usage, completed]);
   } finally {

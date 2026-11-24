@@ -8,14 +8,12 @@ const PUBLIC_NAMES: ReadonlyMap<string, string> = new Map([
   ["marea_execute", "execute"],
   ["marea_delete", "delete"],
 ]);
-const INTERNAL_NAMES: ReadonlyMap<string, string> = new Map(
-  [...PUBLIC_NAMES].map(([internal, external]) => [external, internal]),
-);
 
 export function toPublicToolName(name: string): string {
   return PUBLIC_NAMES.get(name) ?? name;
 }
 
 export function toInternalToolName(name: string): string {
-  return INTERNAL_NAMES.get(name) ?? name;
+  for (const [internal, external] of PUBLIC_NAMES) if (external === name) return internal;
+  return name;
 }

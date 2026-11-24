@@ -16,7 +16,14 @@ describe("tolerant tool-call history", () => {
           {
             id: "call-1",
             name: "grep",
-            args: { pattern: "x", offset: 20, recursive: true, paths: ["a"], none: null },
+            args: {
+              pattern: "x",
+              offset: 20,
+              recursive: true,
+              paths: ["a"],
+              none: null,
+              gone: undefined,
+            },
             type: "tool_call",
           },
         ],
@@ -24,7 +31,7 @@ describe("tolerant tool-call history", () => {
       new ToolMessage({ content: "no matches", tool_call_id: "call-1" }),
       new HumanMessage("Continue."),
     ]);
-    expect(gateway.requests[0]?.messages[1]).toEqual({
+    expect(gateway.requests[0]?.messages[1]).toStrictEqual({
       role: "assistant",
       content: "",
       toolCalls: [

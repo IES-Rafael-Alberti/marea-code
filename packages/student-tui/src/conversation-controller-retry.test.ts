@@ -119,6 +119,17 @@ describe("automatic retry of a recoverable turn failure", () => {
     expect(exiting.calls).toHaveLength(1);
   });
 
+  it("does not retry behind a pending approval; the approval fails with the turn", async () => {
+    const subject = target(["hold", "ok"]);
+    subject.controller.handle({ type: "submit", text: "Explain loops" });
+    const decision = subject.controller.requestApproval({ path: "src/a.ts", summary: "Change" });
+    subject.held.reject(temporaryTurnFailure());
+    await settle();
+    expect(subject.calls).toHaveLength(1);
+    await expect(decision).resolves.toBe("rejected");
+    expect(subject.snapshots.at(-1)).toMatchObject({ status: "failed", approval: null });
+  });
+
   it("respects a configured number of retries", async () => {
     const none = target(["fail", "ok"], 0);
     none.controller.handle({ type: "submit", text: "Explain loops" });
