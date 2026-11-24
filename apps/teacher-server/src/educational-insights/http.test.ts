@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { EDUCATIONAL_INSIGHTS_PATH } from "@marea/protocol";
 import { registerEducationalInsightsRoutes } from "../product-http/educational-insights-http.boundary.js";
 import { TeacherDomainError } from "../identity/errors.js";
+import { ReportRefusal } from "./reports-model.js";
 import { fixture } from "./insights.fixture.js";
 import { teacher } from "../../test-support/evaluation-fixture.js";
 it("authorizes every request and serializes SQL-backed reports without exposing stored inputs", async () => {
@@ -76,4 +77,68 @@ it("returns unavailable when educational insights are not configured", async () 
     protocolVersion: "0.1",
     error: { code: "auth.invalid", retryable: false },
   });
+});
+it.each([
+  ["in-progress", 409],
+  ["invalid-period", 422],
+  ["too-large", 413],
+] as const)("maps a %s generate refusal to its own status", async (reason, status) => {
+  const f = fixture(),
+    app = new Hono();
+  registerEducationalInsightsRoutes({
+    app,
+    service: f.service,
+    authenticate: () => teacher,
+    policy: async (_context, next) => {
+      await next();
+    },
+  });
+  vi.spyOn(f.service.reports, "generate").mockImplementation(() => {
+    throw new ReportRefusal(reason);
+  });
+  const response = await app.request(EDUCATIONAL_INSIGHTS_PATH, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(
+      f.query({
+        kind: "generate",
+        from: "2026-09-06T00:00:00.000Z",
+        to: "2026-09-07T12:00:00.000Z",
+        locale: "es",
+      }),
+    ),
+  });
+  expect(response.status).toBe(status);
+  expect(await response.json()).toEqual({
+    protocolVersion: "0.1",
+    error: { code: "request.invalid", retryable: false },
+  });
+});
+it("keeps unexpected generate failures generic", async () => {
+  const f = fixture(),
+    app = new Hono();
+  registerEducationalInsightsRoutes({
+    app,
+    service: f.service,
+    authenticate: () => teacher,
+    policy: async (_context, next) => {
+      await next();
+    },
+  });
+  vi.spyOn(f.service.reports, "generate").mockImplementation(() => {
+    throw new Error("boom");
+  });
+  const response = await app.request(EDUCATIONAL_INSIGHTS_PATH, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(
+      f.query({
+        kind: "generate",
+        from: "2026-09-06T00:00:00.000Z",
+        to: "2026-09-07T12:00:00.000Z",
+        locale: "es",
+      }),
+    ),
+  });
+  expect(response.status).toBe(500);
 });

@@ -1,36 +1,45 @@
-import { anonymizeDraft } from "./anonymize.js";
-import { TeachingSnapshotContentSchema } from "../teaching/configuration/configuration-schema.js";
-import { validateEvaluationDraft } from "../evaluation/validate-draft.js";
 import { randomUUID } from "node:crypto";
-import * as z from "zod";
-import {
-  EvaluationDraftSchema,
-  StudentRunSnapshotSchema,
-  ReportSynthesisSchema,
-  type InsightsRequest,
-  type ReportSynthesis,
-} from "@marea/protocol";
+import type { InsightsRequest } from "@marea/protocol";
 import type { AuthenticatedIdentity, Clock } from "../identity/contracts.js";
 import { TeacherDomainError } from "../identity/errors.js";
 import type { LearningProgress } from "./progress.js";
 import type { EducationalInference } from "./inference.js";
 import { type EducationalRoute } from "./configuration.js";
+import { InsightsFailure } from "./model-output.boundary.js";
+import { sourceOf, type Row } from "./report-sources.js";
+import { evaluateSource } from "./report-evaluation.js";
+import { computedDenominators, validateFindings } from "./report-findings.js";
+import { synthesize } from "./report-synthesis.js";
+import { InputSchema, ReportRefusal, ResultSchema, type Evidence } from "./reports-model.js";
 
-import {
-  SourceSchema,
-  InputSchema,
-  ResultSchema,
-  EVALUATE,
-  SYNTHESIZE,
-  type Evidence,
-} from "./reports-model.js";
+const MAX_RUNS = 200;
+const MAX_INPUT_BYTES = 8 * 1048576;
+/** A browser clock this far ahead of the server is clamped; further ahead is refused. */
+export const END_SKEW_TOLERANCE_MS = 300_000;
+/** Consecutive provider or deadline failures after which the remaining runs are not attempted. */
+const MAX_INFRASTRUCTURE_FAILURES = 3;
+const INFRASTRUCTURE = new Set(["provider", "deadline"]);
+/** Failures that would repeat for every remaining run. */
+const FATAL = new Set(["budget", "unconfigured"]);
+/** A report with no progress for this many model deadlines is considered stuck. */
+const STALE_DEADLINES = 4;
+
+/** Content-free operator diagnostics: closed codes and identifiers, never student material. */
+export type ReportDiagnostic = Readonly<Record<string, string | number>>;
+function writeDiagnostic(entry: ReportDiagnostic): void {
+  process.stderr.write(`${JSON.stringify({ component: "class-reports", ...entry })}\n`);
+}
+
 export class ClassReports {
   private active: {
     id: string;
     controller: AbortController;
     identity: AuthenticatedIdentity;
     classId: string;
+    /** Server time of the last sign of life, which bounds how long a stuck report may run. */
+    progressAt: string;
   } | null = null;
+  diagnostics: (entry: ReportDiagnostic) => void = writeDiagnostic;
   constructor(
     readonly progress: LearningProgress,
     readonly inference: EducationalInference,
@@ -46,13 +55,15 @@ export class ClassReports {
     return row;
   }
   generate(identity: AuthenticatedIdentity, query: Extract<InsightsRequest, { kind: "generate" }>) {
-    if (
-      this.route === undefined ||
-      query.from >= query.to ||
-      Date.parse(query.to) > Date.parse(this.clock.now()) ||
-      Date.parse(query.to) - Date.parse(query.from) > 366 * 86400000
-    )
-      throw new TeacherDomainError("request.conflict");
+    const route = this.route;
+    if (route === undefined) throw new TeacherDomainError("request.conflict");
+    const now = Date.parse(this.clock.now());
+    if (Date.parse(query.to) - now > END_SKEW_TOLERANCE_MS)
+      throw new ReportRefusal("invalid-period");
+    // A browser clock slightly ahead of the server is clamped instead of refused.
+    const to = Date.parse(query.to) > now ? this.clock.now() : query.to;
+    if (query.from >= to || Date.parse(to) - Date.parse(query.from) > 366 * 86400000)
+      throw new ReportRefusal("invalid-period");
     return this.progress.database.transaction(() => {
       this.progress.require(identity, query.classId);
       const previous = this.progress.database.readOne(
@@ -61,7 +72,8 @@ export class ClassReports {
       );
       if (previous !== undefined) {
         const prior = this.read(String(previous.id), query.classId);
-        if (prior.from !== query.from || prior.to !== query.to)
+        const drift = Date.parse(query.to) - Date.parse(prior.to);
+        if (prior.from !== query.from || drift < 0 || drift > END_SKEW_TOLERANCE_MS)
           throw new TeacherDomainError("request.conflict");
         return prior;
       }
@@ -71,67 +83,28 @@ export class ClassReports {
           [query.classId],
         ) !== undefined
       )
-        throw new TeacherDomainError("request.conflict");
+        throw new ReportRefusal("in-progress");
       const runs = this.progress.database.readAll(
         `SELECT r.id, r.student_id, s.public_snapshot_json, t.teaching_json FROM marea_runs r JOIN marea_run_snapshots s ON s.id = r.snapshot_id JOIN marea_run_teaching_snapshots t ON t.snapshot_id = r.snapshot_id WHERE r.class_id = ?1 AND EXISTS(SELECT 1 FROM marea_run_events e WHERE e.run_id = r.id AND e.occurred_at >= ?2 AND e.occurred_at <= ?3) ORDER BY r.student_id,r.opened_at,r.id LIMIT 201`,
-        [query.classId, query.from, query.to],
+        [query.classId, query.from, to],
       );
-      if (runs.length > 200) throw new TeacherDomainError("request.conflict");
+      if (runs.length > MAX_RUNS) throw new ReportRefusal("too-large");
       const aliases = new Map<string, string>();
       const sources = runs.map((r) => {
         const studentId = String(r.student_id);
         const alias = aliases.get(studentId) ?? `A${String(aliases.size + 1).padStart(3, "0")}`;
         aliases.set(studentId, alias);
-        const runId = String(r.id);
-        const snapshot = StudentRunSnapshotSchema.parse(JSON.parse(String(r.public_snapshot_json)));
-        const teaching = TeachingSnapshotContentSchema.parse(JSON.parse(String(r.teaching_json)));
-        const approved = this.progress.database.readOne(
-          "SELECT draft_json FROM marea_evaluations WHERE run_id = ?1 AND state = 'approved' ORDER BY generation DESC LIMIT 1",
-          [runId],
-        );
-        const person = this.progress.database.readOne(
-          "SELECT display_name,login FROM marea_users WHERE id = ?1",
-          [studentId],
-        );
-        const events = this.progress.database.readAll(
-          "SELECT payload_json FROM marea_run_events WHERE run_id = ?1 AND event_type IN ('student-message','assistant-message','tool-finished','project-change') AND occurred_at <= ?2 ORDER BY sequence LIMIT 2001",
-          [runId, query.to],
-        );
-        let material = JSON.stringify({
-          teaching,
-          events: events.map((e) => z.json().parse(JSON.parse(String(e.payload_json)))),
-        });
-        const identifiers = [person?.display_name, person?.login].filter(
-          (value): value is string => typeof value === "string" && value.length > 1,
-        );
-        for (const identifier of identifiers) material = material.replaceAll(identifier, alias);
-        return {
-          runId,
-          studentId,
-          alias,
-          mode: snapshot.agentMode,
-          teaching,
-          skills: teaching.didacticSkills.map((s) => s.id),
-          material: events.length > 2000 || Buffer.byteLength(material) > 262144 ? "" : material,
-          approved:
-            approved === undefined
-              ? null
-              : anonymizeDraft(
-                  EvaluationDraftSchema.parse(JSON.parse(String(approved.draft_json))),
-                  identifiers,
-                  alias,
-                ),
-        };
+        return sourceOf(this.progress.database, r, to, alias, route);
       });
       const input = InputSchema.parse({
         from: query.from,
-        to: query.to,
+        to,
         locale: query.locale,
         sources,
-        route: this.route,
+        route,
       });
-      if (Buffer.byteLength(JSON.stringify(input)) > 8 * 1048576)
-        throw new TeacherDomainError("request.conflict");
+      if (Buffer.byteLength(JSON.stringify(input)) > MAX_INPUT_BYTES)
+        throw new ReportRefusal("too-large");
       const id = randomUUID();
       this.progress.database.execute(
         "INSERT INTO marea_class_reports (id,class_id,owner_id,request_id,created_at,state,input_json) VALUES (?1,?2,?3,?4,?5,'queued',?6)",
@@ -251,15 +224,7 @@ export class ClassReports {
   }
   async tick(): Promise<void> {
     if (this.active !== null) {
-      try {
-        this.progress.require(this.active.identity, this.active.classId);
-      } catch {
-        this.active.controller.abort();
-        this.progress.database.execute(
-          "UPDATE marea_class_reports SET state = 'failed',error = 'access-revoked' WHERE id = ?1 AND state = 'running'",
-          [this.active.id],
-        );
-      }
+      this.supervise(this.active);
       return;
     }
     const row = this.progress.database.readOne(
@@ -274,9 +239,71 @@ export class ClassReports {
       classId: null,
       displayName: "",
     };
-    this.active = { id, controller, identity, classId: String(row.class_id) };
+    const active = {
+      id,
+      controller,
+      identity,
+      classId: String(row.class_id),
+      progressAt: this.clock.now(),
+    };
+    this.active = active;
+    try {
+      this.progress.require(identity, active.classId);
+      this.progress.database.execute(
+        "UPDATE marea_class_reports SET state = 'running' WHERE id = ?1",
+        [id],
+      );
+      await this.analyse(row, active);
+    } catch (error) {
+      if (!controller.signal.aborted)
+        this.fail(
+          id,
+          error instanceof InsightsFailure ? error.code : "analysis-failed",
+          error instanceof Error ? error.name : "unknown",
+        );
+    } finally {
+      // A report released as stale must not clear a newer one.
+      if (this.active === active) this.active = null;
+    }
+  }
+  /** Revoked access or a report without progress for too long is stopped and releases the class. */
+  private supervise(active: NonNullable<ClassReports["active"]>): void {
+    try {
+      this.progress.require(active.identity, active.classId);
+    } catch {
+      active.controller.abort();
+      this.progress.database.execute(
+        "UPDATE marea_class_reports SET state = 'failed',error = 'access-revoked' WHERE id = ?1 AND state = 'running'",
+        [active.id],
+      );
+      return;
+    }
+    const idle = Date.parse(this.clock.now()) - Date.parse(active.progressAt);
+    if (idle <= STALE_DEADLINES * this.inference.deadlineMs) return;
+    active.controller.abort();
+    this.progress.database.execute(
+      "UPDATE marea_class_reports SET state = 'interrupted',error = 'deadline' WHERE id = ?1 AND state = 'running'",
+      [active.id],
+    );
+    this.diagnostics({ event: "report-stalled", reportId: active.id, code: "deadline" });
+    this.active = null;
+  }
+  private fail(id: string, code: string, cause: string): void {
+    this.progress.database.execute(
+      "UPDATE marea_class_reports SET state = 'failed', error = ?2 WHERE id = ?1 AND state IN ('running','queued')",
+      [id, code],
+    );
+    this.diagnostics({
+      event: "report-failed",
+      reportId: id,
+      code,
+      cause,
+    });
+  }
+  private async analyse(row: Row, active: NonNullable<ClassReports["active"]>): Promise<void> {
+    const { id, controller } = active;
     const accessible = () => {
-      this.progress.require(identity, String(row.class_id));
+      this.progress.require(active.identity, active.classId);
       return (
         !controller.signal.aborted &&
         this.progress.database.readOne(
@@ -285,159 +312,70 @@ export class ClassReports {
         ) !== undefined
       );
     };
-    try {
-      this.progress.require(identity, String(row.class_id));
-      this.progress.database.execute(
-        "UPDATE marea_class_reports SET state = 'running' WHERE id = ?1",
-        [id],
-      );
-      const input = InputSchema.parse(JSON.parse(String(row.input_json)));
-      const evidence: Evidence[] = [];
-      for (const source of input.sources) {
-        if (!accessible()) return;
-        evidence.push(await this.evaluateSource(source, input, id, controller.signal));
-        this.progress.database.execute(
-          "UPDATE marea_class_reports SET completed = ?2 WHERE id = ?1 AND state = 'running'",
-          [id, evidence.length],
-        );
-      }
+    const input = InputSchema.parse(JSON.parse(String(row.input_json)));
+    const evidence: Evidence[] = [];
+    let firstFailure: InsightsFailure | undefined;
+    let streak = 0;
+    for (const source of input.sources) {
       if (!accessible()) return;
-      const usable = evidence.filter((e) => e.status !== "unavailable");
-      const synthesis: ReportSynthesis =
-        usable.length === 0
-          ? {
-              summary:
-                input.locale === "es"
-                  ? "No hay evidencia suficiente para generar el informe."
-                  : input.locale === "eu"
-                    ? "Ez dago txostena sortzeko nahikoa ebidentziarik."
-                    : "Insufficient evidence to generate a report.",
-              findings: [],
-              recommendation: "",
-            }
-          : await this.inference.generate(
-              input.route,
-              `report:${id}`,
-              SYNTHESIZE,
-              { locale: input.locale, evidence: usable },
-              ReportSynthesisSchema,
-              controller.signal,
-            );
-      validateFindings(synthesis, usable);
-      if (!accessible()) return;
-      this.progress.database.execute(
-        "UPDATE marea_class_reports SET state = 'complete', result_json = ?2 WHERE id = ?1",
-        [
-          id,
-          JSON.stringify({
-            synthesis: computedDenominators(synthesis, usable),
-            evidence,
-            partial: evidence.some((e) => e.status === "unavailable"),
-          }),
-        ],
+      const evaluated = await evaluateSource(
+        this.inference,
+        source,
+        input,
+        `report:${id}`,
+        controller.signal,
       );
-    } catch {
-      if (!controller.signal.aborted)
-        this.progress.database.execute(
-          "UPDATE marea_class_reports SET state = 'failed', error = 'analysis-failed' WHERE id = ?1 AND state IN ('running','queued')",
-          [id],
-        );
-    } finally {
-      this.active = null;
+      evidence.push(evaluated.evidence);
+      const failure = evaluated.failure;
+      if (evaluated.reason !== undefined)
+        this.diagnostics({
+          event: "report-run-unavailable",
+          reportId: id,
+          runId: source.runId,
+          reason: evaluated.reason,
+        });
+      firstFailure ??= failure;
+      streak = failure !== undefined && INFRASTRUCTURE.has(failure.code) ? streak + 1 : 0;
+      if (
+        failure !== undefined &&
+        (FATAL.has(failure.code) || streak >= MAX_INFRASTRUCTURE_FAILURES)
+      )
+        throw failure;
+      active.progressAt = this.clock.now();
+      this.progress.database.execute(
+        "UPDATE marea_class_reports SET completed = ?2 WHERE id = ?1 AND state = 'running'",
+        [id, evidence.length],
+      );
     }
-  }
-  private async evaluateSource(
-    source: z.infer<typeof SourceSchema>,
-    input: z.infer<typeof InputSchema>,
-    id: string,
-    signal: AbortSignal,
-  ): Promise<Evidence> {
-    let evaluation = source.approved;
-    let status: Evidence["status"] = evaluation === null ? "provisional" : "approved";
-    if (evaluation === null) {
-      try {
-        if (source.material === "" || source.teaching.evaluationSkills.length === 0)
-          throw new Error();
-        evaluation = await this.inference.generate(
-          input.route,
-          `report:${id}`,
-          EVALUATE,
-          { mode: source.mode, material: source.material, locale: input.locale },
-          EvaluationDraftSchema,
-          signal,
-        );
-        evaluation = validateEvaluationDraft(
-          evaluation,
-          source.mode,
-          source.teaching.didacticSkills,
-        );
-      } catch {
-        status = "unavailable";
-        evaluation = null;
-      }
-    }
-    return {
-      runId: source.runId,
-      alias: source.alias,
-      mode: source.mode,
-      skills: source.skills,
-      status,
-      evaluation,
-    };
+    if (!accessible()) return;
+    const usable = evidence.filter((e) => e.status !== "unavailable");
+    if (usable.length === 0 && firstFailure !== undefined) throw firstFailure;
+    const modelled = await synthesize(
+      this.inference,
+      input,
+      `report:${id}`,
+      usable,
+      controller.signal,
+    );
+    const checked = validateFindings(modelled.synthesis, usable);
+    const computed = computedDenominators(checked.synthesis, usable);
+    if (!accessible()) return;
+    const adjusted = modelled.dropped + checked.adjusted + computed.adjusted;
+    this.progress.database.execute(
+      "UPDATE marea_class_reports SET state = 'complete', result_json = ?2 WHERE id = ?1",
+      [
+        id,
+        JSON.stringify({
+          synthesis: computed.synthesis,
+          evidence,
+          partial: adjusted > 0 || evidence.some((e) => e.status === "unavailable"),
+        }),
+      ],
+    );
+    if (adjusted > 0)
+      this.diagnostics({ event: "report-findings-adjusted", reportId: id, adjusted });
   }
   stop(): void {
     this.active?.controller.abort();
   }
-}
-export function validateFindings(synthesis: ReportSynthesis, evidence: readonly Evidence[]): void {
-  for (const finding of synthesis.findings) {
-    const eligible = evidence.filter(
-      (e) => e.mode === finding.mode && finding.skillIds.every((s) => e.skills.includes(s)),
-    );
-    const aliases = new Set(eligible.map((e) => e.alias));
-    const ids = new Set(eligible.map((e) => e.runId));
-    if (
-      new Set(finding.evaluable).size !== finding.evaluable.length ||
-      new Set(finding.affected).size !== finding.affected.length ||
-      finding.evaluable.some((a) => !aliases.has(a)) ||
-      finding.affected.some((a) => !finding.evaluable.includes(a)) ||
-      finding.evidence.length === 0 ||
-      finding.evidence.some((id) => !ids.has(id)) ||
-      finding.affected.some(
-        (alias) => !eligible.some((e) => e.alias === alias && finding.evidence.includes(e.runId)),
-      )
-    )
-      throw new Error("invalid-findings");
-  }
-}
-
-/** One student counts once per mode and assessed skill, regardless of session count. */
-export function computedDenominators(
-  synthesis: ReportSynthesis,
-  evidence: readonly Evidence[],
-): ReportSynthesis {
-  return {
-    ...synthesis,
-    findings: synthesis.findings.map((finding) => {
-      const evaluable = [
-        ...new Set(
-          evidence
-            .filter(
-              (e) =>
-                e.mode === finding.mode &&
-                e.status !== "unavailable" &&
-                finding.skillIds.every((skill) =>
-                  e.evaluation?.criteria.some(
-                    (c) => c.skillId === skill && c.result !== "no-evidence",
-                  ),
-                ),
-            )
-            .map((e) => e.alias),
-        ),
-      ];
-      if (finding.affected.some((alias) => !evaluable.includes(alias)))
-        throw new Error("invalid-denominator");
-      return { ...finding, evaluable };
-    }),
-  };
 }

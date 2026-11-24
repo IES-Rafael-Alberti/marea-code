@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { SkillIdSchema } from "@marea/protocol";
-import { validateFindings } from "./reports.js";
+import { validateFindings } from "./report-findings.js";
 import { fixture } from "./insights.fixture.js";
 import { input, query, save } from "./reports.fixture.js";
 import { teacher, EVALUATION_DRAFT } from "../../test-support/evaluation-fixture.js";
@@ -17,23 +17,23 @@ const finding = {
   explanation: "Observed",
   recommendation: "Practice",
 };
-const cases: readonly [string, object, string][] = [
-  ["valid", {}, "complete"],
-  ["mixed unknown evaluable alias", { evaluable: ["A001", "unknown"] }, "failed"],
+const cases: readonly [string, object, object | null][] = [
+  ["valid", {}, {}],
+  ["mixed unknown evaluable alias", { evaluable: ["A001", "unknown"] }, {}],
   [
     "affected outside denominator",
     { evaluable: ["A001"], affected: ["A001", "A002"], evidence: ["run:a", "run:b"] },
-    "failed",
+    { evidence: ["run:a", "run:b"] },
   ],
-  ["missing evidence without affected students", { affected: [], evidence: [] }, "failed"],
-  ["mixed unknown evidence", { evidence: ["run:a", "missing"] }, "failed"],
-  ["unsupported second affected student", { affected: ["A001", "A002"] }, "failed"],
-  ["wrong mode", { mode: "free" }, "failed"],
-  ["partially supported skills", { skillIds: [skill, "marea/missing"] }, "failed"],
+  ["missing evidence without affected students", { affected: [], evidence: [] }, null],
+  ["mixed unknown evidence", { evidence: ["run:a", "missing"] }, {}],
+  ["unsupported second affected student", { affected: ["A001", "A002"] }, {}],
+  ["wrong mode", { mode: "free" }, null],
+  ["partially supported skills", { skillIds: [skill, "marea/missing"] }, null],
 ];
 it.each(cases)(
-  "validates %s findings in the persisted report workflow",
-  async (_label, changes, state) => {
+  "repairs %s findings in the persisted report workflow",
+  async (label, changes, expected) => {
     const f = fixture();
     const report = f.service.reports.generate(teacher, query(f));
     const frozen = input(f, report.id);
@@ -66,9 +66,12 @@ it.each(cases)(
     );
     await f.service.reports.tick();
     const result = f.service.reports.read(report.id, "class:one");
-    expect(result.state).toBe(state);
-    if (state === "complete") expect(result.result?.synthesis).toEqual(synthesis);
-    else expect(result).toMatchObject({ error: "analysis-failed", result: null });
+    expect(result).toMatchObject({ state: "complete", error: null });
+    expect(result.result?.synthesis).toEqual({
+      ...synthesis,
+      findings: expected === null ? [] : [{ ...finding, ...expected }],
+    });
+    expect(result.result?.partial).toBe(label !== "valid");
   },
 );
 
@@ -114,8 +117,8 @@ it("computes denominators only from students assessed on every requested skill",
   ).toEqual(["A001"]);
 });
 
-it("rejects findings supported only by evidence from a different learning mode", () => {
-  expect(() => {
+it("drops findings supported only by evidence from a different learning mode", () => {
+  expect(
     validateFindings(
       { summary: "Reviewed", recommendation: "Next", findings: [{ ...finding, mode: "free" }] },
       [
@@ -136,6 +139,6 @@ it("rejects findings supported only by evidence from a different learning mode",
           evaluation: EVALUATION_DRAFT,
         },
       ],
-    );
-  }).toThrow("invalid-findings");
+    ),
+  ).toMatchObject({ adjusted: 1, synthesis: { findings: [] } });
 });

@@ -1,4 +1,4 @@
-import { afterEach } from "vitest";
+import { afterEach, vi } from "vitest";
 import { createEducationalMigrationCatalog } from "@marea/sqlite-storage/catalogs";
 import { InsightsRequestSchema } from "@marea/protocol";
 import { evaluationFixture, NOW } from "../../test-support/evaluation-fixture.js";
@@ -30,6 +30,8 @@ export function fixture() {
     { resolve: () => undefined },
     { map: route, reports: route },
   );
+  const diagnostics = vi.fn();
+  service.reports.diagnostics = diagnostics;
   const query = (input: object) =>
     InsightsRequestSchema.parse({
       classId: "class:one",
@@ -40,7 +42,9 @@ export function fixture() {
   return {
     ...f,
     progress,
+    route,
     service,
+    diagnostics,
     query,
     now: (value: string) => {
       now = value;
