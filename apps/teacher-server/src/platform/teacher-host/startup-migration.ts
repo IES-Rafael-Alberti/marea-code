@@ -53,7 +53,6 @@ export async function migrateSchemaOnStartup(
   const { databasePath, report } = dependencies;
   const detectedSchema = inspectSqliteSchemaVersion({ databasePath });
   const target = currentSqliteSchema();
-  if (detectedSchema === target.version) return detectedSchema;
   if (detectedSchema > target.version) {
     report({
       event: "schema-migration",
@@ -63,7 +62,8 @@ export async function migrateSchemaOnStartup(
     });
     throw new HostOperationError("not-ready", "the database schema is newer than this release");
   }
-  if (detectedSchema < createProfileMigrationCatalog().length) return detectedSchema;
+  if (detectedSchema === target.version || detectedSchema < createProfileMigrationCatalog().length)
+    return detectedSchema;
   let backupPath: string;
   try {
     backupPath = await dependencies.backup();

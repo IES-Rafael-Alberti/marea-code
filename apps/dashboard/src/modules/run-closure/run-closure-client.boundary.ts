@@ -5,6 +5,8 @@ import {
   type RunsCloseResponse,
 } from "@marea/protocol";
 
+import * as z from "zod";
+
 import { browserRandomUUID } from "../../browser-random-uuid.js";
 import { dashboardPost } from "../../dashboard-post.js";
 import type { DashboardFetch } from "../active-runs/active-runs-client.boundary.js";
@@ -24,14 +26,13 @@ export class RunClosureError extends Error {
   }
 }
 
-async function errorRequestId(response: Response): Promise<string | null> {
+/** The server's request reference for the log line, or the one this client sent. */
+async function errorRequestId(response: Response, sentRequestId: string): Promise<string> {
   try {
-    const body: unknown = await response.json();
-    const requestId =
-      typeof body === "object" && body !== null && "requestId" in body ? body.requestId : null;
-    return typeof requestId === "string" ? requestId : null;
+    const parsed = z.object({ requestId: z.string() }).safeParse(await response.json());
+    return parsed.success ? parsed.data.requestId : sentRequestId;
   } catch {
-    return null;
+    return sentRequestId;
   }
 }
 
@@ -40,7 +41,7 @@ async function failureOf(response: Response, sentRequestId: string): Promise<Run
   if (response.status === 403) return { kind: "forbidden" };
   if (response.status === 409) return { kind: "unavailable" };
   if (response.status >= 500)
-    return { kind: "server", requestId: (await errorRequestId(response)) ?? sentRequestId };
+    return { kind: "server", requestId: await errorRequestId(response, sentRequestId) };
   return { kind: "invalid" };
 }
 

@@ -155,8 +155,10 @@ function storageConfigurationOf(root: string, operations: OperationsConfig): Sto
 
 /** The same verified recovery bundle an operator backup creates, taken under the host's own lock. */
 async function startupBackup(owner: OwnedInstallation, operations: OperationsConfig) {
-  const application = createOperationsApplication(owner.capability, operations, () =>
-    new Date().toISOString(),
+  const application = createOperationsApplication(
+    owner.capability,
+    operations,
+    systemClock.now.bind(systemClock),
   );
   try {
     return (await application.createBackup(`startup-migration-${randomUUID()}`)).path;
@@ -204,11 +206,8 @@ function hostPorts(
       });
       const current = version === currentSqliteSchema().version;
       state.profiles = current || profiles;
-      state.catalog = current
-        ? currentSqliteSchema().catalog
-        : state.profiles
-          ? "dashboard-profiles"
-          : "retention-audit";
+      // A non-current schema here predates profiles; with profiles requested, validation refuses it.
+      state.catalog = current ? currentSqliteSchema().catalog : "retention-audit";
       const installation: HostInstallationConfig = {
         releaseId: host.releaseId,
         schemaVersion: current

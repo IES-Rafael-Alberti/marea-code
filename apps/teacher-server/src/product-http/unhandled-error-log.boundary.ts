@@ -36,15 +36,16 @@ export function unhandledErrorLog(sink: UnhandledErrorSink): MiddlewareHandler {
     await next();
     const failure = unhandledFailureOf(context.res);
     if (failure === undefined) return;
+    const record: UnhandledErrorRecord = {
+      component: "teacher-product-http",
+      event: "unhandled-error",
+      method: context.req.method,
+      route: routePath(context),
+      requestId: failure.requestId,
+      ...describe(failure.error),
+    };
     try {
-      sink({
-        component: "teacher-product-http",
-        event: "unhandled-error",
-        method: context.req.method,
-        route: routePath(context),
-        requestId: failure.requestId,
-        ...describe(failure.error),
-      });
+      sink(record);
     } catch {
       // A failing private sink cannot change the public response.
     }

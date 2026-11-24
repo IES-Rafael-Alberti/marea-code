@@ -92,7 +92,10 @@ describe("startup schema migration", () => {
     const migrate = vi.fn();
     const failure = await subject.run(migrate).catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(HostOperationError);
-    expect((failure as HostOperationError).code).toBe("not-ready");
+    expect(failure).toMatchObject({
+      code: "not-ready",
+      message: "the pre-migration backup could not be created",
+    });
     expect(migrate).not.toHaveBeenCalled();
     expect(inspectSqliteSchemaVersion({ databasePath: path })).toBe(previous);
     expect(subject.events).toEqual([
@@ -114,7 +117,10 @@ describe("startup schema migration", () => {
         throw new RangeError("synthetic");
       })
       .catch((error: unknown) => error);
-    expect((failure as HostOperationError).code).toBe("not-ready");
+    expect(failure).toMatchObject({
+      code: "not-ready",
+      message: "the database schema migration failed",
+    });
     expect(subject.events).toEqual([
       {
         event: "schema-migration",
@@ -146,7 +152,10 @@ describe("startup schema migration", () => {
     const subject = harness(path);
     const migrate = vi.fn();
     const failure = await subject.run(migrate).catch((error: unknown) => error);
-    expect((failure as HostOperationError).code).toBe("not-ready");
+    expect(failure).toMatchObject({
+      code: "not-ready",
+      message: "the database schema is newer than this release",
+    });
     expect(subject.backup).not.toHaveBeenCalled();
     expect(migrate).not.toHaveBeenCalled();
     expect(inspectSqliteSchemaVersion({ databasePath: path })).toBe(newer);

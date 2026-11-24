@@ -153,6 +153,10 @@ describe("teacher run closure client", () => {
     expect(sentBody(fetchRequest.mock.calls[0]?.[1]).requestId).toMatch(/^request:[0-9a-f-]{36}$/u);
   });
 
+  it("treats an unexplained refusal as an invalid answer by default", () => {
+    expect(new RunClosureError().failure).toEqual({ kind: "invalid" });
+  });
+
   it("explains a failure without revealing server detail", () => {
     expect(new RunClosureError().message).toBe(
       "The sessions could not be ended. Refresh to check their current state.",

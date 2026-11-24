@@ -9,8 +9,8 @@ export type ClosurePhase = "idle" | "confirming" | "busy" | "failed";
  */
 export class ClosureFlow {
   public phase: ClosurePhase = "idle";
-  /** Why the last attempt failed, shown until the next one. */
-  public failure: RunClosureFailure | null = null;
+  /** Why the last attempt failed; read only while the phase is "failed". */
+  public failure: RunClosureFailure = { kind: "invalid" };
   private key = "";
   private abort: AbortController | null = null;
 
@@ -36,7 +36,6 @@ export class ClosureFlow {
   public async confirm(): Promise<void> {
     const controller = new AbortController();
     this.abort = controller;
-    this.failure = null;
     this.phase = "busy";
     this.changed();
     try {

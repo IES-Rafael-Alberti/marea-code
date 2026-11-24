@@ -42,8 +42,8 @@ function useClosureFlow(
   return current;
 }
 
-function failureText(m: RunClosureMessages, failure: RunClosureFailure | null): string {
-  if (failure === null || failure.kind === "invalid") return m.failed;
+function failureText(m: RunClosureMessages, failure: RunClosureFailure): string {
+  if (failure.kind === "invalid") return m.failed;
   return failure.kind === "server" ? m.serverFailed(failure.requestId) : m[failure.kind];
 }
 
@@ -62,7 +62,7 @@ function ClosureDialog({
   readonly idBase: string;
   readonly locale: Locale;
   readonly phase: Exclude<ClosurePhase, "idle">;
-  readonly failure: RunClosureFailure | null;
+  readonly failure: RunClosureFailure;
   readonly title: string;
   readonly confirmLabel: string;
   readonly onCancel: () => void;
