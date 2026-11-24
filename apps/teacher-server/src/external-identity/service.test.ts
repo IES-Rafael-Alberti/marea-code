@@ -122,6 +122,35 @@ describe("external identity service", () => {
     );
   });
 
+  it("gives the token exchange 10 s and the admission checks their own 20 s", async () => {
+    const test = fixture();
+    const { response, request } = started(test);
+    await test.service.complete(completion(response.flowId, request.state));
+    expect(test.budgets).toEqual([10_000, 20_000]);
+    expect(test.provider.responses[0]?.signal).toBe(test.signals[0]);
+    expect(test.provider.admissionSignals).toHaveLength(3);
+    for (const signal of test.provider.admissionSignals) expect(signal).toBe(test.signals[1]);
+  });
+
+  it("checks every rule on its own and keeps the class order", async () => {
+    const test = fixture();
+    test.repository.rules = [
+      {
+        classId: "class:a",
+        rules: [
+          { kind: "group", value: "g1" },
+          { kind: "email", value: "ana@school.test" },
+          { kind: "group", value: "g2" },
+        ],
+      },
+      { classId: "class:b", rules: [{ kind: "group", value: "g3" }] },
+    ];
+    const { response, request } = started(test);
+    await test.service.complete(completion(response.flowId, request.state));
+    expect(test.provider.admissions).toEqual(["g1", "ana@school.test", "g2", "g3"]);
+    expect(test.repository.provisioned[0]?.admittedClassIds).toEqual(["class:a"]);
+  });
+
   it("rejects unknown, expired or mismatched flows without calling the provider", async () => {
     const test = fixture();
     await expect(test.service.complete(completion("f".repeat(32), "s".repeat(32)))).rejects.toEqual(

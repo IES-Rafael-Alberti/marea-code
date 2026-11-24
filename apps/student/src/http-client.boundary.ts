@@ -109,6 +109,7 @@ export interface HttpClient {
     credential?: string,
     maxResponseBytes?: number,
     maxRequestBytes?: number,
+    minimumTimeoutMs?: number /** Raises, never lowers, the client timeout. */,
   ): Promise<T>;
   stream(
     path: string,
@@ -302,12 +303,13 @@ export function createHttpClient(options: StudentHttpOptions): HttpClient {
       credential?: string,
       maxResponseBytes = MAX_JSON_RESPONSE_BYTES,
       maxRequestBytes = MAX_REQUEST_BYTES,
+      minimumTimeoutMs = 0,
     ): Promise<T> {
       const request = createRequest(
         baseUrl,
         path,
         body,
-        AbortSignal.timeout(timeout),
+        AbortSignal.timeout(Math.max(timeout, minimumTimeoutMs)),
         credential,
         maxRequestBytes,
       );

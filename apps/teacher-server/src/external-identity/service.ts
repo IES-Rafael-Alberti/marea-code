@@ -17,6 +17,7 @@ import {
 
 import type { Clock, IdGenerator, SecretIssuer } from "../identity/contracts.js";
 import { TeacherDomainError } from "../identity/errors.js";
+import { admittedClassIds } from "./admission.js";
 import type {
   ConfiguredIdentityProvider,
   ExternalIdentityRepository,
@@ -26,9 +27,16 @@ import type {
 const FLOW_DURATION_MS = 10 * 60 * 1_000;
 const MAX_PENDING_FLOWS = 256;
 const DEFAULT_MAX_CONCURRENT_COMPLETIONS = 16;
-/** Slot wait plus the provider budget must stay below the student client's 30 s request timeout. */
+/**
+ * One completion can take the slot wait plus both provider budgets (8 + 10 + 20 = 38 s). The
+ * student client allows an external completion 60 s and the HTTP idle timeout is 150 s.
+ */
 const COMPLETION_SLOT_WAIT_MS = 8_000;
-const PROVIDER_TIMEOUT_MS = 20_000;
+/** Budget of the token exchange and its verification. */
+const TOKEN_EXCHANGE_TIMEOUT_MS = 10_000;
+/** Budget of every admission check of one sign-in, which run in parallel. */
+const ADMISSION_TIMEOUT_MS = 20_000;
+const ADMISSION_CONCURRENCY = 4;
 
 interface PendingFlow {
   readonly provider: ConfiguredIdentityProvider;
@@ -216,7 +224,6 @@ export class ExternalIdentityService {
   private async verifiedAccount(flow: PendingFlow, code: string) {
     const timeout =
       this.#dependencies.timeout ?? ((milliseconds) => AbortSignal.timeout(milliseconds));
-    const signal = timeout(PROVIDER_TIMEOUT_MS);
     const { provider, id } = flow.provider;
     try {
       const person = await provider.complete({
@@ -224,11 +231,15 @@ export class ExternalIdentityService {
         redirectUri: flow.redirectUri,
         codeVerifier: flow.verifier,
         nonce: flow.nonce,
-        signal,
+        signal: timeout(TOKEN_EXCHANGE_TIMEOUT_MS),
       });
-      const admitted: string[] = [];
-      for (const { classId, rules } of this.#dependencies.repository.classRules(id))
-        if (await provider.admits(person, rules, signal)) admitted.push(classId);
+      // The admission budget starts only once the person is verified.
+      const admission = timeout(ADMISSION_TIMEOUT_MS);
+      const admitted = await admittedClassIds(
+        this.#dependencies.repository.classRules(id),
+        (rule) => provider.admits(person, [rule], admission),
+        ADMISSION_CONCURRENCY,
+      );
       const account = this.#dependencies.repository.provision({
         providerId: id,
         subject: person.subject,

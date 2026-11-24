@@ -7,7 +7,7 @@ import {
   ExternalAuthProvidersRequestSchema,
   SessionTokenSchema,
 } from "@marea/protocol";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   STUDENT_HTTP_PATHS,
@@ -216,4 +216,29 @@ describe("student HTTP class selection and external sign-in", () => {
       new StudentHttpError(409, "request.invalid", false),
     );
   });
+
+  it.each([
+    [undefined, 30_000, 60_000],
+    [45_000, 45_000, 60_000],
+    [120_000, 120_000, 120_000],
+  ])(
+    "allows the external completion at least 60 s with a %s client timeout",
+    async (timeoutMs, ordinary, completion) => {
+      const timeout = vi.spyOn(AbortSignal, "timeout");
+      try {
+        const { fetch } = recording();
+        const server = createHttpStudentServer({
+          baseUrl: "https://teacher.example",
+          fetch,
+          ...(timeoutMs === undefined ? {} : { timeoutMs }),
+        });
+        await server.externalProviders?.(requests.providers);
+        await server.beginExternal?.(requests.begin);
+        await server.completeExternal?.(requests.complete);
+        expect(timeout.mock.calls).toEqual([[ordinary], [ordinary], [completion]]);
+      } finally {
+        timeout.mockRestore();
+      }
+    },
+  );
 });

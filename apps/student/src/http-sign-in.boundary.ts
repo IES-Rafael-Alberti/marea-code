@@ -27,8 +27,17 @@ interface JsonClient {
     body: object,
     schema: z.ZodType<T>,
     credential?: string,
+    maxResponseBytes?: number,
+    maxRequestBytes?: number,
+    minimumTimeoutMs?: number,
   ): Promise<T>;
 }
+
+/**
+ * The server may spend 8 s waiting for a slot, 10 s on the token exchange and 20 s on the
+ * admission checks (38 s); the default 30 s request timeout would cut a valid sign-in short.
+ */
+const EXTERNAL_COMPLETION_TIMEOUT_MS = 60_000;
 
 export const SIGN_IN_HTTP_PATHS = Object.freeze({
   beginExternal: "/v1/auth/external/begin",
@@ -101,6 +110,10 @@ export function signInMethods(
         request.requestId,
         request,
         ExternalAuthCompleteResponseSchema,
+        undefined,
+        undefined,
+        undefined,
+        EXTERNAL_COMPLETION_TIMEOUT_MS,
       ),
   };
 }

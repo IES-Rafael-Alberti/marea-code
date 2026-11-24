@@ -35,6 +35,7 @@ class FakeProvider implements IdentityProvider {
   readonly requests: IdentityAuthorizationRequest[] = [];
   readonly responses: IdentityAuthorizationResponse[] = [];
   readonly admissions: string[] = [];
+  readonly admissionSignals: AbortSignal[] = [];
   failure: Error | undefined;
   admitFailure: Error | undefined;
   pending: Promise<void> | undefined;
@@ -55,7 +56,12 @@ class FakeProvider implements IdentityProvider {
     return undefined;
   }
 
-  async admits(identity: ExternalIdentity, rules: ClassAdmissionRules["rules"]): Promise<boolean> {
+  async admits(
+    identity: ExternalIdentity,
+    rules: ClassAdmissionRules["rules"],
+    signal: AbortSignal,
+  ): Promise<boolean> {
+    this.admissionSignals.push(signal);
     if (this.admitFailure !== undefined) throw this.admitFailure;
     this.admissions.push(rules.map((rule) => rule.value).join(","));
     return rules.some((rule) => rule.value === identity.email);
@@ -109,6 +115,7 @@ export function fixture(
   let secret = 0;
   let id = 0;
   const signals: AbortSignal[] = [];
+  const budgets: number[] = [];
   const dependencies: ExternalIdentityServiceDependencies = {
     providers:
       options.providers === false
@@ -141,7 +148,7 @@ export function fixture(
       ? {}
       : {
           timeout: (milliseconds: number) => {
-            expect(milliseconds).toBe(20_000);
+            budgets.push(milliseconds);
             const signal = new AbortController().signal;
             signals.push(signal);
             return signal;
@@ -161,6 +168,7 @@ export function fixture(
     opened,
     clock,
     signals,
+    budgets,
   };
 }
 
