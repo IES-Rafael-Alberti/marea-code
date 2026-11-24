@@ -36,11 +36,9 @@ export function runProjectCommand(
       const headPart = text.slice(0, COMMAND_OUTPUT_HEAD_CHARACTERS - head.length);
       head += headPart;
       tail += text.slice(headPart.length);
-      const excess = tail.length - COMMAND_OUTPUT_TAIL_CHARACTERS;
-      if (excess > 0) {
-        omitted += excess;
-        tail = tail.slice(excess);
-      }
+      const kept = tail.slice(-COMMAND_OUTPUT_TAIL_CHARACTERS);
+      omitted += tail.length - kept.length;
+      tail = kept;
     };
     const stdout = new StringDecoder();
     const stderr = new StringDecoder();

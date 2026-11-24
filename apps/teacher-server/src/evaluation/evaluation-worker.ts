@@ -42,9 +42,12 @@ export class EvaluationWorker {
     const settled = await Promise.allSettled(
       Array.from({ length: EVALUATION_CONCURRENCY }, () => this.runNext(signal)),
     );
-    const failure = settled.find((result) => result.status === "rejected");
-    if (failure !== undefined) throw failure.reason;
-    return settled.filter((result) => result.status === "fulfilled" && result.value).length;
+    let ran = 0;
+    for (const result of settled) {
+      if (result.status === "rejected") throw result.reason;
+      if (result.value) ran += 1;
+    }
+    return ran;
   }
 
   public async runNext(signal: AbortSignal): Promise<boolean> {
