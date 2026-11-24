@@ -25,6 +25,7 @@ describe("active runs service", () => {
       runs: [
         {
           classDisplayName: "Physics",
+          classId: "class:physics",
           highestDurableSequence: 3,
           lastActivityAt: "2026-09-03T10:01:00.000Z",
           pendingApproval: true,

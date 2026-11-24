@@ -13,6 +13,9 @@ export interface EvaluationWorkerOptions {
   readonly ids: IdGenerator;
 }
 
+/** Evaluations processed in parallel by one tick. Each keeps its own per-run budget. */
+export const EVALUATION_CONCURRENCY = 4;
+
 /** The host schedules bounded ticks; generation never runs in the session-close request. */
 export class EvaluationWorker {
   public constructor(private readonly options: EvaluationWorkerOptions) {}
@@ -28,6 +31,20 @@ export class EvaluationWorker {
       if (result !== null) queued += 1;
     }
     return queued;
+  }
+
+  /**
+   * Claims and evaluates up to `EVALUATION_CONCURRENCY` queued evaluations at once. Every claim
+   * is one atomic repository statement, so two workers never receive the same evaluation, and
+   * the batch settles completely before it reports a failure so a stop never leaves one running.
+   */
+  public async runBatch(signal: AbortSignal): Promise<number> {
+    const settled = await Promise.allSettled(
+      Array.from({ length: EVALUATION_CONCURRENCY }, () => this.runNext(signal)),
+    );
+    const failure = settled.find((result) => result.status === "rejected");
+    if (failure !== undefined) throw failure.reason;
+    return settled.filter((result) => result.status === "fulfilled" && result.value).length;
   }
 
   public async runNext(signal: AbortSignal): Promise<boolean> {

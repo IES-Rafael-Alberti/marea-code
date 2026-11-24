@@ -12,6 +12,8 @@ export interface EvaluationModuleOptions extends DraftGeneratorOptions {
   readonly repository: EvaluationRepository;
   readonly ids: IdGenerator;
   readonly intervalMs: number;
+  /** Closes abandoned runs; called once after exclusive startup and again before every tick. */
+  readonly closeAbandonedRuns: () => number;
   readonly onError: () => void;
 }
 
@@ -25,6 +27,9 @@ export function createEvaluationModule(options: EvaluationModuleOptions) {
   });
   const runtime = new EvaluationRuntime({
     worker,
+    beforeTick: () => {
+      options.closeAbandonedRuns();
+    },
     intervalMs: options.intervalMs,
     onError: options.onError,
   });
@@ -39,6 +44,7 @@ export function createEvaluationModule(options: EvaluationModuleOptions) {
       const now = options.clock.now();
       options.ledger.recoverUnfinished(now);
       options.repository.recoverInterrupted(now);
+      options.closeAbandonedRuns();
     },
     start(): void {
       started = true;

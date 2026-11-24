@@ -19,7 +19,8 @@ import type {
 } from "../../sessions/contracts.js";
 import { rowInteger, rowJson, rowText } from "./row-parser.boundary.js";
 import { activeGovernanceMembership, activeStudentClass } from "./governance-access-sql.js";
-import { loadRunStartup, validateStartupEvent } from "./sqlite-run-startup.js";
+import { closeActiveRun, insertRunEvent, refusalForRun } from "./sqlite-run-closing.js";
+import { loadRunStartup } from "./sqlite-run-startup.js";
 import { PrivateProviderRouteSchema as StoredProviderRouteSchema } from "../../model-gateway/route-policy.js";
 
 interface StoredRun {
@@ -31,6 +32,9 @@ interface StoredRun {
 function unavailable(): never {
   throw new TeacherDomainError("run.unavailable");
 }
+
+const CLOSED_RUN_OF_STUDENT = `SELECT close_reason FROM marea_runs
+  WHERE id = ?1 AND student_id = ?2 AND state = 'closed'`;
 
 function requestConflict(): never {
   throw new TeacherDomainError("request.conflict");
@@ -76,7 +80,10 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
           ? this.selectOrCreateRun(input)
           : this.loadIdempotent(previous, input);
       if (stored.state !== "active") {
-        unavailable();
+        throw refusalForRun(this.#database, {
+          sql: CLOSED_RUN_OF_STUDENT,
+          parameters: [stored.runId, input.student.userId],
+        });
       }
       const highestDurableSequence = rowInteger(
         this.requiredProjection(stored.runId),
@@ -135,7 +142,12 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
       [input.leaseTokenHash, input.now],
     );
     if (lease === undefined) {
-      unavailable();
+      throw refusalForRun(this.#database, {
+        sql: `SELECT runs.close_reason FROM marea_run_leases leases
+          JOIN marea_runs runs ON runs.id = leases.run_id
+          WHERE leases.token_hash = ?1 AND runs.state = 'closed'`,
+        parameters: [input.leaseTokenHash],
+      });
     }
     return {
       providerRoute: rowJson(lease, "provider_route_json", StoredProviderRouteSchema),
@@ -191,7 +203,13 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
             AND ${activeGovernanceMembership("student_id", "marea_runs.class_id", "'student'")}`,
         [input.runId, input.studentId, input.classId],
       );
-      if (run === undefined || rowText(run, "state") !== "active") unavailable();
+      if (run === undefined) unavailable();
+      if (rowText(run, "state") !== "active") {
+        throw refusalForRun(this.#database, {
+          sql: CLOSED_RUN_OF_STUDENT,
+          parameters: [input.runId, input.studentId],
+        });
+      }
       this.#database.execute(
         "UPDATE marea_run_leases SET revoked_at = ?2 WHERE run_id = ?1 AND revoked_at IS NULL",
         [input.runId, input.issuedAt],
@@ -241,7 +259,12 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
               ],
             );
       if (resumable === undefined) {
-        unavailable();
+        throw input.resumeRunId === undefined
+          ? new TeacherDomainError("run.unavailable")
+          : refusalForRun(this.#database, {
+              sql: CLOSED_RUN_OF_STUDENT,
+              parameters: [input.resumeRunId, input.student.userId],
+            });
       }
       const stored = this.loadRun(rowText(resumable, "id"), input.student.userId);
       this.rememberOpen(input, stored.runId);
@@ -300,7 +323,7 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
       occurredAt: input.openedAt,
       sequence: 1,
     });
-    this.insertEvent(input.proposedRunId, activated);
+    insertRunEvent(this.#database, input.proposedRunId, activated);
     this.#database.execute(
       `INSERT INTO marea_active_runs
         (run_id, student_id, class_id, project_display_name, started_at,
@@ -388,25 +411,7 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
     runId: string,
     input: CloseStoredRunInput | CloseAuthenticatedRunInput,
   ): CloseStoredRunResult {
-    const projection = this.requiredProjection(runId);
-    const sequence = rowInteger(projection, "highest_durable_sequence") + 1;
-    const event = CanonicalRunEventSchema.parse({
-      eventId: input.closingEventId,
-      eventType: "run-closed",
-      occurredAt: input.closedAt,
-      reason: input.reason,
-      sequence,
-    });
-    this.insertEvent(runId, event);
-    this.#database.execute(
-      `UPDATE marea_runs SET state = 'closed', closed_at = ?2, close_reason = ?3 WHERE id = ?1`,
-      [runId, input.closedAt, input.reason],
-    );
-    this.#database.execute("DELETE FROM marea_active_runs WHERE run_id = ?1", [runId]);
-    this.#database.execute(
-      "UPDATE marea_run_leases SET revoked_at = ?2 WHERE run_id = ?1 AND revoked_at IS NULL",
-      [runId, input.closedAt],
-    );
+    closeActiveRun(this.#database, runId, input);
     return { alreadyClosed: false, runId };
   }
 
@@ -431,17 +436,7 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
     if (event.sequence !== highest + 1) {
       requestConflict();
     }
-    this.insertEvent(runId, event);
+    insertRunEvent(this.#database, runId, event);
     return true;
-  }
-
-  private insertEvent(runId: string, event: CanonicalRunEvent): void {
-    validateStartupEvent(this.#database, runId, event);
-    this.#database.execute(
-      `INSERT INTO marea_run_events
-        (event_id, run_id, sequence, occurred_at, event_type, payload_json)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
-      [event.eventId, runId, event.sequence, event.occurredAt, event.eventType, eventJson(event)],
-    );
   }
 }

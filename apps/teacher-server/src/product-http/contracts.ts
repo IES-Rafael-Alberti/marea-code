@@ -33,6 +33,7 @@ import type { AuthorizedRunLease } from "../sessions/contracts.js";
 import type { HistoryService } from "../sessions/history-service.js";
 import type { NoticeService } from "../sessions/notice-service.js";
 import type { EvaluationService } from "../evaluation/evaluation-service.js";
+import type { RunClosureService } from "../sessions/run-closure-service.js";
 import type { RunInferenceService } from "../model-gateway/run-inference-service.js";
 import type { ProductTeachingConfigurationService } from "../teaching/configuration/dashboard-contracts.js";
 import type { ProductSkillAuthoringService } from "../teaching/authoring/dashboard-contracts.js";
@@ -97,6 +98,7 @@ export interface TeacherProductServices {
     "execute"
   >;
   readonly evaluations: Pick<EvaluationService, "query" | "generate" | "approve">;
+  readonly runClosure?: Pick<RunClosureService, "closeRun" | "closeClassRuns">;
   readonly modelUsage: Pick<RunInferenceService, "providerFor">;
   readonly notices: Pick<NoticeService, "publish" | "pending" | "acknowledge" | "lookup">;
   readonly history: Pick<HistoryService, "readRun" | "listSessions" | "listClassSessions">;

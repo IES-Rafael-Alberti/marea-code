@@ -8,6 +8,7 @@ import { SqliteDashboardRepository } from "./sqlite-dashboard-repository.js";
 function runRow(runId: string, activity: string) {
   return {
     class_display_name: "Physics",
+    class_id: "class:physics",
     highest_durable_sequence: 3,
     last_activity_at: activity,
     pending_approval: 1,
@@ -32,7 +33,12 @@ describe("SQLite dashboard repository", () => {
     });
 
     expect(page.runs).toEqual([
-      expect.objectContaining({ pendingApproval: true, runId: "run:2", state: "active" }),
+      expect.objectContaining({
+        classId: "class:physics",
+        pendingApproval: true,
+        runId: "run:2",
+        state: "active",
+      }),
     ]);
     expect(page.nextCursor).toBe(Buffer.from("run:2").toString("base64url"));
     expect(database.reads[0]?.parameters).toEqual(["teacher:ada", 2]);

@@ -265,6 +265,7 @@ export async function createAcceptanceHarness(
     providers,
     createReservationId: () => values.createId("event"),
     intervalMs: options.evaluationIntervalMs ?? 250,
+    closeAbandonedRuns: () => 0,
     onError: () => {
       evaluationErrors.push("evaluation-tick-failed");
     },

@@ -29,7 +29,7 @@ import { PasswordAdmission } from "./password-admission.js";
 /** Idle timeout: a session lapses after this long without renewed run activity. */
 const SESSION_DURATION_MS = 30 * 60 * 1_000;
 /** Absolute lifetime from sign-in; activity never extends a session beyond it. */
-const SESSION_MAX_LIFETIME_SECONDS = 8 * 60 * 60;
+export const SESSION_MAX_LIFETIME_SECONDS = 8 * 60 * 60;
 
 export interface IdentityServiceDependencies {
   readonly clock: Clock;
