@@ -125,18 +125,18 @@ export class SqliteEvaluationRepository implements EvaluationRepository {
   }
 
   public claim(workerToken: string, now: string): EvaluationClaim | null {
+    // One statement selects and marks the oldest queued evaluation, so concurrent workers can
+    // never receive the same row. An unreadable stored input rolls the claim back.
     return this.database.transaction(() => {
-      const row = this.database.readOne(
-        "SELECT * FROM marea_evaluations WHERE state = 'queued' ORDER BY created_at, id LIMIT 1",
+      const [row] = this.database.readAll(
+        `UPDATE marea_evaluations SET state = 'running', worker_token = ?1, updated_at = ?2
+          WHERE state = 'queued' AND id = (SELECT id FROM marea_evaluations
+            WHERE state = 'queued' ORDER BY created_at, id LIMIT 1)
+          RETURNING *`,
+        [workerToken, now],
       );
       if (row === undefined) return null;
-      const input = storedEvaluationInput(row);
-      const evaluationId = rowText(row, "id");
-      this.database.execute(
-        "UPDATE marea_evaluations SET state = 'running', worker_token = ?2, updated_at = ?3 WHERE id = ?1",
-        [evaluationId, workerToken, now],
-      );
-      return { evaluationId, workerToken, input };
+      return { evaluationId: rowText(row, "id"), workerToken, input: storedEvaluationInput(row) };
     });
   }
 

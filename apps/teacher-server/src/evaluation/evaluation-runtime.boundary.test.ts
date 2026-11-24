@@ -11,30 +11,30 @@ describe("hosted evaluation scheduling", () => {
     vi.useFakeTimers();
     const worker = {
       discoverClosedRuns: vi.fn(() => 0),
-      runNext: vi.fn().mockResolvedValue(false),
+      runBatch: vi.fn().mockResolvedValue(0),
     };
     const runtime = new EvaluationRuntime({ worker, intervalMs, onError: vi.fn() });
     runtime.start();
     await vi.advanceTimersByTimeAsync(intervalMs);
-    expect(worker.runNext).toHaveBeenCalledOnce();
+    expect(worker.runBatch).toHaveBeenCalledOnce();
     await runtime.stop();
     runtime.start();
     await vi.advanceTimersByTimeAsync(intervalMs);
-    expect(worker.runNext).toHaveBeenCalledTimes(2);
+    expect(worker.runBatch).toHaveBeenCalledTimes(2);
     await runtime.stop();
     expect(vi.getTimerCount()).toBe(0);
   });
-  it("runs bounded serial ticks outside requests, starts once and waits for cancellation before stopping", async () => {
+  it("runs bounded batches outside requests, starts once and waits for cancellation before stopping", async () => {
     vi.useFakeTimers();
     let finish: (() => void) | undefined;
     let signal: AbortSignal | undefined;
     const worker = {
       discoverClosedRuns: vi.fn(() => 1),
-      runNext: vi.fn((input: AbortSignal) => {
+      runBatch: vi.fn((input: AbortSignal) => {
         signal = input;
-        return new Promise<boolean>((resolve) => {
+        return new Promise<number>((resolve) => {
           finish = () => {
-            resolve(true);
+            resolve(1);
           };
         });
       }),
@@ -42,12 +42,12 @@ describe("hosted evaluation scheduling", () => {
     const runtime = new EvaluationRuntime({ worker, intervalMs: 10, onError: vi.fn() });
     runtime.start();
     runtime.start();
-    expect(worker.runNext).not.toHaveBeenCalled();
+    expect(worker.runBatch).not.toHaveBeenCalled();
     await vi.advanceTimersByTimeAsync(10);
     expect(worker.discoverClosedRuns).toHaveBeenCalledTimes(1);
-    expect(worker.runNext).toHaveBeenCalledTimes(1);
+    expect(worker.runBatch).toHaveBeenCalledTimes(1);
     await vi.advanceTimersByTimeAsync(100);
-    expect(worker.runNext).toHaveBeenCalledTimes(1);
+    expect(worker.runBatch).toHaveBeenCalledTimes(1);
     let stopped = false;
     const stopping = runtime.stop().then(() => {
       stopped = true;
@@ -57,7 +57,7 @@ describe("hosted evaluation scheduling", () => {
     finish?.();
     await stopping;
     await vi.advanceTimersByTimeAsync(100);
-    expect(worker.runNext).toHaveBeenCalledTimes(1);
+    expect(worker.runBatch).toHaveBeenCalledTimes(1);
     await runtime.stop();
     runtime.start();
     await Promise.all([runtime.stop(), runtime.stop()]);
@@ -68,19 +68,76 @@ describe("hosted evaluation scheduling", () => {
     vi.useFakeTimers();
     const worker = {
       discoverClosedRuns: vi.fn(() => 0),
-      runNext: vi
+      runBatch: vi
         .fn()
         .mockRejectedValueOnce(new Error("private provider data"))
-        .mockResolvedValue(false),
+        .mockResolvedValue(0),
     };
     const onError = vi.fn();
     const runtime = new EvaluationRuntime({ worker, intervalMs: 10, onError });
     runtime.start();
     await vi.advanceTimersByTimeAsync(20);
-    expect(worker.runNext).toHaveBeenCalledTimes(2);
+    expect(worker.runBatch).toHaveBeenCalledTimes(2);
     expect(onError.mock.calls).toEqual([[]]);
     await runtime.stop();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("runs the housekeeping step before discovery in every tick", async () => {
+    vi.useFakeTimers();
+    const order: string[] = [];
+    const worker = {
+      discoverClosedRuns: vi.fn(() => {
+        order.push("discover");
+        return 0;
+      }),
+      runBatch: vi.fn(() => {
+        order.push("batch");
+        return Promise.resolve(0);
+      }),
+    };
+    const runtime = new EvaluationRuntime({
+      worker,
+      beforeTick: () => {
+        order.push("housekeeping");
+      },
+      intervalMs: 10,
+      onError: vi.fn(),
+    });
+    runtime.start();
+    await vi.advanceTimersByTimeAsync(20);
+    await runtime.stop();
+    expect(order).toEqual([
+      "housekeeping",
+      "discover",
+      "batch",
+      "housekeeping",
+      "discover",
+      "batch",
+    ]);
+  });
+
+  it("reports a failed housekeeping step and still evaluates queued work", async () => {
+    vi.useFakeTimers();
+    const worker = {
+      discoverClosedRuns: vi.fn(() => 0),
+      runBatch: vi.fn().mockResolvedValue(0),
+    };
+    const onError = vi.fn();
+    const runtime = new EvaluationRuntime({
+      worker,
+      beforeTick: () => {
+        throw new Error("private database detail");
+      },
+      intervalMs: 10,
+      onError,
+    });
+    runtime.start();
+    await vi.advanceTimersByTimeAsync(10);
+    await runtime.stop();
+    expect(onError.mock.calls).toEqual([[]]);
+    expect(worker.discoverClosedRuns).toHaveBeenCalledOnce();
+    expect(worker.runBatch).toHaveBeenCalledOnce();
   });
 
   it.each([0, -1, 1.5, 2_147_483_648, Number.MAX_SAFE_INTEGER + 1])(
@@ -89,7 +146,7 @@ describe("hosted evaluation scheduling", () => {
       expect(
         () =>
           new EvaluationRuntime({
-            worker: { discoverClosedRuns: () => 0, runNext: () => Promise.resolve(false) },
+            worker: { discoverClosedRuns: () => 0, runBatch: () => Promise.resolve(0) },
             intervalMs,
             onError: () => undefined,
           }),

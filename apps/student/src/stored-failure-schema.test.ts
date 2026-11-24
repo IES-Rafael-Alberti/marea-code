@@ -35,6 +35,8 @@ it("bounds and freezes persisted failure metadata without weakening the state sc
     "provider-interrupted",
     "request-failed",
     "session-unavailable",
+    "session-ended-by-teacher",
+    "session-expired",
     "unexpected",
     "deadline-exceeded",
     "budget-exhausted",

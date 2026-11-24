@@ -90,6 +90,26 @@ clock; lease renewal slides the student's session. Closing the terminal stops
 heartbeats and renewal, so the session lapses after 30 minutes. Teacher revocation,
 account deactivation, closed runs, and expired sessions are never extended or revived.
 
+## Ending student sessions
+
+A student's tutor conversation is a run, and the server closes a run that nobody is
+connected to so its automatic evaluation can start. A background step, run once at
+startup and every evaluation tick, closes an active run with reason `session-expired`
+when it has had no presence, lease renewal or event for 60 minutes and holds no
+unexpired lease, or when it is older than the 8-hour sign-in cap and its student has no
+live sign-in session or lease. Conditions are rechecked inside the closing transaction,
+so a student who reconnects is never closed.
+
+Teachers of a class can end one session (`teacher-ended`) or the listed sessions of a
+class (`class-ended`) from the dashboard. Both endpoints use the teacher cookie, require
+an allowed Origin, check the teacher's active class membership, are idempotent, and
+record the closing teacher in `marea_runs.closed_by` (schema 15). Only the runs named in
+a class request are closed. Closing never bypasses a class's `automaticEvaluation`
+setting: an evaluation is queued only when the class enabled it, exactly as after a
+student exit. A refused run answers `run.unavailable` with the optional header
+`x-marea-run-closed-reason`, which older clients ignore; the student application then
+explains that the session ended and starts a new run the next time `marea` runs.
+
 ## Private state file protection
 
 Student state, credentials and input history are stored outside the project

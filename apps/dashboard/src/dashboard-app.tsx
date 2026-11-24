@@ -10,7 +10,10 @@ import { parseLocalePreference, type LocalePreference } from "@marea/i18n";
 
 import { getDashboardMessages } from "./messages.js";
 import type { DashboardLocale } from "./messages.js";
-import { ActiveRunsModule } from "./modules/active-runs/active-runs-module.js";
+import {
+  ActiveRunsModule,
+  type ActiveRunsClosure,
+} from "./modules/active-runs/active-runs-module.js";
 import { TeachingModule } from "./modules/teaching/teaching-module.js";
 import type { TeachingModuleProperties } from "./modules/teaching/teaching-contracts.js";
 import { SkillAuthoringModule } from "./modules/skill-authoring/skill-authoring-module.js";
@@ -44,6 +47,7 @@ export interface DashboardAppProperties {
   readonly navigation?: { readonly section: string; select(section: string): void };
   readonly workspace?: Omit<SessionsModuleProperties, "locale">;
   readonly state?: DashboardState;
+  readonly activeRunsClosure?: ActiveRunsClosure | undefined;
   readonly evaluation?: Omit<EvaluationModuleProperties, "locale">;
   readonly teaching?: Omit<TeachingModuleProperties, "locale">;
   readonly authoring?: Omit<SkillAuthoringModuleProperties, "locale">;
@@ -62,6 +66,7 @@ export function DashboardApp({
   navigation,
   workspace,
   state = { status: "loading" },
+  activeRunsClosure,
   evaluation,
   teaching,
   authoring,
@@ -143,6 +148,7 @@ export function DashboardApp({
                   locale={locale}
                   workspace={workspace}
                   state={state}
+                  closure={activeRunsClosure}
                   evaluation={evaluation}
                 />
               </div>
@@ -200,17 +206,24 @@ function SessionPanel({
   locale,
   workspace,
   state,
+  closure,
   evaluation,
 }: {
   readonly locale: DashboardLocale;
   readonly workspace: DashboardAppProperties["workspace"];
   readonly state: DashboardState;
+  readonly closure: ActiveRunsClosure | undefined;
   readonly evaluation: DashboardAppProperties["evaluation"];
 }) {
   if (workspace !== undefined) return <SessionsModule locale={locale} {...workspace} />;
   return (
     <>
-      <ActiveRunsModule locale={locale} messages={getDashboardMessages(locale)} state={state} />
+      <ActiveRunsModule
+        locale={locale}
+        messages={getDashboardMessages(locale)}
+        state={state}
+        closure={closure}
+      />
       {evaluation !== undefined && <EvaluationModule locale={locale} {...evaluation} />}
     </>
   );

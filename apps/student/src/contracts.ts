@@ -1,5 +1,5 @@
 import type { OperationRequest, OperationTurn } from "./operation-contracts.js";
-import type { TurnFailureInfo } from "@marea/student-tui";
+import type { TurnFailureInfo, TurnFailureKind } from "@marea/student-tui";
 import type {
   QuestionRequest,
   ToolFinishedEvent,
@@ -187,7 +187,7 @@ export class NoActiveRunError extends Error {
   }
 }
 
-export type { TurnFailureInfo };
+export type { TurnFailureInfo, TurnFailureKind };
 
 /**
  * A turn attempt failed after persisting `prefix` of assistant text. The

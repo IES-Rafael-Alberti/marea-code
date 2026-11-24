@@ -1,0 +1,48 @@
+.closure-control {
+  display: inline-block;
+}
+.closure-dialog {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  transform: translate(-50%, -50%);
+  z-index: 20;
+  width: min(32rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: 2px solid var(--color-border-strong);
+  box-shadow: 0 1.5rem 3rem rgb(16 30 36 / 35%);
+}
+.closure-dialog h3,
+.closure-dialog p {
+  margin: 0;
+}
+.closure-students {
+  margin: 0.5rem 0;
+  padding-left: 1.25rem;
+  max-height: 12rem;
+  overflow: auto;
+}
+.closure-warning {
+  font-weight: 600;
+  color: var(--color-accent);
+}
+.closure-note {
+  margin-top: 0.5rem;
+  color: var(--color-muted);
+}
+.closure-dialog .actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+.closure-confirm {
+  color: #fff;
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}

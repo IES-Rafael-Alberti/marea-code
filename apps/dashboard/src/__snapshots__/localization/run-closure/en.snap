@@ -1,0 +1,24 @@
+{
+  "cancel": "Cancel",
+  "classBody": "These students will be told that you ended the session and can start a new one by running Marea again.",
+  "confirmOne": "End this session",
+  "endAllSessions": "End all sessions",
+  "endSession": "End session",
+  "ending": "Ending…",
+  "evaluationNote": "If automatic evaluation is enabled for the class, the evaluation starts after the session ends.",
+  "failed": "The sessions could not be ended. Check the connection and try again.",
+  "interpolated": {
+    "classPending": "These students have an approval pending, which ending the session discards: Ana, Ben.",
+    "classTitle": [
+      "End 1 session?",
+      "End 3 sessions?",
+    ],
+    "confirmClass": [
+      "End 1 session",
+      "End 3 sessions",
+    ],
+    "oneBody": "Ana will be told that you ended the session and can start a new one by running Marea again.",
+    "onePending": "Ana has an approval pending. Ending the session discards it.",
+  },
+  "oneTitle": "End this session?",
+}

@@ -50,6 +50,7 @@ export function ConversationEvent({
       break;
     case "run-closed":
       heading = m.finished;
+      content = m.closeReasons[event.reason];
       break;
     case "internal-activity":
     case "tutor-startup":

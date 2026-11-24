@@ -134,6 +134,26 @@ describe("canonical run event protocol", () => {
     ]);
   });
 
+  it.each([
+    "student-exit",
+    "cancelled",
+    "composition-failed",
+    "fatal-error",
+    "session-expired",
+    "teacher-ended",
+    "class-ended",
+  ])("accepts the stored run-closed reason %s", (reason) => {
+    expect(
+      CanonicalRunEventSchema.parse({ ...eventBase, eventType: "run-closed", reason }),
+    ).toMatchObject({ reason });
+  });
+
+  it("rejects an unknown run-closed reason", () => {
+    expect(() =>
+      CanonicalRunEventSchema.parse({ ...eventBase, eventType: "run-closed", reason: "other" }),
+    ).toThrow();
+  });
+
   it.each(["approved", "rejected"])("accepts approval decision %s", (decision) => {
     expect(
       CanonicalRunEventSchema.parse({

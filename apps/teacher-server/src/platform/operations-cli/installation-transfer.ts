@@ -4,6 +4,8 @@ import {
   createStudentIdentityMigrationCatalog,
   createObservabilityMigrationCatalog,
   createSkillAssignmentMigrationCatalog,
+  createRunClosureMigrationCatalog,
+  type SqliteSchemaCatalog,
 } from "@marea/sqlite-storage";
 import { createHash, randomUUID } from "node:crypto";
 import {
@@ -239,20 +241,7 @@ export function createInstallationTransfer(options: {
       {
         destinationRoot: staging,
         path: bundlePath(record),
-        schema:
-          bundle.manifest.release.schemaVersion === createSkillAssignmentMigrationCatalog().length
-            ? "skill-assignments"
-            : bundle.manifest.release.schemaVersion === createObservabilityMigrationCatalog().length
-              ? "observability"
-              : bundle.manifest.release.schemaVersion ===
-                  createStudentIdentityMigrationCatalog().length
-                ? "student-identities"
-                : bundle.manifest.release.schemaVersion ===
-                    createEducationalMigrationCatalog().length
-                  ? "educational-insights"
-                  : bundle.manifest.release.schemaVersion === createProfileMigrationCatalog().length
-                    ? "dashboard-profiles"
-                    : "retention-audit",
+        schema: restoreSchema(bundle.manifest.release.schemaVersion),
       },
       bundle.manifest.release,
       destination.config.limits,
@@ -478,4 +467,20 @@ export function createInstallationTransfer(options: {
       return summary(record);
     },
   });
+}
+
+/** Newest first; an unrecognized older version restores through the retention audit catalog. */
+function restoreSchema(schemaVersion: number): SqliteSchemaCatalog {
+  return (
+    (
+      [
+        [createRunClosureMigrationCatalog().length, "run-closure"],
+        [createSkillAssignmentMigrationCatalog().length, "skill-assignments"],
+        [createObservabilityMigrationCatalog().length, "observability"],
+        [createStudentIdentityMigrationCatalog().length, "student-identities"],
+        [createEducationalMigrationCatalog().length, "educational-insights"],
+        [createProfileMigrationCatalog().length, "dashboard-profiles"],
+      ] as const
+    ).find(([version]) => version === schemaVersion)?.[1] ?? "retention-audit"
+  );
 }

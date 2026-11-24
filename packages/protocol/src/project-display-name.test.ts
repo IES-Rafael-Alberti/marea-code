@@ -44,6 +44,7 @@ const carriers = {
         {
           runId: "run:project-name",
           studentDisplayName: "Daniel",
+          classId: "class:dwec",
           classDisplayName: "DWEC",
           projectDisplayName: name,
           state: "active",

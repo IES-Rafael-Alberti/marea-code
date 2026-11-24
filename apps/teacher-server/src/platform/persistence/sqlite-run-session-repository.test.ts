@@ -273,7 +273,7 @@ describe("SQLite run session repository opening", () => {
         operation: rejectedOpen([
           { fingerprint: "fingerprint", run_id: "run:1" },
           storedRunRow("closed"),
-          projection(),
+          { close_reason: "student-exit" },
         ]),
       },
       {

@@ -1,3 +1,4 @@
+import { registerRunClosureRoutes } from "./run-closure-http.boundary.js";
 import { registerSkillWorkspaceRoutes } from "./skill-workspace-http.boundary.js";
 import { registerServerSettingsRoutes } from "./server-settings-http.boundary.js";
 import { registerSessionExportRoutes } from "./session-export-http.boundary.js";
@@ -23,6 +24,7 @@ export function registerDashboardModuleRoutes(options: {
     path: "/api/v1/dashboard/observability",
   });
   registerSessionExportRoutes({ ...options, service: options.services.sessionExport });
+  registerRunClosureRoutes({ ...options, service: options.services.runClosure });
   registerSkillWorkspaceRoutes({ ...options, service: options.services.skillWorkspace });
   registerEducationalInsightsRoutes({ ...options, service: options.services.educationalInsights });
   registerDashboardProfileRoutes({ ...options, service: options.services.profiles });

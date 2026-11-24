@@ -123,6 +123,10 @@ const basqueCatalog = {
   "student.tui.failure.concurrency-limited": "Beste eskaera bat martxan dago. Itxaron amaitu arte.",
   "student.tui.failure.provider-interrupted": "Hornitzaileak erantzuna eten du.",
   "student.tui.failure.resume-detail": "Txandari gordetako azken puntutik berrekin diezaiokezu.",
+  "student.tui.failure.session-ended-by-teacher":
+    "Zure irakasleak saio hau amaitu du. Exekutatu marea berriro saio berri bat hasteko.",
+  "student.tui.failure.session-expired":
+    "Saio hau iraungi da, inaktibo egon delako edo denbora-muga gainditu duelako. Exekutatu marea berriro saio berri bat hasteko.",
   "student.tui.help": `## Komandoak
 
 - \`/help\` — erakutsi laguntza hau.

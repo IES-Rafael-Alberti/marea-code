@@ -22,6 +22,7 @@ import {
   createStudentIdentityMigrationCatalog,
   createObservabilityMigrationCatalog,
   createSkillAssignmentMigrationCatalog,
+  createRunClosureMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
   openSqliteDatabaseFile,
@@ -175,7 +176,9 @@ function hostPorts(root: string, profiles: boolean, httpHosts: readonly string[]
         storage: storageConfigurationOf(root, operations),
       };
       const version = inspectSqliteSchemaVersion({ databasePath: operator.databasePath });
-      const skillAssignments = version === createSkillAssignmentMigrationCatalog().length;
+      const runClosure = version === createRunClosureMigrationCatalog().length;
+      const skillAssignments =
+        runClosure || version === createSkillAssignmentMigrationCatalog().length;
       const observability =
         skillAssignments || version === createObservabilityMigrationCatalog().length;
       const identities =
@@ -185,17 +188,19 @@ function hostPorts(root: string, profiles: boolean, httpHosts: readonly string[]
         educational || profiles || version === createProfileMigrationCatalog().length;
       return Promise.resolve<HostInstallationConfig>({
         releaseId: host.releaseId,
-        schemaVersion: skillAssignments
-          ? createSkillAssignmentMigrationCatalog().length
-          : observability
-            ? createObservabilityMigrationCatalog().length
-            : identities
-              ? createStudentIdentityMigrationCatalog().length
-              : educational
-                ? createEducationalMigrationCatalog().length
-                : state.profiles
-                  ? createProfileMigrationCatalog().length
-                  : createAuditMigrationCatalog().length,
+        schemaVersion: runClosure
+          ? createRunClosureMigrationCatalog().length
+          : skillAssignments
+            ? createSkillAssignmentMigrationCatalog().length
+            : observability
+              ? createObservabilityMigrationCatalog().length
+              : identities
+                ? createStudentIdentityMigrationCatalog().length
+                : educational
+                  ? createEducationalMigrationCatalog().length
+                  : state.profiles
+                    ? createProfileMigrationCatalog().length
+                    : createAuditMigrationCatalog().length,
         databasePath: operator.databasePath,
         indexPath: operations.indexPath,
         statusPath: host.statusPath,
@@ -241,17 +246,19 @@ function hostPorts(root: string, profiles: boolean, httpHosts: readonly string[]
           const storage = initializeSqliteStorage({
             databasePath: config.databasePath,
             schema:
-              version === createSkillAssignmentMigrationCatalog().length
-                ? "skill-assignments"
-                : version === createObservabilityMigrationCatalog().length
-                  ? "observability"
-                  : version === createStudentIdentityMigrationCatalog().length
-                    ? "student-identities"
-                    : version === createEducationalMigrationCatalog().length
-                      ? "educational-insights"
-                      : state.profiles
-                        ? "dashboard-profiles"
-                        : "retention-audit",
+              version === createRunClosureMigrationCatalog().length
+                ? "run-closure"
+                : version === createSkillAssignmentMigrationCatalog().length
+                  ? "skill-assignments"
+                  : version === createObservabilityMigrationCatalog().length
+                    ? "observability"
+                    : version === createStudentIdentityMigrationCatalog().length
+                      ? "student-identities"
+                      : version === createEducationalMigrationCatalog().length
+                        ? "educational-insights"
+                        : state.profiles
+                          ? "dashboard-profiles"
+                          : "retention-audit",
           });
           state.handle = {
             mode,

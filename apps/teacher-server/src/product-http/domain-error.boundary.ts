@@ -1,5 +1,13 @@
-import { CLASS_CONFIGURATION_REQUIRED_HEADER, type RequestId } from "@marea/protocol";
-import { ClassConfigurationRequiredError, TeacherDomainError } from "../identity/errors.js";
+import {
+  CLASS_CONFIGURATION_REQUIRED_HEADER,
+  RUN_CLOSED_REASON_HEADER,
+  type RequestId,
+} from "@marea/protocol";
+import {
+  ClassConfigurationRequiredError,
+  RunClosedError,
+  TeacherDomainError,
+} from "../identity/errors.js";
 import { protocolError } from "./response.js";
 
 function domainError(error: unknown, requestId: RequestId): Response {
@@ -18,6 +26,8 @@ function domainError(error: unknown, requestId: RequestId): Response {
     const response = protocolError(409, "run.unavailable", false, requestId);
     if (error instanceof ClassConfigurationRequiredError)
       response.headers.set(CLASS_CONFIGURATION_REQUIRED_HEADER, "true");
+    if (error instanceof RunClosedError)
+      response.headers.set(RUN_CLOSED_REASON_HEADER, error.reason);
     return response;
   }
   return protocolError(

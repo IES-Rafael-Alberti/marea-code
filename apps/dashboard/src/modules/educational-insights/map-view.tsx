@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { mapSchema } from "./schemas.js";
 import type { useInsightModel, InsightViewProps } from "./model.js";
 import { UnconfiguredNotice } from "./unconfigured.js";
+import { EndClassSessionsControl, EndSessionControl } from "../run-closure/run-closure-controls.js";
 const states = ["red", "yellow", "green", "pending"] as const;
 const icons = {
   red: "!",
@@ -25,7 +26,7 @@ interface Props {
   shared: ReactNode;
 }
 export function MapView({ model, props, shared }: Props) {
-  const { m, setError, data } = model;
+  const { m, setError, data, closures, load } = model;
 
   const value = mapSchema.safeParse(data);
   return (
@@ -54,6 +55,18 @@ export function MapView({ model, props, shared }: Props) {
             />
           )}
           {value.data.entries.length === 0 && <p>{m.empty}</p>}
+          <EndClassSessionsControl
+            client={closures}
+            locale={props.locale}
+            classId={props.classId}
+            runs={value.data.entries.map((entry) => ({
+              runId: entry.runId,
+              studentDisplayName: entry.student,
+            }))}
+            onClosed={() => {
+              void load();
+            }}
+          />
           <div className="map-grid">
             {value.data.entries.map((entry) => (
               <article
@@ -84,6 +97,14 @@ export function MapView({ model, props, shared }: Props) {
                 >
                   {m.session}
                 </button>
+                <EndSessionControl
+                  client={closures}
+                  locale={props.locale}
+                  run={{ runId: entry.runId, studentDisplayName: entry.student }}
+                  onClosed={() => {
+                    void load();
+                  }}
+                />
               </article>
             ))}
           </div>

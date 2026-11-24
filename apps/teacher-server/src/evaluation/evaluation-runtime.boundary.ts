@@ -1,13 +1,16 @@
 import type { EvaluationWorker } from "./evaluation-worker.js";
 
 export interface EvaluationRuntimeOptions {
-  readonly worker: Pick<EvaluationWorker, "discoverClosedRuns" | "runNext">;
+  readonly worker: Pick<EvaluationWorker, "discoverClosedRuns" | "runBatch">;
+  /** Runs first in every tick, so runs it closes are discovered by the same tick. */
+  readonly beforeTick?: () => void;
   readonly intervalMs: number;
   /** Report only a safe operational status, never frozen evidence or provider errors. */
   readonly onError: () => void;
 }
 
-/** One serial worker per host. Stop and await it before closing the database.
+/** One scheduler per host, evaluating a bounded batch per tick. Stop and await it before
+ * closing the database.
  * Recovery of abandoned claims belongs to exclusive server bootstrap, not each worker start.
  */
 export class EvaluationRuntime {
@@ -49,8 +52,14 @@ export class EvaluationRuntime {
 
   private async tick(controller: AbortController): Promise<void> {
     try {
+      try {
+        this.options.beforeTick?.();
+      } catch {
+        // A failed housekeeping step never prevents queued evaluations from progressing.
+        this.options.onError();
+      }
       this.options.worker.discoverClosedRuns();
-      await this.options.worker.runNext(controller.signal);
+      await this.options.worker.runBatch(controller.signal);
     } catch {
       this.options.onError();
     } finally {

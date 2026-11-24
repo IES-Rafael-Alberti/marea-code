@@ -115,6 +115,8 @@ interface FailureCopy {
   readonly requestFailed: string;
   readonly resumeDetail: string;
   readonly sessionUnavailable: string;
+  readonly sessionEndedByTeacher: string;
+  readonly sessionExpired: string;
 }
 
 interface TurnCopy {

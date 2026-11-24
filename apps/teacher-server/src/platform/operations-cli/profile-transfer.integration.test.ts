@@ -13,6 +13,7 @@ it.each([
   "student-identities",
   "observability",
   "skill-assignments",
+  "run-closure",
 ] as const)(
   "transfers %s with profile reset revisions and installation authority",
   async (schema) => {

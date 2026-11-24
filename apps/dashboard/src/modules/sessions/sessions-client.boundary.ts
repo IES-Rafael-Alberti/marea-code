@@ -1,5 +1,9 @@
 import { browserRandomUUID } from "../../browser-random-uuid.js";
 import { authenticatedJsonRequest } from "../evaluation/authenticated-json.boundary.js";
+import {
+  createRunClosureClient,
+  type RunClosureClient,
+} from "../run-closure/run-closure-client.boundary.js";
 import { sessionExportClient, type SessionExportClient } from "./export-client.boundary.js";
 import {
   ClassSessionsResponseSchema,
@@ -13,6 +17,7 @@ import {
 } from "../evaluation/evaluation-client.boundary.js";
 export interface SessionsClient extends EvaluationClient {
   readonly exports?: SessionExportClient;
+  readonly closures?: RunClosureClient;
   subscribe?(changed: () => void): () => void;
   classes(
     cursor: string | null,
@@ -23,6 +28,7 @@ export interface SessionsClient extends EvaluationClient {
 export function createSessionsClient(fetchRequest: DashboardFetch): SessionsClient {
   return {
     exports: sessionExportClient(fetchRequest),
+    closures: createRunClosureClient(fetchRequest),
     ...createEvaluationClient(fetchRequest),
     async classes(cursor, signal, classId) {
       const body = SessionHistoryQuerySchema.parse({

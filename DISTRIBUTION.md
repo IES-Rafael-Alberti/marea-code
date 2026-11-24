@@ -63,7 +63,8 @@ web setup. Visiting the server root opens the dashboard, and startup prints its 
 
 Managed server updates check installation ownership and offer abandoned-lock recovery
 before downloading. The activation step still rechecks ownership to protect against
-a server starting during the download. The database remains at schema 14, existing
+a server starting during the download. Managed updates migrate the database to schema 15, which only adds the teacher who ended a
+session (`marea_runs.closed_by`); existing
 sessions keep their frozen skill content, and compatible students continue to connect.
 
 Download progress now distinguishes files received from verified files reused locally,
@@ -222,7 +223,7 @@ configure **Settings → Server → External traces**, test a synthetic connecti
 explicitly enable delivery with content. Langfuse supports self-hosted base URLs;
 OTLP accepts an HTTP collector. No student-side credentials are needed.
 
-Managed updates back up and migrate the database to schema 14. Export authorization,
+Managed updates back up and migrate the database to schema 15. Export authorization,
 content limits, retries and local/external retention are documented in
 [Observability](OBSERVABILITY.md). Existing clients remain compatible; their traces
 contain only the diagnostic detail they actually recorded.
@@ -492,3 +493,11 @@ To verify an existing publication without rebuilding or modifying it, run
 `verify_published`. This downloads every release asset and checks all eight
 Sigstore identities, the tagged source commit, the closed file inventory and
 every checksum. It does not replace the native tests required for publication.
+
+## Ending student sessions
+
+The server closes sessions nobody is connected to (no activity for 60 minutes, or past the
+8-hour sign-in cap with no live sign-in) so automatic evaluation can start, and teachers can
+end one session or all listed sessions of a class from the dashboard (**Sessions** and the
+attention map). Students see why their session ended and start a new one by running `marea`
+again. See [Security policy](SECURITY.md#ending-student-sessions).

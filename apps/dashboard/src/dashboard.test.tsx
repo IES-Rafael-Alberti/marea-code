@@ -1,5 +1,5 @@
 import { ClassSessionsResponseSchema, ActiveRunDashboardResponseSchema } from "@marea/protocol";
-import { isValidElement, type ReactNode } from "react";
+import { isValidElement } from "react";
 import type { Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,7 @@ import { signedOutSession } from "./modules/session/sign-in.fixture.js";
 import { getDashboardMessages, selectDashboardLocale } from "./messages.js";
 import type { ActiveRunsClient } from "./modules/active-runs/active-runs-client.boundary.js";
 import { startDashboard } from "./start-dashboard.js";
+import { createDocument, createRootRecorder, emptyResponse } from "./dashboard-root.fixture.js";
 import { ActiveRunsModule } from "./modules/active-runs/active-runs-module.js";
 import { formatDateTime } from "@marea/i18n";
 import { evaluationClientFixture } from "./modules/evaluation/evaluation.fixture.js";
@@ -24,22 +25,13 @@ import {
   classesPage,
 } from "./modules/teaching/teaching-controller.fixture.js";
 
-const emptyResponse = ActiveRunDashboardResponseSchema.parse({
-  kind: "active-runs-response",
-  protocolVersion: "0.1",
-  requestId: "request:dashboard",
-  generatedAt: "2026-09-03T08:00:00.000Z",
-  viewer: { role: "teacher", displayName: "Ada" },
-  runs: [],
-  nextCursor: null,
-});
-
 const activeResponse = ActiveRunDashboardResponseSchema.parse({
   ...emptyResponse,
   runs: [
     {
       runId: "run:one",
       studentDisplayName: "Lin",
+      classId: "class:computing",
       classDisplayName: "Computing",
       projectDisplayName: "Sea Garden",
       state: "active",
@@ -51,6 +43,7 @@ const activeResponse = ActiveRunDashboardResponseSchema.parse({
     {
       runId: "run:two",
       studentDisplayName: "Sam",
+      classId: "class:computing",
       classDisplayName: "Computing",
       projectDisplayName: "Weather Clock",
       state: "active",
@@ -61,32 +54,6 @@ const activeResponse = ActiveRunDashboardResponseSchema.parse({
     },
   ],
 });
-
-function createRootRecorder(): {
-  readonly rendered: ReactNode[];
-  readonly root: Root;
-  readonly unmount: ReturnType<typeof vi.fn>;
-} {
-  const rendered: ReactNode[] = [];
-  const unmount = vi.fn();
-  return {
-    rendered,
-    unmount,
-    root: {
-      render: (children): void => {
-        rendered.push(children);
-      },
-      unmount,
-    },
-  };
-}
-
-function createDocument(root: HTMLElement | null): Document {
-  return {
-    documentElement: { lang: "" },
-    getElementById: (id: string): HTMLElement | null => (id === "root" ? root : null),
-  } as Document;
-}
 
 function client(result: "failed" | "ready"): ActiveRunsClient {
   return {

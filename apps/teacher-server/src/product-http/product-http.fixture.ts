@@ -201,6 +201,7 @@ export function createServices(provider: InferenceProvider): TeacherProductServi
           runs: [
             {
               classDisplayName: "Physics",
+              classId: "class:physics",
               highestDurableSequence: 2,
               lastActivityAt: NOW,
               pendingApproval: false,

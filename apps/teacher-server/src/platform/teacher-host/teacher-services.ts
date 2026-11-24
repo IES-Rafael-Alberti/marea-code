@@ -51,6 +51,7 @@ import type {
 } from "../../product-http/contracts.js";
 import { HistoryService } from "../../sessions/history-service.js";
 import { NoticeService } from "../../sessions/notice-service.js";
+import { RunClosureService } from "../../sessions/run-closure-service.js";
 import { RunSessionService } from "../../sessions/run-session-service.js";
 import { createProductSkillAuthoringService } from "../../teaching/authoring-runtime/skill-authoring-service.js";
 import { SkillAuthoringSource } from "../../teaching/authoring/skill-authoring-source.boundary.js";
@@ -71,6 +72,7 @@ import { SqliteGovernanceSessionResolver } from "../persistence/sqlite-governanc
 import { SqliteHistoryRepository } from "../persistence/sqlite-history-repository.js";
 import { SqliteIdentityRepository } from "../persistence/sqlite-identity-repository.js";
 import { SqliteNoticeRepository } from "../persistence/sqlite-notice-repository.js";
+import { SqliteRunClosureRepository } from "../persistence/sqlite-run-closure-repository.js";
 import { SqliteRunSessionRepository } from "../persistence/sqlite-run-session-repository.js";
 import { SqliteRunSkillRepository } from "../persistence/sqlite-run-skill-repository.js";
 import { SqliteTeachingConfigurationRepository } from "../persistence/sqlite-teaching-configuration-repository.js";
@@ -222,7 +224,13 @@ export async function composeTeacherServices(
   });
   const ledger = new SqliteUsageLedger(database);
   const createReservationId = () => ids.createId("event");
+  const closures = new RunClosureService({
+    clock,
+    ids,
+    repository: new SqliteRunClosureRepository(database),
+  });
   const evaluations = createEvaluationModule({
+    closeAbandonedRuns: () => closures.closeAbandoned(),
     repository: new SqliteEvaluationRepository(
       database,
       insights === undefined
@@ -329,6 +337,7 @@ export async function composeTeacherServices(
       writerForTeacher,
     }),
     evaluations: evaluations.service,
+    runClosure: closures,
     modelUsage: new RunInferenceService({
       ledger,
       clock,

@@ -47,6 +47,8 @@ function expectedCopy(translator: Translator) {
       requestFailed: text("errors.server.error"),
       resumeDetail: text("student.tui.failure.resume-detail"),
       sessionUnavailable: text("errors.run.unavailable"),
+      sessionEndedByTeacher: text("student.tui.failure.session-ended-by-teacher"),
+      sessionExpired: text("student.tui.failure.session-expired"),
     },
     help: text("student.tui.help"),
     hints: {

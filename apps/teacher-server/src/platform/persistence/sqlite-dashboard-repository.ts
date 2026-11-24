@@ -17,7 +17,7 @@ const GOVERNED_ACCESS = activeGovernanceMembership(
   "'teacher'",
 );
 
-const SELECT_RUNS = `SELECT active.run_id, users.display_name AS student_display_name,
+const SELECT_RUNS = `SELECT active.run_id, active.class_id, users.display_name AS student_display_name,
   classes.display_name AS class_display_name, active.project_display_name,
   active.started_at, active.last_activity_at, active.highest_durable_sequence,
   active.pending_approval
@@ -29,6 +29,7 @@ const SELECT_RUNS = `SELECT active.run_id, users.display_name AS student_display
 function dashboardRun(row: SqliteRow): DashboardRun {
   return {
     classDisplayName: rowText(row, "class_display_name"),
+    classId: rowText(row, "class_id"),
     highestDurableSequence: rowInteger(row, "highest_durable_sequence"),
     lastActivityAt: rowText(row, "last_activity_at"),
     pendingApproval: rowBoolean(row, "pending_approval"),

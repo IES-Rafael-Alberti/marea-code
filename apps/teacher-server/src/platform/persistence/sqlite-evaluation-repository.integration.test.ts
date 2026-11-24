@@ -65,6 +65,32 @@ describe("durable evaluation lifecycle", () => {
       test.database.close();
     }
   });
+  it("hands every queued evaluation to exactly one claimant, oldest first", () => {
+    const test = evaluationFixture();
+    try {
+      test.queue();
+      test.database.execute(
+        `INSERT INTO marea_evaluations (id, run_id, generation, action_owner, action_key,
+          request_fingerprint, input_json, input_digest, state, created_at, updated_at)
+          SELECT 'evaluation:2', run_id, 2, 'owner:two', 'key:two', request_fingerprint,
+            input_json, input_digest, 'queued', '2026-09-14T10:00:00.000Z', updated_at
+          FROM marea_evaluations WHERE id = 'evaluation:1'`,
+      );
+      const first = test.repository.claim("worker:1", NOW);
+      const second = test.repository.claim("worker:2", NOW);
+      expect(first).toMatchObject({ evaluationId: "evaluation:1", workerToken: "worker:1" });
+      expect(second).toMatchObject({ evaluationId: "evaluation:2", workerToken: "worker:2" });
+      expect(test.repository.claim("worker:3", NOW)).toBeNull();
+      expect(
+        test.database.readAll("SELECT id, state, worker_token FROM marea_evaluations ORDER BY id"),
+      ).toEqual([
+        { id: "evaluation:1", state: "running", worker_token: "worker:1" },
+        { id: "evaluation:2", state: "running", worker_token: "worker:2" },
+      ]);
+    } finally {
+      test.database.close();
+    }
+  });
   it("queues and claims once, freezes inputs and stores a private draft", () => {
     const test = evaluationFixture();
     try {
