@@ -7,7 +7,7 @@ import {
   MessageIdSchema,
   RequestIdSchema,
 } from "./identifiers.js";
-import { CloseRunReasonSchema, Sha256DigestSchema, UtcTimestampSchema } from "./runs.js";
+import { RunClosedReasonSchema, Sha256DigestSchema, UtcTimestampSchema } from "./runs.js";
 import { ToolNameSchema } from "./technical.js";
 import { CurrentProtocolVersionSchema } from "./version.js";
 
@@ -115,7 +115,7 @@ const RunClosedEventSchema = z
   .object({
     ...eventBaseShape,
     eventType: z.literal("run-closed"),
-    reason: CloseRunReasonSchema,
+    reason: RunClosedReasonSchema,
   })
   .strict()
   .readonly();

@@ -52,3 +52,5 @@ export {
   SkillCurriculumSummarySchema,
   type SkillCurriculumSummary,
 } from "./skill-curriculum.js";
+
+export * from "./run-closure.js";

@@ -2,7 +2,7 @@ import * as z from "zod";
 
 import { DashboardCursorSchema, RequestIdSchema, RunIdSchema } from "./identifiers.js";
 import { UtcTimestampSchema } from "./runs.js";
-import { ProjectDisplayNameSchema, SafeDisplayNameSchema } from "./technical.js";
+import { ProjectDisplayNameSchema, RevisionIdSchema, SafeDisplayNameSchema } from "./technical.js";
 import { CurrentProtocolVersionSchema } from "./version.js";
 
 export const ActiveRunDashboardQuerySchema = z
@@ -20,6 +20,7 @@ const ActiveRunDashboardItemSchema = z
   .object({
     runId: RunIdSchema,
     studentDisplayName: SafeDisplayNameSchema,
+    classId: RevisionIdSchema,
     classDisplayName: SafeDisplayNameSchema,
     projectDisplayName: ProjectDisplayNameSchema,
     state: z.literal("active"),

@@ -5,6 +5,9 @@ import {
   CloseRunReasonSchema,
   CloseRunRequestSchema,
   CloseRunResponseSchema,
+  RUN_CLOSED_REASON_HEADER,
+  RunClosedReasonSchema,
+  ServerCloseReasonSchema,
   OpenRunRequestSchema,
   OpenRunResponseSchema,
   RenewRunLeaseRequestSchema,
@@ -424,6 +427,39 @@ describe("run protocol", () => {
 
   it("rejects an empty close reason", () => {
     expect(() => CloseRunReasonSchema.parse("")).toThrow();
+  });
+
+  it.each(["session-expired", "teacher-ended", "class-ended"])(
+    "records %s only on the server side",
+    (reason) => {
+      expect(ServerCloseReasonSchema.parse(reason)).toBe(reason);
+      expect(RunClosedReasonSchema.parse(reason)).toBe(reason);
+      expect(() => CloseRunReasonSchema.parse(reason)).toThrow();
+      expect(() =>
+        CloseRunRequestSchema.parse({
+          protocolVersion: "0.1",
+          requestId: "request-1",
+          reason,
+        }),
+      ).toThrow();
+    },
+  );
+
+  it("stores every student-requestable reason and the server reasons, nothing else", () => {
+    expect(RunClosedReasonSchema.options).toEqual([
+      "student-exit",
+      "cancelled",
+      "composition-failed",
+      "fatal-error",
+      "session-expired",
+      "teacher-ended",
+      "class-ended",
+    ]);
+    expect(() => RunClosedReasonSchema.parse("unknown")).toThrow();
+  });
+
+  it("keeps the optional run-closed diagnostic header stable across client versions", () => {
+    expect(RUN_CLOSED_REASON_HEADER).toBe("x-marea-run-closed-reason");
   });
 });
 
