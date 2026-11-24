@@ -113,6 +113,29 @@ export function approvalRequired(
   };
 }
 
+type DeepApprovalAction = Extract<
+  DeepAgentEvent,
+  { readonly type: "tool-approval-required" }
+>["actions"][number];
+
+/** An interrupt asking about every action, a command first, in call order. */
+export function batchApprovalRequired(
+  reviewId: string,
+  more: readonly Omit<DeepApprovalAction, "index">[],
+) {
+  const actions = [
+    { toolName: "marea_execute", arguments: { command: "dir" }, description: "Run dir" },
+    ...more,
+  ].map((action, index) => ({ ...action, index }));
+  return approvalRequired({
+    reviewId,
+    toolName: "marea_execute",
+    arguments: { command: "dir" },
+    description: "Run dir",
+    actions,
+  });
+}
+
 class FakeDeepRuntime implements DeepAgentRuntime {
   messages: DeepAgentEvent[] = [
     { type: "assistant-text-delta", text: "Thinking" },

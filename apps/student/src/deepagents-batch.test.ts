@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { approvalRequired, snapshot } from "./deepagents-runtime.fixture.js";
+import { approvalRequired, batchApprovalRequired, snapshot } from "./deepagents-runtime.fixture.js";
 import { batchApprovalId, batchDecisions, batchEventFor } from "./deepagents-batch.js";
 import type { AgentBatchTurn, BatchAction, BatchDecision, WorkspaceWrite } from "./contracts.js";
 import { OperationMediator } from "./operation-mediator.js";
@@ -10,29 +10,20 @@ const execute = new OperationMediator("execute", "linux");
 const writes = { authorize: vi.fn() };
 const mediators = { operations: [execute], writes };
 
-const event = approvalRequired({
-  reviewId: "review-7",
-  toolName: "marea_execute",
-  arguments: { command: "dir" },
-  description: "Run dir",
-  actions: [
-    { index: 0, toolName: "marea_execute", arguments: { command: "dir" }, description: "Run dir" },
-    {
-      index: 1,
-      toolName: "marea_write_file",
-      arguments: { path: "notes.txt", content: "hola" },
-      description: "Write notes",
+const event = batchApprovalRequired("review-7", [
+  {
+    toolName: "marea_write_file",
+    arguments: { path: "notes.txt", content: "hola" },
+    description: "Write notes",
+  },
+  {
+    toolName: "marea_ask_user",
+    arguments: {
+      questions: JSON.stringify([{ text: "¿Lista o diccionario?", choices: [], required: true }]),
     },
-    {
-      index: 2,
-      toolName: "marea_ask_user",
-      arguments: {
-        questions: JSON.stringify([{ text: "¿Lista o diccionario?", choices: [], required: true }]),
-      },
-      description: "Ask",
-    },
-  ],
-});
+    description: "Ask",
+  },
+]);
 
 function turn(
   decisions: readonly BatchDecision[],
@@ -213,45 +204,22 @@ describe("DeepAgents batch translation", () => {
 
   it("refuses an empty batch and an operation without its mediator", () => {
     expect(() => batchDecisions(turn([], []), mediators)).toThrow("no actions");
-    expect(() =>
-      batchDecisions(
-        turn(
-          [{ kind: "operation", decision: "approved", result: "x" }],
-          [
-            {
-              index: 0,
-              kind: "operation",
-              request: {
-                approvalId: batchApprovalId("r", 0),
-                tool: "delete",
-                arguments: { path: "a" },
-                summary: "Delete",
-              },
-            },
-          ],
-        ),
-        mediators,
-      ),
-    ).toThrow("unavailable");
-    expect(() =>
-      batchDecisions(
-        turn(
-          [{ kind: "operation", decision: "rejected", result: null }],
-          [
-            {
-              index: 0,
-              kind: "operation",
-              request: {
-                approvalId: batchApprovalId("r", 0),
-                tool: "delete",
-                arguments: { path: "a" },
-                summary: "Delete",
-              },
-            },
-          ],
-        ),
-        mediators,
-      ),
-    ).toThrow("unavailable");
+    const deleteAction: BatchAction = {
+      index: 0,
+      kind: "operation",
+      request: {
+        approvalId: batchApprovalId("r", 0),
+        tool: "delete",
+        arguments: { path: "a" },
+        summary: "Delete",
+      },
+    };
+    for (const decision of [
+      { kind: "operation", decision: "approved", result: "x" },
+      { kind: "operation", decision: "rejected", result: null },
+    ] as const)
+      expect(() => batchDecisions(turn([decision], [deleteAction]), mediators)).toThrow(
+        "unavailable",
+      );
   });
 });

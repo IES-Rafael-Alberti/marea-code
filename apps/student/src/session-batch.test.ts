@@ -22,6 +22,23 @@ const command = (index: number, text: string): BatchAction => ({
   },
 });
 
+const WRITE: BatchAction = {
+  index: 1,
+  kind: "write",
+  approvalId: ApprovalIdSchema.parse("review-batch:batch-1"),
+  path: "notes.txt",
+  content: "Notas",
+  summary: "Create notes.",
+};
+const QUESTION: BatchAction = {
+  index: 0,
+  kind: "questions",
+  request: {
+    interruptId: "review-batch:batch-0",
+    questions: [{ text: "¿Lista?", choices: [], required: true }],
+  },
+};
+
 class BatchAgent extends FixtureAgent {
   readonly batches: AgentBatchTurn[] = [];
   constructor(private readonly actions: readonly BatchAction[]) {
@@ -58,18 +75,22 @@ function setup(actions: readonly BatchAction[], replies: readonly ApprovalReply[
   return { agent, fixture, operations, prompts };
 }
 
+async function send(subject: ReturnType<typeof setup>): Promise<void> {
+  await subject.fixture.controller.start("Synthetic project");
+  await subject.fixture.controller.sendMessage(
+    "message:batch",
+    "Mira",
+    new AbortController().signal,
+  );
+}
+
 const serverEvents = (fixture: ReturnType<typeof createFixtureController>, type: string) =>
   [...fixture.server.events.values()].filter((event) => event.eventType === type);
 
 describe("several approvals from one model message", () => {
   it("asks each action in order with its position and runs both when approved", async () => {
     const subject = setup([command(0, "cd src"), command(1, "dir")], ["approved", "approved"]);
-    await subject.fixture.controller.start("Synthetic project");
-    await subject.fixture.controller.sendMessage(
-      "message:batch",
-      "Mira",
-      new AbortController().signal,
-    );
+    await send(subject);
     expect(subject.prompts.map((prompt) => prompt.batch)).toEqual([
       { position: 1, total: 2, remaining: ["execute dir"] },
       { position: 2, total: 2, remaining: [] },
@@ -91,12 +112,7 @@ describe("several approvals from one model message", () => {
       [command(0, "cd src"), command(1, "del main.py")],
       ["approved", { decision: "rejected", reason: "No borres nada." }],
     );
-    await subject.fixture.controller.start("Synthetic project");
-    await subject.fixture.controller.sendMessage(
-      "message:batch",
-      "Mira",
-      new AbortController().signal,
-    );
+    await send(subject);
     expect(subject.operations.execute).toHaveBeenCalledTimes(1);
     expect(subject.agent.batches[0]?.decisions[1]).toEqual({
       kind: "operation",
@@ -111,12 +127,7 @@ describe("several approvals from one model message", () => {
       [command(0, "a"), command(1, "b"), command(2, "c")],
       [{ decision: "approved", remaining: true }],
     );
-    await subject.fixture.controller.start("Synthetic project");
-    await subject.fixture.controller.sendMessage(
-      "message:batch",
-      "Mira",
-      new AbortController().signal,
-    );
+    await send(subject);
     expect(subject.prompts).toHaveLength(1);
     expect(subject.operations.execute).toHaveBeenCalledTimes(3);
     expect(serverEvents(subject.fixture, "approval-requested")).toHaveLength(3);
@@ -142,27 +153,17 @@ describe("several approvals from one model message", () => {
     );
     const ask = vi.fn().mockResolvedValue({ type: "answers", values: ["Una lista"] });
     Object.assign(subject.fixture.studentInterface, { askQuestions: ask });
-    await subject.fixture.controller.start("Synthetic project");
-    await subject.fixture.controller.sendMessage(
-      "message:batch",
-      "Mira",
-      new AbortController().signal,
-    );
+    await send(subject);
     expect(ask).toHaveBeenCalledOnce();
     expect(subject.agent.batches[0]?.decisions[1]).toEqual({
       kind: "questions",
       values: ["Una lista"],
     });
-    const cancelled = setup([question], []);
+    const cancelled = setup([QUESTION], []);
     Object.assign(cancelled.fixture.studentInterface, {
       askQuestions: vi.fn().mockResolvedValue({ type: "cancel" }),
     });
-    await cancelled.fixture.controller.start("Synthetic project");
-    await cancelled.fixture.controller.sendMessage(
-      "message:batch",
-      "Mira",
-      new AbortController().signal,
-    );
+    await send(cancelled);
     expect(cancelled.agent.batches).toEqual([]);
     expect(serverEvents(cancelled.fixture, "turn-ended").at(-1)).toMatchObject({
       state: "cancelled",
@@ -170,21 +171,8 @@ describe("several approvals from one model message", () => {
   });
 
   it("asks, records and applies a write inside a batch, with its position", async () => {
-    const write: BatchAction = {
-      index: 1,
-      kind: "write",
-      approvalId: ApprovalIdSchema.parse("review-batch:batch-1"),
-      path: "notes.txt",
-      content: "Notas",
-      summary: "Create notes.",
-    };
-    const subject = setup([command(0, "dir"), write], ["approved", "approved"]);
-    await subject.fixture.controller.start("Synthetic project");
-    await subject.fixture.controller.sendMessage(
-      "message:batch",
-      "Mira",
-      new AbortController().signal,
-    );
+    const subject = setup([command(0, "dir"), WRITE], ["approved", "approved"]);
+    await send(subject);
     expect(subject.prompts[1]).toMatchObject({
       path: "notes.txt",
       batch: { position: 2, total: 2, remaining: [] },
@@ -198,21 +186,8 @@ describe("several approvals from one model message", () => {
   });
 
   it("applies a write without asking after approve all", async () => {
-    const write: BatchAction = {
-      index: 1,
-      kind: "write",
-      approvalId: ApprovalIdSchema.parse("review-batch:batch-1"),
-      path: "notes.txt",
-      content: "Notas",
-      summary: "Create notes.",
-    };
-    const subject = setup([command(0, "dir"), write], [{ decision: "approved", remaining: true }]);
-    await subject.fixture.controller.start("Synthetic project");
-    await subject.fixture.controller.sendMessage(
-      "message:batch",
-      "Mira",
-      new AbortController().signal,
-    );
+    const subject = setup([command(0, "dir"), WRITE], [{ decision: "approved", remaining: true }]);
+    await send(subject);
     expect(subject.prompts).toHaveLength(1);
     expect(subject.fixture.workspace.writes).toBe(1);
   });
@@ -228,20 +203,12 @@ describe("several approvals from one model message", () => {
         new AbortController().signal,
       ),
     ).rejects.toThrow();
-    const question: BatchAction = {
-      index: 0,
-      kind: "questions",
-      request: {
-        interruptId: "review-batch:batch-0",
-        questions: [{ text: "¿Lista?", choices: [], required: true }],
-      },
-    };
-    const noAsk = setup([question], []);
+    const noAsk = setup([QUESTION], []);
     await noAsk.fixture.controller.start("Synthetic project");
     await expect(
       noAsk.fixture.controller.sendMessage("message:batch", "Mira", new AbortController().signal),
     ).rejects.toThrow();
-    const noReply = setup([question], []);
+    const noReply = setup([QUESTION], []);
     Object.assign(noReply.fixture.studentInterface, {
       askQuestions: vi.fn().mockResolvedValue(undefined),
     });

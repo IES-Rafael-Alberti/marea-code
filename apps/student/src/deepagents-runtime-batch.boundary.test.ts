@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { AgentEvent } from "./contracts.js";
 import {
-  approvalRequired,
+  batchApprovalRequired,
   collect,
   effect,
   harness,
@@ -11,21 +11,13 @@ import {
   snapshot,
 } from "./deepagents-runtime.fixture.js";
 
-const batchApproval = approvalRequired({
-  reviewId: "review-9",
-  toolName: "marea_execute",
-  arguments: { command: "dir" },
-  description: "Run dir",
-  actions: [
-    { index: 0, toolName: "marea_execute", arguments: { command: "dir" }, description: "Run dir" },
-    {
-      index: 1,
-      toolName: "marea_write_file",
-      arguments: { path: "notes.txt", content: "content" },
-      description: "Create notes.",
-    },
-  ],
-});
+const batchApproval = batchApprovalRequired("review-9", [
+  {
+    toolName: "marea_write_file",
+    arguments: { path: "notes.txt", content: "content" },
+    description: "Create notes.",
+  },
+]);
 
 function resumeBatch(instance: ReturnType<typeof harness>) {
   const resume = instance.runtime.resumeBatch?.bind(instance.runtime);

@@ -111,12 +111,16 @@ describe("several approvals in one model message", () => {
 
 const temporaryRoot = useTemporaryDirectories("marea-batch-");
 
+function durableDirectories() {
+  const root = temporaryRoot();
+  const projectDirectory = join(root, "project");
+  mkdirSync(projectDirectory);
+  return { projectDirectory, storageDirectory: join(root, "state") };
+}
+
 describe("a batch across a restart", () => {
   it("recovers every action of a pending batch from the durable journal and resumes it", async () => {
-    const root = temporaryRoot();
-    const projectDirectory = join(root, "project");
-    const storageDirectory = join(root, "state");
-    mkdirSync(projectDirectory);
+    const { projectDirectory, storageDirectory } = durableDirectories();
     const { execute, tool } = commands();
     const first = new MareaFakeModel().respondWithTools([
       { name: "confirm_change", id: "change-a", args: { path: "a.txt" } },
@@ -177,10 +181,7 @@ function asPreview43Journal(storageDirectory: string): void {
 
 describe("an approval saved by preview 43", () => {
   it("still resumes, read as a batch of one action", async () => {
-    const root = temporaryRoot();
-    const projectDirectory = join(root, "project");
-    const storageDirectory = join(root, "state");
-    mkdirSync(projectDirectory);
+    const { projectDirectory, storageDirectory } = durableDirectories();
     const { execute, tool } = commands();
     const first = new MareaFakeModel().respondWithTools([
       { name: "confirm_change", id: "change-a", args: { path: "a.txt" } },
