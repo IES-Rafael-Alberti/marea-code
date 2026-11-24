@@ -1,8 +1,13 @@
 import { StringDecoder } from "node:string_decoder";
 import { spawn, spawnSync } from "node:child_process";
 import { win32 } from "node:path";
+import {
+  COMMAND_DEADLINE_MS,
+  COMMAND_OUTPUT_HEAD_CHARACTERS,
+  COMMAND_OUTPUT_TAIL_CHARACTERS,
+} from "./command-limits.js";
 
-/** Commands are explicit effects, with a bounded lifetime and output. */
+/** Commands are explicit effects, with a bounded lifetime and output (head and tail are kept). */
 export function runProjectCommand(
   root: string,
   command: string,
@@ -22,14 +27,20 @@ export function runProjectCommand(
         stdio: ["ignore", "pipe", "pipe"],
       },
     );
-    let output = "";
-    let truncated = false;
+    let head = "";
+    let tail = "";
+    let omitted = 0;
     let stopped = false;
     let killTimer: ReturnType<typeof setTimeout> | undefined;
     const receive = (text: string) => {
-      const remaining = 16_384 - output.length;
-      output += text.slice(0, remaining);
-      truncated ||= text.length > remaining;
+      const headPart = text.slice(0, COMMAND_OUTPUT_HEAD_CHARACTERS - head.length);
+      head += headPart;
+      tail += text.slice(headPart.length);
+      const excess = tail.length - COMMAND_OUTPUT_TAIL_CHARACTERS;
+      if (excess > 0) {
+        omitted += excess;
+        tail = tail.slice(excess);
+      }
     };
     const stdout = new StringDecoder();
     const stderr = new StringDecoder();
@@ -64,7 +75,7 @@ export function runProjectCommand(
       }, 1000);
     };
     signal.addEventListener("abort", stop, { once: true });
-    const deadline = setTimeout(stop, 30_000);
+    const deadline = setTimeout(stop, COMMAND_DEADLINE_MS);
     const cleanup = () => {
       clearTimeout(deadline);
       clearTimeout(killTimer);
@@ -80,7 +91,9 @@ export function runProjectCommand(
       // Best-effort process-tree cleanup; commands still have the user's OS permissions.
       kill("SIGKILL");
       cleanup();
-      resolve(JSON.stringify({ exitCode: code, stopped, truncated, output }));
+      const output =
+        omitted === 0 ? head + tail : `${head}\n… ${String(omitted)} characters omitted …\n${tail}`;
+      resolve(JSON.stringify({ exitCode: code, stopped, truncated: omitted > 0, output }));
     });
     if (signal.aborted) stop();
   });

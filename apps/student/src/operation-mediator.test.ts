@@ -17,7 +17,10 @@ it.each(["execute", "edit_file", "delete"] as const)(
   },
 );
 it("describes the actual operation and rejects mixed matching/mismatching arguments", async () => {
-  expect(new OperationMediator("execute").description).toContain("Run a shell command");
+  const execute = new OperationMediator("execute").description;
+  expect(execute).toContain("Run a shell command");
+  expect(execute).toContain("Deadline 10 minutes;");
+  expect(execute).toContain("first 4096 and the last 12288 characters");
   expect(new OperationMediator("delete").description).toContain("Delete one project text file");
   const edit = new OperationMediator("edit_file");
   expect(edit.description).toContain("Replace an exact unique text fragment");

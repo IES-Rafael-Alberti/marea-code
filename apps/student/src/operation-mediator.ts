@@ -1,6 +1,11 @@
 import type { StudentRunSnapshot } from "@marea/protocol";
 import type { ApprovalTool, AgentRuntimeOptions } from "@marea/deepagents-adapter";
 import type { OperationName } from "./operation-contracts.js";
+import {
+  COMMAND_DEADLINE_MS,
+  COMMAND_OUTPUT_HEAD_CHARACTERS,
+  COMMAND_OUTPUT_TAIL_CHARACTERS,
+} from "./command-limits.js";
 
 /** A capability for one exact reviewed call; it never executes an effect itself. */
 export class OperationMediator implements ApprovalTool {
@@ -13,7 +18,7 @@ export class OperationMediator implements ApprovalTool {
     this.name = `marea_${operation}`;
     this.description =
       operation === "execute"
-        ? "Run a shell command from the project directory after explicit student authorization. Arguments: command. Deadline 30 seconds. Output is bounded. Commands have the student's OS permissions. Shell: cmd.exe on Windows; /bin/sh on macOS and Linux."
+        ? `Run a shell command from the project directory after explicit student authorization. Arguments: command. Deadline ${String(COMMAND_DEADLINE_MS / 60_000)} minutes; the student can cancel earlier and the command is then stopped. Output is bounded: only the first ${String(COMMAND_OUTPUT_HEAD_CHARACTERS)} and the last ${String(COMMAND_OUTPUT_TAIL_CHARACTERS)} characters are kept, with the middle reported as omitted. Commands have the student's OS permissions. Shell: cmd.exe on Windows; /bin/sh on macOS and Linux.`
         : operation === "delete"
           ? "Delete one project text file after explicit student authorization. Arguments: path. The exact contents are rechecked before deletion; directories are not accepted."
           : "Replace an exact unique text fragment in a project file after student authorization. Arguments: path, old_string, new_string. The file is rechecked before applying.";
