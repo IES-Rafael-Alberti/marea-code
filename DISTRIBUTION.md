@@ -1,25 +1,54 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.42`.
+The commands below target `0.1.0-preview.43`.
 
-This preview fixes installation and update downloads on slow connections (PR #15).
-Transfers now stop after 30 seconds without receiving data, rather than after
-30 seconds in total. Signature, hash and size checks remain unchanged. Release
-acceptance exercises a signed native inventory over real HTTP, including an
-application transfer lasting 36 seconds and a stalled transfer that must abort.
-Older installed updaters use their existing download behavior for the first update.
-Preview 40 and 41 were not published. Their immutable tags are retained for
-traceability: preview 40 encountered retired macOS 14 runners, and preview 41
-exposed missing mutation assertions in the new skill/context checks. Preview 42
-uses macOS 15 ARM64 runners and strengthens those assertions, including exact
-capacity boundaries, cancellation and accounting after partial inference.
-The complete native acceptance matrix remains required before publication.
+This preview makes classroom sessions more resilient and lets runs end on their own.
+The protocol remains 0.1. **The database schema moves to 15** (new `closed_by` column
+recording which teacher ended a run). Existing servers migrate through the managed
+update flow; update the server first. Most fixes live in the student client, so
+**students must update the client** (`marea update`) to receive them; server-only
+fixes apply once the server is updated.
+
+Sessions and runs:
+
+- Student sign-ins slide with activity up to an 8-hour cap, and teacher dashboard
+  sessions slide as well. Presence and lease renewal count as activity.
+- The server closes runs with no connection for 60 minutes, or past the 8-hour cap,
+  so automatic evaluation can start. Teachers can use **End session** or
+  **End all sessions** in the dashboard; evaluation follows the class setting.
+  Students see why a session ended and start a new one by running `marea` again.
+- A closed or refused run can be restarted with a fresh run, and runs are recovered
+  when reopened. Local state of closed runs is cleaned up and bounded to 20 MiB.
+- The terminal is suspended while a re-authentication prompt is shown.
+
+Student computers:
+
+- Project folder names with `_`, `(` and `)`, spaces in paths and any other openable
+  folder name no longer break history, writing or opening a run.
+- Windows private-state checks report typed diagnostics, and damaged local state is
+  quarantined instead of blocking startup. The client shows diagnostic codes you can
+  report.
+- Agent commands may run for up to 10 minutes, keeping the head and tail of long
+  output.
+
+Server and dashboard:
+
+- HTTP responses slower than 10 seconds are no longer cut by the idle timeout.
+- Class reports are tolerant, bounded and diagnosable, and the dashboard explains
+  failed reports and refused requests. Larger session exports are supported.
+- Google group membership checks run in parallel; external sign-in completions
+  queue instead of being rejected at capacity.
+- Hono is updated to 4.13.16.
+
+Preview 40 and 41 were not published; their immutable tags are retained for
+traceability. Preview 42 (the previous published and recommended release) fixed
+installation and update downloads on slow connections: transfers stop after 30 seconds
+without data, with unchanged signature, hash and size checks.
 
 Selected didactic skills are now loaded in full before the tutor starts. Missing,
 unverifiable or oversized required materials block the turn with a clear error;
 resumed sessions retain their captured versions. Private evaluation materials
-remain separate from the tutor context. The protocol remains 0.1 and the database
-schema remains 14.
+remain separate from the tutor context. Preview 42 retained protocol 0.1 and database schema 14.
 
 Preview 39 updated Zod to 4.6.7 throughout the application and dependency tree,
 fixing [GHSA-mrhx-c7xc-m3w5](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5).
@@ -102,13 +131,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.42/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.43/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.42/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.43/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -248,13 +277,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.42/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.43/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.42/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.43/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Use **PowerShell**, identified by a prompt such as `PS C:\Users\david>`, for the
@@ -406,11 +435,29 @@ If only download scratch directories remain, removing those directories and then
 the empty root allows the same installation command to run again. Do not delete
 `installation/` or `student-state/` as download residue.
 
+## Test this preview in a classroom
+
+1. Install or update the teacher server (`marea-teacher update`); the first start
+   migrates the database to schema 15. Then update a Windows student PC
+   (`marea update`) and check `marea --version` shows `0.1.0-preview.43`.
+2. Sign in with Google on the student PC and open a run, including in a folder whose
+   name has spaces, `_` or parentheses.
+3. Ask the tutor for a turn that runs a long command (several minutes) and confirm
+   it completes.
+4. Close the terminal without ending the run. After 60 minutes without connection
+   the run closes by itself; to save time, use **End session** in the dashboard
+   (**Sessions**). Confirm the student sees why it ended and can start a new run.
+5. Confirm the automatic evaluation appears in the dashboard, as the class setting
+   dictates, then generate the class report.
+
+Report back: the preview and OS, which step failed, and any diagnostic code or
+message shown by the client or the dashboard (do not send student passwords or API keys).
+
 ## Publish a version
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.42`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.43`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
