@@ -3,6 +3,7 @@ import {
   CredentialLoginResponseSchema,
   CredentialLogoutResponseSchema,
   EnrollStudentResponseSchema,
+  InvitationCodeSchema,
   type CredentialLoginRequest,
   type CredentialLoginResponse,
   type CredentialLogoutResponse,
@@ -62,6 +63,13 @@ export class IdentityService {
   }
 
   public async bootstrap(seed: IdentityBootstrap): Promise<boolean> {
+    // Enrollment only accepts well-formed codes, so a seed code that fails here could never be used.
+    // The message names the class, never the secret.
+    for (const { classKey, code } of seed.invitations)
+      if (!InvitationCodeSchema.safeParse(code).success)
+        throw new Error(
+          `The seed invitation code for class "${classKey}" is invalid: it needs 12 to 128 letters, digits, "-" or "_".`,
+        );
     const accounts = await Promise.all(
       seed.accounts.map(async (account) => ({
         classKey: account.classKey,
