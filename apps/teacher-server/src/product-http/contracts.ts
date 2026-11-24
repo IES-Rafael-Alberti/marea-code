@@ -1,3 +1,4 @@
+import type { UnhandledErrorSink } from "./unhandled-error-log.boundary.js";
 import type { ServerSettingsEndpoint } from "../server-settings/contracts.js";
 import type { EducationalInsightsService } from "../educational-insights/service.js";
 import type { ReviewedEvidenceService } from "../reviewed-evidence/service.js";
@@ -119,6 +120,8 @@ export interface TeacherProductHttpOptions {
   readonly secureDashboardCookie?: boolean;
   readonly serverVersion: string;
   readonly services: TeacherProductServices;
+  /** Operator-private destination of one line per unexpected 500; defaults to stderr. */
+  readonly onUnhandledError?: UnhandledErrorSink;
   /** Administrator governance is composed only when the real SQL resolver is available. */
   readonly governance?: {
     readonly service: GovernanceService;

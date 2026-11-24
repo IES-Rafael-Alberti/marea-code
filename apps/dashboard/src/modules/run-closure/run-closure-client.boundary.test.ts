@@ -84,6 +84,39 @@ describe("teacher run closure client", () => {
     );
   });
 
+  it.each([
+    [401, "{}", { kind: "expired" }],
+    [403, "{}", { kind: "forbidden" }],
+    [409, "{}", { kind: "unavailable" }],
+    [400, "{}", { kind: "invalid" }],
+    [
+      500,
+      JSON.stringify({ requestId: "request:server" }),
+      { kind: "server", requestId: "request:server" },
+    ],
+    [503, "not json", { kind: "server", requestId: "request:close-1" }],
+    [500, JSON.stringify({ requestId: 7 }), { kind: "server", requestId: "request:close-1" }],
+    [500, "null", { kind: "server", requestId: "request:close-1" }],
+    [500, "{}", { kind: "server", requestId: "request:close-1" }],
+  ])("classifies HTTP %s so the dashboard can say what to do", async (status, body, failure) => {
+    const { client } = setup(() => new Response(body, { status }));
+    const closing = client.closeRun("run:one", "close:1", signal);
+    await expect(closing).rejects.toBeInstanceOf(RunClosureError);
+    await expect(closing).rejects.toMatchObject({ failure });
+  });
+
+  it("reports an unreachable server as offline but keeps a deliberate abort", async () => {
+    const offline = createRunClosureClient(() => Promise.reject(new TypeError("Failed to fetch")));
+    await expect(offline.closeRun("run:one", "close:1", signal)).rejects.toMatchObject({
+      failure: { kind: "offline" },
+    });
+    const controller = new AbortController();
+    controller.abort();
+    const aborted = new DOMException("aborted", "AbortError");
+    const cancelled = createRunClosureClient(() => Promise.reject(aborted));
+    await expect(cancelled.closeRun("run:one", "close:1", controller.signal)).rejects.toBe(aborted);
+  });
+
   it("rejects a class answer that reports one run twice and leaves another out", async () => {
     const { client } = setup((body) => answer(body, ["run:one"], ["run:one"]));
     await expect(

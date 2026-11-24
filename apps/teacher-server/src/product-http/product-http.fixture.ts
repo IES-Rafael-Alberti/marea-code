@@ -1,3 +1,4 @@
+import type { UnhandledErrorSink } from "./unhandled-error-log.boundary.js";
 import type {
   InferenceProvider,
   InferenceProviderEvent,
@@ -345,9 +346,16 @@ export function createServices(provider: InferenceProvider): TeacherProductServi
 
 export function createApplication(
   services = createServices(new RecordingProvider()),
-  overrides: { readonly cookieName?: string; readonly secure?: boolean } = {},
+  overrides: {
+    readonly cookieName?: string;
+    readonly secure?: boolean;
+    readonly onUnhandledError?: UnhandledErrorSink;
+  } = {},
 ): TeacherProductHttpApplication {
   return createTeacherProductHttp({
+    ...(overrides.onUnhandledError === undefined
+      ? {}
+      : { onUnhandledError: overrides.onUnhandledError }),
     allowedHosts: ["teacher.test"],
     allowedOrigins: ["https://dashboard.test"],
     ...(overrides.cookieName === undefined ? {} : { dashboardCookieName: overrides.cookieName }),

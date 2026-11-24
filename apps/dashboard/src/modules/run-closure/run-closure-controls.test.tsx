@@ -2,7 +2,7 @@ import { Children, isValidElement, type FunctionComponent, type ReactNode } from
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { RunClosureClient } from "./run-closure-client.boundary.js";
+import { RunClosureError, type RunClosureClient } from "./run-closure-client.boundary.js";
 import { runClosureMessages } from "./run-closure-messages.js";
 
 type Slot = object | string | number | boolean | null;
@@ -226,6 +226,29 @@ describe("ending one session", () => {
     });
     expect(closeRun.mock.calls[1]?.[1]).toBe(closeRun.mock.calls[0]?.[1]);
     expect(view.texts()).not.toContain(m.failed);
+  });
+
+  it.each([
+    [new RunClosureError({ kind: "offline" }), m.offline],
+    [new RunClosureError({ kind: "unavailable" }), m.unavailable],
+    [new RunClosureError({ kind: "forbidden" }), m.forbidden],
+    [new RunClosureError({ kind: "expired" }), m.expired],
+    [
+      new RunClosureError({ kind: "server", requestId: "request:abc" }),
+      m.serverFailed("request:abc"),
+    ],
+    [new RunClosureError(), m.failed],
+  ])("shows a distinct message for each failure: %#", async (error, text) => {
+    const { closures, closeRun } = client();
+    closeRun.mockRejectedValueOnce(error);
+    const view = page(() => (
+      <EndSessionControl client={closures} locale="en" run={ana} onClosed={vi.fn()} />
+    ));
+    view.button(m.endSession).onClick?.();
+    view.button(m.confirmOne).onClick?.();
+    await vi.waitFor(() => {
+      expect(view.texts()).toContain(text);
+    });
   });
 
   it("uses the latest host callbacks and aborts a pending request when unmounted", () => {

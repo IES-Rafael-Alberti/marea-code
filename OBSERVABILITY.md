@@ -126,6 +126,18 @@ The normal offline session-retention operation removes queue/progress rows with
 the session. It cannot retract content already delivered to a collector. Configure
 and apply retention/deletion separately in Langfuse or the OTLP destination.
 
+## Server error log
+
+Every unexpected failure behind a generic HTTP 500 (`server.error`) writes one JSON
+line to the `marea-teacher` stderr with `component`, `method`, the route template
+(never parameter values), `requestId`, and the exception name, message and stack. No
+request body, headers or other request content are logged, and the response does not
+change. The dashboard shows the same `requestId` when ending a session fails on the
+server, so the line can be found. This log is operator-private and separate from the
+external exporters above. When a new server starts on an older database, one
+`schema-migration` line records the detected schema, the final schema and the backup
+path, or why startup was refused.
+
 ## Developer acceptance
 
 The trace extension belongs to `@marea/plugin-api`. Installed telemetry exporters
