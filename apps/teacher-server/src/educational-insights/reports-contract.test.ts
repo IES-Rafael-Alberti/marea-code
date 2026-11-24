@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { fixture } from "./insights.fixture.js";
-import { query, input, save, observedDraft } from "./reports.fixture.js";
+import { query, input, save, observedDraft, queuedReport } from "./reports.fixture.js";
 import { NOW, teacher, EVALUATION_DRAFT } from "../../test-support/evaluation-fixture.js";
 import { teachingConfiguration } from "../../test-support/teaching-fixture.js";
 import { EVALUATE, SYNTHESIZE } from "./reports-model.js";
@@ -54,6 +54,7 @@ it("freezes exact source identity, approved feedback and anonymous conversation 
   const source = frozen.sources.find((s) => s.runId === "run:b");
   expect(source?.teaching).toEqual(teachingConfiguration().content);
   expect(JSON.parse(source?.material ?? "null")).toMatchObject({
+    omittedEarlierEvents: 0,
     events: [
       { content: "A001 tries; A001 asks A001" },
       { eventType: "assistant-message", content: "What should it return?" },
@@ -105,7 +106,7 @@ it("requires direct class authority to generate and retry and accepts the exact 
       teacher,
       query(f, { requestId: "over-limit", from: new Date(Date.parse(from) - 1).toISOString() }),
     ),
-  ).toThrow("request.conflict");
+  ).toThrow("invalid-period");
   expect(() =>
     f.service.reports.retry({ ...teacher, userId: "t2" }, report.id, "class:one"),
   ).toThrow("dashboard.forbidden");
@@ -158,16 +159,27 @@ it("evaluates provisional dossiers with their frozen model route and persists co
       frozen.route,
       `report:${report.id}`,
       EVALUATE,
-      { mode: current.mode, material: current.material, locale: "en" },
+      {
+        mode: current.mode,
+        locale: "en",
+        teaching: current.teaching,
+        session: JSON.parse(current.material) as object,
+      },
     ]);
   }
-  const evidence = frozen.sources.map((s) => ({
+  const dossier = (s: (typeof frozen.sources)[number]) => ({
     runId: s.runId,
     alias: s.alias,
     mode: s.mode,
     skills: s.skills,
     status: "provisional",
-    evaluation: draft,
+  });
+  const stored = frozen.sources.map((s) => ({ ...dossier(s), evaluation: draft }));
+  const evidence = frozen.sources.map((s) => ({
+    ...dossier(s),
+    results: {},
+    note: "Private pedagogical observation.",
+    difficulties: ["The failure case was not justified."],
   }));
   expect(generate.mock.calls[3]?.slice(0, 4)).toEqual([
     frozen.route,
@@ -179,7 +191,7 @@ it("evaluates provisional dossiers with their frozen model route and persists co
     state: "complete",
     completed: 3,
     total: 3,
-    result: { synthesis, evidence, partial: false },
+    result: { synthesis, evidence: stored, partial: false },
   });
   expect(f.database.readAll("SELECT id FROM marea_evaluations")).toEqual([]);
   expect(f.database.readAll("SELECT id FROM marea_teacher_notices")).toEqual([]);
@@ -212,6 +224,7 @@ it.each([
           mode: s.mode,
           skills: s.skills,
           status: "unavailable",
+          reason: "no-material",
           evaluation: null,
         })),
       },
@@ -242,11 +255,7 @@ it("exposes only the deletion marker after a report loses its evidence", () => {
 it.each([false, true])(
   "synthesizes supported findings from mixed available evidence and releases completed work (%s)",
   async (invalid) => {
-    const f = fixture();
-    const report = f.service.reports.generate(teacher, query(f));
-    const frozen = input(f, report.id);
-    const first = frozen.sources[0];
-    if (first === undefined) throw new Error("source");
+    const { f, report, frozen, first } = queuedReport();
     save(f, report.id, {
       ...frozen,
       sources: frozen.sources.map((s, i) => ({
@@ -274,7 +283,11 @@ it.each([false, true])(
     const result = f.service.reports.read(report.id, "class:one");
     expect(result).toMatchObject(
       invalid
-        ? { state: "failed", error: "analysis-failed", result: null }
+        ? {
+            state: "complete",
+            error: null,
+            result: { partial: true, synthesis: { ...synthesis, findings: [] } },
+          }
         : {
             state: "complete",
             result: {

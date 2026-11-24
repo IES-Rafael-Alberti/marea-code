@@ -52,6 +52,8 @@ export const reportSchema = z.object({
   to: z.string(),
   completed: z.number(),
   total: z.number(),
+  /** Content-free failure code; absent from older servers. */
+  error: z.string().nullable().optional(),
   result: z
     .object({
       partial: z.boolean(),
@@ -62,6 +64,7 @@ export const reportSchema = z.object({
           alias: z.string(),
           mode: z.string(),
           status: z.enum(["approved", "provisional", "unavailable"]),
+          reason: z.string().optional(),
           evaluation: EvaluationDraftSchema.nullable(),
         }),
       ),

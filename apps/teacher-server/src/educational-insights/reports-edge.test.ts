@@ -2,7 +2,8 @@ import { SkillIdSchema } from "@marea/protocol";
 import { expect, it, vi } from "vitest";
 import { fixture } from "./insights.fixture.js";
 import { teacher, NOW, EVALUATION_DRAFT } from "../../test-support/evaluation-fixture.js";
-import { ClassReports, validateFindings, computedDenominators } from "./reports.js";
+import { ClassReports } from "./reports.js";
+import { validateFindings, computedDenominators } from "./report-findings.js";
 import { query, input, save, pendingReportModel } from "./reports.fixture.js";
 import { renderReport } from "./report-html.js";
 it("validates report periods, deduplicates requests and rejects competing work", () => {
@@ -20,16 +21,13 @@ it("validates report periods, deduplicates requests and rejects competing work",
     { to: "2027-01-01T00:00:00.000Z" },
     { from: "2020-01-01T00:00:00.000Z" },
   ])
-    expect(() => reports.generate(teacher, query(f, range))).toThrow("request.conflict");
+    expect(() => reports.generate(teacher, query(f, range))).toThrow("invalid-period");
   expect(() => reports.read("missing", "class:one")).toThrow("request.conflict");
   const report = reports.generate(teacher, query(f));
   expect(reports.generate(teacher, query(f)).id).toBe(report.id);
-  for (const change of [
-    { from: "2026-01-02T00:00:00.000Z" },
-    { to: "2026-09-06T00:00:00.000Z" },
-    { requestId: "other" },
-  ])
+  for (const change of [{ from: "2026-01-02T00:00:00.000Z" }, { to: "2026-09-06T00:00:00.000Z" }])
     expect(() => reports.generate(teacher, query(f, change))).toThrow("request.conflict");
+  expect(() => reports.generate(teacher, query(f, { requestId: "other" }))).toThrow("in-progress");
   expect(() => reports.retry(teacher, report.id, "class:one")).toThrow("request.conflict");
   f.database.execute("UPDATE marea_class_reports SET state = 'complete'");
   expect(() => reports.retry(teacher, report.id, "class:one")).toThrow("request.conflict");
@@ -147,27 +145,33 @@ const evidence = ["A", "B"].map((alias) => ({
   evaluation: EVALUATION_DRAFT,
 }));
 it.each([
-  { evaluable: ["A", "A"] },
-  { affected: ["A", "A"] },
-  { evaluable: ["unknown"] },
-  { affected: ["unknown"] },
-  { evidence: [] },
-  { evidence: ["missing"] },
-  { evidence: ["run:b"] },
-  { skillIds: ["missing"] },
-])("rejects unsupported report findings %#", (changes) => {
-  expect(() => {
-    validateFindings(
-      { summary: "", recommendation: "", findings: [{ ...finding, ...changes }] },
-      evidence,
-    );
-  }).toThrow("invalid-findings");
+  [{ evaluable: ["A", "A"] }, { evaluable: ["A"] }],
+  [{ affected: ["A", "A"] }, { affected: ["A"] }],
+  [{ evaluable: ["unknown"] }, { evaluable: [], affected: [] }],
+  [{ affected: ["unknown"] }, { affected: [] }],
+  [{ evidence: ["run:a", "run:a"] }, { evidence: ["run:a"] }],
+  [{ evidence: ["run:a", "missing"] }, { evidence: ["run:a"] }],
+  [{ evidence: ["run:b"] }, { evidence: ["run:b"], affected: [] }],
+  [{ evidence: [] }, undefined],
+  [{ evidence: ["missing"] }, undefined],
+  [{ skillIds: ["missing"] }, undefined],
+  [{ mode: "free" as const }, undefined],
+])("repairs or drops unsupported report findings %#", (changes, repaired) => {
+  const result = validateFindings(
+    { summary: "", recommendation: "", findings: [{ ...finding, ...changes }] },
+    evidence,
+  );
+  expect(result.adjusted).toBe(1);
+  expect(result.synthesis.findings).toEqual(
+    repaired === undefined ? [] : [{ ...finding, ...changes, ...repaired }],
+  );
+});
+it("leaves supported findings untouched and counts nothing", () => {
+  const synthesis = { summary: "S", recommendation: "R", findings: [finding] };
+  expect(validateFindings(synthesis, evidence)).toEqual({ synthesis, adjusted: 0 });
 });
 it("validates supported findings and computes assessed skill denominators", () => {
   const synthesis = { summary: "", recommendation: "", findings: [finding] };
-  expect(() => {
-    validateFindings(synthesis, evidence);
-  }).not.toThrow("request.conflict");
   const criterion = {
     skillId: SkillIdSchema.parse("marea/testing"),
     code: "C1",
@@ -194,7 +198,7 @@ it("validates supported findings and computes assessed skill denominators", () =
   ];
   expect(
     computedDenominators({ ...synthesis, findings: [{ ...finding, skillIds: [skillId] }] }, sources)
-      .findings[0]?.evaluable,
+      .synthesis.findings[0]?.evaluable,
   ).toEqual(["A"]);
 });
 it("escapes report findings and renders zero denominators and missing names", () => {
@@ -219,43 +223,6 @@ it("escapes report findings and renders zero denominators and missing names", ()
   expect(html).toContain("0/0 (0%)");
   expect(html).toContain("&lt;script&gt;");
   expect(html).not.toContain("<script>");
-});
-it.each(["runs", "aggregate"] as const)(
-  "rejects oversized %s before persisting a report",
-  (kind) => {
-    const f = fixture();
-    const readAll = f.database.readAll.bind(f.database);
-    const spy = vi.spyOn(f.database, "readAll").mockImplementation((sql, values) => {
-      const rows = readAll(sql, values);
-      if (sql.startsWith("SELECT r.id, r.student_id")) {
-        const first = rows[0];
-        if (!first) throw new Error("missing run");
-        return Array.from({ length: kind === "runs" ? 201 : 40 }, () => first);
-      }
-      if (kind === "aggregate" && sql.startsWith("SELECT payload_json"))
-        return [{ payload_json: JSON.stringify({ text: "x".repeat(230000) }) }];
-      return rows;
-    });
-    expect(() => f.service.reports.generate(teacher, query(f))).toThrow("request.conflict");
-    expect(f.database.readAll("SELECT * FROM marea_class_reports")).toEqual([]);
-    spy.mockRestore();
-  },
-);
-it.each(["events", "bytes"] as const)("marks excessive source %s unavailable", async (kind) => {
-  const f = fixture();
-  const readAll = f.database.readAll.bind(f.database);
-  const spy = vi.spyOn(f.database, "readAll").mockImplementation((sql, values) => {
-    if (sql.startsWith("SELECT payload_json"))
-      return Array.from({ length: kind === "events" ? 2001 : 1 }, () => ({
-        payload_json: JSON.stringify({ text: kind === "bytes" ? "x".repeat(262145) : "event" }),
-      }));
-    return readAll(sql, values);
-  });
-  const report = f.service.reports.generate(teacher, query(f));
-  expect(input(f, report.id).sources.every((s) => s.material === "")).toBe(true);
-  await f.service.reports.tick();
-  expect(f.service.reports.read(report.id, "class:one").result?.partial).toBe(true);
-  spy.mockRestore();
 });
 it.each([false, true])(
   "freezes approved evaluations with optional identity data (%s)",

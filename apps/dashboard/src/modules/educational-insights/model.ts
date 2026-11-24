@@ -13,6 +13,14 @@ import type { DashboardFetch } from "../active-runs/active-runs-client.boundary.
 import { insightsClient } from "./client.js";
 import { insightsMessages } from "./messages.js";
 import { localTime } from "./local-time.js";
+import { UsageHealthRequestError } from "../usage-health-client.boundary.js";
+
+/** Generate refusals the teacher can act on, told apart by their HTTP status. */
+const REFUSALS = { 409: "reportInProgress", 413: "reportTooLarge", 422: "reportPeriod" } as const;
+type Refusal = (typeof REFUSALS)[keyof typeof REFUSALS];
+function refusalOf(status: number): Refusal | null {
+  return Object.hasOwn(REFUSALS, status) ? REFUSALS[status as keyof typeof REFUSALS] : null;
+}
 
 export interface InsightViewProps {
   readonly configure?: (() => void) | undefined;
@@ -30,6 +38,7 @@ export function useInsightModel(props: InsightViewProps & { readonly classId: st
   const sequence = useRef(0);
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState<Refusal | null>(null);
   const [data, setData] = useState<
     | z.infer<typeof mapSchema>
     | z.infer<typeof overviewSchema>
@@ -116,6 +125,7 @@ export function useInsightModel(props: InsightViewProps & { readonly classId: st
   async function action(input: object): Promise<void> {
     setBusy(true);
     setError(false);
+    setNotice(null);
     try {
       const result = await client(
         props.classId,
@@ -129,8 +139,13 @@ export function useInsightModel(props: InsightViewProps & { readonly classId: st
         setSelectedReport(parsed.id);
         setReport(parsed);
       } else await load();
-    } catch {
-      if (!abort.current.signal.aborted) setError(true);
+    } catch (failure) {
+      if (!abort.current.signal.aborted) {
+        const refusal =
+          failure instanceof UsageHealthRequestError ? refusalOf(failure.status) : null;
+        setNotice(refusal);
+        setError(refusal === null);
+      }
     } finally {
       if (!abort.current.signal.aborted) setBusy(false);
     }
@@ -142,6 +157,7 @@ export function useInsightModel(props: InsightViewProps & { readonly classId: st
     error,
     setError,
     busy,
+    notice,
     data,
     setData,
     page,

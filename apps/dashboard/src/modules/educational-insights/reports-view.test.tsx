@@ -4,6 +4,8 @@ import type * as z from "zod";
 import { ReportsView } from "./reports-view.js";
 import { ReportList } from "./report-list.js";
 import { button, elements, model, props, report } from "./interactions.fixture.js";
+import { failureMessage } from "./report-list.js";
+import { failureMessages } from "./failure-messages.js";
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
@@ -161,4 +163,66 @@ it("downloads the report's HTML as a named file and reports failures", async () 
   button(view(state), state.m.download).onClick?.();
   await vi.advanceTimersByTimeAsync(0);
   expect(state.setError).toHaveBeenCalledExactlyOnceWith(true);
+});
+
+it.each([
+  ["failed", "budget", true],
+  ["interrupted", "interrupted", true],
+  ["invalidated", "evidence-deleted", true],
+  ["failed", null, false],
+  ["complete", "budget", false],
+  ["running", "budget", false],
+])("explains the cause of a %s report with error %s: %s", (value, error, shown) => {
+  const state = model();
+  state.selectedReport = "report";
+  state.report = { ...report, state: value, error };
+  const html = text(state);
+  const message = error === null ? "" : failureMessage(error, "es");
+  expect(html.includes(`<p role="alert">${message}</p>`)).toBe(shown);
+});
+
+it("shows an older server's report without an error code", () => {
+  const state = model();
+  state.selectedReport = "report";
+  state.report = { ...report, state: "failed" };
+  expect(text(state)).not.toContain('role="alert"');
+});
+
+it("explains why a session was unavailable", () => {
+  const state = model();
+  state.selectedReport = "report";
+  const evidence = (runId: string, reason?: string) => ({
+    runId,
+    alias: "A",
+    mode: "tutoring",
+    status: "unavailable" as const,
+    ...(reason === undefined ? {} : { reason }),
+    evaluation: null,
+  });
+  state.report = {
+    ...report,
+    result: {
+      partial: true,
+      synthesis: { summary: "", recommendation: "", findings: [] },
+      evidence: [evidence("one", "no-material"), evidence("two")],
+    },
+  };
+  const html = text(state);
+  expect(html).toContain(
+    `<p>Ana · ${state.m.unavailable} · ${failureMessages("es").reasons["no-material"]} <button>`,
+  );
+  expect(html).toContain(`<p>Ana · ${state.m.unavailable} <button>`);
+});
+
+it("shows a refused generate request next to the period controls", () => {
+  const state = model();
+  expect(text(state)).not.toContain('role="alert"');
+  for (const notice of ["reportTooLarge", "reportInProgress", "reportPeriod"] as const) {
+    state.notice = notice;
+    expect(text(state)).toContain(`<p role="alert">${state.m[notice]}</p>`);
+  }
+  state.notice = "reportPeriod";
+  state.selectedReport = "report";
+  state.report = report;
+  expect(text(state)).not.toContain(state.m.reportPeriod);
 });

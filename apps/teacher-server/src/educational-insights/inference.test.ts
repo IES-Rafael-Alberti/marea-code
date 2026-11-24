@@ -78,7 +78,7 @@ it.each([
       z.object({ ok: z.boolean() }),
       new AbortController().signal,
     ),
-  ).rejects.toThrow("invalid-output");
+  ).rejects.toThrow("output-invalid");
 });
 it("rejects missing providers and exposes absent and configured budgets", async () => {
   const f = fixture();

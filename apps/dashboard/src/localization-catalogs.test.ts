@@ -1,4 +1,5 @@
 import { insightsMessages } from "./modules/educational-insights/messages.js";
+import { failureMessages } from "./modules/educational-insights/failure-messages.js";
 import { describe, expect, it } from "vitest";
 
 import { governanceMessages } from "./modules/governance/governance-messages.js";
@@ -15,7 +16,10 @@ import { serverSettingsMessages } from "./modules/server-settings/messages.js";
 import { workspaceMessages } from "./profiles/workspace-navigation.js";
 
 const catalogs = {
-  insights: insightsMessages,
+  insights: (locale: Parameters<typeof insightsMessages>[0]) => ({
+    ...insightsMessages(locale),
+    ...failureMessages(locale),
+  }),
   session: (locale: Parameters<typeof sessionMessages>[0]) => {
     const messages = sessionMessages(locale);
     return { ...messages, interpolated: { signedInAs: messages.signedInAs("Ada") } };

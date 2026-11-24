@@ -1,6 +1,8 @@
 import type * as z from "zod";
 import type { insightsMessages } from "./messages.js";
 import type { reportsSchema } from "./schemas.js";
+import type { DashboardLocale } from "../../messages.js";
+import { failureMessages } from "./failure-messages.js";
 
 type Messages = ReturnType<typeof insightsMessages>;
 type Entry = z.infer<typeof reportsSchema>["entries"][number];
@@ -84,6 +86,20 @@ export function ReportList({
 
 export function statusLabel(state: string, m: Messages): string {
   return Object.hasOwn(m, state) ? m[state as keyof Messages] : state;
+}
+
+/** The specific, localized explanation of a failed report; unknown codes read as unexpected. */
+export function failureMessage(code: string, locale: DashboardLocale): string {
+  const { failures } = failureMessages(locale);
+  return Object.hasOwn(failures, code)
+    ? failures[code as keyof typeof failures]
+    : failures["analysis-failed"];
+}
+
+/** Why one session could not be analyzed; an unknown reason is shown unchanged. */
+export function reasonLabel(reason: string, locale: DashboardLocale): string {
+  const { reasons } = failureMessages(locale);
+  return Object.hasOwn(reasons, reason) ? reasons[reason as keyof typeof reasons] : reason;
 }
 
 /** Server timestamps are ISO dates; anything else is shown unchanged rather than hidden. */

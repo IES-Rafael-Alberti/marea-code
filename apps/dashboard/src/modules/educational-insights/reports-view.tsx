@@ -5,7 +5,7 @@ import { localTime } from "./local-time.js";
 import { reportsSchema } from "./schemas.js";
 import type { useInsightModel, InsightViewProps } from "./model.js";
 import { UnconfiguredNotice } from "./unconfigured.js";
-import { ReportList, statusLabel } from "./report-list.js";
+import { ReportList, failureMessage, reasonLabel, statusLabel } from "./report-list.js";
 interface Props {
   model: ReturnType<typeof useInsightModel>;
   props: InsightViewProps & { classId: string };
@@ -30,6 +30,7 @@ export function ReportsView({ model, props, shared }: Props) {
     to,
     setTo,
     action,
+    notice,
   } = model;
   const list = reportsSchema.safeParse(data);
   const download = async (reportId: string) => {
@@ -117,6 +118,7 @@ export function ReportsView({ model, props, shared }: Props) {
               {m.generate}
             </button>
           </div>
+          {notice !== null && <p role="alert">{m[notice]}</p>}
           {list.success && !list.data.configured && (
             <UnconfiguredNotice
               text={m.unconfigured}
@@ -156,6 +158,10 @@ export function ReportsView({ model, props, shared }: Props) {
               <p role="status">
                 {statusLabel(report.state, m)} · {report.completed}/{report.total}
               </p>
+              {typeof report.error === "string" &&
+                ["failed", "interrupted", "invalidated"].includes(report.state) && (
+                  <p role="alert">{failureMessage(report.error, props.locale)}</p>
+                )}
               {["queued", "running"].includes(report.state) && (
                 <button onClick={() => void action({ kind: "cancel", reportId: report.id })}>
                   {m.cancel}
@@ -190,7 +196,8 @@ export function ReportsView({ model, props, shared }: Props) {
                   {report.result.evidence.map((e) => (
                     <p key={e.runId}>
                       {report.students.find((s) => s.alias === e.alias)?.displayName ?? e.alias} ·{" "}
-                      {m[e.status]}{" "}
+                      {m[e.status]}
+                      {e.reason !== undefined && ` · ${reasonLabel(e.reason, props.locale)}`}{" "}
                       <button
                         onClick={() =>
                           void props.navigate(e.runId).then((ok) => {

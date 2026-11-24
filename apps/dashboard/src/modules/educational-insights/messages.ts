@@ -56,7 +56,7 @@ const en = {
   provisional: "Provisional",
   unavailable: "Unavailable",
   complete: "Complete",
-  partial: "Partial report: some evidence could not be analyzed",
+  partial: "Partial report: some evidence or findings could not be used",
   queued: "Queued",
   running: "Analyzing",
   interrupted: "Interrupted",
@@ -89,6 +89,11 @@ const en = {
   hours24: "24 hours",
   hours72: "72 hours",
   days7: "7 days",
+  reportTooLarge: "Too many sessions in this period to analyze at once. Choose a shorter period.",
+  reportInProgress:
+    "A report for this class is already in progress. Wait for it to finish or cancel it.",
+  reportPeriod:
+    "The period is not valid: the start must precede the end, last at most one year and not end in the future. Check your device clock.",
 };
 type Messages = typeof en;
 const es: Messages = {
@@ -148,7 +153,7 @@ const es: Messages = {
   provisional: "Provisional",
   unavailable: "No disponible",
   complete: "Completo",
-  partial: "Informe parcial: algunas evidencias no pudieron analizarse",
+  partial: "Informe parcial: algunas evidencias o hallazgos no pudieron utilizarse",
   queued: "En cola",
   running: "Analizando",
   interrupted: "Interrumpido",
@@ -182,6 +187,11 @@ const es: Messages = {
   hours24: "24 horas",
   hours72: "72 horas",
   days7: "7 días",
+  reportTooLarge:
+    "Hay demasiadas sesiones en este periodo para analizarlas de una vez. Elige un periodo más corto.",
+  reportInProgress: "Ya hay un informe de esta clase en curso. Espera a que termine o cancélalo.",
+  reportPeriod:
+    "El periodo no es válido: el inicio debe ser anterior al fin, durar como máximo un año y no terminar en el futuro. Revisa el reloj de tu dispositivo.",
 };
 const eu: Messages = {
   reportsReady: "Txostenak eskuragarri daude Txostenak atalean denbora-tartea aukeratzean.",
@@ -240,7 +250,7 @@ const eu: Messages = {
   provisional: "Behin-behinekoa",
   unavailable: "Ez dago erabilgarri",
   complete: "Osoa",
-  partial: "Txosten partziala: ebidentzia batzuk ezin izan dira aztertu",
+  partial: "Txosten partziala: ebidentzia edo aurkikuntza batzuk ezin izan dira erabili",
   queued: "Ilaran",
   running: "Aztertzen",
   interrupted: "Etenda",
@@ -274,6 +284,12 @@ const eu: Messages = {
   hours24: "24 ordu",
   hours72: "72 ordu",
   days7: "7 egun",
+  reportTooLarge:
+    "Denbora-tarte honetan saio gehiegi daude aldi berean aztertzeko. Aukeratu denbora-tarte laburragoa.",
+  reportInProgress:
+    "Gela honen txosten bat abian dago jada. Itxaron amaitu arte edo utzi bertan behera.",
+  reportPeriod:
+    "Denbora-tartea ez da baliozkoa: hasierak amaiera baino lehenagokoa izan behar du, urtebete gehienez iraun behar du eta ez da etorkizunean amaitu behar. Egiaztatu zure gailuaren erlojua.",
 };
 export function insightsMessages(locale: DashboardLocale): Messages {
   return locale === "es" ? es : locale === "eu" ? eu : en;

@@ -107,3 +107,16 @@ it("accepts exactly the attention, confidence and evidence states the server sen
   expect(item.safeParse({ ...evidence, status: "" }).success).toBe(false);
   expect(reportSchema.parse({ ...report, students: undefined }).students).toEqual([]);
 });
+
+it("accepts a report with or without a failure code and an unavailable reason", async () => {
+  const { reportSchema } = await load();
+  expect(reportSchema.parse({ ...report, error: "budget" }).error).toBe("budget");
+  expect(reportSchema.parse({ ...report, error: null }).error).toBeNull();
+  expect(reportSchema.parse(report).error).toBeUndefined();
+  const item = reportSchema.shape.result.unwrap().shape.evidence.element;
+  expect(item.parse({ ...evidence, status: "unavailable", reason: "provider" }).reason).toBe(
+    "provider",
+  );
+  expect(item.parse(evidence).reason).toBeUndefined();
+  expect(item.safeParse({ ...evidence, reason: 1 }).success).toBe(false);
+});
