@@ -8,6 +8,7 @@ import {
   createStudentIdentityMigrationCatalog,
   createObservabilityMigrationCatalog,
   createSkillAssignmentMigrationCatalog,
+  createRunClosureMigrationCatalog,
   inspectSqliteSchemaVersion,
 } from "@marea/sqlite-storage";
 
@@ -40,6 +41,7 @@ export async function readInstallationStatus(root: string): Promise<Summary> {
       createStudentIdentityMigrationCatalog().length,
       createObservabilityMigrationCatalog().length,
       createSkillAssignmentMigrationCatalog().length,
+      createRunClosureMigrationCatalog().length,
       createEducationalMigrationCatalog().length,
       createProfileMigrationCatalog().length,
     ].find((version) => version === schemaVersion) ?? createAuditMigrationCatalog().length;
@@ -69,15 +71,16 @@ export async function readInstallationStatus(root: string): Promise<Summary> {
     schemaVersion === 11 ||
     schemaVersion === 12 ||
     schemaVersion === 13 ||
-    schemaVersion === 14
+    schemaVersion === 14 ||
+    schemaVersion === 15
       ? {
           profileUpgrade: {
-            targetSchemaVersion: 14,
-            state: schemaVersion === 14 ? "active" : "available-offline",
+            targetSchemaVersion: 15,
+            state: schemaVersion === 15 ? "active" : "available-offline",
             release: profileReleaseReadiness(root, config.releaseId),
             command: "installation upgrade-profiles --input <private-json-with-new-backup-name>",
             recovery:
-              "After interruption inspect status: schema 9, 10, 11, 12 or 13 requires a new backup name and retry; schema 14 is committed. Recover abandoned ownership through the existing lock workflow.",
+              "After interruption inspect status: schema 9, 10, 11, 12, 13 or 14 requires a new backup name and retry; schema 15 is committed. Recover abandoned ownership through the existing lock workflow.",
             rollback:
               "Stop the host. Use backup restore into an isolated destination; reconcile against the current deletion index. Switch the restored database, matching previous binaries/assets/config together under installation ownership; retain the current deletion index. Never downgrade the live database or copy an old deletion index.",
           },

@@ -34,7 +34,7 @@ const admissionRules: SchemaObjectDefinition = {
 };
 
 /** SQLite stores an added column right after the last column definition of the table text. */
-function withColumn(
+export function withColumn(
   entry: SchemaObjectDefinition,
   lastColumn: string,
   column: string,

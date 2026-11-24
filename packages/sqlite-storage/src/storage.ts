@@ -1,3 +1,4 @@
+import { createRunClosureMigrationCatalog } from "./run-closure-migration-catalog.js";
 import { createSkillAssignmentMigrationCatalog } from "./skill-assignment-migration-catalog.js";
 import { createEducationalMigrationCatalog } from "./educational-migration-catalog.js";
 import { createObservabilityMigrationCatalog } from "./observability-migration-catalog.js";
@@ -42,6 +43,19 @@ export interface StorageDependencies {
   readonly maxBackupBytes: number;
 }
 
+const RELEASE_CATALOGS = {
+  "retention-audit": createAuditMigrationCatalog,
+  "dashboard-profiles": createProfileMigrationCatalog,
+  "educational-insights": createEducationalMigrationCatalog,
+  "student-identities": createStudentIdentityMigrationCatalog,
+  observability: createObservabilityMigrationCatalog,
+  "skill-assignments": createSkillAssignmentMigrationCatalog,
+  "run-closure": createRunClosureMigrationCatalog,
+} as const satisfies Record<
+  Exclude<SqliteSchemaCatalog, "application">,
+  () => readonly MigrationDefinition[]
+>;
+
 /** Selects the explicitly requested release catalog; omission retains the legacy application catalog. */
 export function createDefaultDependencies(schema?: SqliteSchemaCatalog): StorageDependencies {
   return Object.freeze({
@@ -49,19 +63,9 @@ export function createDefaultDependencies(schema?: SqliteSchemaCatalog): Storage
     driver: bunSqliteDriver,
     initializationLock: fileInitializationLock,
     migrations:
-      schema === "skill-assignments"
-        ? createSkillAssignmentMigrationCatalog()
-        : schema === "observability"
-          ? createObservabilityMigrationCatalog()
-          : schema === "student-identities"
-            ? createStudentIdentityMigrationCatalog()
-            : schema === "educational-insights"
-              ? createEducationalMigrationCatalog()
-              : schema === "dashboard-profiles"
-                ? createProfileMigrationCatalog()
-                : schema === "retention-audit"
-                  ? createAuditMigrationCatalog()
-                  : createMigrationCatalog(),
+      schema === undefined || schema === "application"
+        ? createMigrationCatalog()
+        : RELEASE_CATALOGS[schema](),
     maxBackupBytes: 268_435_456,
   });
 }

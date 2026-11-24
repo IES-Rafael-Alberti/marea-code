@@ -105,7 +105,7 @@ it("backs up before migration and activation, preserves settings and clears the 
   expect(ports.close).toHaveBeenCalledOnce();
   expect(ports.initializeSqliteStorage).toHaveBeenCalledWith({
     databasePath: join(root, "marea.sqlite"),
-    schema: "skill-assignments",
+    schema: "run-closure",
   });
   expect(JSON.parse(readFileSync(join(root, "config/teacher-host.json"), "utf8"))).toEqual({
     releaseId: "release:preview",
