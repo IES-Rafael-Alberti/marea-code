@@ -11,34 +11,34 @@
             "providerId": "synthetic-provider",
             "model": "synthetic-model",
             "budget": {
-              "inputTokenCeiling": 1000,
+              "inputTokenCeiling": 100000,
               "tutoring": {
                 "version": "usage:tutoring-1",
                 "costUnit": "credit",
                 "inputCostUnitsPerToken": 1,
                 "outputCostUnitsPerToken": 2,
-                "maxRequests": 10,
-                "maxTokens": 4000,
-                "maxCostUnits": 10000,
+                "maxRequests": 300,
+                "maxTokens": 2000000,
+                "maxCostUnits": 4000000,
                 "maxConcurrentRequests": 1,
-                "maxRequestDurationMs": 5000,
-                "maxInputTokens": 2000,
-                "maxOutputTokens": 2000,
-                "maxToolCalls": 5
+                "maxRequestDurationMs": 120000,
+                "maxInputTokens": 100000,
+                "maxOutputTokens": 8000,
+                "maxToolCalls": 200
               },
               "evaluation": {
                 "version": "usage:evaluation-1",
                 "costUnit": "credit",
                 "inputCostUnitsPerToken": 1,
                 "outputCostUnitsPerToken": 2,
-                "maxRequests": 10,
-                "maxTokens": 4000,
-                "maxCostUnits": 10000,
+                "maxRequests": 300,
+                "maxTokens": 2000000,
+                "maxCostUnits": 4000000,
                 "maxConcurrentRequests": 1,
-                "maxRequestDurationMs": 5000,
-                "maxInputTokens": 2000,
-                "maxOutputTokens": 2000,
-                "maxToolCalls": 5
+                "maxRequestDurationMs": 120000,
+                "maxInputTokens": 100000,
+                "maxOutputTokens": 8000,
+                "maxToolCalls": 200
               }
             }
           }
