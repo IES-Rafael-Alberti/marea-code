@@ -26,7 +26,7 @@ interface ModelCall {
   readonly route: EducationalRoute;
 }
 /** Every model call, including a repair or transient retry, is bounded by this deadline. */
-export const MODEL_CALL_DEADLINE_MS = 300_000;
+const MODEL_CALL_DEADLINE_MS = 300_000;
 export class EducationalInference {
   /** Mutable so tests can shorten the bounds without fake timers. */
   deadlineMs = MODEL_CALL_DEADLINE_MS;

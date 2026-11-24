@@ -15,7 +15,7 @@ import { InputSchema, ReportRefusal, ResultSchema, type Evidence } from "./repor
 const MAX_RUNS = 200;
 const MAX_INPUT_BYTES = 8 * 1048576;
 /** A browser clock this far ahead of the server is clamped; further ahead is refused. */
-export const END_SKEW_TOLERANCE_MS = 300_000;
+const END_SKEW_TOLERANCE_MS = 300_000;
 /** Consecutive provider or deadline failures after which the remaining runs are not attempted. */
 const MAX_INFRASTRUCTURE_FAILURES = 3;
 const INFRASTRUCTURE = new Set(["provider", "deadline"]);

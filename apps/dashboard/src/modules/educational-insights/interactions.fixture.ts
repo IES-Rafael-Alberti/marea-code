@@ -47,6 +47,7 @@ export function model(): ReturnType<typeof useInsightModel> {
     error: false,
     setError: vi.fn(),
     busy: false,
+    notice: null,
     data: null,
     setData: vi.fn(),
     page: null,

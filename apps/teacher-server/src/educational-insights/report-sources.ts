@@ -6,7 +6,7 @@ import { anonymizeDraft } from "./anonymize.js";
 import type { EducationalRoute } from "./configuration.js";
 import { PROMPT_RESERVE_BYTES } from "./reports-model.js";
 
-export const MAX_EVENTS_PER_RUN = 2000;
+const MAX_EVENTS_PER_RUN = 2000;
 export const MAX_MATERIAL_BYTES = 262144;
 const WRAPPER_BYTES = Buffer.byteLength('{"events":[],"omittedEarlierEvents":}');
 
