@@ -13,6 +13,7 @@ import {
   reportInference,
   type InferenceDiagnosticSink,
   type InferenceDiagnostic,
+  type ToolCallRepairDiagnostic,
 } from "./inference-failure.boundary.js";
 import type { ModelGatewayClock } from "./contracts.js";
 import { streamWithinDeadline } from "./inference-deadline.boundary.js";
@@ -71,14 +72,14 @@ function requestDuration(policy: UsagePolicy): number | null {
   return policy.unlimited === true ? null : policy.maxRequestDurationMs;
 }
 
-/** One instance belongs to one logical gateway request; each provider retry reserves again. */
-function admissionFailureUsage(
-  code: string,
-  emitted: boolean,
-  usage: TokenUsage | null,
-): TokenUsage | null {
-  const rejected =
-    !emitted && usage === null && (code === "context-exceeded" || code === "context-unavailable");
+/**
+ * A failed attempt is settled with the usage the provider already reported, so a response that
+ * fails after it was charged is still accounted for; usage the provider itself got wrong stays
+ * uncertain. Without usage, only an admission rejection is known to have cost nothing.
+ */
+function failureUsage(code: string, emitted: boolean, usage: TokenUsage | null): TokenUsage | null {
+  if (usage !== null) return code === "usage-invalid" ? null : usage;
+  const rejected = !emitted && (code === "context-exceeded" || code === "context-unavailable");
   return rejected ? { inputTokens: 0, outputTokens: 0 } : null;
 }
 
@@ -128,6 +129,7 @@ export class BudgetedInferenceProvider implements InferenceProvider {
       settlement.done = true;
     };
     let usage: TokenUsage | null = null;
+    const repairs: ToolCallRepairDiagnostic[] = [];
     try {
       if (
         reservation.policy.unlimited !== true &&
@@ -147,7 +149,7 @@ export class BudgetedInferenceProvider implements InferenceProvider {
         if (event.type === "usage") {
           usage = this.observeUsage(usage, event, reservation.policy, settle);
         }
-        this.checkTool(event, reservation.reservationId);
+        this.checkTool(event, reservation.reservationId, repairs);
         if (event.type === "completed") {
           settle(this.finalUsage(usage));
           yield event;
@@ -160,7 +162,7 @@ export class BudgetedInferenceProvider implements InferenceProvider {
     } catch (error) {
       const failure = inferenceFailure(error);
       if (!settlement.done) {
-        settle(admissionFailureUsage(failure.code, emitted, usage));
+        settle(failureUsage(failure.code, emitted, usage));
       }
       code = failure.code;
       retryBlockedBy = admissionDenial(
@@ -184,6 +186,7 @@ export class BudgetedInferenceProvider implements InferenceProvider {
         outcome,
         retryable,
         retryBlockedBy,
+        repairs,
       );
     }
   }
@@ -211,12 +214,14 @@ export class BudgetedInferenceProvider implements InferenceProvider {
     throw failure;
   }
 
-  private checkTool(event: InferenceProviderEvent, reservationId: string): void {
-    if (
-      event.type === "tool-call" &&
-      !this.options.ledger.consumeToolCall(reservationId, event.callId)
-    )
-      throw limitFailure();
+  private checkTool(
+    event: InferenceProviderEvent,
+    reservationId: string,
+    repairs: ToolCallRepairDiagnostic[],
+  ): void {
+    if (event.type !== "tool-call") return;
+    if (!this.options.ledger.consumeToolCall(reservationId, event.callId)) throw limitFailure();
+    if (event.repair !== undefined) repairs.push({ tool: event.name, causes: event.repair.causes });
   }
 
   private finalUsage(usage: TokenUsage | null): TokenUsage {
@@ -249,9 +254,11 @@ export class BudgetedInferenceProvider implements InferenceProvider {
     settlement: InferenceDiagnostic["settlement"],
     retryable: boolean,
     retryBlockedBy: string | null,
+    repairs: readonly ToolCallRepairDiagnostic[] = [],
   ): void {
     const endedAt = this.options.clock.now();
     reportInference(this.options.diagnostic, {
+      ...(repairs.length === 0 ? {} : { toolCallRepairs: Object.freeze([...repairs]) }),
       runId: this.options.account.runId,
       requestId: this.options.requestId,
       attempt: this.attempt,

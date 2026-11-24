@@ -8,7 +8,8 @@ import type { ModelGatewayRetryScheduler, PrivateModelRoute } from "./contracts.
 import { inferenceFailure } from "./inference-failure.boundary.js";
 import { cancellationFor } from "./inference-cancellation.js";
 
-const MAX_ATTEMPTS = 2;
+/** The first attempt and up to two automatic retries. */
+const MAX_ATTEMPTS = 3;
 
 export interface ProviderFailure {
   readonly code: string;
@@ -25,13 +26,20 @@ function failureFor(error: unknown): ProviderFailure {
   return { code: failure.code, message: failure.message, retryable: failure.retryable };
 }
 
+/**
+ * Retry only while the student has seen nothing of this response: transient provider failures,
+ * and a response the provider sent in a shape Marea could not read, which a fresh one may fix.
+ */
 function canRetry(
   error: unknown,
   emitted: boolean,
   attempt: number,
 ): error is InferenceProviderError {
   return (
-    !emitted && error instanceof InferenceProviderError && error.retryable && attempt < MAX_ATTEMPTS
+    !emitted &&
+    error instanceof InferenceProviderError &&
+    (error.retryable || error.code === "invalid-response") &&
+    attempt < MAX_ATTEMPTS
   );
 }
 
@@ -45,7 +53,8 @@ export async function* providerStream(
     let emitted = false;
     try {
       for await (const event of route.provider.stream(request, cancellationFor(signal))) {
-        emitted = true;
+        // Usage is accounting, not output: a response that failed after it can still be retried.
+        if (event.type !== "usage") emitted = true;
         yield { event, type: "event" };
       }
       return;

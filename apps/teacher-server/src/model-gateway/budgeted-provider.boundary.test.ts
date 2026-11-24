@@ -144,6 +144,60 @@ describe("provider admission and durable accounting", () => {
     }
   });
 
+  it("settles a response that fails after reporting usage with that usage, not as uncertain", async () => {
+    const test = fixture();
+    try {
+      test.provider.events = [usage];
+      test.provider.failure = new InferenceProviderError({
+        code: "invalid-response",
+        message: "Synthetic failure",
+        retryable: false,
+      });
+      await expect(collect(test.metered.stream(request, cancellation()))).rejects.toMatchObject({
+        code: "invalid-response",
+      });
+      expect(
+        test.database.readAll(
+          "SELECT state, input_tokens, output_tokens FROM marea_usage_attempts ORDER BY attempt",
+        ),
+      ).toEqual([{ state: "settled", input_tokens: 5n, output_tokens: 6n }]);
+    } finally {
+      test.database.close();
+    }
+  });
+
+  it("reports repaired tool calls by name and cause in the attempt diagnostic", async () => {
+    const test = fixture();
+    try {
+      const diagnostics: object[] = [];
+      const metered = new BudgetedInferenceProvider({
+        ...test.options,
+        diagnostic: (event) => diagnostics.push(event),
+      });
+      const repaired: InferenceProviderEvent = {
+        type: "tool-call",
+        arguments: {},
+        callId: "call-1",
+        name: "grep",
+        repair: { causes: ["malformed-arguments"], rawName: "grep", rawArguments: "{" },
+      };
+      test.provider.events = [usage, repaired, completed];
+      await collect(metered.stream(request, cancellation()));
+      expect(diagnostics).toMatchObject([
+        {
+          requestId: request.requestId,
+          toolCallRepairs: [{ tool: "grep", causes: ["malformed-arguments"] }],
+        },
+      ]);
+      expect(JSON.stringify(diagnostics)).not.toContain("rawArguments");
+      test.provider.events = [usage, completed];
+      await collect(metered.stream(request, cancellation()));
+      expect(diagnostics[1]).not.toHaveProperty("toolCallRepairs");
+    } finally {
+      test.database.close();
+    }
+  });
+
   it("never retries partial output and charges cancellation or early consumer return conservatively", async () => {
     const test = fixture();
     try {
@@ -270,8 +324,9 @@ describe("provider admission and durable accounting", () => {
       const iterator = test.metered.stream(request, cancellation())[Symbol.asyncIterator]();
       expect(await iterator.next()).toEqual({ done: false, value: usage });
       await expect(iterator.next()).rejects.toThrow("Synthetic storage failure");
+      // The retried settlement records the usage the provider already reported.
       expect(test.database.readOne("SELECT state FROM marea_usage_attempts")?.state).toBe(
-        "unknown",
+        "settled",
       );
       expect(test.ledger.totals(account).inFlight).toBe(0);
     } finally {
@@ -304,7 +359,23 @@ it.each(["context-exceeded", "context-unavailable"] as const)(
 it.each(["context-exceeded", "context-unavailable"] as const)(
   "does not refund %s after inference has already emitted output or usage",
   async (code) => {
-    for (const events of [[usage], [{ type: "text-delta" as const, text: "Partial" }]]) {
+    const reported = fixture();
+    try {
+      reported.provider.events = [usage];
+      reported.provider.failure = new InferenceProviderError({
+        code,
+        message: "Late provider failure",
+        retryable: false,
+      });
+      await expect(collect(reported.metered.stream(request, cancellation()))).rejects.toMatchObject(
+        { code },
+      );
+      // Reported usage is charged as reported, never refunded to zero.
+      expect(reported.ledger.totals(account)).toMatchObject({ requests: 1, tokens: 11 });
+    } finally {
+      reported.database.close();
+    }
+    for (const events of [[{ type: "text-delta" as const, text: "Partial" }]]) {
       const test = fixture();
       try {
         test.provider.events = events;

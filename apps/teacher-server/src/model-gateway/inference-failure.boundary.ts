@@ -1,4 +1,4 @@
-import { InferenceProviderError } from "@marea/plugin-api";
+import { InferenceProviderError, type InferenceToolCallRepairCause } from "@marea/plugin-api";
 
 /** Safe local gateway failures; these are not provider plugin failures. */
 export class InferenceFailure extends Error {
@@ -32,6 +32,12 @@ export interface InferenceDiagnostic {
   readonly settlement: "settled" | "unknown" | "breached" | "not-admitted";
   readonly retryable: boolean;
   readonly retryBlockedBy: string | null;
+  /** Malformed tool calls the provider adapter repaired in this attempt: names and causes only. */
+  readonly toolCallRepairs?: readonly ToolCallRepairDiagnostic[];
+}
+export interface ToolCallRepairDiagnostic {
+  readonly tool: string;
+  readonly causes: readonly InferenceToolCallRepairCause[];
 }
 export type InferenceDiagnosticSink = (event: InferenceDiagnostic) => void;
 

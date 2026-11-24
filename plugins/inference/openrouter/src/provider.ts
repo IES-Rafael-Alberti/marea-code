@@ -78,6 +78,7 @@ function finishReason(value: string | null | undefined): InferenceFinishReason |
 
 async function* translateStream(
   response: OpenRouterHttpResponse,
+  requestId: string,
 ): AsyncIterable<InferenceProviderEvent> {
   if (response.body === null) {
     throw providerError(
@@ -86,7 +87,7 @@ async function* translateStream(
       false,
     );
   }
-  const calls = new ToolCallAccumulator();
+  const calls = new ToolCallAccumulator(requestId);
   let completed = false;
   let reason: InferenceFinishReason | undefined;
   let usage: InferenceProviderEvent | undefined;
@@ -110,6 +111,10 @@ async function* translateStream(
   }
   if (!completed)
     throw providerError("unavailable", "The inference provider stream was interrupted.", true);
+  // Usage first: what the provider charged is accounted for even if a later step fails.
+  if (usage !== undefined) {
+    yield usage;
+  }
   if (reason === undefined) {
     throw providerError(
       "invalid-response",
@@ -119,9 +124,6 @@ async function* translateStream(
   }
   for (const event of calls.finish()) {
     yield event;
-  }
-  if (usage !== undefined) {
-    yield usage;
   }
   yield Object.freeze({ finishReason: reason, type: "completed" });
 }
@@ -170,7 +172,7 @@ export function createOpenRouterProviderWith(
           throw httpError(response);
         }
         try {
-          yield* translateStream(response);
+          yield* translateStream(response, admitted.requestId);
         } catch (error) {
           if (controller.signal.aborted) throw aborted();
           if (error instanceof InferenceProviderError) throw error;
