@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fixture } from "./insights.fixture.js";
 import { input, query, type FixtureSource } from "./reports.fixture.js";
-import { evaluationSchema } from "./report-evaluation.js";
+import { evaluateSource, evaluationSchema } from "./report-evaluation.js";
 import { teacher } from "../../test-support/evaluation-fixture.js";
 
 const SKILL = "teacher/t1/testing";
@@ -124,6 +124,17 @@ describe("evaluationSchema", () => {
   ])("rejects %s", (_label, criteria) => {
     expect(parse(draft(criteria)).success).toBe(false);
   });
+  it("omits unreadable criteria without failing when the rest is complete", () => {
+    const parsed = parse(
+      draft([criterion("C1"), { code: "C2" }, "text"]),
+      source("tutoring", ["C1"]),
+    );
+    expect(parsed.success).toBe(true);
+    expect(parsed.data?.criteria.map((c) => c.code)).toEqual(["C1"]);
+  });
+  it("reports the mismatch as a custom issue", () => {
+    expect(parse(draft([])).error?.issues.map((i) => i.code)).toEqual(["custom"]);
+  });
   it("accepts an empty criteria list when the skills define none", () => {
     expect(parse(draft([]), source("tutoring", [])).success).toBe(true);
   });
@@ -134,5 +145,38 @@ describe("evaluationSchema", () => {
   });
   it("rejects output that is not an object", () => {
     expect(parse([] as never).success).toBe(false);
+  });
+});
+
+describe("evaluateSource", () => {
+  function failing() {
+    const f = fixture();
+    const report = f.service.reports.generate(teacher, query(f));
+    const frozen = input(f, report.id);
+    const first = frozen.sources[0];
+    if (first === undefined) throw new Error("source");
+    const generate = vi.fn().mockRejectedValue(new Error("boom"));
+    return { frozen, first, inference: { generate } };
+  }
+  it("rethrows a failure caused by cancellation instead of marking the run unavailable", async () => {
+    const { inference, frozen, first } = failing();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(evaluateSource(inference, first, frozen, "a", controller.signal)).rejects.toThrow(
+      "boom",
+    );
+  });
+  it("marks the run unavailable when the model fails without cancellation", async () => {
+    const { inference, frozen, first } = failing();
+    const result = await evaluateSource(
+      inference,
+      first,
+      frozen,
+      "a",
+      new AbortController().signal,
+    );
+    expect(result.reason).toBe("provider");
+    expect(result.failure?.code).toBe("provider");
+    expect(result.evidence).toMatchObject({ status: "unavailable", reason: "provider" });
   });
 });

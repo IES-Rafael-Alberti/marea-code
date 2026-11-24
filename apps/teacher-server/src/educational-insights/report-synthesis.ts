@@ -12,7 +12,7 @@ const NO_EVIDENCE = {
 
 /** One synthesis call over compact dossiers; without usable evidence there is nothing to ask. */
 export async function synthesize(
-  inference: EducationalInference,
+  inference: Pick<EducationalInference, "generate">,
   input: z.infer<typeof InputSchema>,
   accountId: string,
   usable: readonly Evidence[],

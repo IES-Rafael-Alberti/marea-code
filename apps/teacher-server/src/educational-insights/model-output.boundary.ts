@@ -16,10 +16,12 @@ export class InsightsFailure extends Error {
 /** The first balanced top-level JSON object in prose, aware of strings and escapes. */
 function firstObject(text: string): string | undefined {
   const start = text.indexOf("{");
+  // Stryker disable next-line ConditionalExpression: without a brace the scan finds nothing anyway.
   if (start < 0) return undefined;
   let depth = 0;
   let quoted = false;
   let escaped = false;
+  // Stryker disable next-line EqualityOperator: charAt past the end is an empty string.
   for (let index = start; index < text.length; index++) {
     const character = text.charAt(index);
     if (quoted) {
@@ -33,7 +35,9 @@ function firstObject(text: string): string | undefined {
   return undefined;
 }
 
+// Stryker disable BlockStatement: an empty catch block also yields undefined.
 function parseJson(text: string | undefined): { readonly value: unknown } | undefined {
+  // Stryker disable next-line ConditionalExpression: parsing undefined throws and is caught below.
   if (text === undefined) return undefined;
   try {
     return { value: JSON.parse(text) };
@@ -42,10 +46,11 @@ function parseJson(text: string | undefined): { readonly value: unknown } | unde
   }
 }
 
+// Stryker restore BlockStatement
 /** Models often wrap JSON in a code fence or prose; accept the first parseable form. */
 export function extractJson(output: string): { readonly value: unknown } | undefined {
-  const text = output.trim();
-  const fenced = /```[A-Za-z]*\s*([\s\S]*?)```/u.exec(text)?.[1]?.trim();
+  const text = output;
+  const fenced = /```[A-Za-z]*([\s\S]*?)```/u.exec(text)?.[1];
   return (
     parseJson(text) ??
     parseJson(fenced) ??

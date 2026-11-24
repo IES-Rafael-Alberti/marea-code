@@ -70,6 +70,22 @@ describe("materialOf", () => {
     const fitting = materialOf([event(Math.floor(half)), event(Math.ceil(half))], 0);
     expect(omitted(fitting.material)).toBe(0);
   });
+  it("counts the separators between the events that are kept", () => {
+    const wrapper = bytes('{"events":[],"omittedEarlierEvents":1}');
+    const [a, b, c] = ["a", "b", "c"].map((letter) => JSON.stringify(letter.repeat(100)));
+    if (a === undefined || b === undefined || c === undefined) throw new Error("events");
+    const exact = wrapper + bytes(b) + 1 + bytes(c);
+    expect(materialOf([a, b, c], 0, exact).material).toBe(
+      `{"events":[${b},${c}],"omittedEarlierEvents":1}`,
+    );
+    expect(materialOf([a, b, c], 0, exact - 1).material).toBe(
+      `{"events":[${c}],"omittedEarlierEvents":2}`,
+    );
+    expect(materialOf([a, b, c], 0, wrapper + bytes(c) - 1)).toEqual({
+      material: "",
+      skip: "material-too-large",
+    });
+  });
   it("marks the session too large when no single event fits", () => {
     expect(materialOf([event(MAX_MATERIAL_BYTES)], 0)).toEqual({
       material: "",

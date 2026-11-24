@@ -237,3 +237,18 @@ it("reports a missing provider as unconfigured", async () => {
   );
   await expect(run(inference)).rejects.toMatchObject({ code: "unconfigured" });
 });
+
+it("does not accept an answer that was cut off, even if it parses", async () => {
+  const requests: InferenceProviderRequest[] = [];
+  const provider: InferenceProvider = {
+    async *stream(request) {
+      await Promise.resolve();
+      requests.push(request);
+      yield { type: "text-delta", text: '{"ok":true}' };
+      yield { type: "usage", inputTokens: 10, outputTokens: 5 };
+      yield { type: "completed", finishReason: "length" };
+    },
+  };
+  await expect(run(setup(provider))).rejects.toMatchObject({ code: "output-invalid" });
+  expect(requests).toHaveLength(1);
+});

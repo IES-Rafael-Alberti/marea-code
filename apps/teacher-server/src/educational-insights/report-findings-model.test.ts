@@ -181,6 +181,7 @@ describe("compactEvidence", () => {
         difficulties: [],
       },
     ]);
+    expect(compactEvidence([evidence({ evaluation: null })], null)[0]?.results).toStrictEqual({});
   });
   describe("when the input ceiling is tight", () => {
     const many = Array.from({ length: 30 }, (_v, i) =>

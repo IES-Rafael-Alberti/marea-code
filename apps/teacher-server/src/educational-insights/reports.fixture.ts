@@ -1,8 +1,8 @@
 import { vi } from "vitest";
 import type { InferenceProvider, InferenceProviderRequest } from "@marea/plugin-api";
 import { EvaluationDraftSchema } from "@marea/protocol";
-import type { fixture } from "./insights.fixture.js";
-import { NOW, EVALUATION_DRAFT } from "../../test-support/evaluation-fixture.js";
+import { fixture } from "./insights.fixture.js";
+import { NOW, EVALUATION_DRAFT, teacher } from "../../test-support/evaluation-fixture.js";
 import { InputSchema } from "./reports-model.js";
 import { EducationalInference } from "./inference.js";
 import { ClassReports } from "./reports.js";
@@ -88,6 +88,16 @@ export function useCeiling(f: ReturnType<typeof fixture>, ceiling: number) {
     budget: { ...f.route.budget, maxInputTokens: ceiling },
     inputTokenCeiling: ceiling,
   };
+}
+
+/** A freshly queued report of the fixture class with its first frozen source. */
+export function queuedReport() {
+  const f = fixture();
+  const report = f.service.reports.generate(teacher, query(f));
+  const frozen = input(f, report.id);
+  const first = frozen.sources[0];
+  if (first === undefined) throw new Error("source");
+  return { f, report, frozen, first };
 }
 
 export function observedDraft(source: ReturnType<typeof input>["sources"][number]) {

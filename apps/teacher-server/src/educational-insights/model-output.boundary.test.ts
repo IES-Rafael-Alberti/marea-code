@@ -21,6 +21,9 @@ describe("extractJson", () => {
     ["prose inside a fence", '```json\nResult: {"a":3} ok\n```', { a: 3 }],
     ["an escaped backslash before a quote", 'x {"a":"\\\\"} y', { a: "\\" }],
     ["a bare array", "[1,2]", [1, 2]],
+    ["an array in a labelled fence", "```json\n[1,2]\n```", [1, 2]],
+    ["an object followed by prose", '{"a":1} and that is all', { a: 1 }],
+    ["an empty key", 'x {"":1} y', { "": 1 }],
   ])("accepts %s", (_label, output, value) => {
     expect(extractJson(output)).toEqual({ value });
   });

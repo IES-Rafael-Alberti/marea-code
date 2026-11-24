@@ -61,7 +61,7 @@ export class ClassReports {
     if (Date.parse(query.to) - now > END_SKEW_TOLERANCE_MS)
       throw new ReportRefusal("invalid-period");
     // A browser clock slightly ahead of the server is clamped instead of refused.
-    const to = Date.parse(query.to) > now ? this.clock.now() : query.to;
+    const to = new Date(Math.min(Date.parse(query.to), now)).toISOString();
     if (query.from >= to || Date.parse(to) - Date.parse(query.from) > 366 * 86400000)
       throw new ReportRefusal("invalid-period");
     return this.progress.database.transaction(() => {

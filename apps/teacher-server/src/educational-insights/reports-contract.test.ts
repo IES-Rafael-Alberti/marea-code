@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { fixture } from "./insights.fixture.js";
-import { query, input, save, observedDraft } from "./reports.fixture.js";
+import { query, input, save, observedDraft, queuedReport } from "./reports.fixture.js";
 import { NOW, teacher, EVALUATION_DRAFT } from "../../test-support/evaluation-fixture.js";
 import { teachingConfiguration } from "../../test-support/teaching-fixture.js";
 import { EVALUATE, SYNTHESIZE } from "./reports-model.js";
@@ -255,11 +255,7 @@ it("exposes only the deletion marker after a report loses its evidence", () => {
 it.each([false, true])(
   "synthesizes supported findings from mixed available evidence and releases completed work (%s)",
   async (invalid) => {
-    const f = fixture();
-    const report = f.service.reports.generate(teacher, query(f));
-    const frozen = input(f, report.id);
-    const first = frozen.sources[0];
-    if (first === undefined) throw new Error("source");
+    const { f, report, frozen, first } = queuedReport();
     save(f, report.id, {
       ...frozen,
       sources: frozen.sources.map((s, i) => ({

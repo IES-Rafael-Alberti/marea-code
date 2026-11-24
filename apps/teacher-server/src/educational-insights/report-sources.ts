@@ -24,16 +24,15 @@ export function materialOf(
   omittedBefore: number,
   limit = MAX_MATERIAL_BYTES,
 ): Material {
-  const sizes = events.map((event) => Buffer.byteLength(event));
-  let remaining = sizes.reduce((sum, size) => sum + size, 0) + Math.max(0, events.length - 1);
-  for (const [dropped, size] of sizes.entries()) {
-    const omitted = omittedBefore + dropped;
-    if (WRAPPER_BYTES + String(omitted).length + remaining <= limit)
+  for (let dropped = 0; dropped < events.length; dropped++) {
+    const kept = events.slice(dropped);
+    const omitted = String(omittedBefore + dropped);
+    const bytes = WRAPPER_BYTES + omitted.length + Buffer.byteLength(kept.join(","));
+    if (bytes <= limit)
       return {
-        material: `{"events":[${events.slice(dropped).join(",")}],"omittedEarlierEvents":${String(omitted)}}`,
+        material: `{"events":[${kept.join(",")}],"omittedEarlierEvents":${omitted}}`,
         skip: undefined,
       };
-    remaining -= size + (dropped < events.length - 1 ? 1 : 0);
   }
   return { material: "", skip: events.length === 0 ? undefined : "material-too-large" };
 }
@@ -76,6 +75,7 @@ export function sourceOf(
     `SELECT payload_json ${filter} ORDER BY sequence DESC LIMIT ${String(MAX_EVENTS_PER_RUN)}`,
     [runId, to],
   );
+  // Stryker disable next-line OptionalChaining: COUNT always returns a row; the guard is for types.
   const total = Number(database.readOne(`SELECT COUNT(*) AS n ${filter}`, [runId, to])?.n);
   const identifiers = [person?.display_name, person?.login].filter(
     (value): value is string => typeof value === "string" && value.length > 1,

@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import * as z from "zod";
 import { fixture } from "./insights.fixture.js";
 import { input, query, useCeiling } from "./reports.fixture.js";
+import { ReportRefusal } from "./reports-model.js";
 import { NOW, teacher } from "../../test-support/evaluation-fixture.js";
 
 function sourceRuns(count: number) {
@@ -233,3 +234,13 @@ it.each([undefined, { display_name: "A", login: "s" }])(
     );
   },
 );
+
+it("names the refusal and keeps its reason", () => {
+  const refusal = new ReportRefusal("too-large");
+  expect([refusal.name, refusal.reason, refusal.message]).toEqual([
+    "ReportRefusal",
+    "too-large",
+    "too-large",
+  ]);
+  expect(refusal).toBeInstanceOf(Error);
+});

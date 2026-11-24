@@ -73,7 +73,7 @@ export interface Evaluated {
 }
 
 export async function evaluateSource(
-  inference: EducationalInference,
+  inference: Pick<EducationalInference, "generate">,
   source: Source,
   input: z.infer<typeof InputSchema>,
   accountId: string,

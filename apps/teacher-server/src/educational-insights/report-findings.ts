@@ -118,19 +118,23 @@ const RANK: Record<Result, number> = { "no-evidence": 0, passed: 1, "not-passed"
 const DETAIL_LEVELS = [
   { difficulties: 3, note: 200 },
   { difficulties: 1, note: 100 },
-  { difficulties: 0, note: 0 },
 ] as const;
+const MINIMAL_DETAIL = { difficulties: 0, note: 0 } as const;
 
 /** The worst result per skill: any not-passed outranks passed, which outranks no evidence. */
 function skillResults(evidence: Evidence): Record<string, Result> {
   const results: Record<string, Result> = {};
+  // Stryker disable next-line ArrayDeclaration: iterating a string yields no skill results.
   for (const c of evidence.evaluation?.criteria ?? [])
     if (RANK[c.result] >= RANK[results[c.skillId] ?? "no-evidence"]) results[c.skillId] = c.result;
   return results;
 }
 
-function compactOne(evidence: Evidence, detail: (typeof DETAIL_LEVELS)[number]) {
-  const note = evidence.evaluation?.teacherNote.split("\n", 1).join("") ?? "";
+function compactOne(
+  evidence: Evidence,
+  detail: (typeof DETAIL_LEVELS)[number] | typeof MINIMAL_DETAIL,
+) {
+  const note = evidence.evaluation?.teacherNote.split("\n", 1).at(0) ?? "";
   return {
     runId: evidence.runId,
     alias: evidence.alias,
@@ -157,14 +161,13 @@ export function compactEvidence(
   evidence: readonly Evidence[],
   ceiling: number | null,
 ): ReturnType<typeof compactOne>[] {
-  let dossiers: ReturnType<typeof compactOne>[] = [];
   for (const detail of DETAIL_LEVELS) {
-    dossiers = evidence.map((e) => compactOne(e, detail));
+    const dossiers = evidence.map((e) => compactOne(e, detail));
     if (
       ceiling === null ||
       Buffer.byteLength(JSON.stringify(dossiers)) <= ceiling - PROMPT_RESERVE_BYTES
     )
-      break;
+      return dossiers;
   }
-  return dossiers;
+  return evidence.map((e) => compactOne(e, MINIMAL_DETAIL));
 }
