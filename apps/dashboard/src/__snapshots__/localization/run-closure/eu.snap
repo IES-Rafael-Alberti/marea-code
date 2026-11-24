@@ -1,0 +1,24 @@
+{
+  "cancel": "Utzi",
+  "classBody": "Ikasle hauek ikusiko dute saioa amaitu duzula, eta Marea berriro exekutatuz beste bat hasi ahalko dute.",
+  "confirmOne": "Amaitu saio hau",
+  "endAllSessions": "Amaitu saio guztiak",
+  "endSession": "Amaitu saioa",
+  "ending": "Amaitzen…",
+  "evaluationNote": "Ikasgelak ebaluazio automatikoa gaituta badu, ebaluazioa saioa amaitzean hasiko da.",
+  "failed": "Ezin izan dira saioak amaitu. Egiaztatu konexioa eta saiatu berriro.",
+  "interpolated": {
+    "classPending": "Ikasle hauek baimen bat dute zain, saioa amaitzean baztertzen dena: Ana, Ben.",
+    "classTitle": [
+      "1 saio amaitu nahi duzu?",
+      "3 saio amaitu nahi dituzu?",
+    ],
+    "confirmClass": [
+      "Amaitu 1 saio",
+      "Amaitu 3 saio",
+    ],
+    "oneBody": "Ana ikasleak ikusiko du saioa amaitu duzula, eta Marea berriro exekutatuz beste bat hasi ahalko du.",
+    "onePending": "Ana ikasleak baimen bat dauka zain. Saioa amaitzean baztertu egiten da.",
+  },
+  "oneTitle": "Saio hau amaitu nahi duzu?",
+}

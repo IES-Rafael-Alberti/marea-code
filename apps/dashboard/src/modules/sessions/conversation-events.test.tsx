@@ -1,4 +1,4 @@
-import { CanonicalRunEventSchema } from "@marea/protocol";
+import { CanonicalRunEventSchema, RunClosedReasonSchema } from "@marea/protocol";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import { ConversationEvent } from "./conversation-events.js";
@@ -43,7 +43,11 @@ it.each(["en", "es"] as const)(
         "main.py",
       ],
       [{ eventType: "run-activated" }, m.opened, ""],
-      [{ eventType: "run-closed", reason: "student-exit" }, m.finished, ""],
+      [
+        { eventType: "run-closed", reason: "student-exit" },
+        m.finished,
+        m.closeReasons["student-exit"],
+      ],
       [{ eventType: "tutor-startup", state: "completed" }, m.startup, ""],
     ] as const;
     for (const [payload, heading, content] of examples) {
@@ -63,6 +67,33 @@ it.each(["en", "es"] as const)(
       expect(html).not.toContain("Detalles técnicos");
       expect(html).not.toContain("<details open");
     }
+  },
+);
+it.each(["en", "es", "eu"] as const)(
+  "says why a session ended, whoever ended it, in %s",
+  (locale) => {
+    const m = sessionsMessages(locale);
+    const reasons = RunClosedReasonSchema.options;
+    expect(Object.keys(m.closeReasons).toSorted()).toEqual([...reasons].toSorted());
+    const texts = new Set<string>();
+    for (const reason of reasons) {
+      const html = renderToStaticMarkup(
+        <ConversationEvent
+          event={CanonicalRunEventSchema.parse({
+            eventId: "event:one",
+            sequence: 2,
+            occurredAt: "2026-09-19T08:01:02.000Z",
+            eventType: "run-closed",
+            reason,
+          })}
+          messages={m}
+        />,
+      );
+      expect(html).toContain(`<strong>${m.finished}</strong>`);
+      expect(html).toContain(m.closeReasons[reason]);
+      texts.add(m.closeReasons[reason]);
+    }
+    expect(texts.size).toBe(reasons.length);
   },
 );
 it("renders closed and unfinished code fences while escaping model HTML", () => {

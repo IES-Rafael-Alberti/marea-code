@@ -60,6 +60,9 @@ export class SessionsController {
   get exportClient() {
     return this.client.exports;
   }
+  get closures() {
+    return this.client.closures;
+  }
   get review(): EvaluationController | undefined {
     return this.drafts.review(this.state.runId);
   }
@@ -77,8 +80,7 @@ export class SessionsController {
     this.listing = new AbortController();
     this.listCursor = null;
     this.listFailed = false;
-    this.selection.abort();
-    this.selection = new AbortController();
+    this.resetSelection();
     this.through = undefined;
     this.update({
       classId,
@@ -95,8 +97,7 @@ export class SessionsController {
     await this.loadRuns(false);
   }
   async select(runId: string | null): Promise<void> {
-    this.selection.abort();
-    this.selection = new AbortController();
+    this.resetSelection();
     this.through = undefined;
     this.historyFailed = false;
     this.update({
@@ -173,8 +174,7 @@ export class SessionsController {
     return this.state.connection === "loading" ? "loading" : "current";
   }
   private clearAccess(): void {
-    this.selection.abort();
-    this.selection = new AbortController();
+    this.resetSelection();
     this.drafts.clear();
     this.update({ runs: [], next: null, runId: null, selected: null, events: [], updatedAt: null });
   }
@@ -214,6 +214,10 @@ export class SessionsController {
     } finally {
       this.historyRequests.delete(signal);
     }
+  }
+  private resetSelection(): void {
+    this.selection.abort();
+    this.selection = new AbortController();
   }
   private update(patch: Partial<SessionsState>): void {
     if (this.lifetime.signal.aborted) return;

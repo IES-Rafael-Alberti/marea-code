@@ -1,5 +1,9 @@
 import { browserRandomUUID } from "../../browser-random-uuid.js";
 import {
+  createRunClosureClient,
+  type RunClosureClient,
+} from "../run-closure/run-closure-client.boundary.js";
+import {
   ActiveRunDashboardResponseSchema,
   CURRENT_PROTOCOL_VERSION,
   RequestIdSchema,
@@ -9,6 +13,7 @@ import {
 export type DashboardFetch = (input: string, init: RequestInit) => Promise<Response>;
 
 export interface ActiveRunsClient {
+  readonly closures?: RunClosureClient;
   load(signal: AbortSignal): Promise<ActiveRunDashboardResponse>;
 }
 
@@ -29,6 +34,7 @@ export function createActiveRunsClient(
   createRequestId: () => string = browserRequestId,
 ): ActiveRunsClient {
   return Object.freeze({
+    closures: createRunClosureClient(fetchRequest, createRequestId),
     async load(signal: AbortSignal): Promise<ActiveRunDashboardResponse> {
       const requestId = RequestIdSchema.parse(createRequestId());
       const query = new URLSearchParams({

@@ -15,7 +15,7 @@ exports[`renders each durable event as readable en evidence with optional raw de
 
 exports[`renders each durable event as readable en evidence with optional raw detail > run-activated Session opened 1`] = `"<article class="conversation-event event-run-activated"><header><strong>Session opened</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
 
-exports[`renders each durable event as readable en evidence with optional raw detail > run-closed Session finished 1`] = `"<article class="conversation-event event-run-closed"><header><strong>Session finished</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
+exports[`renders each durable event as readable en evidence with optional raw detail > run-closed Session finished 1`] = `"<article class="conversation-event event-run-closed"><header><strong>Session finished</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>The student ended the session</p></div></article>"`;
 
 exports[`renders each durable event as readable en evidence with optional raw detail > student-message Student 1`] = `"<article class="conversation-event event-student-message"><header><strong>Student</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>My question</p></div></article>"`;
 
@@ -36,7 +36,7 @@ exports[`renders each durable event as readable es evidence with optional raw de
 
 exports[`renders each durable event as readable es evidence with optional raw detail > run-activated Sesión abierta 1`] = `"<article class="conversation-event event-run-activated"><header><strong>Sesión abierta</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
 
-exports[`renders each durable event as readable es evidence with optional raw detail > run-closed Sesión finalizada 1`] = `"<article class="conversation-event event-run-closed"><header><strong>Sesión finalizada</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p></p></div></article>"`;
+exports[`renders each durable event as readable es evidence with optional raw detail > run-closed Sesión finalizada 1`] = `"<article class="conversation-event event-run-closed"><header><strong>Sesión finalizada</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>El estudiante ha finalizado la sesión</p></div></article>"`;
 
 exports[`renders each durable event as readable es evidence with optional raw detail > student-message Estudiante 1`] = `"<article class="conversation-event event-student-message"><header><strong>Estudiante</strong><time dateTime="2026-09-19T08:01:02.000Z">08:01:02</time></header><div class="message-text"><p>My question</p></div></article>"`;
 

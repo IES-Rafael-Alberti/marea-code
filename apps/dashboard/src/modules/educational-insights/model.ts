@@ -11,6 +11,7 @@ import {
 import type { DashboardLocale } from "../../messages.js";
 import type { DashboardFetch } from "../active-runs/active-runs-client.boundary.js";
 import { insightsClient } from "./client.js";
+import { createRunClosureClient } from "../run-closure/run-closure-client.boundary.js";
 import { insightsMessages } from "./messages.js";
 import { localTime } from "./local-time.js";
 
@@ -26,6 +27,7 @@ export interface InsightViewProps {
 export function useInsightModel(props: InsightViewProps & { readonly classId: string }) {
   const m = insightsMessages(props.locale);
   const client = useMemo(() => insightsClient(props.fetchRequest), [props.fetchRequest]);
+  const closures = useMemo(() => createRunClosureClient(props.fetchRequest), [props.fetchRequest]);
   const abort = useRef(new AbortController());
   const sequence = useRef(0);
   const [error, setError] = useState(false);
@@ -138,6 +140,7 @@ export function useInsightModel(props: InsightViewProps & { readonly classId: st
   return {
     m,
     client,
+    closures,
     abort,
     error,
     setError,

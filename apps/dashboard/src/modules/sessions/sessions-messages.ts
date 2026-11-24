@@ -54,6 +54,15 @@ const en = {
   edit: "File changed",
   opened: "Session opened",
   finished: "Session finished",
+  closeReasons: {
+    "student-exit": "The student ended the session",
+    cancelled: "The student cancelled the session",
+    "composition-failed": "The session ended because the tutor could not start",
+    "fatal-error": "The session ended because of an error",
+    "session-expired": "The session ended after losing its connection or reaching its time limit",
+    "teacher-ended": "A teacher ended this session",
+    "class-ended": "A teacher ended all sessions of the class",
+  },
   startup: "Tutor preparation",
   diagnostics: "Session diagnostics",
   diagnosticsHelp:
@@ -124,6 +133,15 @@ const es: typeof en = {
   edit: "Archivo modificado",
   opened: "Sesión abierta",
   finished: "Sesión finalizada",
+  closeReasons: {
+    "student-exit": "El estudiante ha finalizado la sesión",
+    cancelled: "El estudiante ha cancelado la sesión",
+    "composition-failed": "La sesión terminó porque el tutor no pudo iniciarse",
+    "fatal-error": "La sesión terminó por un error",
+    "session-expired": "La sesión terminó al perder la conexión o alcanzar su límite de tiempo",
+    "teacher-ended": "Un docente ha finalizado esta sesión",
+    "class-ended": "Un docente ha finalizado todas las sesiones de la clase",
+  },
   startup: "Preparación del tutor",
   diagnostics: "Diagnóstico de la sesión",
   diagnosticsHelp:
@@ -194,6 +212,15 @@ const eu: SessionsMessages = {
   edit: "Fitxategia aldatuta",
   opened: "Saioa irekita",
   finished: "Saioa amaituta",
+  closeReasons: {
+    "student-exit": "Ikasleak saioa amaitu du",
+    cancelled: "Ikasleak saioa bertan behera utzi du",
+    "composition-failed": "Saioa amaitu zen tutorea ezin izan zelako abiarazi",
+    "fatal-error": "Saioa errore batengatik amaitu zen",
+    "session-expired": "Saioa amaitu zen konexioa galdu delako edo denbora-muga gainditu duelako",
+    "teacher-ended": "Irakasle batek saio hau amaitu du",
+    "class-ended": "Irakasle batek ikasgelako saio guztiak amaitu ditu",
+  },
   startup: "Tutorearen prestaketa",
   diagnostics: "Saioaren diagnostikoa",
   diagnosticsHelp:

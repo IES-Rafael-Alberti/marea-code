@@ -44,6 +44,18 @@ it("queries bounded class pages with cookie authentication and correlation", asy
   );
   expect(client).toHaveProperty("history", expect.any(Function));
 });
+it("carries the closing client over the same authenticated fetch", async () => {
+  const { client, fetchRequest } = setup();
+  await expect(
+    client.closures?.closeClassRuns(
+      "class:one",
+      ["run:one"],
+      "close:1",
+      new AbortController().signal,
+    ),
+  ).rejects.toThrow();
+  expect(fetchRequest.mock.calls[0]?.[0]).toBe("/api/v1/dashboard/classes/close-runs");
+});
 it.each([{ requestId: "request:other" }, { nextBeforeRunId: "run:other" }, { runs: [] }])(
   "rejects mismatched responses (%j)",
   async (patch) => {

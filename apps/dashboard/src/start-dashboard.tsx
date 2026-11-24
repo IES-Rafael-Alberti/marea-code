@@ -8,6 +8,7 @@ import { createRoot } from "react-dom/client";
 import type { Root } from "react-dom/client";
 
 import { DashboardApp, type DashboardState } from "./dashboard-app.js";
+import type { ActiveRunsClosure } from "./modules/active-runs/active-runs-module.js";
 import { EvaluationController } from "./modules/evaluation/evaluation-controller.js";
 import { TeachingController } from "./modules/teaching/teaching-controller.js";
 import type { TeachingClient } from "./modules/teaching/teaching-contracts.js";
@@ -45,6 +46,7 @@ interface DashboardModules {
   readonly workspace: SessionsController | undefined;
   readonly ready: Promise<void>;
   readonly state: () => DashboardState;
+  readonly closure: ActiveRunsClosure | undefined;
   readonly evaluation: EvaluationController | undefined;
   readonly teaching: TeachingController | undefined;
   readonly authoring: SkillAuthoringController | undefined;
@@ -119,7 +121,9 @@ export function startDashboard(
                 classes: modules.teaching?.state.classes ?? [],
               },
             })}
-        {...(modules === undefined ? {} : { state: modules.state() })}
+        {...(modules === undefined
+          ? {}
+          : { state: modules.state(), activeRunsClosure: modules.closure })}
         {...(modules?.teaching === undefined
           ? {}
           : { teaching: { state: modules.teaching.state, controller: modules.teaching } })}
@@ -176,20 +180,28 @@ export function startDashboard(
       governanceClient === undefined
         ? undefined
         : new GovernanceController(governanceClient, render);
-    const runsReady =
-      profiles !== undefined
-        ? Promise.resolve()
-        : activeRuns.load(requests.signal).then(
-            (response) => {
-              // Stryker disable next-line StringLiteral: the discriminated union treats the sole remaining state as ready.
-              state = { response, status: "ready" };
-              render();
+    const loadRuns = () =>
+      activeRuns.load(requests.signal).then(
+        (response) => {
+          // Stryker disable next-line StringLiteral: the discriminated union treats the sole remaining state as ready.
+          state = { response, status: "ready" };
+          render();
+        },
+        () => {
+          state = { status: "failed" };
+          render();
+        },
+      );
+    const runsReady = profiles !== undefined ? Promise.resolve() : loadRuns();
+    const closure =
+      profiles !== undefined || activeRuns.closures === undefined
+        ? undefined
+        : {
+            client: activeRuns.closures,
+            refresh: () => {
+              void loadRuns();
             },
-            () => {
-              state = { status: "failed" };
-              render();
-            },
-          );
+          };
     return {
       ready: Promise.all([
         accountLanguage?.connect(),
@@ -200,6 +212,7 @@ export function startDashboard(
         governance?.load(),
       ]).then(() => undefined),
       state: () => state,
+      closure,
       workspace,
       evaluation,
       teaching,

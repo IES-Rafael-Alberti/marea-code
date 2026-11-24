@@ -272,10 +272,12 @@ it("starts idle with the last day selected and declares what each hook depends o
   ]);
   expect(hooks.dependencies).toEqual([
     [fetchRequest],
+    [fetchRequest],
     ["reports", "class:one", undefined, state.client, null, null],
     [state.load, "reports"],
     [state.client, "class:one", "reports"],
   ]);
+  expect(typeof state.closures.closeRun).toBe("function");
   vi.restoreAllMocks();
 });
 it("polls the map every 15 seconds until disposed, but never the progress overview", async () => {
