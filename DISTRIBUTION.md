@@ -355,6 +355,9 @@ ordinary terminal. Do not reinstall over the existing root or delete its student
 state. If Windows asks for credentials belonging to a different administrator
 account, cancel rather than updating that account's installation.
 
+The [student guide](STUDENTS.md) explains `marea logout`, the project root, several
+approvals in one turn, the `/usage` line and what to do after an error.
+
 Run `marea` from the project directory. The managed installation keeps student
 session state under `~/.marea-preview/student/student-state`; it does not reuse
 the old manual installation's `~/.marea` state. `MAREA_SERVER_URL` and
