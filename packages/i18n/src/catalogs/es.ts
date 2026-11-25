@@ -81,7 +81,12 @@ const spanishCatalog = {
   "student.git.missing":
     "Marea necesita Git para registrar tu trabajo. Instala Git y vuelve a iniciar Marea.",
   "student.git.not-root":
-    "Abre Marea desde la raíz del repositorio para registrar únicamente ese proyecto.",
+    "Marea debe ejecutarse desde la carpeta raíz de tu proyecto. Estás en {{current}}, pero el repositorio Git empieza en {{root}}.",
+  "student.git.not-root-home":
+    "Ese repositorio ocupa tu carpeta personal; probablemente se creó por error.",
+  "student.git.not-root-instruction": 'Ejecuta cd "{{root}}" y vuelve a lanzar marea.',
+  "student.git.not-root-exit": "Salir",
+  "student.git.not-root-create": "Crear un repositorio nuevo en {{current}}",
   "student.conversation.approve": "Y aprobar",
   "student.conversation.input-placeholder": "Escribe un mensaje",
   "student.conversation.marea-label": "Marea",

@@ -77,7 +77,13 @@ const basqueCatalog = {
   "student.git.create": "Bai, sortu biltegia",
   "student.git.missing":
     "Mareak Git behar du zure lana erregistratzeko. Instalatu Git eta hasi Marea berriro.",
-  "student.git.not-root": "Hasi Marea biltegiaren erroan, proiektu hau bakarrik erregistratzeko.",
+  "student.git.not-root":
+    "Marea zure proiektuaren erro-karpetatik exekutatu behar da. {{current}} karpetan zaude, baina Git biltegia {{root}} karpetan hasten da.",
+  "student.git.not-root-home":
+    "Biltegi horrek zure karpeta pertsonala hartzen du; ziur asko nahi gabe sortu zen.",
+  "student.git.not-root-instruction": 'Exekutatu cd "{{root}}" eta abiarazi marea berriro.',
+  "student.git.not-root-exit": "Irten",
+  "student.git.not-root-create": "Sortu biltegi berri bat {{current}} karpetan",
   "student.conversation.approve": "Y baimendu",
   "student.conversation.input-placeholder": "Idatzi mezu bat",
   "student.conversation.marea-label": "Marea",

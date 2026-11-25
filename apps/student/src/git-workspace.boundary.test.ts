@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
@@ -95,3 +95,95 @@ it("uses the requested private index and never enables interactive Git prompts",
   vi.stubEnv("GIT_TERMINAL_PROMPT", "1");
   expect(await projectGit(path, ["promptstate"])).toBe("0");
 });
+
+async function nestedProject() {
+  const parent = await realpath(await root());
+  await projectGit(parent, ["init"]);
+  const current = join(parent, "unidad-2");
+  await mkdir(current);
+  return { parent, current };
+}
+
+const terminal = (interactive: boolean, homeDirectory = tmpdir()) => ({
+  interactive,
+  homeDirectory,
+});
+
+it("explains both folders without a terminal and creates nothing", async () => {
+  const { parent, current } = await nestedProject();
+  await expect(
+    ensureGitWorkspace(current, createTranslator("es"), terminal(false)),
+  ).rejects.toMatchObject({
+    key: "student.git.not-root",
+    message: `Marea debe ejecutarse desde la carpeta raíz de tu proyecto. Estás en ${current}, pero el repositorio Git empieza en ${parent}.\nEjecuta cd "${parent}" y vuelve a lanzar marea.`,
+  });
+  expect(select).not.toHaveBeenCalled();
+  await expect(stat(join(current, ".git"))).rejects.toMatchObject({ code: "ENOENT" });
+});
+
+it("offers to leave, by default, or to create a repository in the current folder", async () => {
+  const { parent, current } = await nestedProject();
+  vi.mocked(select).mockResolvedValueOnce(false);
+  await expect(
+    ensureGitWorkspace(current, createTranslator("en"), terminal(true)),
+  ).rejects.toMatchObject({ key: "student.git.not-root" });
+  expect(vi.mocked(select).mock.lastCall?.[0]).toEqual({
+    message: `Marea must run from your project's root folder. You are in ${current}, but the Git repository starts at ${parent}.`,
+    choices: [
+      { name: `Exit (Run cd "${parent}" and start marea again.)`, value: false },
+      { name: `Create a new repository in ${current}`, value: true },
+    ],
+  });
+  await expect(stat(join(current, ".git"))).rejects.toMatchObject({ code: "ENOENT" });
+  vi.mocked(select).mockResolvedValueOnce(true);
+  await ensureGitWorkspace(current, createTranslator("en"), terminal(true));
+  expect(await realpath((await projectGit(current, ["rev-parse", "--show-toplevel"])).trim())).toBe(
+    current,
+  );
+  expect(await readFile(join(current, ".gitignore"), "utf8")).toContain("node_modules/");
+  await ensureGitWorkspace(current, createTranslator("en"), terminal(true));
+  expect(select).toHaveBeenCalledTimes(2);
+});
+
+it("says when the repository above is the home folder", async () => {
+  const { parent, current } = await nestedProject();
+  vi.mocked(select).mockResolvedValueOnce(false);
+  await expect(
+    ensureGitWorkspace(current, createTranslator("es"), terminal(true, parent)),
+  ).rejects.toMatchObject({ key: "student.git.not-root" });
+  expect(vi.mocked(select).mock.lastCall?.[0].message).toBe(
+    `Marea debe ejecutarse desde la carpeta raíz de tu proyecto. Estás en ${current}, pero el repositorio Git empieza en ${parent}.\nEse repositorio ocupa tu carpeta personal; probablemente se creó por error.`,
+  );
+  await expect(
+    ensureGitWorkspace(current, createTranslator("es"), terminal(false, parent)),
+  ).rejects.toThrow("probablemente se creó por error.\nEjecuta cd");
+});
+
+it.each([
+  [true, true, 1],
+  [true, false, 0],
+  [false, true, 0],
+] as const)(
+  "asks only when both standard input and output are terminals (%s, %s)",
+  async (input, output, asked) => {
+    const { current } = await nestedProject();
+    const descriptors = [process.stdin, process.stdout].map((stream) =>
+      Object.getOwnPropertyDescriptor(stream, "isTTY"),
+    );
+    Object.defineProperty(process.stdin, "isTTY", { value: input, configurable: true });
+    Object.defineProperty(process.stdout, "isTTY", { value: output, configurable: true });
+    try {
+      vi.mocked(select).mockResolvedValueOnce(false);
+      await expect(ensureGitWorkspace(current)).rejects.toMatchObject({
+        key: "student.git.not-root",
+      });
+      expect(select).toHaveBeenCalledTimes(asked);
+    } finally {
+      for (const [index, stream] of [process.stdin, process.stdout].entries()) {
+        const descriptor = descriptors[index];
+        if (descriptor === undefined) Reflect.deleteProperty(stream, "isTTY");
+        else Object.defineProperty(stream, "isTTY", descriptor);
+      }
+    }
+  },
+);

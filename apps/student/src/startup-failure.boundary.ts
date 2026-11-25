@@ -58,11 +58,13 @@ function printableServerOrigin(value: string): string | null {
 }
 
 export class StudentWorkspaceError extends Error {
+  /** `message` is already translated; only `student.git.not-root`, which names folders, needs it. */
   constructor(
     readonly key: "student.git.missing" | "student.git.not-root" | "student.git.cancelled",
     translator: Translator,
+    message?: string,
   ) {
-    super(translator.t(key));
+    super(message ?? translator.t(key as Exclude<typeof key, "student.git.not-root">));
   }
 }
 
@@ -84,9 +86,11 @@ export function startupFailure(error: unknown, translator: Translator, stage: st
   let key: MessageKey = "student.cli.unexpected-error";
   let code = "unexpected";
   let serverOrigin: string | null = null;
+  let workspaceMessage: string | null = null;
   if (error instanceof StudentWorkspaceError) {
     key = error.key;
     code = key;
+    workspaceMessage = error.message;
   } else if (error instanceof StudentHttpError) {
     const message = HTTP_MESSAGES.get(error.code);
     if (message !== undefined) {
@@ -120,8 +124,9 @@ export function startupFailure(error: unknown, translator: Translator, stage: st
     code = startupDiagnosticCode(error) ?? code;
   }
   const message =
-    serverOrigin === null
+    workspaceMessage ??
+    (serverOrigin === null
       ? translator.t(key)
-      : translator.t("bootstrap.connection-failed-at", { origin: serverOrigin });
+      : translator.t("bootstrap.connection-failed-at", { origin: serverOrigin }));
   return `${message}\n${translator.t("student.cli.failure-code", { code: `${stage}/${code}` })}\n`;
 }

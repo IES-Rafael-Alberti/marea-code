@@ -4,6 +4,7 @@ import * as z from "zod";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { realpath, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
 import { join } from "node:path";
 import select from "@inquirer/select";
 import { createTranslator, type Translator } from "@marea/i18n";
@@ -105,9 +106,58 @@ export async function projectGit(
   return stdout;
 }
 
+/** What the repository check may ask the student, and how it knows it can ask. */
+export interface GitWorkspaceTerminal {
+  readonly interactive: boolean;
+  readonly homeDirectory: string;
+}
+
+const TERMINAL: GitWorkspaceTerminal = {
+  get interactive() {
+    return process.stdin.isTTY && process.stdout.isTTY;
+  },
+  homeDirectory: homedir(),
+};
+
+/**
+ * Started below the repository root, Marea shows both folders and, at a terminal, offers to leave
+ * (the default) or to create a new repository in the current folder. Without a terminal it only
+ * explains; it never creates a repository unasked.
+ */
+async function startedBelowRoot(
+  current: string,
+  repositoryRoot: string,
+  translator: Translator,
+  terminal: GitWorkspaceTerminal,
+): Promise<void> {
+  const lines = [translator.t("student.git.not-root", { current, root: repositoryRoot })];
+  if (repositoryRoot === (await realpath(terminal.homeDirectory)))
+    lines.push(translator.t("student.git.not-root-home"));
+  const instruction = translator.t("student.git.not-root-instruction", { root: repositoryRoot });
+  const refuse = () =>
+    new StudentWorkspaceError(
+      "student.git.not-root",
+      translator,
+      [...lines, instruction].join("\n"),
+    );
+  if (!terminal.interactive) throw refuse();
+  const create = await select({
+    message: lines.join("\n"),
+    choices: [
+      {
+        name: `${translator.t("student.git.not-root-exit")} (${instruction})`,
+        value: false,
+      },
+      { name: translator.t("student.git.not-root-create", { current }), value: true },
+    ],
+  });
+  if (!create) throw refuse();
+}
+
 export async function ensureGitWorkspace(
   root: string,
   translator: Translator = createTranslator("es"),
+  terminal: GitWorkspaceTerminal = TERMINAL,
 ): Promise<void> {
   try {
     await projectGit(root, ["--version"]);
@@ -121,18 +171,20 @@ export async function ensureGitWorkspace(
     /* Offer initialization below. */
   }
   if (repository !== null) {
-    if ((await realpath(repository)) !== (await realpath(root)))
-      throw new StudentWorkspaceError("student.git.not-root", translator);
-    return;
+    const repositoryRoot = await realpath(repository);
+    const current = await realpath(root);
+    if (repositoryRoot === current) return;
+    await startedBelowRoot(current, repositoryRoot, translator, terminal);
+  } else {
+    const accepted = await select({
+      message: translator.t("student.git.confirm"),
+      choices: [
+        { name: translator.t("student.git.create"), value: true },
+        { name: translator.t("student.git.cancel"), value: false },
+      ],
+    });
+    if (!accepted) throw new StudentWorkspaceError("student.git.cancelled", translator);
   }
-  const accepted = await select({
-    message: translator.t("student.git.confirm"),
-    choices: [
-      { name: translator.t("student.git.create"), value: true },
-      { name: translator.t("student.git.cancel"), value: false },
-    ],
-  });
-  if (!accepted) throw new StudentWorkspaceError("student.git.cancelled", translator);
   await projectGit(root, ["init"]);
   try {
     await writeFile(join(root, ".gitignore"), "node_modules/\n.venv/\n.env\n.env.*\n.DS_Store\n", {
