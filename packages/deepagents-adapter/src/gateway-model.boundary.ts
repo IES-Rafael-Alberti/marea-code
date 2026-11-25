@@ -28,19 +28,27 @@ import {
 import * as z from "zod";
 
 import { ModelStreamError, type MareaGatewayModelOptions } from "./contracts.js";
+import { toInternalToolName, toPublicToolName } from "./tool-names.js";
 
 interface GatewayCallOptions extends BaseChatModelCallOptions {
   readonly tools?: readonly BindToolsInput[];
 }
 
-const INTERNAL_WRITE_TOOL_NAME = "marea_write_file";
-const PUBLIC_WRITE_TOOL_NAME = "write_file";
+function textArguments(args: Readonly<Record<string, unknown>>): Readonly<Record<string, string>> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(args)) {
+    if (value === null || value === undefined) continue;
+    result[key] = typeof value === "string" ? value : JSON.stringify(value);
+  }
+  return result;
+}
 
 const toolCallSchema = z
   .object({
     id: z.string().min(1),
     name: z.string().min(1),
-    args: z.record(z.string(), z.string()),
+    // History is replayed, never rejected: non-text values become text, as the provider does.
+    args: z.record(z.string(), z.unknown()).transform(textArguments),
   })
   .readonly();
 
@@ -249,20 +257,6 @@ function generationFor(
     });
   }
   return null;
-}
-
-function toPublicToolName(name: string): string {
-  if (name === "marea_edit_file") return "edit_file";
-  if (name === "marea_execute") return "execute";
-  if (name === "marea_delete") return "delete";
-  return name === INTERNAL_WRITE_TOOL_NAME ? PUBLIC_WRITE_TOOL_NAME : name;
-}
-
-function toInternalToolName(name: string): string {
-  if (name === "edit_file") return "marea_edit_file";
-  if (name === "execute") return "marea_execute";
-  if (name === "delete") return "marea_delete";
-  return name === PUBLIC_WRITE_TOOL_NAME ? INTERNAL_WRITE_TOOL_NAME : name;
 }
 
 function generation(message: AIMessageChunk, text: string): ChatGenerationChunk {

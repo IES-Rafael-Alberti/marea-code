@@ -39,6 +39,9 @@ export function createReadOnlyTools(
           return await observed(input);
         } catch (error) {
           if (error instanceof ReadOnlyToolInputError) return `Error: ${error.message}`;
+          // Invalid arguments are the model's to correct, never a reason to lose the turn.
+          if (error instanceof z.ZodError)
+            return `Error: invalid arguments (${error.issues.map((issue) => issue.message).join("; ")}).`;
           throw error;
         }
       },

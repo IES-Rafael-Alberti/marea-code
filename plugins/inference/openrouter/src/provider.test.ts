@@ -277,17 +277,57 @@ describe("OpenRouter inference provider", () => {
   });
 
   it.each([
-    toolCallChunk({ arguments: "{}" }),
-    toolCallChunk({ arguments: "{", id: "call", name: "write_file" }),
-    toolCallChunk({ arguments: '{"path":3}', id: "call", name: "write_file" }),
-    toolCallChunk({ id: "call", name: "write_file" }),
-  ])("rejects a malformed tool call", async (chunk) => {
-    await expectProviderError(
-      collect(
+    [toolCallChunk({ arguments: "{}" }), ["missing-name", "missing-id"]],
+    [toolCallChunk({ arguments: "{", id: "call", name: "write_file" }), ["malformed-arguments"]],
+    [
+      toolCallChunk({ arguments: '{"path":3}', id: "call", name: "write_file" }),
+      ["non-string-argument"],
+    ],
+  ] as const)(
+    "repairs a malformed tool call instead of failing the response",
+    async (chunk, causes) => {
+      const events = await collect(
         provider(new TestHttp(httpResponse(sse(chunk)))).stream(REQUEST, new TestCancellation()),
+      );
+      expect(events).toHaveLength(2);
+      expect(events[0]).toMatchObject({ type: "tool-call", repair: { causes } });
+      expect(events[1]).toEqual({ finishReason: "tool-call", type: "completed" });
+    },
+  );
+
+  it("emits charged usage before the tool calls of the same response", async () => {
+    const response = httpResponse(
+      sse(
+        toolCallChunk({ arguments: '{"pattern":"x"}', id: "call-1", name: "grep" }),
+        JSON.stringify({ choices: [], usage: { prompt_tokens: 20_681, completion_tokens: 296 } }),
       ),
+    );
+    await expect(
+      collect(provider(new TestHttp(response)).stream(REQUEST, new TestCancellation())),
+    ).resolves.toEqual([
+      { inputTokens: 20_681, outputTokens: 296, type: "usage" },
+      { arguments: { pattern: "x" }, callId: "call-1", name: "grep", type: "tool-call" },
+      { finishReason: "tool-call", type: "completed" },
+    ]);
+  });
+
+  it("reports usage even when the response then fails without a finish reason", async () => {
+    const response = httpResponse(
+      sse(JSON.stringify({ choices: [], usage: { prompt_tokens: 5, completion_tokens: 1 } })),
+    );
+    const seen: object[] = [];
+    await expectProviderError(
+      (async () => {
+        for await (const event of provider(new TestHttp(response)).stream(
+          REQUEST,
+          new TestCancellation(),
+        ))
+          seen.push(event);
+        return seen;
+      })(),
       { code: "invalid-response" },
     );
+    expect(seen).toEqual([{ inputTokens: 5, outputTokens: 1, type: "usage" }]);
   });
 
   it("preserves length as a normalized finish reason", async () => {

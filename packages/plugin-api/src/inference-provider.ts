@@ -89,6 +89,22 @@ export interface InferenceProviderRequest {
 
 export type InferenceFinishReason = "length" | "stop" | "tool-call";
 
+/** Why a provider adapter rewrote a malformed tool call instead of failing the whole response. */
+export type InferenceToolCallRepairCause =
+  | "non-string-argument"
+  | "malformed-arguments"
+  | "missing-id"
+  | "invalid-id"
+  | "missing-name"
+  | "invalid-name";
+
+/** The call as the model sent it, bounded, for operator diagnosis; never shown to students. */
+export interface InferenceToolCallRepair {
+  readonly causes: readonly InferenceToolCallRepairCause[];
+  readonly rawName: string | null;
+  readonly rawArguments: string;
+}
+
 export type InferenceProviderEvent =
   | { readonly type: "text-delta"; readonly text: string }
   | {
@@ -96,6 +112,7 @@ export type InferenceProviderEvent =
       readonly arguments: Readonly<Record<string, string>>;
       readonly callId: string;
       readonly name: string;
+      readonly repair?: InferenceToolCallRepair;
     }
   | {
       readonly type: "usage";

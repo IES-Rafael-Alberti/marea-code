@@ -1,6 +1,7 @@
 import { createQuestionChannel } from "./question-channel.js";
 import type { QuestionsRequest } from "./parity/questions.js";
 import { trackTurnOperation } from "./turn-failure.boundary.js";
+import { AutomaticRetries, withoutSettledRetry } from "./automatic-retry.js";
 import {
   finishTool,
   startTool,
@@ -91,6 +92,7 @@ export function createConversationController(
   let pendingResume: ConversationPendingTurn | null =
     options.initialTurn?.failure === undefined ? (options.initialTurn ?? null) : null;
   let pendingApproval: PendingApproval | null = null;
+  const automaticRetries = new AutomaticRetries(options.automaticRetries);
   let current = initialSnapshot(options.initialTurn);
   const questions = createQuestionChannel();
 
@@ -106,7 +108,7 @@ export function createConversationController(
 
   const update = (snapshot: ConversationSnapshot): boolean => {
     if (snapshot.status !== "questions") questions.cancel();
-    current = Object.freeze(withoutStaleQuestions(snapshot));
+    current = Object.freeze(withoutStaleQuestions(withoutSettledRetry(snapshot)));
     options.view.render(current);
     return true;
   };
@@ -157,11 +159,34 @@ export function createConversationController(
     settleTurn(failed);
   };
 
+  /**
+   * The same resume `/retry` performs, started by Marea itself: the failed message continues
+   * from its checkpoint and keeps the text already shown. Cancellation never reaches here, and
+   * a turn that is waiting for the student's decision is not retried behind their back.
+   */
+  const retryAutomatically = (
+    failed: ActiveTurn,
+    failure: TurnFailureInfo | undefined,
+  ): boolean => {
+    if (
+      failed.phase !== "active" ||
+      exitRequested ||
+      pendingApproval?.messageId === failed.messageId
+    )
+      return false;
+    const attempt = automaticRetries.next(failure);
+    if (attempt === null) return false;
+    // The retry installs a new attempt; the failed one is simply dropped.
+    return runTurn(failed.text, failed.messageId, false, attempt);
+  };
+
   const runTurn = (
     text: string,
     messageId: ConversationMessageId,
     appendStudent: boolean,
+    automaticRetry?: number,
   ): boolean => {
+    if (automaticRetry === undefined) automaticRetries.reset();
     const activeTurn: ActiveTurn = {
       abortController: new AbortController(),
       attemptId: nextAttemptId(),
@@ -177,7 +202,12 @@ export function createConversationController(
     const messages = appendStudent
       ? appendMessage(current.messages, { author: "student", text })
       : current.messages;
-    update({ approval: null, messages, status: "streaming" });
+    update({
+      approval: null,
+      automaticRetry,
+      messages,
+      status: "streaming",
+    });
 
     let operation: Promise<void>;
     try {
@@ -198,6 +228,7 @@ export function createConversationController(
       },
       (failure) => {
         activeTurn.settled = true;
+        if (retryAutomatically(activeTurn, failure)) return;
         markFailed(activeTurn, failure);
       },
     );

@@ -21,6 +21,7 @@ interface ConversationSessionOptions {
   readonly initialTurn?: ConversationPendingTurn | undefined;
   readonly nextMessageId?: (() => string) | undefined;
   readonly nextAttemptId?: (() => ConversationAttemptId) | undefined;
+  readonly automaticRetries?: number | undefined;
   readonly setExitCode: (code: number) => void;
   readonly signals: SignalSource;
   readonly view: ConversationView;
@@ -45,6 +46,7 @@ function initializeController(
 ): ConversationController {
   try {
     return createConversationController({
+      automaticRetries: options.automaticRetries,
       initialTurn: options.initialTurn,
       onExit,
       onMessage: options.onMessage,

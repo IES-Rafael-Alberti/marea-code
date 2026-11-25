@@ -5,6 +5,7 @@ import type { WorkspaceBackend } from "@marea/workspace-backend";
 import * as z from "zod";
 
 import { readToolPage } from "./read-tool-page.js";
+import { withCorrectableErrors } from "./read-tool-errors.js";
 
 export interface RuntimeReadToolsOptions {
   readonly snapshot: StudentRunSnapshot;
@@ -86,5 +87,5 @@ export function createRuntimeReadTools(options: RuntimeReadToolsOptions): readon
           : allowed("grep") && allowed("read_file"),
       ),
     );
-  return Object.freeze(tools);
+  return Object.freeze(tools.map(withCorrectableErrors));
 }

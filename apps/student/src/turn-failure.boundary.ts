@@ -92,7 +92,8 @@ function classifyRecognized(recognized: RecognizedFailure, prefix: string): Turn
             ? "request-failed"
             : "provider-interrupted",
       recoverable: true,
-      retryable: recognized.streamRetryable,
+      // A response the model sent in a shape Marea could not read may be fine on the next try.
+      retryable: recognized.streamRetryable || recognized.streamCode === "invalid-response",
     };
   }
   // A run the server refuses (closed by the teacher or its leases revoked) cannot be retried

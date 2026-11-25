@@ -3,7 +3,8 @@ import { expect, it } from "vitest";
 import { FixtureAgent, createFixtureController } from "./student.fixture.js";
 import { TurnAttemptFailed } from "./contracts.js";
 
-it.each(["deadline-exceeded", "budget-exhausted", "invalid-response"])(
+// An unreadable model response is retryable; see the turn-failure classification tests.
+it.each(["deadline-exceeded", "budget-exhausted"])(
   "persists %s and refuses a direct retry after restart",
   async (code) => {
     const agent = new FixtureAgent();
@@ -23,7 +24,7 @@ it.each(["deadline-exceeded", "budget-exhausted", "invalid-response"])(
       code,
       detail: "No retry",
       hasPrefix: true,
-      kind: code === "invalid-response" ? "request-failed" : code,
+      kind: code,
       recoverable: true,
       retryable: false,
     };

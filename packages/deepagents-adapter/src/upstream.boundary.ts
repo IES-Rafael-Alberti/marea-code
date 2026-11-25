@@ -36,6 +36,7 @@ import { resolveCheckpoint } from "./checkpoint.boundary.js";
 import { MareaGatewayChatModel } from "./gateway-model.boundary.js";
 import { createReadOnlyTools } from "./read-tools.boundary.js";
 import { createTurnInput } from "./turn-input.boundary.js";
+import { createUnknownToolMiddleware } from "./unknown-tool.boundary.js";
 import { type ToolLifecycleEvent } from "./tool-events.boundary.js";
 import {
   cancelTurnWith,
@@ -108,6 +109,12 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     reportToolEvent,
     gate?.shouldBlock,
   );
+  const tools = [
+    ...(options.readOnly === true ? [] : controlled.tools),
+    ...createQuestionTools(options.questions === true && options.readOnly !== true),
+    ...createReadOnlyTools(options.readOnlyTools ?? [], options.approvalTool.name, reportToolEvent),
+  ];
+  const unknownTool = createUnknownToolMiddleware(() => tools.map((entry) => entry.name));
   const agent = createDeepAgent({
     model,
     middleware:
@@ -125,19 +132,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
                   ),
                 }),
             }),
+            unknownTool,
           ]
-        : gate === null
-          ? []
-          : [gate.middleware],
-    tools: [
-      ...(options.readOnly === true ? [] : controlled.tools),
-      ...createQuestionTools(options.questions === true && options.readOnly !== true),
-      ...createReadOnlyTools(
-        options.readOnlyTools ?? [],
-        options.approvalTool.name,
-        reportToolEvent,
-      ),
-    ],
+        : [unknownTool, ...(gate === null ? [] : [gate.middleware])],
+    tools,
     systemPrompt: options.systemPrompt,
     checkpointer,
     subagents: [],

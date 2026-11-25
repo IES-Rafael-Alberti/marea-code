@@ -428,3 +428,22 @@ it("shows generic thinking before text, during internal work and after waiting",
   presentation.sync({ ...ready, status: "ready", activity: "thinking" });
   expect(presentation.snapshot().status.activity).toBe("ready");
 });
+
+it("shows one discreet notice while Marea retries on its own and removes it when the turn ends", () => {
+  const dispatch = vi.fn();
+  const view = createPresentation(context, copy, dispatch);
+  const count = () =>
+    view
+      .snapshot()
+      .transcript.filter((entry) => entry.kind === "notice" && entry.text === copy.notices.retrying)
+      .length;
+  view.sync({ approval: null, messages: [], status: "streaming" });
+  expect(count()).toBe(0);
+  view.sync({ approval: null, messages: [], status: "streaming", automaticRetry: 1 });
+  view.sync({ approval: null, messages: [], status: "streaming", automaticRetry: 2 });
+  expect(count()).toBe(1);
+  expect(view.snapshot().transcript.some((entry) => entry.kind === "error")).toBe(false);
+  view.sync({ approval: null, messages: [], status: "ready" });
+  expect(count()).toBe(0);
+  expect(dispatch).not.toHaveBeenCalled();
+});

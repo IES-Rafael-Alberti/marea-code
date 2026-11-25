@@ -87,6 +87,8 @@ export interface ConversationSnapshot {
   /** Classified failure while status is "failed"; absent otherwise. */
   readonly failure?: TurnFailureInfo | undefined;
   readonly messages: readonly ConversationMessage[];
+  /** Set while an automatic retry of a recoverable failure is streaming (1 or 2). */
+  readonly automaticRetry?: number | undefined;
   readonly status: ConversationStatus;
   /** Tool rows of the current turn, in execution order. */
   readonly tools?: readonly ConversationToolCall[];
@@ -189,6 +191,8 @@ export interface ConversationControllerOptions {
   readonly initialTurn?: ConversationPendingTurn | undefined;
   readonly nextMessageId?: (() => ConversationMessageId) | undefined;
   readonly nextAttemptId?: (() => ConversationAttemptId) | undefined;
+  /** Automatic retries of a recoverable failure before it is shown; defaults to two. */
+  readonly automaticRetries?: number | undefined;
   readonly view: ConversationView;
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { snapshot } from "./deepagents-runtime.fixture.js";
+import { ReadOnlyToolInputError } from "@marea/deepagents-adapter";
 import { createRuntimeReadTools } from "./runtime-read-tools.js";
 import { readToolPage } from "./read-tool-page.js";
 
@@ -99,14 +100,16 @@ describe("student controlled read tools", () => {
   it("rejects invalid and extra arguments before backend access", async () => {
     const options = fixture();
     const tools = createRuntimeReadTools(options);
-    expect(() => tools[0]?.execute({ path: "" })).toThrow();
-    expect(() => tools[0]?.execute({ path: "file", content: "write" })).toThrow();
-    await expect(tools[1]?.execute({})).rejects.toThrow();
-    expect(() => tools[2]?.execute({ path: "SKILL.md" })).toThrow();
-    expect(() => tools[2]?.execute({ skillId: "", path: "SKILL.md" })).toThrow();
-    expect(() =>
-      tools[2]?.execute({ skillId: "marea/testing", path: "SKILL.md", execute: "true" }),
-    ).toThrow();
+    // Invalid arguments are answered to the model as a tool error, never a failed turn.
+    for (const [index, input] of [
+      [0, { path: "" }],
+      [0, { path: "file", content: "write" }],
+      [1, {}],
+      [2, { path: "SKILL.md" }],
+      [2, { skillId: "", path: "SKILL.md" }],
+      [2, { skillId: "marea/testing", path: "SKILL.md", execute: "true" }],
+    ] as const)
+      await expect(tools[index]?.execute(input)).rejects.toBeInstanceOf(ReadOnlyToolInputError);
     expect(options.workspace.readText).not.toHaveBeenCalled();
     expect(options.workspace.list).not.toHaveBeenCalled();
     expect(options.skills.read).not.toHaveBeenCalled();

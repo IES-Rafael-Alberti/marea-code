@@ -271,7 +271,7 @@ describe("compiled marea OpenTUI acceptance", { concurrent: false }, () => {
     ]);
   }, 90_000);
 
-  it("finishes an already-applied write through fresh executable startup without replay", async () => {
+  it("finishes an already-applied write by retrying automatically, without replay", async () => {
     const { executablePath, first, location, value } = await prepareCompiledJourney();
     value.http.loseNextResponse({
       matches: (body) => body.includes('"eventType":"workspace-edit"'),
@@ -292,21 +292,17 @@ describe("compiled marea OpenTUI acceptance", { concurrent: false }, () => {
     const runsBeforeRestart = value.database.readAll("SELECT id FROM marea_runs");
     expect(runsBeforeRestart).toHaveLength(1);
 
-    await first.waitForText("Retry", 15_000);
+    // The lost response fails the turn; Marea retries it from its checkpoint on its own.
+    await first.waitForText("saved.", 30_000);
+    await waitForStoredEvent(value, "assistant-message");
+    expect(first.transcript()).toContain("Retrying the interrupted turn");
     await crash(first);
     const restarted = launchMarea(value, location, executablePath);
     await restarted.waitForText("Marea Code", 15_000);
-    await restarted.waitForText("Retry", 15_000);
-    expect(value.provider.requests).toHaveLength(1);
-    restarted.write("/retry\r");
-    await restarted.waitForText("saved.", 15_000);
-    await waitForStoredEvent(value, "assistant-message");
 
+    // The completed turn is not resumed again after a fresh start.
     expect(restarted.transcript()).not.toContain("Authorize");
-    restarted.write("\u001b[5~\u001b[5~\u001b[5~");
-    await restarted.waitForText("Please prepare the tide notes.");
-    expect(restarted.transcript()).toContain("Please prepare the tide notes.");
-    expect(restarted.transcript()).toContain("I will prepare the notes.");
+    expect(restarted.transcript()).not.toContain("Retry");
     const stateDirectory = await studentStateDirectory(location);
     const ledger = JSON.parse(
       await readFile(join(stateDirectory, "workspace-effects.json"), "utf8"),
@@ -316,6 +312,9 @@ describe("compiled marea OpenTUI acceptance", { concurrent: false }, () => {
     assertPublicWriteBoundary(value);
     assertRecoveredTurn(value, beforeRestart, identity);
     expect(value.database.readAll("SELECT id FROM marea_runs")).toEqual(runsBeforeRestart);
+    // Quit only once the fresh session is ready for input.
+    await restarted.waitForText("Write to Marea", 15_000);
+    await restarted.waitForQuiet(500);
     await closeWithQuit(restarted);
   }, 90_000);
 });

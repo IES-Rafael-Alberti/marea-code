@@ -318,7 +318,8 @@ it.each([
     detail: "The request exceeds the configured inference limits.",
     hasPrefix: true,
     recoverable: true,
-    retryable: false,
+    // Only an unreadable response is worth another attempt; the others repeat deterministically.
+    retryable: code === "invalid-response",
   });
   const persisted = new StoredTurnFailure(failure);
   expect(persisted.name).toBe("StoredTurnFailure");

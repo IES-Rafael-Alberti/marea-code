@@ -123,3 +123,102 @@ describe("provider stream boundary", () => {
     ]);
   });
 });
+
+describe("automatic provider retries", () => {
+  function scripted(...attempts: readonly (readonly InferenceProviderEvent[] | Error)[]) {
+    let calls = 0;
+    const provider: InferenceProvider = {
+      async *stream(): AsyncIterable<InferenceProviderEvent> {
+        await Promise.resolve();
+        const attempt = attempts[calls++] ?? [];
+        if (attempt instanceof Error) {
+          yield* [];
+          throw attempt;
+        }
+        yield* attempt;
+      },
+    };
+    return { provider, calls: () => calls };
+  }
+  const invalid = () =>
+    new InferenceProviderError({
+      code: "invalid-response",
+      message: "The inference provider returned an invalid tool call.",
+      retryable: false,
+    });
+  const run = (provider: InferenceProvider, waits: string[] = []) =>
+    collect(
+      providerStream(
+        request,
+        { provider, upstreamModel: "private-model" },
+        {
+          wait: (error) => {
+            waits.push(error.code);
+            return Promise.resolve();
+          },
+        },
+        new AbortController().signal,
+      ),
+    );
+
+  it("retries an unreadable response, even after usage, and returns the next valid one", async () => {
+    const usage: InferenceProviderEvent = { type: "usage", inputTokens: 3, outputTokens: 1 };
+    const failingAfterUsage: InferenceProvider = {
+      async *stream(): AsyncIterable<InferenceProviderEvent> {
+        await Promise.resolve();
+        yield usage;
+        throw invalid();
+      },
+    };
+    let calls = 0;
+    const provider: InferenceProvider = {
+      stream: (input, cancellation) => {
+        calls += 1;
+        return calls === 1
+          ? failingAfterUsage.stream(input, cancellation)
+          : scripted([{ text: "ok", type: "text-delta" }]).provider.stream(input, cancellation);
+      },
+    };
+    const waits: string[] = [];
+    const results = await run(provider, waits);
+    expect(waits).toEqual(["invalid-response"]);
+    expect(results).toEqual([
+      { event: usage, type: "event" },
+      { event: { text: "ok", type: "text-delta" }, type: "event" },
+    ]);
+  });
+
+  it("gives up after the first attempt and two retries", async () => {
+    const subject = scripted(invalid(), invalid(), invalid(), [
+      { text: "late", type: "text-delta" },
+    ]);
+    const waits: string[] = [];
+    const results = await run(subject.provider, waits);
+    expect(subject.calls()).toBe(3);
+    expect(waits).toHaveLength(2);
+    expect(results).toEqual([
+      {
+        failure: {
+          code: "invalid-response",
+          message: "The inference provider returned an invalid tool call.",
+          retryable: false,
+        },
+        type: "failure",
+      },
+    ]);
+  });
+
+  it("never retries once text has reached the client", async () => {
+    const partial: InferenceProvider = {
+      async *stream(): AsyncIterable<InferenceProviderEvent> {
+        await Promise.resolve();
+        yield { text: "partial", type: "text-delta" };
+        throw invalid();
+      },
+    };
+    const waits: string[] = [];
+    const results = await run(partial, waits);
+    expect(waits).toEqual([]);
+    expect(results.at(-1)).toMatchObject({ type: "failure" });
+  });
+});

@@ -32,6 +32,8 @@ export function createConversationControllerTarget(
   };
   return {
     controller: createConversationController({
+      // Manual-retry behavior is tested on its own; automatic retries have dedicated tests.
+      automaticRetries: 0,
       initialTurn,
       onExit,
       onMessage,

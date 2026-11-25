@@ -228,6 +228,7 @@ describe("model gateway service", () => {
         new ScriptedProvider([
           { events: [], error: providerError("unavailable", true) },
           { events: [], error: providerError("unavailable", true) },
+          { events: [], error: providerError("unavailable", true) },
         ]),
       ),
     );
