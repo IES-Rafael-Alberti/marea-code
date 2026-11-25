@@ -153,10 +153,19 @@ function storageConfigurationOf(root: string, operations: OperationsConfig): Sto
   );
 }
 
-/** The same verified recovery bundle an operator backup creates, taken under the host's own lock. */
-async function startupBackup(owner: OwnedInstallation, operations: OperationsConfig) {
+/**
+ * The same verified recovery bundle an operator backup creates, taken under the host's own lock.
+ * The lock holds the physically canonical root, which on Windows expands short names and
+ * junctions; `operations.json` paths are written against the root as configured, so the backup
+ * uses that root, exactly as the host's own storage configuration does.
+ */
+async function startupBackup(
+  owner: OwnedInstallation,
+  operations: OperationsConfig,
+  configuredRoot: string,
+) {
   const application = createOperationsApplication(
-    owner.capability,
+    { ...owner.capability, installationRoot: configuredRoot },
     operations,
     systemClock.now.bind(systemClock),
   );
@@ -201,7 +210,7 @@ function hostPorts(
       // Under the installation lock and before storage opens: one schema remains for normal startup.
       const version = await migrateSchemaOnStartup({
         databasePath: operator.databasePath,
-        backup: () => startupBackup(required(state.owner), operations),
+        backup: () => startupBackup(required(state.owner), operations, root),
         report: reportMigration,
       });
       const current = version === currentSqliteSchema().version;
