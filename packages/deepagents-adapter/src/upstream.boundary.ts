@@ -11,7 +11,6 @@ import { type BaseMessageChunk } from "@langchain/core/messages";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { Command } from "@langchain/langgraph";
 import { createDeepAgent } from "deepagents";
-import { createMiddleware } from "langchain";
 import * as z from "zod";
 
 import {
@@ -36,7 +35,7 @@ import {
 import { resolveCheckpoint } from "./checkpoint.boundary.js";
 import { MareaGatewayChatModel } from "./gateway-model.boundary.js";
 import { registerMareaProfile } from "./harness-profile.js";
-import { createReadOnlyTools } from "./read-tools.boundary.js";
+import { createReadOnlyStartupMiddleware, createReadOnlyTools } from "./read-tools.boundary.js";
 import { createTurnInput } from "./turn-input.boundary.js";
 import { createUnknownToolMiddleware } from "./unknown-tool.boundary.js";
 import { createBatchRejections } from "./batch-rejections.boundary.js";
@@ -111,10 +110,11 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     reportToolEvent,
     gate?.shouldBlock,
   );
+  const readers = options.readOnlyTools ?? [];
   const tools = [
     ...(options.readOnly === true ? [] : controlled.tools),
     ...createQuestionTools(options.questions === true && options.readOnly !== true),
-    ...createReadOnlyTools(options.readOnlyTools ?? [], options.approvalTool.name, reportToolEvent),
+    ...createReadOnlyTools(readers, options.approvalTool.name, reportToolEvent),
   ];
   const unknownTool = createUnknownToolMiddleware(() => tools.map((entry) => entry.name));
   const batchRejections = createBatchRejections();
@@ -124,21 +124,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       // Same name as DeepAgents' summarization, so it replaces that default in place.
       createCompactionMiddleware(),
       ...(options.readOnly === true
-        ? [
-            createMiddleware({
-              name: "MareaReadOnlyStartup",
-              wrapModelCall: (request, handler) =>
-                handler({
-                  ...request,
-                  tools: request.tools.filter(
-                    (candidate) =>
-                      options.readOnlyTools?.some((reader) => reader.name === candidate.name) ===
-                      true,
-                  ),
-                }),
-            }),
-            unknownTool,
-          ]
+        ? [createReadOnlyStartupMiddleware(readers), unknownTool]
         : [unknownTool, batchRejections.middleware, ...(gate === null ? [] : [gate.middleware])]),
     ],
     tools,

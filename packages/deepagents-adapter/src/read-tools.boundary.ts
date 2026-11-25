@@ -1,4 +1,4 @@
-import { tool } from "langchain";
+import { createMiddleware, tool } from "langchain";
 import * as z from "zod";
 
 import { parameterSchema } from "./tool-parameters.boundary.js";
@@ -55,5 +55,19 @@ export function createReadOnlyTools(
         schema: parameterSchema(name),
       },
     );
+  });
+}
+
+/** Tutor startup offers the model only the read tools; nothing else is bound to that call. */
+export function createReadOnlyStartupMiddleware(readers: readonly ReadOnlyTool[]) {
+  return createMiddleware({
+    name: "MareaReadOnlyStartup",
+    wrapModelCall: (request, handler) =>
+      handler({
+        ...request,
+        tools: request.tools.filter((candidate) =>
+          readers.some((reader) => reader.name === candidate.name),
+        ),
+      }),
   });
 }
