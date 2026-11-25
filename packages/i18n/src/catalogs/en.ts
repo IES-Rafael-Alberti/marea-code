@@ -77,7 +77,13 @@ const englishCatalog = {
     "Marea needs a Git repository to record your changes and show them to your teacher. Create one in this folder?",
   "student.git.create": "Yes, create repository",
   "student.git.missing": "Marea needs Git to record your work. Install Git and start Marea again.",
-  "student.git.not-root": "Start Marea from the repository root so it records only this project.",
+  "student.git.not-root":
+    "Marea must run from your project's root folder. You are in {{current}}, but the Git repository starts at {{root}}.",
+  "student.git.not-root-home":
+    "That repository covers your home folder; it was probably created by mistake.",
+  "student.git.not-root-instruction": 'Run cd "{{root}}" and start marea again.',
+  "student.git.not-root-exit": "Exit",
+  "student.git.not-root-create": "Create a new repository in {{current}}",
   "student.conversation.approve": "Y approve",
   "student.conversation.input-placeholder": "Write a message",
   "student.conversation.marea-label": "Marea",
