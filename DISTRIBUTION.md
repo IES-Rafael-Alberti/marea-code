@@ -1,8 +1,20 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.46`.
+The commands below target `0.1.0-preview.47`.
 
-This preview fixes the failures seen in the classroom test of preview 43: a turn no longer
+This preview helps students who start Marea in the wrong folder and adds a guide for students.
+It changes only the student client: **students update the client** (`marea update`). The
+server, protocol 0.1 and database schema 15 are the same as in preview 46.
+
+- Starting Marea in a subfolder of a Git repository shows both folders. At a terminal it offers
+  to leave (the default, with the `cd` command to run) or to create a new repository in the
+  current folder. Without a terminal it only explains and creates nothing. When the repository
+  above is the home folder, Marea says it was probably created by mistake.
+- [STUDENTS.md](STUDENTS.md) explains `marea logout`, the project root, several approvals in one
+  turn, the `/usage` line and what to do after an error.
+
+Preview 46, the previous published release, fixed the failures seen in the classroom test of
+preview 43: a turn no longer
 breaks when the model sends several actions or a malformed tool call, and the teacher can now
 see why a turn failed. The protocol remains 0.1. The new fields only travel when the server
 announces the new capabilities `marea.runs.turn-diagnostics` and `marea.models.context-window`.
@@ -174,13 +186,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.46/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.47/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.46/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.47/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -320,13 +332,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.46/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.47/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.46/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.47/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Use **PowerShell**, identified by a prompt such as `PS C:\Users\david>`, for the
@@ -486,27 +498,22 @@ the empty root allows the same installation command to run again. Do not delete
 
 ## Test this preview in a classroom
 
-1. Update the teacher server (`marea-teacher update`) and start it. Then update a Windows
-   student PC (`marea update`) and check that `marea --version` shows `0.1.0-preview.46`.
-2. Ask the tutor to run two commands at once, for example "lista los archivos y entra en la
-   carpeta src". Confirm that Marea asks «Acción 1 de 2», approve one, reject another
-   and check that the approved command runs. Repeat with **Autorizar todas**.
-3. Ask the tutor to search the project for a path that does not exist and confirm the turn
-   finishes.
-4. In the dashboard, use **End session** on a student who has disconnected and confirm it
-   succeeds, or shows a reason and a `requestId`.
-5. Type `/usage` on the student PC, run a turn and check the token line; restart Marea and
-   confirm it keeps the totals.
-6. If any turn fails, open the session in the dashboard and copy its technical detail.
+1. Update a Windows student PC (`marea update`) and check that `marea --version` shows
+   `0.1.0-preview.47`. The teacher server stays on preview 46.
+2. Run `marea` from a subfolder of a project and confirm both folders appear. Choose **Salir**,
+   run the `cd` command shown and start `marea` again.
+3. Run `marea logout`, then `marea`, and confirm it asks how to sign in.
+4. Check the previous preview's steps still pass: several approvals in one turn, `/usage`, and
+   **End session** in the dashboard.
 
-Report back: the preview and OS, which step failed, and the copied technical detail or any
-diagnostic code shown by the client or the dashboard (do not send student passwords or API keys).
+Report back: the preview and OS, which step failed, and any diagnostic code shown by the client
+or the dashboard (do not send student passwords or API keys).
 
 ## Publish a version
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.46`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.47`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
