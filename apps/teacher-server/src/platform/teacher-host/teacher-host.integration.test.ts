@@ -6,7 +6,7 @@ import {
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -78,8 +78,8 @@ function status(f: ReturnType<typeof installation>): unknown {
   return JSON.parse(readFileSync(f.host.statusPath, "utf8"));
 }
 
-// Real host starts on Windows runners take up to 20 seconds.
-vi.setConfig({ testTimeout: 60_000 });
+// Real host starts on Windows runners take up to 70 seconds for one case.
+vi.setConfig({ testTimeout: 180_000 });
 
 describe("production teacher host", () => {
   it("migrates an older activated schema at startup after a backup, then serves", async () => {
@@ -98,7 +98,10 @@ describe("production teacher host", () => {
         finalSchema: current,
       },
     ]);
-    expect(JSON.stringify(events[0])).toContain(join(f.root, "backups", "startup-migration-"));
+    // The bundle is published in the installation's backups, whichever form its path takes.
+    const backupPath = (events[0] as { readonly backupPath: string }).backupPath;
+    expect(basename(backupPath)).toMatch(/^startup-migration-/u);
+    expect(readdirSync(join(f.root, "backups"))).toEqual([basename(backupPath)]);
     await host.stop();
     expectConnectionsClosed();
     // The next start of the same binary finds nothing to migrate and takes no new backup.
