@@ -125,12 +125,15 @@ export function parameterSchema(tool: string): z.ZodType<Readonly<Record<string,
   ) as unknown as z.ZodType<Readonly<Record<string, string>>>;
 }
 
-function renamed(tool: string, direction: "public" | "internal"): (name: string) => string {
-  const pairs = (PARAMETERS.get(tool) ?? []).flatMap((parameter) =>
+function renamed(tool: string, toInternal: boolean): (name: string) => string {
+  const parameters = PARAMETERS.get(tool);
+  if (parameters === undefined) return (name) => name;
+  const pairs = parameters.flatMap((parameter) =>
+    // Stryker disable next-line ConditionalExpression: a pair without a public name maps to nothing, and an unmapped name is kept.
     parameter.publicName === undefined ? [] : [[parameter.key, parameter.publicName] as const],
   );
   const map = new Map(
-    direction === "public" ? pairs : pairs.map(([key, publicName]) => [publicName, key] as const),
+    toInternal ? pairs.map(([key, publicName]) => [publicName, key] as const) : pairs,
   );
   return (name) => map.get(name) ?? name;
 }
@@ -138,9 +141,9 @@ function renamed(tool: string, direction: "public" | "internal"): (name: string)
 function renameArguments(
   tool: string,
   args: Readonly<Record<string, string>>,
-  direction: "public" | "internal",
+  toInternal: boolean,
 ): Readonly<Record<string, string>> {
-  const rename = renamed(tool, direction);
+  const rename = renamed(tool, toInternal);
   const result: Record<string, string> = {};
   for (const [name, value] of Object.entries(args)) {
     const target = rename(name);
@@ -155,7 +158,7 @@ export function toInternalArguments(
   tool: string,
   args: Readonly<Record<string, string>>,
 ): Readonly<Record<string, string>> {
-  return renameArguments(tool, args, "internal");
+  return renameArguments(tool, args, true);
 }
 
 /** Recorded arguments as the model knows them. */
@@ -163,7 +166,7 @@ export function toPublicArguments(
   tool: string,
   args: Readonly<Record<string, string>>,
 ): Readonly<Record<string, string>> {
-  return renameArguments(tool, args, "public");
+  return renameArguments(tool, args, false);
 }
 
 /** The JSON schema the model sees: the same properties under their public names. */
@@ -171,7 +174,7 @@ export function toPublicInputSchema(
   tool: string,
   schema: Readonly<Record<string, unknown>>,
 ): Readonly<Record<string, unknown>> {
-  const rename = renamed(tool, "public");
+  const rename = renamed(tool, false);
   const properties = schema.properties;
   const required = schema.required;
   return {
@@ -185,9 +188,8 @@ export function toPublicInputSchema(
       : {}),
     ...(Array.isArray(required)
       ? {
-          required: (required as readonly unknown[]).map((name) =>
-            typeof name === "string" ? rename(name) : name,
-          ),
+          // A non-text entry names no parameter, so renaming keeps it as it is.
+          required: (required as readonly string[]).map(rename),
         }
       : {}),
   };

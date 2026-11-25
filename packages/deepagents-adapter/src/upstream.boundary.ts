@@ -140,6 +140,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     systemPrompt: options.systemPrompt,
     checkpointer,
     subagents: [],
+    // Stryker disable next-line all: the unknown-tool middleware answers every built-in call first; this denial is defense in depth.
     permissions: [{ operations: ["read", "write"], paths: ["/**"], mode: "deny" }],
     interruptOn:
       options.readOnly === true
