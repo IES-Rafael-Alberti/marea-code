@@ -133,10 +133,13 @@ it("sends no diagnostic when the client records none, even to a server that stor
   await fixture.controller.start("Synthetic project");
   await expect(
     fixture.controller.sendMessage("message:1", "Busca", new AbortController().signal),
-  ).rejects.toThrow();
-  expect(
-    [...fixture.server.events.values()].some((event) => event.eventType === "turn-diagnostic"),
-  ).toBe(false);
+  ).rejects.toMatchObject({ cause: { streamCode: "invalid-response" } });
+  const recorded = [
+    ...fixture.server.events.values(),
+    ...(await fixture.localSession.pendingEvents(1_000)),
+  ];
+  expect(recorded.some((event) => event.eventType === "turn-failed")).toBe(true);
+  expect(recorded.some((event) => event.eventType === "turn-diagnostic")).toBe(false);
 });
 
 describe("diagnostics without every optional source", () => {
