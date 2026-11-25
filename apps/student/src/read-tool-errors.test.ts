@@ -44,6 +44,11 @@ describe("correctable read-tool errors", () => {
     await expect(result).rejects.toThrow(
       /^Invalid arguments \(query: .+; .+\)\. Check the parameters in the tool description\.$/u,
     );
+    const nested = z.object({ range: z.object({ end: z.string() }) }).safeParse({ range: {} });
+    if (nested.success) throw new Error("expected invalid input");
+    await expect(failing(nested.error).execute({})).rejects.toThrow(
+      /^Invalid arguments \(range\.end: /u,
+    );
     const root = z.string().safeParse(1);
     if (root.success) throw new Error("expected invalid input");
     await expect(failing(root.error).execute({})).rejects.toThrow(
