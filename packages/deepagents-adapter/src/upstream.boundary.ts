@@ -33,7 +33,7 @@ import {
   parseApprovalEvent,
 } from "./approval-state.boundary.js";
 import { resolveCheckpoint } from "./checkpoint.boundary.js";
-import { MareaGatewayChatModel } from "./gateway-model.boundary.js";
+import { GATEWAY_MODEL_PROFILE_KEY, MareaGatewayChatModel } from "./gateway-model.boundary.js";
 import { createReadOnlyTools } from "./read-tools.boundary.js";
 import { createTurnInput } from "./turn-input.boundary.js";
 import { createUnknownToolMiddleware } from "./unknown-tool.boundary.js";
@@ -61,7 +61,8 @@ interface UpstreamRun {
   readonly output: PromiseLike<unknown>;
 }
 
-const PROFILE_KEY = "openai:marea";
+/** The gateway model's own key, and the key of adapter test models that present as OpenAI. */
+const PROFILE_KEYS = [GATEWAY_MODEL_PROFILE_KEY, "openai:marea"] as const;
 const modelRegistry = new WeakMap<AgentModel, BaseLanguageModel<BaseMessageChunk>>();
 const diagnosticCauseRegistry = new WeakMap<AgentAdapterError, DiagnosticCause>();
 const sessionIdSchema = z
@@ -139,6 +140,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     systemPrompt: options.systemPrompt,
     checkpointer,
     subagents: [],
+    // Stryker disable next-line all: the unknown-tool middleware answers every built-in call first; this denial is defense in depth.
     permissions: [{ operations: ["read", "write"], paths: ["/**"], mode: "deny" }],
     interruptOn:
       options.readOnly === true
@@ -229,10 +231,11 @@ export function normalizeDiagnosticCause(input: unknown): DiagnosticCause {
 }
 
 function registerMareaProfile(): void {
-  registerHarnessProfile(PROFILE_KEY, {
-    excludedTools: ["task"],
-    generalPurposeSubagent: { enabled: false },
-  });
+  for (const key of PROFILE_KEYS)
+    registerHarnessProfile(key, {
+      excludedTools: ["task"],
+      generalPurposeSubagent: { enabled: false },
+    });
 }
 
 function streamConfig(sessionId: string, messageId: string, signal: AbortSignal) {

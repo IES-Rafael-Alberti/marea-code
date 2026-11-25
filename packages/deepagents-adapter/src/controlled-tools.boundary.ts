@@ -1,5 +1,6 @@
 import { tool, type WhenPredicate } from "langchain";
-import * as z from "zod";
+
+import { parameterSchema } from "./tool-parameters.boundary.js";
 import { AgentAdapterError, type ApprovalTool } from "./contracts.js";
 import { observeExecution, type ToolLifecycleEvent } from "./tool-events.boundary.js";
 import { QUESTION_TOOL_NAME } from "./questions.boundary.js";
@@ -24,7 +25,7 @@ export function createControlledTools(
       {
         name: effect.name,
         description: effect.description,
-        schema: z.record(z.string(), z.string()),
+        schema: parameterSchema(effect.name),
       },
     );
   });

@@ -64,13 +64,20 @@ it.each(["edit_file", "execute", "delete"])(
     expect(gateway.requests[1]?.messages).toContainEqual(
       expect.objectContaining({
         role: "assistant",
-        toolCalls: [{ tool: name, callId: "call:reviewed", arguments: { path: "main.ts" } }],
+        // The model's synonym `path` is replayed under the standard parameter name.
+        toolCalls: [
+          {
+            tool: name,
+            callId: "call:reviewed",
+            arguments: name === "execute" ? { path: "main.ts" } : { file_path: "main.ts" },
+          },
+        ],
       }),
     );
   },
 );
 
-it("keeps controlled readers whose names have no public alias", async () => {
+it("presents a controlled reader under its standard public name", async () => {
   const gateway = new ScriptedGateway(textResponse("read"));
   const model = new MareaGatewayChatModel({ gateway, nextRequestId: requestIds() });
   const reader = tool(() => Promise.resolve("contents"), {
@@ -80,7 +87,7 @@ it("keeps controlled readers whose names have no public alias", async () => {
   });
   await model.bindTools([reader]).invoke([new HumanMessage("Read")]);
   expect(gateway.requests[0]?.tools).toMatchObject([
-    { name: "marea_read_project", description: "Controlled reader" },
+    { name: "read_file", description: "Controlled reader" },
   ]);
   expect(gateway.requests[0]?.tools).toHaveLength(1);
 });

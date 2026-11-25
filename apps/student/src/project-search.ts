@@ -87,13 +87,13 @@ export function projectSearchTools(workspace: Reader): readonly ReadOnlyTool[] {
     {
       name: "marea_search_project",
       description:
-        "Search literal file contents. Arguments: query, optional path (directory, default /). Returns path, line, text and truncated. Limits: 1000 entries, 200 matches, 512 characters per line.",
+        "Search literal file contents. Arguments: pattern, optional path (directory, default /). Returns path, line, text and truncated. Limits: 1000 entries, 200 matches, 512 characters per line.",
       execute: (input) => search(workspace, input, false),
     },
     {
       name: "marea_glob_project",
       description:
-        "Find project files by glob (*, **, ?). Arguments: query, optional path (directory, default /). Patterns match project-relative paths. Limits: 1000 entries, 200 matches. Truncation is explicit.",
+        "Find project files by glob (*, **, ?). Arguments: pattern, optional path (directory, default /). Patterns match project-relative paths. Limits: 1000 entries, 200 matches. Truncation is explicit.",
       execute: (input) => search(workspace, input, true),
     },
   ];

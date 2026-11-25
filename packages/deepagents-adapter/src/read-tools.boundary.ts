@@ -1,6 +1,8 @@
 import { tool } from "langchain";
 import * as z from "zod";
 
+import { parameterSchema } from "./tool-parameters.boundary.js";
+
 import { AgentAdapterError, ReadOnlyToolInputError, type ReadOnlyTool } from "./contracts.js";
 import { observeExecution, type ToolLifecycleEvent } from "./tool-events.boundary.js";
 
@@ -48,7 +50,7 @@ export function createReadOnlyTools(
       {
         name,
         description: reader.description,
-        schema: z.record(z.string(), z.string()),
+        schema: parameterSchema(name),
       },
     );
   });

@@ -8,20 +8,30 @@ import {
 } from "./command-limits.js";
 
 /** A capability for one exact reviewed call; it never executes an effect itself. */
+/** The interpreter this machine actually uses, so the model writes commands it can run. */
+function shellNote(platform: NodeJS.Platform): string {
+  return platform === "win32"
+    ? 'Shell: this computer runs Windows, so commands run in cmd.exe, not PowerShell or bash. Use cmd syntax (dir, type, cd /d, del, &&); quote paths with spaces in double quotes ("my file.txt"), never single quotes; one command per call is clearest.'
+    : "Shell: this computer runs commands with /bin/sh. Quote paths with spaces.";
+}
+
 export class OperationMediator implements ApprovalTool {
   readonly lifecycle = "external";
   readonly name: string;
   readonly description: string;
   private authorization: { arguments: Readonly<Record<string, string>>; result: string } | null =
     null;
-  constructor(readonly operation: OperationName) {
+  constructor(
+    readonly operation: OperationName,
+    platform: NodeJS.Platform = process.platform,
+  ) {
     this.name = `marea_${operation}`;
     this.description =
       operation === "execute"
-        ? `Run a shell command from the project directory after explicit student authorization. Arguments: command. Deadline ${String(COMMAND_DEADLINE_MS / 60_000)} minutes; the student can cancel earlier and the command is then stopped. Output is bounded: only the first ${String(COMMAND_OUTPUT_HEAD_CHARACTERS)} and the last ${String(COMMAND_OUTPUT_TAIL_CHARACTERS)} characters are kept, with the middle reported as omitted. Commands have the student's OS permissions. Shell: cmd.exe on Windows; /bin/sh on macOS and Linux.`
+        ? `Run a shell command from the project directory after explicit student authorization. Arguments: command. Deadline ${String(COMMAND_DEADLINE_MS / 60_000)} minutes; the student can cancel earlier and the command is then stopped. Output is bounded: only the first ${String(COMMAND_OUTPUT_HEAD_CHARACTERS)} and the last ${String(COMMAND_OUTPUT_TAIL_CHARACTERS)} characters are kept, with the middle reported as omitted. Commands have the student's OS permissions. ${shellNote(platform)}`
         : operation === "delete"
-          ? "Delete one project text file after explicit student authorization. Arguments: path. The exact contents are rechecked before deletion; directories are not accepted."
-          : "Replace an exact unique text fragment in a project file after student authorization. Arguments: path, old_string, new_string. The file is rechecked before applying.";
+          ? "Delete one project text file after explicit student authorization. Arguments: file_path. The exact contents are rechecked before deletion; directories are not accepted."
+          : "Replace an exact unique text fragment in a project file after student authorization. Arguments: file_path, old_string, new_string. The file is rechecked before applying.";
   }
   authorize(arguments_: Readonly<Record<string, string>>, result: string): void {
     this.authorization = { arguments: arguments_, result };

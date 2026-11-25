@@ -145,12 +145,8 @@ describe("Marea gateway model boundary", () => {
     );
     expect(translatedTool?.description).toBe("Confirm a synthetic change");
     expect(translatedTool?.inputSchema).toMatchObject({ type: "object" });
-    expect(gateway.requests[0]?.tools).toContainEqual(
-      expect.objectContaining({
-        name: "write_file",
-        description: "The unprivileged public write tool.",
-      }),
-    );
+    // A DeepAgents built-in is never shown to the model, even without a Marea replacement.
+    expect(gateway.requests[0]?.tools.map((entry) => entry.name)).toEqual(["confirm_change"]);
     expect(gateway.requests[1]?.messages).toEqual([
       { role: "system", content: "Follow policy." },
       { role: "student", content: "Change the file." },
@@ -250,7 +246,7 @@ describe("Marea gateway model boundary", () => {
           {
             callId: "write-1",
             tool: "write_file",
-            arguments: { path: "notes.txt", content: "hello" },
+            arguments: { file_path: "notes.txt", content: "hello" },
           },
         ],
       }),

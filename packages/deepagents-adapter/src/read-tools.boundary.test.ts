@@ -66,9 +66,10 @@ describe("controlled read-only runtime tools", () => {
     expect(execute).toHaveBeenCalledOnce();
     expect(model.boundToolNames.flat()).toContain(reader.name);
     const messages = model.calls[1]?.messages.filter((message) => ToolMessage.isInstance(message));
+    // The denied built-in is answered as an unavailable tool before it can run.
     expect(messages?.map((message) => message.content)).toEqual([
       "Verified project content.",
-      "Error: permission denied for read on /secret",
+      "Error: read_file is not an available tool. Use one of: confirm_change, read_file.",
     ]);
   });
 
@@ -134,7 +135,11 @@ describe("controlled read-only runtime tools", () => {
 it("lets the model recover from an expected read rejection without throwing or logging a stack", async () => {
   const model = new MareaFakeModel()
     .respondWithTools([
-      { name: "marea_read_skill", id: "read:missing", args: { path: "resources" } },
+      {
+        name: "marea_read_skill",
+        id: "read:missing",
+        args: { skillId: "marea/testing", path: "resources" },
+      },
     ])
     .respond(new AIMessage("I will use the already available skill instead."));
   const execute = vi.fn(() =>

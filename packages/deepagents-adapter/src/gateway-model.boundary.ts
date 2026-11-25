@@ -28,7 +28,12 @@ import {
 import * as z from "zod";
 
 import { ModelStreamError, type MareaGatewayModelOptions } from "./contracts.js";
-import { toInternalToolName, toPublicToolName } from "./tool-names.js";
+import { DEEPAGENTS_BUILT_IN_TOOLS, toInternalToolName, toPublicToolName } from "./tool-names.js";
+import {
+  toInternalArguments,
+  toPublicArguments,
+  toPublicInputSchema,
+} from "./tool-parameters.boundary.js";
 
 interface GatewayCallOptions extends BaseChatModelCallOptions {
   readonly tools?: readonly BindToolsInput[];
@@ -57,12 +62,16 @@ const openAiToolSchema = z.object({
   function: z.object({
     name: z.string().min(1),
     description: z.string().min(1),
-    parameters: z.json(),
+    parameters: z.record(z.string(), z.json()),
   }),
 });
 
+/** DeepAgents selects the Marea harness profile by this `provider:model` identifier. */
+export const GATEWAY_MODEL_PROFILE_KEY = "marea:gateway";
+
 export class MareaGatewayChatModel extends BaseChatModel<GatewayCallOptions> {
   readonly options: MareaGatewayModelOptions;
+  readonly modelName = GATEWAY_MODEL_PROFILE_KEY;
 
   constructor(options: MareaGatewayModelOptions) {
     super({});
@@ -156,7 +165,11 @@ function translateMessage(
       const parsed = parseToolCall(input);
       const publicName = toPublicToolName(parsed.name);
       toolNames.set(parsed.id, publicName);
-      return { callId: parsed.id, tool: publicName, arguments: parsed.args };
+      return {
+        callId: parsed.id,
+        tool: publicName,
+        arguments: toPublicArguments(parsed.name, parsed.args),
+      };
     });
     return ModelGatewayMessageSchema.parse({
       role: "assistant",
@@ -183,15 +196,21 @@ function parseToolCall(input: unknown): z.infer<typeof toolCallSchema> {
 }
 
 function translateTools(tools: readonly BindToolsInput[]) {
-  const parsed = tools.map(parseTool);
-  const controlled = new Set(
-    parsed
-      .filter((tool) => tool.name.startsWith("marea_"))
-      .map((tool) => toPublicToolName(tool.name)),
-  );
-  return parsed
-    .filter((tool) => !controlled.has(tool.name) || tool.name.startsWith("marea_"))
-    .map((tool) => ({ ...tool, name: toPublicToolName(tool.name) }));
+  return tools
+    .map(parseTool)
+    .filter((tool) => !DEEPAGENTS_BUILT_IN_TOOLS.has(tool.name))
+    .map((tool) => ({
+      ...tool,
+      name: toPublicToolName(tool.name),
+      inputSchema: publicSchema(tool.name, tool.inputSchema),
+    }));
+}
+
+function publicSchema(
+  tool: string,
+  schema: z.infer<typeof openAiToolSchema>["function"]["parameters"],
+) {
+  return toPublicInputSchema(tool, schema);
 }
 
 function parseTool(tool: BindToolsInput) {
@@ -211,14 +230,15 @@ function generationFor(
     return generation(new AIMessageChunk({ content: chunk.delta }), chunk.delta);
   }
   if (chunk.event === "tool-call") {
+    const tool = toInternalToolName(chunk.tool);
     return generation(
       new AIMessageChunk({
         content: "",
         tool_call_chunks: [
           {
             id: chunk.callId,
-            name: toInternalToolName(chunk.tool),
-            args: JSON.stringify(chunk.arguments),
+            name: tool,
+            args: JSON.stringify(toInternalArguments(tool, chunk.arguments)),
             index: state.nextToolIndex(),
           },
         ],
