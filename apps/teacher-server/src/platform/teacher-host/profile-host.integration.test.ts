@@ -62,7 +62,7 @@ it.each([
       serve: f.serve,
       ...syntheticProfileHostServices(() => "profile-host-revision"),
     });
-    expect(host.state).toBe("ready");
+    expect(host).toMatchObject({ state: "ready" });
     if (host.state !== "ready" || f.served.fetch === undefined) throw new Error("Host not ready");
     expect(inspectSqliteSchemaVersion({ databasePath: f.databasePath })).toBe(current.version);
     expect(

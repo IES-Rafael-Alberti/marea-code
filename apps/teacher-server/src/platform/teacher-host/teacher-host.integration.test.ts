@@ -324,7 +324,7 @@ describe("production teacher host", () => {
     expect(await start(f)).toEqual({ state: "failed", reason: "config" });
     f.writeHost(f.host);
     const ready = await start(f);
-    expect(ready.state).toBe("ready");
+    expect(ready).toMatchObject({ state: "ready" });
     if (ready.state === "ready") await ready.stop();
   });
 
@@ -344,7 +344,7 @@ describe("production teacher host", () => {
         ],
       });
       const host = await start(f);
-      expect(host.state).toBe("ready");
+      expect(host).toMatchObject({ state: "ready" });
       if (host.state === "ready") await host.stop();
     }
     f.writeHost({
