@@ -1,13 +1,46 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.43`.
+The commands below target `0.1.0-preview.44`.
 
-This preview makes classroom sessions more resilient and lets runs end on their own.
-The protocol remains 0.1. **The database schema moves to 15** (new `closed_by` column
-recording which teacher ended a run). Existing servers migrate through the managed
-update flow; update the server first. Most fixes live in the student client, so
-**students must update the client** (`marea update`) to receive them; server-only
-fixes apply once the server is updated.
+This preview fixes the failures seen in the classroom test of preview 43: a turn no longer
+breaks when the model sends several actions or a malformed tool call, and the teacher can now
+see why a turn failed. The protocol remains 0.1. The new diagnostic fields only travel when the
+server announces the new capability `marea.runs.turn-diagnostics`.
+The database schema remains 15. **Update the server first**; its first start backs up the
+database and migrates it when needed. **Students must update the client** (`marea update`)
+to receive the client fixes.
+
+Server and dashboard:
+
+- The new server migrates the database itself when it starts, after a backup, instead of
+  relying on the previous version's updater. One `schema-migration` line on stderr records it.
+- Unexpected HTTP 500 responses write one JSON line to the `marea-teacher` stderr with the
+  route, `requestId` and the exception. **End session** now explains whether the server was
+  offline, refused the request, or failed, and shows the `requestId` to look up.
+- Each failed student turn reaches the dashboard with its category, exception, stack, client
+  version and what the model returned. The session view has a **copy** button for an issue
+  report, and session exports include it.
+
+Student computers:
+
+- A model message with several actions asks about each one in order («Acción 1 de 3»). It
+  lists what follows and offers **Autorizar todas** (key `A`). Rejecting one action no longer
+  cancels the others.
+- A malformed tool call from the model (non-text arguments, broken JSON, a missing name or
+  id) is repaired or answered as a tool error, so the turn continues. Recoverable failures
+  are retried automatically up to two times before an error is shown, and the provider's
+  usage is accounted for even when the response fails.
+- The tutor's read tools use the standard names `read_file`, `ls`, `glob` and `grep`, with
+  declared parameters. A call to a tool that does not exist lists the available tools instead
+  of failing the turn.
+- Long sessions are summarized before reaching the gateway's 256-message limit, and very large
+  tool results are shortened with a notice to the model.
+- Error messages are in the student's language. The technical detail is behind `/details`,
+  which also names a private local log of failed attempts.
+
+Preview 43, the previous published release, made classroom sessions more resilient and let
+runs end on their own. It kept protocol 0.1 and moved the database schema to 15 (new
+`closed_by` column recording which teacher ended a run).
 
 Sessions and runs:
 
@@ -132,13 +165,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.43/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.44/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.43/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.44/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -278,13 +311,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.43/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.44/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.43/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.44/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Use **PowerShell**, identified by a prompt such as `PS C:\Users\david>`, for the
@@ -441,27 +474,25 @@ the empty root allows the same installation command to run again. Do not delete
 
 ## Test this preview in a classroom
 
-1. Install or update the teacher server (`marea-teacher update`); the first start
-   migrates the database to schema 15. Then update a Windows student PC
-   (`marea update`) and check `marea --version` shows `0.1.0-preview.43`.
-2. Sign in with Google on the student PC and open a run, including in a folder whose
-   name has spaces, `_` or parentheses.
-3. Ask the tutor for a turn that runs a long command (several minutes) and confirm
-   it completes.
-4. Close the terminal without ending the run. After 60 minutes without connection
-   the run closes by itself; to save time, use **End session** in the dashboard
-   (**Sessions**). Confirm the student sees why it ended and can start a new run.
-5. Confirm the automatic evaluation appears in the dashboard, as the class setting
-   dictates, then generate the class report.
+1. Update the teacher server (`marea-teacher update`) and start it. Then update a Windows
+   student PC (`marea update`) and check that `marea --version` shows `0.1.0-preview.44`.
+2. Ask the tutor to run two commands at once, for example "lista los archivos y entra en la
+   carpeta src". Confirm that Marea asks «Acción 1 de 2», approve one, reject another
+   and check that the approved command runs. Repeat with **Autorizar todas**.
+3. Ask the tutor to search the project for a path that does not exist and confirm the turn
+   finishes.
+4. In the dashboard, use **End session** on a student who has disconnected and confirm it
+   succeeds, or shows a reason and a `requestId`.
+5. If any turn fails, open the session in the dashboard and copy its technical detail.
 
-Report back: the preview and OS, which step failed, and any diagnostic code or
-message shown by the client or the dashboard (do not send student passwords or API keys).
+Report back: the preview and OS, which step failed, and the copied technical detail or any
+diagnostic code shown by the client or the dashboard (do not send student passwords or API keys).
 
 ## Publish a version
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.43`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.44`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
