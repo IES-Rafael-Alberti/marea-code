@@ -34,8 +34,10 @@ import { release, schemas } from "../../dashboard-profiles/release.fixture.js";
 import { profileRetentionRows } from "../operations/retention/profile-retention.js";
 import { removeRemainingRetentionContent } from "../operations/retention/retention-content.js";
 afterEach(cleanupTeacherHostInstallations);
-/** Each host start backs up and migrates the database first, which Windows runners do slowly. */
-const HOST_START_TIMEOUT_MS = 30_000;
+
+// Each case starts real hosts that back up and migrate SQLite files; Windows ARM runners take
+// up to 40 seconds for one case.
+vi.setConfig({ testTimeout: 120_000 });
 
 it.each([
   ["dashboard-profiles", 10],
@@ -189,7 +191,6 @@ it.each([
       initializeSqliteStorage({ databasePath: f.databasePath, schema: "retention-audit" }),
     ).toThrow();
   },
-  HOST_START_TIMEOUT_MS,
 );
 
 it.each([
@@ -262,7 +263,6 @@ it.each([
       upgrade: "none",
     });
   },
-  HOST_START_TIMEOUT_MS,
 );
 function missingRelease(): never {
   validateDashboardProfileRelease({ ...release, themes: [] });

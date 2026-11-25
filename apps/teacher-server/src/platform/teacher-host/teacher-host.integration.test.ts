@@ -78,6 +78,9 @@ function status(f: ReturnType<typeof installation>): unknown {
   return JSON.parse(readFileSync(f.host.statusPath, "utf8"));
 }
 
+// Real host starts on Windows runners take up to 20 seconds.
+vi.setConfig({ testTimeout: 60_000 });
+
 describe("production teacher host", () => {
   it("migrates an older activated schema at startup after a backup, then serves", async () => {
     const f = installation();
