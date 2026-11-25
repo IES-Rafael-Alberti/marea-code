@@ -146,9 +146,18 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   first.write("y");
   await durable(value, "workspace-edit");
   expect(await readFile(notes, "utf8")).toBe("The tide is rising.\n");
-  await first.waitForText("Retry", operationTimeout);
-  const before = coreEvents(value);
-  expect(before.map((event) => event.event_type)).toEqual(turnEvents.slice(0, 5));
+  // The lost response fails the turn; Marea retries it from its checkpoint on its own.
+  await first.waitForText("saved.", operationTimeout * 2);
+  await durable(value, "assistant-message");
+  expect(first.transcript()).toContain("Retrying the interrupted turn");
+  const recovered = coreEvents(value);
+  expect(recovered.map((event) => event.event_type)).toEqual(turnEvents);
+  for (const event of recovered.filter((item) =>
+    ["approval-requested", "workspace-edit"].includes(item.event_type),
+  )) {
+    expect(JSON.parse(event.payload_json)).toMatchObject({ path: "notes/tide.txt" });
+  }
+  expect(new Set(recovered.map((event) => event.event_id)).size).toBe(recovered.length);
   const runs = value.database.readAll("SELECT id FROM marea_runs");
   expect(runs).toHaveLength(1);
   const roots = await readdir(join(state, "student"));
@@ -158,26 +167,17 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   const stateDirectory = join(state, "student", stateName);
   expect((await stat(join(stateDirectory, "agent/checkpoints.bin"))).size).toBeGreaterThan(0);
   expect((await stat(join(stateDirectory, "credential.json"))).size).toBeGreaterThan(0);
+  await durable(value, "turn-ended");
   first.kill();
   await first.waitForExit(5_000);
+  // A fresh start reconnects with the stored sign-in and never resumes the completed turn.
   const resumed = launch();
-  await resumed.waitForText("Retry", operationTimeout);
+  await resumed.waitForText("Write to Marea", operationTimeout);
   expect(resumed.transcript()).not.toContain("Password");
-  expect(value.provider.requests).toHaveLength(1);
-  resumed.write("/retry\r");
-  await resumed.waitForText("saved.", operationTimeout);
-  await durable(value, "assistant-message");
-  const recovered = coreEvents(value);
-  expect(recovered.slice(0, before.length)).toEqual(before);
-  expect(recovered.map((event) => event.event_type)).toEqual(turnEvents);
-  for (const event of recovered.filter((item) =>
-    ["approval-requested", "workspace-edit"].includes(item.event_type),
-  )) {
-    expect(JSON.parse(event.payload_json)).toMatchObject({ path: "notes/tide.txt" });
-  }
-  expect(new Set(recovered.map((event) => event.event_id)).size).toBe(recovered.length);
-  expect(value.database.readAll("SELECT id FROM marea_runs")).toEqual(runs);
   expect(resumed.transcript()).not.toContain("Authorize");
+  expect(resumed.transcript()).not.toContain("Retry");
+  expect(coreEvents(value)).toEqual(recovered);
+  expect(value.database.readAll("SELECT id FROM marea_runs")).toEqual(runs);
   const ledger = JSON.parse(
     await readFile(join(stateDirectory, "workspace-effects.json"), "utf8"),
   ) as { effects: unknown[] };
@@ -185,7 +185,6 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   expect(value.provider.requests).toHaveLength(2);
   expect(requests.filter((request) => request.path === "/v1/runs/lease-renew")).toEqual([]);
   expect(await readFile(notes, "utf8")).toBe("The tide is rising.\n");
-  await durable(value, "turn-ended");
   await resumed.waitForQuiet();
   resumed.write("/exit\r");
   const exit = await resumed.waitForExit(15_000);
