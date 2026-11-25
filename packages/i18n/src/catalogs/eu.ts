@@ -118,6 +118,7 @@ const basqueCatalog = {
   "student.tui.command.help-description": "erakutsi komandoak eta lasterbideak",
   "student.tui.command.language-description": "aldatu interfazearen hizkuntza",
   "student.tui.command.retry-description": "berrekin azken txanda etenari",
+  "student.tui.command.usage-description": "erakutsi edo ezkutatu saio honetan erabilitako tokenak",
   "student.tui.composer.placeholder": "Idatzi Mareari…",
   "student.tui.failure.recovery-pending":
     "Gordetako txanda bat dago. Berariaz aukeratu behar duzu harekin jarraitzea.",
@@ -141,6 +142,7 @@ const basqueCatalog = {
 - \`/help\` — erakutsi laguntza hau.
 - \`/retry\` — berrekin azken txanda etenari zure mezua errepikatu gabe.
 - \`/details\` — aldatu irteera trinkoen eta osoen artean.
+- \`/usage\` (edo \`/uso\`) — erakutsi edo ezkutatu token-lerroa: saioan orain arteko ↑ sarrera eta ↓ irteera, eta azken deiak ereduaren testuinguruaren zenbat erabili duen.
 - \`/language\` — aldatu interfazearen hizkuntza eta gorde hobespena.
 - \`/exit\` — amaitu saioa.
 

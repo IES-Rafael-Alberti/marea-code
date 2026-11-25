@@ -2,6 +2,7 @@ import { loadRequiredSkills } from "./required-skill-context.js";
 import { describeProject } from "./project-description.boundary.js";
 import { diagnosticGateway } from "./diagnostic-gateway.js";
 import { clientIdentity } from "./turn-diagnostic-report.js";
+import { meterUsage } from "./session-usage.js";
 import { FileOperationExecutor } from "./operation-executor.boundary.js";
 import { GitProjectEvidence } from "./git-evidence.boundary.js";
 import { join, resolve } from "node:path";
@@ -137,14 +138,12 @@ export async function createProductionStudentApplication(
   const server = createHttpStudentServer(httpOptions);
   const tokenBinding = new StudentRunTokenBinding();
   const localSession = new LocalSession(stores.state, ids, clock);
-  const gateway = diagnosticGateway(
-    createHttpModelGateway({
-      ...httpOptions,
-      runToken: tokenBinding.read,
-    }),
-    localSession,
-    ids,
+  const usage = meterUsage(
+    createHttpModelGateway({ ...httpOptions, runToken: tokenBinding.read }),
+    localSession.recordUsage.bind(localSession),
+    options.studentInterface.showUsage?.bind(options.studentInterface),
   );
+  const gateway = diagnosticGateway(usage.gateway, localSession, ids);
   const projectContext = await describeProject(projectRoot);
   const checkpoint = await openRecoverableCheckpoint(localState, {
     projectDirectory: projectRoot,
@@ -200,6 +199,7 @@ export async function createProductionStudentApplication(
       onServerSupport: gateway.reportRepairs,
     },
     onStartupStage: options.onStartupStage,
+    onServerCapabilities: usage.onServerCapabilities,
     agent,
     classPreference: createFileClassPreferenceStore(stateDirectory),
     clientVersion,

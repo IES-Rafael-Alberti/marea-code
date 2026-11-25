@@ -12,6 +12,21 @@ it("forwards generic thinking through the bound conversation port", () => {
   expect(session.thinking).toHaveBeenCalledExactlyOnceWith("message", "attempt");
 });
 
+it("holds the usage a resumed session reports before the conversation exists", () => {
+  const port = createBindableConversationPort();
+  const usage = { inputTokens: 3, outputTokens: 1, lastInputTokens: 3 };
+  expect(port.reportUsage(usage)).toBe(false);
+  const session = conversationSession();
+  port.bind(session);
+  expect(session.reportUsage).toHaveBeenCalledExactlyOnceWith(usage);
+  const later = { ...usage, outputTokens: 2 };
+  expect(port.reportUsage(later)).toBe(true);
+  expect(session.reportUsage).toHaveBeenLastCalledWith(later);
+  const fresh = conversationSession();
+  createBindableConversationPort().bind(fresh);
+  expect(fresh.reportUsage).not.toHaveBeenCalled();
+});
+
 it("returns a localized safe error without leaking an internal failure", async () => {
   const options = commandOptions({ translator: createTranslator("es") });
 

@@ -28,6 +28,8 @@ export type {
   ConversationTuiOptions,
   ConversationTuiSession,
   ConversationToolCall,
+  ConversationUsage,
+  ConversationUsagePreference,
   ConversationToolFinish,
   ConversationToolStart,
   ConversationView,

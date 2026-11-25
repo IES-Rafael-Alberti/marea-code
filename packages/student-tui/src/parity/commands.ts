@@ -10,7 +10,7 @@ import type { CommandDescriptions } from "./copy.js";
  * student who types `/salir` means `/exit`.
  */
 
-export type LocalCommand = "details" | "exit" | "help" | "language" | "retry";
+export type LocalCommand = "details" | "exit" | "help" | "language" | "retry" | "usage";
 
 const ALIASES = new Map<string, LocalCommand>([
   ["/ayuda", "help"],
@@ -22,6 +22,8 @@ const ALIASES = new Map<string, LocalCommand>([
   ["/reintentar", "retry"],
   ["/retry", "retry"],
   ["/salir", "exit"],
+  ["/usage", "usage"],
+  ["/uso", "usage"],
 ]);
 
 /** The suggested commands, in the reference's order. */
@@ -31,6 +33,7 @@ const SUGGESTED: readonly LocalCommand[] = Object.freeze([
   "language",
   "retry",
   "details",
+  "usage",
 ] as const);
 
 const VALUES: Readonly<Record<LocalCommand, string>> = Object.freeze({
@@ -39,6 +42,7 @@ const VALUES: Readonly<Record<LocalCommand, string>> = Object.freeze({
   help: "/help",
   language: "/language",
   retry: "/retry",
+  usage: "/usage",
 });
 
 /** The command a submitted line stands for, or null for an ordinary message. */

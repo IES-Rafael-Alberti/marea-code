@@ -179,6 +179,8 @@ export type StudentViewEvent =
 export interface StudentInterface {
   /** Keeps terminal ownership for the entire sign-in, including browser and class selection. */
   withAuthentication?<T>(operation: () => Promise<T>): Promise<T>;
+  /** Shows the session's token usage; interfaces without a usage line ignore it. */
+  showUsage?(usage: SessionUsage): void;
   authenticate(
     reason: AuthenticationReason,
     options: AuthenticationOptions,
@@ -436,6 +438,17 @@ export interface StoredRun {
   readonly snapshot: StudentRunSnapshot | null;
   readonly snapshotId: SnapshotId | null;
   readonly turns: readonly StoredTurn[];
+  /** Tokens this session has used so far, kept across restarts. */
+  readonly usage?: SessionUsage | undefined;
+}
+
+/** What `/usage` shows: session totals and the input of the latest model call. */
+export interface SessionUsage {
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly lastInputTokens: number;
+  /** The model's context window, when the teacher's server reports it. */
+  readonly contextWindowTokens?: number | undefined;
 }
 
 export interface StudentState {

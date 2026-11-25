@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   createStudentLanguagePreferenceStore,
+  createStudentUsagePreferenceStore,
   parseLanguageArguments,
   resolveStudentLocale,
   systemLocaleCandidates,
@@ -89,6 +90,25 @@ describe("student interface locale boundary", () => {
       theme: "dark",
       "marea.interface-language.v1": "eu",
     });
+  });
+
+  it("keeps the usage line preference beside the language and other settings", async () => {
+    const root = await mkdtemp(join(tmpdir(), "marea-usage-"));
+    const usage = createStudentUsagePreferenceStore(join(root, "state"));
+    await expect(usage.load()).resolves.toBe(false);
+    await usage.save(true);
+    await createStudentLanguagePreferenceStore(join(root, "state")).save("eu");
+    await expect(usage.load()).resolves.toBe(true);
+    expect(JSON.parse(await readFile(join(root, "state", "settings.json"), "utf8"))).toEqual({
+      "marea.usage-line.v1": true,
+      "marea.interface-language.v1": "eu",
+    });
+    await usage.save(false);
+    await expect(usage.load()).resolves.toBe(false);
+    await writeFile(join(root, "state", "settings.json"), '{"marea.usage-line.v1":"yes"}');
+    await expect(usage.load()).resolves.toBe(false);
+    await writeFile(join(root, "state", "settings.json"), "not-json");
+    await expect(usage.load()).resolves.toBe(false);
   });
 
   it("keeps a corrupt settings document recoverable without throwing on read", async () => {

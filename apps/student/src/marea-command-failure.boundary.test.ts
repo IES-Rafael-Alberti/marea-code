@@ -20,6 +20,7 @@ describe("marea command failure classification", () => {
       requestApproval: () => Promise.reject(new Error("no approvals in this journey")),
       resumeTurn: () => true,
       snapshot: () => ({ approval: null, messages: [], status: "ready" as const }),
+      reportUsage: () => true,
       thinking: () => true,
       toolFinished: () => true,
       toolStarted: () => true,

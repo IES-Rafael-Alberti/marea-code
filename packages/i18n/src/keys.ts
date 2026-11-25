@@ -96,6 +96,7 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.tui.command.help-description",
   "student.tui.command.language-description",
   "student.tui.command.retry-description",
+  "student.tui.command.usage-description",
   "student.tui.composer.placeholder",
   "student.tui.failure.recovery-pending",
   "student.tui.failure.deadline-exceeded",

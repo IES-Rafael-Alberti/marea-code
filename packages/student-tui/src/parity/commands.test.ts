@@ -9,6 +9,7 @@ const copy: CommandDescriptions = {
   help: "commands and shortcuts",
   language: "change the interface language",
   retry: "resume the interrupted turn",
+  usage: "show or hide the token line",
 };
 
 describe("local commands", () => {
@@ -48,6 +49,7 @@ describe("command suggestions", () => {
       "/language",
       "/retry",
       "/details",
+      "/usage",
     ]);
     expect(commandList(copy)[0]).toEqual({
       command: "exit",
@@ -62,7 +64,7 @@ describe("command suggestions", () => {
   });
 
   it("shows every command for a bare slash", () => {
-    expect(suggestionsFor(copy, "/")).toHaveLength(5);
+    expect(suggestionsFor(copy, "/")).toHaveLength(6);
   });
 
   it("narrows to the matching prefix", () => {

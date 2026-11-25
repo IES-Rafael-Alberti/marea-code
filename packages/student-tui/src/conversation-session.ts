@@ -147,6 +147,8 @@ export function createConversationTuiSession(
     },
     resumeTurn: () => active(() => controller.resumeTurn()),
     snapshot: (): ConversationSnapshot => controller.snapshot(),
+    reportUsage: (usage: Parameters<ConversationController["reportUsage"]>[0]) =>
+      active(() => controller.reportUsage(usage)),
     thinking: (messageId?: string, attemptId?: string, activity?: "thinking" | "loadingSkills") =>
       active(() => controller.thinking(messageId, attemptId, activity)),
     toolFinished: (

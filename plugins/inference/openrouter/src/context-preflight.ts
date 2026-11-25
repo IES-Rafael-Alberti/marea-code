@@ -7,10 +7,13 @@ import {
 /** Conservative admission, not token counting: one UTF-8 byte per token plus framing.
  * Never truncate messages. Reserve output explicitly, including on unlimited budget routes.
  */
+/** An admitted request, with the capacity of the model it was admitted for. */
+export type AdmittedRequest = InferenceProviderRequest & { readonly contextWindowTokens?: number };
+
 export function createContextPreflight(
   models: (signal: AbortSignal) => Promise<readonly ProviderModel[]>,
   now: () => number = Date.now,
-): (request: InferenceProviderRequest, signal: AbortSignal) => Promise<InferenceProviderRequest> {
+): (request: InferenceProviderRequest, signal: AbortSignal) => Promise<AdmittedRequest> {
   let catalog: readonly ProviderModel[] | undefined;
   let expiresAt = 0;
   return async (request, signal) => {
@@ -50,6 +53,6 @@ export function createContextPreflight(
       });
     }
     signal.throwIfAborted();
-    return { ...request, maxOutputTokens: output };
+    return { ...request, maxOutputTokens: output, contextWindowTokens: capacity };
   };
 }

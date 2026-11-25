@@ -431,6 +431,7 @@ export function createFixtureController(
     readonly evidence?: ProjectEvidence;
     readonly liveProgress?: boolean;
     readonly diagnostics?: SessionControllerOptions["diagnostics"];
+    readonly onServerCapabilities?: SessionControllerOptions["onServerCapabilities"];
     readonly onStartupStage?: (stage: StudentStartupStage) => void;
     readonly credentials?: MemoryCredentialStore;
     readonly server?: FixtureServer;
@@ -454,6 +455,9 @@ export function createFixtureController(
       ...(options.evidence === undefined ? {} : { evidence: options.evidence }),
       ...(options.liveProgress === undefined ? {} : { liveProgress: options.liveProgress }),
       ...(options.diagnostics === undefined ? {} : { diagnostics: options.diagnostics }),
+      ...(options.onServerCapabilities === undefined
+        ? {}
+        : { onServerCapabilities: options.onServerCapabilities }),
       ...(options.onStartupStage === undefined ? {} : { onStartupStage: options.onStartupStage }),
       ...(options.classPreference === undefined
         ? {}

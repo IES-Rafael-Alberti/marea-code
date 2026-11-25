@@ -21,6 +21,7 @@ export interface CommandDescriptions {
   readonly help: string;
   readonly language: string;
   readonly retry: string;
+  readonly usage: string;
 }
 
 export interface StatusCopy {

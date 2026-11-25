@@ -83,6 +83,14 @@ export interface ConversationApproval {
     | undefined;
 }
 
+/** Session token totals and the input of the latest model call, for the `/usage` line. */
+export interface ConversationUsage {
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly lastInputTokens: number;
+  readonly contextWindowTokens?: number | undefined;
+}
+
 export interface ConversationSnapshot {
   /** Generic internal work; never carries private tool names or reasoning text. */
   readonly activity?: "thinking" | "loadingSkills" | undefined;
@@ -96,6 +104,7 @@ export interface ConversationSnapshot {
   readonly status: ConversationStatus;
   /** Tool rows of the current turn, in execution order. */
   readonly tools?: readonly ConversationToolCall[];
+  readonly usage?: ConversationUsage | undefined;
 }
 
 export interface ConversationPendingTurn {
@@ -142,7 +151,14 @@ export interface ConversationCopy {
     readonly copy: ParityCopy;
     readonly context: SessionContext;
     readonly history?: ConversationHistory | undefined;
+    /** Whether the `/usage` line starts visible, and where a change of mind is saved. */
+    readonly usage?: ConversationUsagePreference | undefined;
   };
+}
+
+export interface ConversationUsagePreference {
+  readonly visible: boolean;
+  readonly onVisibilityChange?: ((visible: boolean) => void) | undefined;
 }
 
 /** What both the controller and the session offer for the turn in progress. */
@@ -166,6 +182,8 @@ interface ConversationTurnSurface {
     attemptId?: ConversationAttemptId,
   ): Promise<ConversationApprovalDecision>;
   resumeTurn(): boolean;
+  /** Replaces the usage the `/usage` line shows; it belongs to the session, not to a turn. */
+  reportUsage(usage: ConversationUsage): boolean;
   snapshot(): ConversationSnapshot;
   toolFinished(
     finish: ConversationToolFinish,

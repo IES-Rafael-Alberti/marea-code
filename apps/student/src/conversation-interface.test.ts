@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unused-vars, @typescript-eslint/unbound-method */
+import { conversationSession } from "./command-options.fixture.js";
 import type {
   ConversationAction,
   ConversationApproval,
@@ -34,6 +35,7 @@ function conversation(): ConversationController {
       messages: [],
       status: "ready",
     })),
+    reportUsage: vi.fn(() => true),
     thinking: vi.fn(() => true),
     toolFinished: vi.fn(() => true),
     toolStarted: vi.fn(() => true),
@@ -121,6 +123,9 @@ describe("conversation student interface", () => {
       attemptId: "attempt:one",
     });
     expect(controller.thinking).toHaveBeenCalledWith("message:one", "attempt:one", "loadingSkills");
+    const usage = { inputTokens: 9, outputTokens: 4, lastInputTokens: 9 };
+    studentInterface.showUsage?.(usage);
+    expect(controller.reportUsage).toHaveBeenCalledWith(usage);
     const toolStartedEvent = {
       arguments: { path: "exercise.txt" },
       attemptId: "attempt:one",
@@ -191,6 +196,7 @@ describe("conversation student interface", () => {
       complete: vi.fn(() => true),
       fail: vi.fn(() => true),
       requestApproval: vi.fn(async (): Promise<"rejected"> => "rejected"),
+      reportUsage: vi.fn(() => true),
       thinking: vi.fn(() => true),
       toolFinished: vi.fn(() => true),
       toolStarted: vi.fn(() => true),
@@ -199,6 +205,9 @@ describe("conversation student interface", () => {
 
     expect(conversation.thinking("message", "attempt")).toBe(true);
     expect(session.thinking).toHaveBeenCalledWith("message", "attempt");
+    const usage = { inputTokens: 1, outputTokens: 1, lastInputTokens: 1 };
+    expect(conversation.reportUsage(usage)).toBe(true);
+    expect(session.reportUsage).toHaveBeenCalledWith(usage);
     expect(conversation.appendAssistantText("Partial")).toBe(true);
     expect(conversation.complete()).toBe(true);
     expect(conversation.cancel()).toBe(true);
@@ -219,16 +228,7 @@ describe("conversation student interface", () => {
   ])(
     "forwards event identities $messageId/$attemptId through the TUI adapter",
     async (identity) => {
-      const session = {
-        appendAssistantText: vi.fn(() => true),
-        cancel: vi.fn(() => true),
-        complete: vi.fn(() => true),
-        fail: vi.fn(() => true),
-        requestApproval: vi.fn(async (): Promise<"approved"> => "approved"),
-        thinking: vi.fn(() => true),
-        toolFinished: vi.fn(() => true),
-        toolStarted: vi.fn(() => true),
-      };
+      const session = conversationSession();
       const conversation = adaptConversationTuiSession(session);
       const approval = { path: "notes.txt", summary: "Write" };
 

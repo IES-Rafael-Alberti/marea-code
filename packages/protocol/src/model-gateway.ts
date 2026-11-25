@@ -89,9 +89,17 @@ export const ModelGatewayRequestSchema = z
      * `marea.runs.turn-diagnostics`, which then answer with it.
      */
     diagnostics: z.literal(true).optional(),
+    /**
+     * Asks for the model's context window in `completed`. Sent only to servers announcing
+     * `marea.models.context-window`.
+     */
+    contextWindow: z.literal(true).optional(),
   })
   .strict()
   .readonly();
+
+/** Servers announcing it report the model's context window to clients that ask for it. */
+export const CONTEXT_WINDOW_CAPABILITY = "marea.models.context-window";
 
 const chunkBaseShape = {
   protocolVersion: CurrentProtocolVersionSchema,
@@ -145,6 +153,8 @@ const ModelStreamCompletedSchema = z
       .object({
         inputTokens: z.number().int().nonnegative(),
         outputTokens: z.number().int().nonnegative(),
+        /** Present only for a request with `contextWindow`, when the server knows the window. */
+        contextWindowTokens: z.number().int().positive().optional(),
       })
       .strict()
       .readonly(),

@@ -42,6 +42,7 @@ export async function createConversationView(
     onAction,
     parity.history,
     languageCommand,
+    parity.usage,
   );
   const schedule = createRenderSchedule(() => {
     host.render(

@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { StoredUsageSchema } from "./session-usage.js";
 import { createFailureLog, FAILURE_LOG_FILE, type FailureLog } from "./failure-log.boundary.js";
 import { lstat, mkdir, open, readFile, realpath, rename, rm } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
-
 import * as privateWindows from "./private-file-windows.boundary.js";
-
 import {
   CanonicalRunEventSchema,
   ClientSessionIdSchema,
@@ -215,6 +214,7 @@ const StoredRunBaseSchema = z
     snapshot: StudentRunSnapshotSchema.nullable(),
     snapshotId: SnapshotIdSchema.nullable(),
     turns: StoredTurnsSchema,
+    usage: StoredUsageSchema.optional(),
   })
   .strict();
 const StoredAbandonedRunSchema = StoredRunBaseSchema.readonly();

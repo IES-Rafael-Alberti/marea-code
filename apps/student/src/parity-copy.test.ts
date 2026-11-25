@@ -40,6 +40,7 @@ function expectedCopy(translator: Translator) {
       help: text("student.tui.command.help-description"),
       language: text("student.tui.command.language-description"),
       retry: text("student.tui.command.retry-description"),
+      usage: text("student.tui.command.usage-description"),
     },
     composerPlaceholder: text("student.tui.composer.placeholder"),
     failure: {

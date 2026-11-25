@@ -33,6 +33,7 @@ import {
   SessionHistoryQuerySchema,
   SoftwareVersionSchema,
   TURN_DIAGNOSTICS_CAPABILITY,
+  CONTEXT_WINDOW_CAPABILITY,
   type RequestId,
 } from "@marea/protocol";
 import { parseBearerCredential, RequestPolicy } from "@marea/transport-server";
@@ -67,6 +68,7 @@ const CAPABILITIES = [
   TURN_DIAGNOSTICS_CAPABILITY,
   "marea.runs.history",
   "marea.teacher.notices",
+  CONTEXT_WINDOW_CAPABILITY,
 ] as const;
 function policyMiddleware(
   policy: RequestPolicy,

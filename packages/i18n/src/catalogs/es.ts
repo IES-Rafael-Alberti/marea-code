@@ -122,6 +122,7 @@ const spanishCatalog = {
   "student.tui.command.help-description": "mostrar los comandos y atajos",
   "student.tui.command.language-description": "cambiar el idioma de la interfaz",
   "student.tui.command.retry-description": "reanudar el último turno interrumpido",
+  "student.tui.command.usage-description": "mostrar u ocultar los tokens usados en la sesión",
   "student.tui.composer.placeholder": "Escribe a Marea…",
   "student.tui.failure.recovery-pending": "Hay un turno guardado pendiente de reanudación.",
   "student.tui.failure.deadline-exceeded": "Se ha alcanzado el tiempo máximo de esta petición.",
@@ -144,6 +145,7 @@ const spanishCatalog = {
 - \`/help\` — muestra esta ayuda.
 - \`/retry\` — reanuda el último turno interrumpido sin repetir tu mensaje.
 - \`/details\` — alterna entre outputs compactos y completos.
+- \`/usage\` (o \`/uso\`) — muestra u oculta la línea de tokens: ↑ entrada y ↓ salida acumuladas en la sesión, y qué parte del contexto del modelo usó la última llamada.
 - \`/language\` — cambia el idioma de la interfaz y guarda la preferencia.
 - \`/exit\` — termina la sesión.
 

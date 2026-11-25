@@ -62,6 +62,7 @@ export function createParityCopy(translator: Translator): ParityCopy {
       help: translator.t("student.tui.command.help-description"),
       language: translator.t("student.tui.command.language-description"),
       retry: translator.t("student.tui.command.retry-description"),
+      usage: translator.t("student.tui.command.usage-description"),
     },
     hints: {
       approval: translator.t("student.tui.hint.approval"),

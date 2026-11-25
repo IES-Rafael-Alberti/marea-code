@@ -110,6 +110,7 @@ Ireki Marea uneko proiektuan, irakurri irakaslearen irakurri gabeko feedbacka ed
   "student.tui.command.help-description": "erakutsi komandoak eta lasterbideak",
   "student.tui.command.language-description": "aldatu interfazearen hizkuntza",
   "student.tui.command.retry-description": "berrekin azken txanda etenari",
+  "student.tui.command.usage-description": "erakutsi edo ezkutatu saio honetan erabilitako tokenak",
   "student.tui.composer.placeholder": "Idatzi Mareari…",
   "student.tui.failure.action-not-prepared": "Mareak ezin izan du ekintza hori prestatu. Eskatu berriro urratsez urrats.",
   "student.tui.failure.budget-exhausted": "Saioak ez du nahikoa aurrekontu beste eskaera baterako.",
@@ -127,6 +128,7 @@ Ireki Marea uneko proiektuan, irakurri irakaslearen irakurri gabeko feedbacka ed
 - \`/help\` — erakutsi laguntza hau.
 - \`/retry\` — berrekin azken txanda etenari zure mezua errepikatu gabe.
 - \`/details\` — aldatu irteera trinkoen eta osoen artean.
+- \`/usage\` (edo \`/uso\`) — erakutsi edo ezkutatu token-lerroa: saioan orain arteko ↑ sarrera eta ↓ irteera, eta azken deiak ereduaren testuinguruaren zenbat erabili duen.
 - \`/language\` — aldatu interfazearen hizkuntza eta gorde hobespena.
 - \`/exit\` — amaitu saioa.
 

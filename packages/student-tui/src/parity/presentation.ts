@@ -5,9 +5,12 @@ import type {
   ConversationLanguageChange,
   ConversationHistory,
   ConversationSnapshot,
+  ConversationUsage,
+  ConversationUsagePreference,
   TurnFailureInfo,
   TurnFailureKind,
 } from "../conversation-contracts.js";
+import { usageLine } from "./usage-line.js";
 import { type ApprovalAction } from "./approval.js";
 import { localCommand } from "./commands.js";
 import { fill, type ParityCopy } from "./copy.js";
@@ -90,8 +93,17 @@ export function createPresentation(
   onLanguageCommand?: (
     copy: import("../conversation-contracts.js").ConversationCopy,
   ) => ConversationLanguageChange | Promise<ConversationLanguageChange | null> | null,
+  usagePreference?: ConversationUsagePreference,
 ) {
   let state = applyEvent(openSession(history?.entries), { type: "session-started", context });
+  let usageVisible = usagePreference?.visible ?? false;
+  let usage: ConversationUsage | undefined;
+  const showUsage = (): void => {
+    state = {
+      ...state,
+      usageLine: usageVisible && usage !== undefined ? usageLine(usage) : null,
+    };
+  };
   let retryNoticeId: string | null = null;
   let previous: Omit<ConversationSnapshot, "status"> & { status?: ConversationSnapshot["status"] } =
     { approval: null, messages: [] };
@@ -255,6 +267,8 @@ export function createPresentation(
     },
     snapshot: () => state,
     sync(snapshot: ConversationSnapshot): void {
+      usage = snapshot.usage ?? usage;
+      showUsage();
       syncActivity(snapshot);
       syncMessages(snapshot);
       syncTools(snapshot);
@@ -379,6 +393,12 @@ export function createPresentation(
       }
       if (command === "language") {
         changeLanguage();
+        return true;
+      }
+      if (command === "usage") {
+        usageVisible = !usageVisible;
+        usagePreference?.onVisibilityChange?.(usageVisible);
+        showUsage();
         return true;
       }
       if (state.turnActive) {
