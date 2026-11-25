@@ -364,9 +364,11 @@ function createPersistedStateSchema() {
           .optional(),
       })
       .strict()
-      // Journals written before approvals listed their actions describe exactly one.
+      // Journals written before approvals listed their actions describe exactly one. Approvals are
+      // always rebuilt from the graph interrupt, so this only keeps such a journal well typed.
       .transform((event) => ({
         ...event,
+        // Stryker disable all: no reader takes the actions of a journaled approval.
         actions: event.actions ?? [
           {
             index: 0,
@@ -375,6 +377,7 @@ function createPersistedStateSchema() {
             description: event.description,
           },
         ],
+        // Stryker restore all
       })),
     z
       .object({

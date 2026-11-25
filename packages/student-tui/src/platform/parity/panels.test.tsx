@@ -109,6 +109,9 @@ describe("approval panel", () => {
       (node) => typeof node.props.onMouseDown === "function",
     );
     expect(buttons).toHaveLength(3);
+    expect(buttons[1]?.props.backgroundColor).toBe(PALETTE.buttonApprove);
+    // The label, with its trailing space, sizes the button.
+    expect(buttons[1]?.props.width).toBe(`${approvalCopy.approveAll} `.length + 2);
     clickButton(buttons[1]);
     expect(onAction).toHaveBeenCalledWith({ type: "approve-all" });
     const last = approval({ ...batch, batch: { position: 3, total: 3, remaining: [] } });

@@ -105,6 +105,7 @@ describe("several approvals in one model message", () => {
   it("refuses a resume whose decisions do not cover every action", async () => {
     await expect(twoActions([{ type: "approve" }])).rejects.toMatchObject({
       code: "approval-review-mismatch",
+      message: "Every pending action needs exactly one decision.",
     });
   });
 });
@@ -179,6 +180,15 @@ function asPreview43Journal(storageDirectory: string): void {
   writeFileSync(path, serialize(state));
 }
 
+function journaledApprovals(storageDirectory: string): readonly object[] {
+  const state = deserialize(readFileSync(join(storageDirectory, "checkpoints.bin"))) as {
+    turns: Record<string, { events: { type: string }[] }>;
+  };
+  return Object.values(state.turns).flatMap((turn) =>
+    turn.events.filter((event) => event.type === "tool-approval-required"),
+  );
+}
+
 describe("an approval saved by preview 43", () => {
   it("still resumes, read as a batch of one action", async () => {
     const { projectDirectory, storageDirectory } = durableDirectories();
@@ -216,6 +226,20 @@ describe("an approval saved by preview 43", () => {
     );
     expect(execute).toHaveBeenCalledOnce();
     expect(resumed.at(-1)).toEqual({ type: "turn-completed" });
+    // The completed turn journals the approval again, now as a batch of one action.
+    const original = approval(interrupted);
+    expect(journaledApprovals(storageDirectory)).toEqual([
+      expect.objectContaining({
+        actions: [
+          {
+            index: 0,
+            toolName: original?.toolName,
+            arguments: original?.arguments,
+            description: original?.description,
+          },
+        ],
+      }),
+    ]);
   });
 });
 

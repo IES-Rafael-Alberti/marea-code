@@ -70,7 +70,7 @@ function approvalRequest(approval: NonNullable<ConversationSnapshot["approval"]>
     name: approval.toolName ?? "write_file",
     preview: `${approval.summary}\n${approval.path}`,
     warnings: approval.warnings ?? [],
-    ...(approval.batch === undefined ? {} : { batch: approval.batch }),
+    batch: approval.batch,
   };
 }
 
