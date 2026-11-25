@@ -10,6 +10,7 @@ import type {
   Clock,
   IdSource,
   PendingStudentTurn,
+  SessionUsage,
   StoredApproval,
   StoredCloseReason,
   StoredEffect,
@@ -25,6 +26,7 @@ import { pendingStoredTurn } from "./pending-turn.js";
 import { assertActivationCompatible } from "./local-session-recovery.js";
 import { prepareStoredStartup, recordStartupProgress } from "./local-startup.js";
 import { SerialOperationQueue } from "./serial-operation-queue.js";
+import { addUsage, type CallUsage } from "./session-usage.js";
 import {
   beginStoredApproval,
   beginStoredTurn,
@@ -419,6 +421,15 @@ export class LocalSession {
         throw new Error("The close response addressed another run.");
       }
       return { state: { ...state, run: null }, value: null };
+    });
+  }
+
+  /** Adds one model call to the session totals and returns them. */
+  recordUsage(call: CallUsage): Promise<SessionUsage> {
+    return this.mutate((state) => {
+      if (state.run === null) throw new Error("No local student run exists.");
+      const usage = addUsage(state.run.usage, call);
+      return { state: { ...state, run: { ...state.run, usage } }, value: usage };
     });
   }
 

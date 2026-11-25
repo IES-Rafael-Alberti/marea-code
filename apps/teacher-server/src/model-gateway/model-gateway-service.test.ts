@@ -347,3 +347,44 @@ describe("tool-call repair detail", () => {
     expect(await stream(true, undefined)).not.toHaveProperty("repair");
   });
 });
+
+describe("model context window", () => {
+  const completion = async (contextWindow: boolean, window: number | undefined) => {
+    const service = createService(
+      new ScriptedProvider([
+        {
+          events: [
+            {
+              type: "usage" as const,
+              inputTokens: 3,
+              outputTokens: 1,
+              ...(window === undefined ? {} : { contextWindowTokens: window }),
+            },
+            { type: "completed" as const, finishReason: "stop" as const },
+          ],
+        },
+      ]),
+    );
+    const chunks = [];
+    for await (const chunk of service.stream(
+      ModelGatewayRequestSchema.parse({
+        ...request,
+        ...(contextWindow ? { contextWindow: true } : {}),
+      }),
+      new AbortController().signal,
+    ))
+      chunks.push(chunk);
+    const done = chunks.find((chunk) => chunk.event === "completed");
+    return done?.event === "completed" ? done.usage : null;
+  };
+
+  it("reports the window only to a client that asked and only when the provider knows it", async () => {
+    expect(await completion(true, 262_144)).toEqual({
+      inputTokens: 3,
+      outputTokens: 1,
+      contextWindowTokens: 262_144,
+    });
+    expect(await completion(false, 262_144)).toStrictEqual({ inputTokens: 3, outputTokens: 1 });
+    expect(await completion(true, undefined)).toStrictEqual({ inputTokens: 3, outputTokens: 1 });
+  });
+});

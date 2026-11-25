@@ -47,4 +47,19 @@ describe("status bar", () => {
     const [box] = nodesOfType(bar(), "box");
     expect(box?.props).toMatchObject({ backgroundColor: PALETTE.surface, height: 1 });
   });
+  it("keeps the usage line at the right end and narrows the rest to make room", () => {
+    const line = StatusBar({
+      columns: 60,
+      copy: PARITY_TEST_COPY,
+      status: INITIAL_STATUS,
+      usage: "↑2.4k ↓21",
+    });
+    const texts = nodesOfType(line, "text");
+    expect(texts).toHaveLength(2);
+    expect(texts[0]?.props.width).toBe(60 - 4 - "    ↑2.4k ↓21".length);
+    expect(texts[1]?.props.width).toBe("    ↑2.4k ↓21".length);
+    expect(texts[1]?.props.children).toEqual(["    ", "↑2.4k ↓21"]);
+    expect(nodesOfType(bar({}), "text")).toHaveLength(1);
+    expect(nodesOfType(bar({}), "text")[0]?.props.width).toBe(116);
+  });
 });

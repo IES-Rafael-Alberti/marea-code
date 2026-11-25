@@ -1,3 +1,4 @@
+import type { AdmittedRequest } from "./context-preflight.js";
 import type {
   InferenceCancellation,
   InferenceFinishReason,
@@ -79,6 +80,7 @@ function finishReason(value: string | null | undefined): InferenceFinishReason |
 async function* translateStream(
   response: OpenRouterHttpResponse,
   requestId: string,
+  contextWindowTokens: number | undefined,
 ): AsyncIterable<InferenceProviderEvent> {
   if (response.body === null) {
     throw providerError(
@@ -106,7 +108,11 @@ async function* translateStream(
     }
     reason = finishReason(chunk.finishReason) ?? reason;
     if (chunk.usage !== undefined) {
-      usage = Object.freeze({ ...chunk.usage, type: "usage" });
+      usage = Object.freeze({
+        ...chunk.usage,
+        ...(contextWindowTokens === undefined ? {} : { contextWindowTokens }),
+        type: "usage",
+      });
     }
   }
   if (!completed)
@@ -135,10 +141,7 @@ function aborted(): InferenceProviderError {
 export function createOpenRouterProviderWith(
   configuration: OpenRouterConfiguration,
   http: OpenRouterHttpPort,
-  preflight?: (
-    request: InferenceProviderRequest,
-    signal: AbortSignal,
-  ) => Promise<InferenceProviderRequest>,
+  preflight?: (request: InferenceProviderRequest, signal: AbortSignal) => Promise<AdmittedRequest>,
 ): InferenceProvider {
   return Object.freeze({
     async *stream(
@@ -153,7 +156,7 @@ export function createOpenRouterProviderWith(
         controller.abort();
       });
       try {
-        const admitted =
+        const admitted: AdmittedRequest =
           preflight === undefined ? request : await preflight(request, controller.signal);
         let response: OpenRouterHttpResponse;
         try {
@@ -172,7 +175,7 @@ export function createOpenRouterProviderWith(
           throw httpError(response);
         }
         try {
-          yield* translateStream(response, admitted.requestId);
+          yield* translateStream(response, admitted.requestId, admitted.contextWindowTokens);
         } catch (error) {
           if (controller.signal.aborted) throw aborted();
           if (error instanceof InferenceProviderError) throw error;

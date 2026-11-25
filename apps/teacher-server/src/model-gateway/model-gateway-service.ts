@@ -67,7 +67,11 @@ function providerRequest(
 
 interface StreamState {
   readonly sequence: number;
-  readonly usage: { readonly inputTokens: number; readonly outputTokens: number } | null;
+  readonly usage: {
+    readonly inputTokens: number;
+    readonly outputTokens: number;
+    readonly contextWindowTokens?: number;
+  } | null;
 }
 
 function eventChunk(
@@ -89,7 +93,13 @@ function eventChunk(
       chunk: null,
       state: {
         ...state,
-        usage: { inputTokens: event.inputTokens, outputTokens: event.outputTokens },
+        usage: {
+          inputTokens: event.inputTokens,
+          outputTokens: event.outputTokens,
+          ...(request.contextWindow === true && event.contextWindowTokens !== undefined
+            ? { contextWindowTokens: event.contextWindowTokens }
+            : {}),
+        },
       },
     };
   }

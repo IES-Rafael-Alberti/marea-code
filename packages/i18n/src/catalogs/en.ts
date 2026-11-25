@@ -118,6 +118,7 @@ const englishCatalog = {
   "student.tui.command.help-description": "show the commands and shortcuts",
   "student.tui.command.language-description": "change the interface language",
   "student.tui.command.retry-description": "resume the last interrupted turn",
+  "student.tui.command.usage-description": "show or hide the tokens used in this session",
   "student.tui.composer.placeholder": "Write to Marea…",
   "student.tui.failure.recovery-pending": "A saved turn is waiting for explicit resumption.",
   "student.tui.failure.deadline-exceeded":
@@ -142,6 +143,7 @@ const englishCatalog = {
 - \`/help\` — shows this help.
 - \`/retry\` — resumes the last interrupted turn without repeating your message.
 - \`/details\` — switches between compact and full outputs.
+- \`/usage\` (or \`/uso\`) — shows or hides the token line: ↑ input and ↓ output so far in this session, and how much of the model's context the latest call used.
 - \`/language\` — cycles the interface language and saves the preference.
 - \`/exit\` — ends the session.
 

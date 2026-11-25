@@ -43,6 +43,15 @@ function createTarget(
 }
 
 describe("conversation TUI session", () => {
+  it("shows the session usage in the next snapshot, between turns too, until it closes", () => {
+    const target = createTarget();
+    const usage = { inputTokens: 10, outputTokens: 2, lastInputTokens: 10 };
+    expect(target.binding.session.reportUsage(usage)).toBe(true);
+    expect(target.snapshots.at(-1)?.usage).toEqual(usage);
+    target.binding.session.close();
+    expect(target.binding.session.reportUsage({ ...usage, outputTokens: 3 })).toBe(false);
+  });
+
   it("exposes a bound-only resume operation for a hydrated pending turn", async () => {
     const operation = Promise.withResolvers<undefined>();
     const onMessage = vi.fn(() => operation.promise);

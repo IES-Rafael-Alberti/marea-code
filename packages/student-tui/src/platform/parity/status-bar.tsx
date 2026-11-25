@@ -15,21 +15,24 @@ export interface StatusBarProperties {
   readonly columns?: number;
   readonly copy: ParityCopy;
   readonly status: StatusState;
+  /** The `/usage` line, kept at the right end while it is shown. */
+  readonly usage?: string | null;
 }
 
 const GAP = "    ";
 
-export function StatusBar({ copy, status, columns = 120 }: StatusBarProperties) {
+export function StatusBar({ copy, status, columns = 120, usage = null }: StatusBarProperties) {
   const line = statusLine(status, copy);
+  const usageWidth = usage === null ? 0 : usage.length + GAP.length;
+  const width = columns - 4 - usageWidth;
   const elapsedWidth = line.elapsed === "" ? 0 : line.elapsed.length + 1;
-  const hint = fittingWords(line.hint, columns - 4 - line.label.length - elapsedWidth - GAP.length);
+  const hint = fittingWords(line.hint, width - line.label.length - elapsedWidth - GAP.length);
   const context =
     hint !== line.hint
       ? ""
       : fittingWords(
           line.context,
-          columns -
-            4 -
+          width -
             line.label.length -
             elapsedWidth -
             (hint === "" ? 0 : hint.length + GAP.length) -
@@ -38,12 +41,13 @@ export function StatusBar({ copy, status, columns = 120 }: StatusBarProperties) 
   return (
     <box
       backgroundColor={PALETTE.surface}
+      flexDirection="row"
       flexShrink={0}
       height={1}
       paddingLeft={2}
       paddingRight={2}
     >
-      <text wrapMode="word" width={columns - 4}>
+      <text wrapMode="word" width={width}>
         <span
           attributes={line.running ? ATTRIBUTES.bold : ATTRIBUTES.none}
           fg={line.running ? PALETTE.accent : PALETTE.dimOnSurface}
@@ -64,6 +68,12 @@ export function StatusBar({ copy, status, columns = 120 }: StatusBarProperties) 
           </span>
         )}
       </text>
+      {usage === null ? null : (
+        <text fg={PALETTE.dimOnSurface} width={usageWidth}>
+          {GAP}
+          {usage}
+        </text>
+      )}
     </box>
   );
 }

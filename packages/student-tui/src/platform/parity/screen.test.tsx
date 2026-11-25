@@ -50,7 +50,7 @@ describe("command suggestions", () => {
   it("lists the matching commands with their descriptions", () => {
     const rendered = CommandSuggestions({ copy: copy.commands, text: "/" });
     expect(renderedText(rendered)).toBe(
-      `/exit  ${copy.commands.exit}   /help  ${copy.commands.help}   /language  ${copy.commands.language}\n/retry  ${copy.commands.retry}   /details  ${copy.commands.details}`,
+      `/exit  ${copy.commands.exit}   /help  ${copy.commands.help}   /language  ${copy.commands.language}\n/retry  ${copy.commands.retry}   /details  ${copy.commands.details}   /usage\n${copy.commands.usage}`,
     );
     expect(nodesOfType(rendered, "box")[0]?.props.borderColor).toBe(PALETTE.accent);
   });

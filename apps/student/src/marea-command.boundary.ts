@@ -46,7 +46,10 @@ import { runInteractiveMarea, type MareaSessionLifecycle } from "./main.js";
 import { createSessionContext, sessionModelAlias } from "./session-context.js";
 import { classifyTurnFailure } from "./turn-failure.boundary.js";
 import { runFeedbackCommand, type FeedbackCommandOptions } from "./feedback-command.boundary.js";
-import type { StudentLanguagePreferenceStore } from "./interface-locale.boundary.js";
+import type {
+  StudentLanguagePreferenceStore,
+  StudentUsagePreferenceStore,
+} from "./interface-locale.boundary.js";
 
 export const MAREA_CLIENT_VERSION = "0.2.0";
 
@@ -66,6 +69,7 @@ export interface MareaCommandOptions {
   readonly languagePreference?: LocalePreference;
   readonly automaticLocale?: Locale;
   readonly languagePreferenceStore?: StudentLanguagePreferenceStore;
+  readonly usagePreferenceStore?: StudentUsagePreferenceStore;
 }
 
 export interface MareaCommandRuntime {
@@ -147,6 +151,8 @@ function commandKind(
 
 export function createBindableConversationPort(): BindableConversationPort {
   let target: StudentConversationPort | null = null;
+  // A resumed session reports its usage while starting, before the conversation exists.
+  let startupUsage: Parameters<StudentConversationPort["reportUsage"]>[0] | null = null;
   const requireTarget = (): StudentConversationPort => {
     if (target === null) throw new Error("The conversation interface is not ready.");
     return target;
@@ -159,6 +165,14 @@ export function createBindableConversationPort(): BindableConversationPort {
     ) => requireTarget().appendAssistantText(text, messageId, attemptId),
     bind(port: StudentConversationPort): void {
       target = port;
+      if (startupUsage !== null) port.reportUsage(startupUsage);
+    },
+    reportUsage: (usage: Parameters<StudentConversationPort["reportUsage"]>[0]) => {
+      if (target === null) {
+        startupUsage = usage;
+        return false;
+      }
+      return target.reportUsage(usage);
     },
     cancel: (messageId?: ConversationMessageId, attemptId?: ConversationAttemptId) =>
       requireTarget().cancel(messageId, attemptId),
@@ -283,6 +297,13 @@ async function runStudent(
           parity: {
             copy: createParityCopy(translator),
             history,
+            usage: {
+              visible: (await options.usagePreferenceStore?.load()) ?? false,
+              onVisibilityChange: (visible: boolean) => {
+                // A preference that cannot be saved still applies to this session.
+                void options.usagePreferenceStore?.save(visible).catch(() => undefined);
+              },
+            },
             context: createSessionContext({
               cwd: projectRoot,
               failureLog: join(stateDirectory, FAILURE_LOG_FILE),

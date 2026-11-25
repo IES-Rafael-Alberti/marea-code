@@ -6,6 +6,7 @@ import type {
   AuthenticationOptions,
   AuthenticationReason,
   SelectableClass,
+  SessionUsage,
   StudentInterface,
   StudentViewEvent,
 } from "./contracts.js";
@@ -25,6 +26,7 @@ export type StudentConversationPort = Pick<
   | "cancel"
   | "complete"
   | "requestApproval"
+  | "reportUsage"
   | "thinking"
   | "toolFinished"
   | "toolStarted"
@@ -51,6 +53,7 @@ export function adaptConversationTuiSession(
     cancel: session.cancel.bind(session),
     complete: session.complete.bind(session),
     requestApproval: session.requestApproval.bind(session),
+    reportUsage: session.reportUsage.bind(session),
     ...(session.requestQuestions === undefined
       ? {}
       : { requestQuestions: session.requestQuestions.bind(session) }),
@@ -105,6 +108,9 @@ export function createConversationStudentInterface(
         prompt.messageId,
         prompt.attemptId,
       );
+    },
+    showUsage(usage: SessionUsage): void {
+      options.conversation.reportUsage(usage);
     },
     present(event: StudentViewEvent): void {
       if (event.type === "assistant-text") {

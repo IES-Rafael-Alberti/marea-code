@@ -118,6 +118,8 @@ export type InferenceProviderEvent =
       readonly type: "usage";
       readonly inputTokens: number;
       readonly outputTokens: number;
+      /** The model's context window, when the provider knows it. */
+      readonly contextWindowTokens?: number;
     }
   | { readonly type: "completed"; readonly finishReason: InferenceFinishReason };
 

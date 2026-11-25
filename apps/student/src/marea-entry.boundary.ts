@@ -5,6 +5,7 @@ import { createTranslator, parseLocalePreference, selectLocale } from "@marea/i1
 
 import {
   createStudentLanguagePreferenceStore,
+  createStudentUsagePreferenceStore,
   parseLanguageArguments,
   resolveStudentLocale,
   systemLocaleCandidates,
@@ -61,5 +62,6 @@ if (parsedArguments.invalid !== undefined) {
     languagePreference: resolution.preference,
     automaticLocale: selectLocale(systemLocales),
     languagePreferenceStore: preferenceStore,
+    usagePreferenceStore: createStudentUsagePreferenceStore(stateRoot),
   });
 }

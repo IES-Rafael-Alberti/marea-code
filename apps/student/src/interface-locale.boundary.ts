@@ -94,6 +94,24 @@ export interface StudentLanguagePreferenceStore {
   save(preference: LocalePreference): Promise<void>;
 }
 
+/** Reads one value of the shared settings file; an unreadable file counts as unset. */
+async function loadSetting(path: string, key: string): Promise<unknown> {
+  try {
+    return parseLanguageSettings(await readPrivateTextFile(path))[key];
+  } catch {
+    // An unreadable settings file counts as unset.
+  }
+  return undefined;
+}
+
+/** Writes one value of the shared settings file, keeping every other value. */
+async function saveSetting(stateRoot: string, key: string, value: unknown): Promise<void> {
+  const path = join(resolve(stateRoot), "settings.json");
+  await mkdir(resolve(stateRoot), { recursive: true, mode: 0o700 });
+  const current = parseLanguageSettings(await readPrivateTextFile(path));
+  await writePrivateFileAtomically(path, JSON.stringify({ ...current, [key]: value }));
+}
+
 export function createStudentLanguagePreferenceStore(
   stateRoot: string,
 ): StudentLanguagePreferenceStore {
@@ -101,21 +119,30 @@ export function createStudentLanguagePreferenceStore(
   return Object.freeze({
     async load(): Promise<LocalePreference | null> {
       try {
-        const settings = parseLanguageSettings(await readPrivateTextFile(path));
         return parseLocalePreference(
-          StoredPreferenceSchema.parse(settings[LANGUAGE_PREFERENCE_KEY]),
+          StoredPreferenceSchema.parse(await loadSetting(path, LANGUAGE_PREFERENCE_KEY)),
         );
       } catch {
         return null;
       }
     },
-    async save(preference: LocalePreference): Promise<void> {
-      await mkdir(resolve(stateRoot), { recursive: true, mode: 0o700 });
-      const current = parseLanguageSettings(await readPrivateTextFile(path));
-      await writePrivateFileAtomically(
-        path,
-        JSON.stringify({ ...current, [LANGUAGE_PREFERENCE_KEY]: preference }),
-      );
-    },
+    save: (preference: LocalePreference) =>
+      saveSetting(stateRoot, LANGUAGE_PREFERENCE_KEY, preference),
+  });
+}
+
+const USAGE_LINE_KEY = "marea.usage-line.v1";
+
+/** Whether the student keeps the `/usage` line visible, across sessions and projects. */
+export interface StudentUsagePreferenceStore {
+  load(): Promise<boolean>;
+  save(visible: boolean): Promise<void>;
+}
+
+export function createStudentUsagePreferenceStore(stateRoot: string): StudentUsagePreferenceStore {
+  const path = join(resolve(stateRoot), "settings.json");
+  return Object.freeze({
+    load: async () => (await loadSetting(path, USAGE_LINE_KEY)) === true,
+    save: (visible: boolean) => saveSetting(stateRoot, USAGE_LINE_KEY, visible),
   });
 }

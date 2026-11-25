@@ -65,6 +65,8 @@ export interface SessionControllerOptions {
   readonly diagnostics?: Omit<TurnDiagnosticsOptions, "reportToServer"> & {
     readonly onServerSupport?: (supported: boolean) => void;
   };
+  /** Every capability the teacher's server announced, once per start. */
+  readonly onServerCapabilities?: (capabilities: readonly string[]) => void;
   readonly evidence?: ProjectEvidence;
   readonly operations?: OperationExecutor;
   readonly onStartupStage?: ((stage: StudentStartupStage) => void) | undefined;
@@ -235,6 +237,7 @@ export class StudentSessionController {
     this.externalSignIn = capabilities.includes("marea.auth.external");
     this.turnDiagnostics = capabilities.includes(TURN_DIAGNOSTICS_CAPABILITY);
     this.options.diagnostics?.onServerSupport?.(this.turnDiagnostics);
+    this.options.onServerCapabilities?.(capabilities);
     this.reportStartupStage("authentication");
     const authenticated = await this.authenticate();
     this.sessionToken = authenticated.token;
@@ -274,6 +277,7 @@ export class StudentSessionController {
       serverRunId,
     });
     await this.options.localSession.activate(opened);
+    await this.showStoredUsage();
     await this.flushOutbox();
     return {
       classroomDisplayName: bootstrap.classroom.displayName,
@@ -291,6 +295,13 @@ export class StudentSessionController {
    * undeliverable events stay set aside locally and are never sent. A class configuration
    * refusal keeps the stored run, because the run itself is still valid.
    */
+  /** A resumed session shows the usage it had before the restart. */
+  private async showStoredUsage(): Promise<void> {
+    // Stryker disable next-line OptionalChaining: the run has just been activated.
+    const usage = (await this.options.localSession.load()).run?.usage;
+    if (usage !== undefined) this.options.studentInterface.showUsage?.(usage);
+  }
+
   private async openOrSetAside(
     token: SessionToken,
     local: StoredRun,

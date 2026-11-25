@@ -85,7 +85,7 @@ export function ParityScreen({
         onSubmit={onSubmit}
         placeholder={copy.composerPlaceholder}
       />
-      <StatusBar columns={columns} copy={copy} status={session.status} />
+      <StatusBar columns={columns} copy={copy} status={session.status} usage={session.usageLine} />
       {overlay}
     </box>
   );

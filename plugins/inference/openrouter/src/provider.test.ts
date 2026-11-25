@@ -53,13 +53,13 @@ describe("OpenRouter inference provider", () => {
     await expect(
       collect(
         createOpenRouterProviderWith(CONFIGURATION, http, (request) =>
-          Promise.resolve({ ...request, maxOutputTokens: 256 }),
+          Promise.resolve({ ...request, maxOutputTokens: 256, contextWindowTokens: 262_144 }),
         ).stream(REQUEST, cancellation),
       ),
     ).resolves.toEqual([
       { text: "Hola", type: "text-delta" },
       { text: " mundo", type: "text-delta" },
-      { inputTokens: 4, outputTokens: 2, type: "usage" },
+      { inputTokens: 4, outputTokens: 2, contextWindowTokens: 262_144, type: "usage" },
       { finishReason: "stop", type: "completed" },
     ]);
     expect(http.requests).toHaveLength(1);
@@ -304,7 +304,7 @@ describe("OpenRouter inference provider", () => {
     );
     await expect(
       collect(provider(new TestHttp(response)).stream(REQUEST, new TestCancellation())),
-    ).resolves.toEqual([
+    ).resolves.toStrictEqual([
       { inputTokens: 20_681, outputTokens: 296, type: "usage" },
       { arguments: { pattern: "x" }, callId: "call-1", name: "grep", type: "tool-call" },
       { finishReason: "tool-call", type: "completed" },

@@ -36,6 +36,7 @@ describe("conversation command helpers", () => {
       cancel,
       complete,
       requestApproval,
+      reportUsage: vi.fn(() => true),
       thinking: vi.fn(() => true),
       toolFinished,
       toolStarted,

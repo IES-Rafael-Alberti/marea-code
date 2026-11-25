@@ -22,6 +22,7 @@ import type {
   ConversationToolCall,
   ConversationToolFinish,
   ConversationToolStart,
+  ConversationUsage,
   TurnFailureInfo,
 } from "./conversation-contracts.js";
 
@@ -417,6 +418,7 @@ export function createConversationController(
       return result.promise;
     },
     resumeTurn,
+    reportUsage: (usage: ConversationUsage): boolean => update({ ...current, usage }),
     snapshot: () => current,
     thinking(
       messageId?: ConversationMessageId,

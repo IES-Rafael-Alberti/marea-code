@@ -36,6 +36,8 @@ export interface SessionState {
   readonly status: StatusState;
   readonly transcript: Transcript;
   readonly turnActive: boolean;
+  /** The `/usage` line, or null while it is hidden or nothing has been used yet. */
+  readonly usageLine: string | null;
 }
 
 export function openSession(entries: readonly string[] = []): SessionState {
@@ -50,6 +52,7 @@ export function openSession(entries: readonly string[] = []): SessionState {
     status: INITIAL_STATUS,
     transcript: [],
     turnActive: true,
+    usageLine: null,
   };
 }
 

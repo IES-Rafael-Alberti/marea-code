@@ -12,10 +12,15 @@ const signal = () => new AbortController().signal;
 
 it("admits full material and reserves output even without a configured output cap", async () => {
   const preflight = createContextPreflight(() => Promise.resolve([model]));
-  expect(await preflight(request, signal())).toEqual({ ...request, maxOutputTokens: 8192 });
+  expect(await preflight(request, signal())).toEqual({
+    ...request,
+    maxOutputTokens: 8192,
+    contextWindowTokens: 128_000,
+  });
   expect(await preflight({ ...request, maxOutputTokens: 12 }, signal())).toEqual({
     ...request,
     maxOutputTokens: 12,
+    contextWindowTokens: 128_000,
   });
 });
 it("blocks unknown capacity and oversized prompts without changing their contents", async () => {
@@ -101,7 +106,10 @@ it("includes UTF-8 messages, tools, framing and output at the exact admission bo
   const capacity = payloadBytes + 4096 + 100;
   const preflight = (limit: number) =>
     createContextPreflight(() => Promise.resolve([{ ...model, contextWindowTokens: limit }]));
-  await expect(preflight(capacity)(turn, signal())).resolves.toEqual(turn);
+  await expect(preflight(capacity)(turn, signal())).resolves.toEqual({
+    ...turn,
+    contextWindowTokens: capacity,
+  });
   await expect(preflight(capacity - 1)(turn, signal())).rejects.toMatchObject({
     code: "context-exceeded",
   });

@@ -242,6 +242,7 @@ describe("file student stores", () => {
       leaseIssuedAt: FIXTURE_CLOCK.now(),
       pendingApprovals: [pendingApproval],
       pendingDelivery: { events: [{ key: "delivery", value: event }] },
+      usage: { inputTokens: 0, outputTokens: 0, lastInputTokens: 0, contextWindowTokens: 1 },
       turns: [
         {
           messageId: "message:pending",

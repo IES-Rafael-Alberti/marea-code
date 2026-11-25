@@ -38,6 +38,7 @@ export const PARITY_TEST_COPY: ParityCopy = Object.freeze({
     help: "mostrar los comandos y atajos",
     language: "cambiar el idioma de la interfaz",
     retry: "reanudar el último turno interrumpido",
+    usage: "mostrar u ocultar los tokens usados en la sesión",
   }),
   composerPlaceholder: "Escribe a Marea…",
   failure: Object.freeze({

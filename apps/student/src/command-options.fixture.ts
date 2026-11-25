@@ -39,6 +39,7 @@ export function conversationSession(
     requestApproval: vi.fn(() => Promise.resolve("approved" as const)),
     resumeTurn: vi.fn(() => true),
     snapshot: vi.fn(() => ({ approval: null, messages: [], status: "ready" as const })),
+    reportUsage: vi.fn(() => true),
     thinking: vi.fn(() => true),
     toolFinished: vi.fn(() => true),
     toolStarted: vi.fn(() => true),
