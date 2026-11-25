@@ -42,6 +42,8 @@ Client and server software versions can differ while their wire protocol and
 required capabilities remain compatible. Teachers update a stopped server; on its
 first start the new server backs up the database and migrates it to its schema. Download failures do not replace the installed program.
 See [distribution](DISTRIBUTION.md) for recommendation, recovery and uninstall commands.
+Students can read the [student guide](STUDENTS.md) for signing out, the project root,
+several approvals in one turn, the `/usage` line and what to do after an error.
 
 ## Develop
 
