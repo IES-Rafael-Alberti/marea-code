@@ -46,6 +46,7 @@ import { runInteractiveMarea, type MareaSessionLifecycle } from "./main.js";
 import { createSessionContext, sessionModelAlias } from "./session-context.js";
 import { classifyTurnFailure } from "./turn-failure.boundary.js";
 import { runFeedbackCommand, type FeedbackCommandOptions } from "./feedback-command.boundary.js";
+import { runLogoutCommand, type LogoutCommandOptions } from "./logout-command.boundary.js";
 import type {
   StudentLanguagePreferenceStore,
   StudentUsagePreferenceStore,
@@ -129,7 +130,7 @@ function nextLanguagePreference(current: LocalePreference): LocalePreference {
 
 function commandKind(
   arguments_: readonly string[],
-): "help" | "invalid" | "version" | "feedback" | null {
+): "help" | "invalid" | "version" | "feedback" | "logout" | null {
   if (arguments_.length === 0 || (arguments_.length === 1 && arguments_[0] === "--no-mouse"))
     return null;
   if (
@@ -140,6 +141,7 @@ function commandKind(
         EventIdSchema.safeParse(arguments_[2]).success))
   )
     return "feedback";
+  if (arguments_.length === 1 && arguments_[0] === "logout") return "logout";
   if (arguments_.length === 1 && (arguments_[0] === "--help" || arguments_[0] === "-h")) {
     return "help";
   }
@@ -384,6 +386,7 @@ async function executeSelectedCommand(
   options: MareaCommandOptions,
   runtime: MareaCommandRuntime,
   feedback: (options: FeedbackCommandOptions) => Promise<number>,
+  logout: (options: LogoutCommandOptions) => Promise<number>,
 ): Promise<number> {
   const kind = commandKind(options.arguments);
   if (kind === "help" || kind === "invalid") {
@@ -411,6 +414,12 @@ async function executeSelectedCommand(
         translator: options.translator,
         output: options.output,
       });
+    if (kind === "logout")
+      return await logout({
+        ...studentLocations(options, serverUrl),
+        translator: options.translator,
+        output: options.output,
+      });
     await runStudent(options, runtime, serverUrl, (value) => {
       stage = value;
     });
@@ -426,6 +435,7 @@ export async function executeMareaCommand(
   options: MareaCommandOptions,
   runtime: MareaCommandRuntime = PRODUCTION_RUNTIME,
   feedback: (options: FeedbackCommandOptions) => Promise<number> = runFeedbackCommand,
+  logout: (options: LogoutCommandOptions) => Promise<number> = runLogoutCommand,
 ): Promise<number> {
   const parsed = parseServerArguments(options.arguments);
   if (parsed === undefined) {
@@ -436,5 +446,6 @@ export async function executeMareaCommand(
     { ...options, arguments: parsed.arguments, serverUrl: parsed.serverUrl ?? options.serverUrl },
     runtime,
     feedback,
+    logout,
   );
 }

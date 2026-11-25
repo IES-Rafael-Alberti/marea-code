@@ -60,6 +60,7 @@ describe("marea command", () => {
       status: 2,
       stream: "errors",
     },
+    { arguments: ["logout", "extra"], expected: "Usage: marea", status: 2, stream: "errors" },
   ])("handles $arguments without starting the application", async (scenario) => {
     const options = commandOptions({ arguments: scenario.arguments });
     const createApplication = vi.fn();

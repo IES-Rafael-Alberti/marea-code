@@ -30,6 +30,7 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.auth.password-label",
   "student.auth.required",
   "student.cli.help",
+  "student.cli.logout-done",
   "student.cli.invalid-language",
   "student.cli.language-save-failed",
   "student.cli.server-url-missing",

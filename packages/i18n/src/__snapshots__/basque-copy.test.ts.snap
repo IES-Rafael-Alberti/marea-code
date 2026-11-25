@@ -45,12 +45,14 @@ exports[`preserves the reviewed Basque interface copy 1`] = `
   "student.cli.help": "Erabilera: marea [--server <URL>] [--lang <locale>] [--no-mouse]
        marea feedback
        marea feedback --ack <notice-id>
+       marea logout
 
-Ireki Marea uneko proiektuan, irakurri irakaslearen irakurri gabeko feedbacka edo markatu ohar bat irakurritzat. Erabili --lang automatic, es, en edo eu exekuzio honetarako.",
+Ireki Marea uneko proiektuan, irakurri irakaslearen irakurri gabeko feedbacka, markatu ohar bat irakurritzat edo itxi saioa nola hasi berriro aukeratzeko. Erabili --lang automatic, es, en edo eu exekuzio honetarako.",
   "student.cli.invalid-language": "{{option}} hizkuntza-aukera ez da baliozkoa. Erabili automatic, es, en edo eu.",
   "student.cli.language-save-failed": "Ezin izan da interfazearen hizkuntza gorde. Saio honetan bakarrik egongo da aktibo.",
   "student.cli.local-state-invalid": "Mareak ezin ditu proiektu honen gordetako datuak irakurri. Gorde datuak eta eman kode hau irakasleari, berreskuratu ahal izateko.",
   "student.cli.local-state-recovered": "Mareak ezin izan ditu ordenagailu honetako datu gordetu batzuk irakurri; beraz, alde batera utzi ditu eta saio berri bat hasi du. Ez da ezer ezabatu, eta agian saioa berriro hasi beharko duzu.",
+  "student.cli.logout-done": "Saioa itxita. Marea exekutatzen duzun hurrengoan saioa nola hasi aukeratu ahal izango duzu.",
   "student.cli.renderer-failed": "Ezin izan da terminaleko interfazea ireki. Probatu beste terminal batean eta eman kode hau berriro huts egiten badu.",
   "student.cli.response-invalid": "Zerbitzariak bezero honek irakurri ezin duen erantzuna bidali du. Egiaztatu zerbitzariaren helbidea eta eman kode hau irakasleari.",
   "student.cli.run-unavailable": "Zerbitzariak ezin du saio hau ireki. Eskatu irakasleari zure sarbidea eta klasearen konfigurazioa gordeta dagoela egiaztatzeko; ondoren, exekutatu marea berriro.",

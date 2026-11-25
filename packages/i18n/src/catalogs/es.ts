@@ -38,7 +38,9 @@ const spanishCatalog = {
   "student.auth.password-label": "Contraseña",
   "student.auth.required": "Este campo es obligatorio.",
   "student.cli.help":
-    "Uso: marea [--server <URL>] [--lang <locale>] [--no-mouse]\n     marea feedback\n     marea feedback --ack <id-aviso>\n\nAbre Marea en el proyecto actual, consulta el feedback docente pendiente o marca un aviso como leído. Usa --lang automatic, es, en o eu para esta ejecución.",
+    "Uso: marea [--server <URL>] [--lang <locale>] [--no-mouse]\n     marea feedback\n     marea feedback --ack <id-aviso>\n     marea logout\n\nAbre Marea en el proyecto actual, consulta el feedback docente pendiente, marca un aviso como leído o cierra la sesión guardada para elegir de nuevo cómo iniciarla. Usa --lang automatic, es, en o eu para esta ejecución.",
+  "student.cli.logout-done":
+    "Sesión cerrada. La próxima vez que ejecutes marea podrás elegir cómo iniciar sesión.",
   "student.cli.invalid-language":
     "La opción de idioma {{option}} no es válida. Usa automatic, es, en o eu.",
   "student.cli.language-save-failed":
