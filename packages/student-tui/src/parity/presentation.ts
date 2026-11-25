@@ -18,10 +18,10 @@ import { filterToolArguments } from "./tool.js";
 import { finishAssistantText } from "./transcript.js";
 
 /** Failures the student can act on get their own words instead of the kind's message. */
-const CODE_MESSAGES: Readonly<Record<string, (copy: ParityCopy) => string>> = {
-  "upstream-contract-changed": (copy) => copy.failure.actionNotPrepared,
-  "invalid-response": (copy) => copy.failure.invalidResponse,
-};
+const CODE_MESSAGES: ReadonlyMap<string | undefined, (copy: ParityCopy) => string> = new Map([
+  ["upstream-contract-changed", (copy: ParityCopy) => copy.failure.actionNotPrepared],
+  ["invalid-response", (copy: ParityCopy) => copy.failure.invalidResponse],
+]);
 
 const FAILURE_MESSAGES: Record<TurnFailureKind, (copy: ParityCopy) => string> = {
   "provider-interrupted": (copy) => copy.failure.providerInterrupted,
@@ -55,7 +55,7 @@ function failedEvent(failure: TurnFailureInfo | undefined, copy: ParityCopy): Fa
         ? copy.failure.resumeDetail
         : "",
     technicalDetail: failure.detail,
-    message: (CODE_MESSAGES[failure.code ?? ""] ?? FAILURE_MESSAGES[failure.kind])(copy),
+    message: (CODE_MESSAGES.get(failure.code) ?? FAILURE_MESSAGES[failure.kind])(copy),
     recoverable: failure.recoverable,
     retryable: failure.retryable,
     type: "turn-failed",

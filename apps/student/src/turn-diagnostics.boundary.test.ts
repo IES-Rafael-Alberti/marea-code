@@ -43,6 +43,17 @@ describe("turn failure category", () => {
     [new NoActiveRunError("No run."), "unexpected/session.no-active-run"],
     [new RequiredSkillsError("missing"), "unexpected/skills.required"],
     [new RangeError("boom"), "unexpected/client.RangeError"],
+    [
+      withCause(
+        new ModelStreamError({ code: "invalid-response", message: "x", retryable: false }),
+        new TypeError("inner"),
+      ),
+      "unexpected/provider.invalid-response",
+    ],
+    [
+      withCause(new AgentAdapterError("upstream-contract-changed", "x"), new TypeError("inner")),
+      "unexpected/adapter.upstream-contract-changed",
+    ],
     ["text", "unexpected/client.string"],
   ] as const)("names the origin of %s", (error, category) => {
     expect(failureCategory(new TurnAttemptFailed("", error as Error), unexpected)).toBe(category);
@@ -101,5 +112,9 @@ describe("turn failure diagnostic", () => {
     let chain: Error = new Error("0");
     for (let index = 1; index < 12; index += 1) chain = withCause(new Error(String(index)), chain);
     expect(failureDiagnostic(chain).causes).toHaveLength(8);
+    const long = new Error("x");
+    long.name = "N".repeat(300);
+    expect(failureDiagnostic(long).exception.name).toHaveLength(128);
+    expect(failureDiagnostic("t".repeat(3_000)).exception.message).toHaveLength(2_048);
   });
 });

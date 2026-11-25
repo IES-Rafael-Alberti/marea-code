@@ -9,7 +9,7 @@ export interface TurnDiagnosticsOptions {
   /** True once the teacher server announced `marea.runs.turn-diagnostics`. */
   readonly reportToServer: () => boolean;
   readonly client: { readonly version: string; readonly platform: string };
-  readonly log?: FailureLog | undefined;
+  readonly log: FailureLog;
   /** The last model exchange of this session, as recorded by the diagnostic gateway. */
   readonly lastModelResponse?: () => {
     readonly requestId: string;
@@ -38,10 +38,11 @@ export async function reportTurnDiagnostic(
     ...failureDiagnostic(error),
     client: diagnostics.client,
     ...(requestId.success ? { requestId: requestId.data } : {}),
-    ...(model === null ? {} : { modelResponse: model.content.slice(0, 16_384) }),
+    // The diagnostic gateway already keeps the response within the protocol bound.
+    ...(model === null ? {} : { modelResponse: model.content }),
   };
   try {
-    await diagnostics.log?.append({
+    await diagnostics.log.append({
       occurredAt: new Date().toISOString(),
       messageId: identity.messageId,
       attemptId: identity.attemptId,
@@ -52,7 +53,7 @@ export async function reportTurnDiagnostic(
   }
   if (!diagnostics.reportToServer()) return;
   await options.localSession.appendEvent(
-    JSON.stringify([identity.messageId, identity.attemptId, "turn-diagnostic"]),
+    `turn-diagnostic:${identity.messageId}:${identity.attemptId}`,
     (sequence, occurredAt) => ({
       eventType: "turn-diagnostic",
       eventId: options.ids.event(),
@@ -62,4 +63,9 @@ export async function reportTurnDiagnostic(
       ...payload,
     }),
   );
+}
+
+/** The client version and the platform it runs on, as diagnostics report them. */
+export function clientIdentity(version: string): TurnDiagnosticsOptions["client"] {
+  return { version, platform: `${process.platform}-${process.arch}` };
 }

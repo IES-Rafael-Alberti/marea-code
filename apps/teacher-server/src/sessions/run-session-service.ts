@@ -157,10 +157,9 @@ export class RunSessionService {
 
   private reportFailures(leaseToken: string, request: AppendRunEventsRequest): void {
     const failures = request.events.filter((event) => event.eventType === "turn-failed");
-    if (failures.length === 0) return;
-    const { runId } = this.authorizeLease(leaseToken);
     const sink = this.#dependencies.onTurnFailure ?? writeTurnFailure;
     for (const failure of failures) {
+      const { runId } = this.authorizeLease(leaseToken);
       const diagnostic = request.events.find(
         (event) => event.eventType === "turn-diagnostic" && event.messageId === failure.messageId,
       );

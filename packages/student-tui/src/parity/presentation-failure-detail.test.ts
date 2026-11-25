@@ -79,3 +79,13 @@ it("reveals technical failure detail and the local failure log with /details", (
   plain.submit("/details");
   expect(plain.snapshot().transcript.at(-1)).toMatchObject({ text: copy.notices.outputsDetailed });
 });
+
+it("keeps an empty technical detail for a failure Marea could not classify", () => {
+  const view = createPresentation(context, copy, vi.fn());
+  view.sync({ approval: null, messages: [], status: "failed" });
+  expect(view.snapshot().transcript.at(-1)).toMatchObject({
+    kind: "error",
+    message: copy.turn.driverFailed,
+    technicalDetail: "",
+  });
+});

@@ -300,24 +300,28 @@ describe("model gateway service", () => {
 });
 
 describe("tool-call repair detail", () => {
-  const repaired = (rawName: string | null) => ({
+  const repaired = (rawName: string | null | undefined) => ({
     events: [
       {
         type: "tool-call" as const,
         arguments: {},
         callId: "call-1",
         name: "unknown_tool",
-        repair: {
-          causes: ["missing-name" as const],
-          rawName,
-          rawArguments: "x".repeat(5_000),
-        },
+        ...(rawName === undefined
+          ? {}
+          : {
+              repair: {
+                causes: ["missing-name" as const],
+                rawName,
+                rawArguments: "x".repeat(5_000),
+              },
+            }),
       },
       { type: "usage" as const, inputTokens: 1, outputTokens: 1 },
       { type: "completed" as const, finishReason: "tool-call" as const },
     ],
   });
-  const stream = async (diagnostics: boolean, rawName: string | null) => {
+  const stream = async (diagnostics: boolean, rawName: string | null | undefined) => {
     const service = createService(new ScriptedProvider([repaired(rawName)]));
     const chunks = [];
     for await (const chunk of service.stream(
@@ -339,5 +343,7 @@ describe("tool-call repair detail", () => {
     expect(await stream(true, "n".repeat(300))).toMatchObject({
       repair: { rawName: "n".repeat(256) },
     });
+    // A well-formed call has nothing to report, even when diagnostics are asked for.
+    expect(await stream(true, undefined)).not.toHaveProperty("repair");
   });
 });

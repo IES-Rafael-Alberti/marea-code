@@ -10,7 +10,8 @@ function chunkText(chunk: ModelGatewayStreamChunk): string {
     return `\n${JSON.stringify({
       tool: chunk.tool,
       arguments: chunk.arguments,
-      ...(chunk.repair === undefined ? {} : { repair: chunk.repair }),
+      // An absent repair is left out of the JSON text.
+      repair: chunk.repair,
     })}\n`;
   return chunk.event === "failed" ? `\n${chunk.code}\n` : "";
 }
@@ -18,6 +19,8 @@ function chunkText(chunk: ModelGatewayStreamChunk): string {
 export interface DiagnosticGateway extends MareaModelGateway {
   /** The last exchange's request and recorded response, for a failed turn's diagnostic. */
   readonly lastResponse: () => { readonly requestId: string; readonly content: string } | null;
+  /** Called once the server says whether it stores turn diagnostics. */
+  readonly reportRepairs: (supported: boolean) => void;
 }
 
 /**
@@ -29,12 +32,14 @@ export function diagnosticGateway(
   gateway: MareaModelGateway,
   localSession: LocalSession,
   ids: IdSource,
-  /** Set once the server announced that it stores turn diagnostics. */
-  repairDetail: { readonly supported: boolean } = { supported: false },
 ): DiagnosticGateway {
   let last: { readonly requestId: string; readonly content: string } | null = null;
+  let repairs = false;
   return {
     lastResponse: () => last,
+    reportRepairs: (supported) => {
+      repairs = supported;
+    },
     async *stream(request, signal) {
       const record = async (
         phase: "request" | "response",
@@ -72,7 +77,7 @@ export function diagnosticGateway(
       let truncated = false;
       let status: "completed" | "failed" | "interrupted" = "interrupted";
       try {
-        const sent = repairDetail.supported ? { ...request, diagnostics: true as const } : request;
+        const sent = repairs ? { ...request, diagnostics: true as const } : request;
         for await (const chunk of gateway.stream(sent, signal)) {
           const addition = chunkText(chunk);
           truncated ||= text.length + addition.length > 16_384;

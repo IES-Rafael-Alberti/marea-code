@@ -1,8 +1,8 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createFailureLog, FAILURE_LOG_FILE } from "./failure-log.boundary.js";
 
@@ -54,5 +54,15 @@ describe("local failure log", () => {
     const directory = location();
     const notAFile = join(directory, "..");
     await expect(createFailureLog(notAFile, write).append({ n: 1 })).rejects.toThrow();
+  });
+  it("reports a log it cannot read instead of overwriting it", async () => {
+    const path = location();
+    const directory = join(path, "..", "not-a-file");
+    mkdirSync(directory);
+    const record = vi.fn(() => Promise.resolve());
+    await expect(createFailureLog(directory, record).append({ n: 1 })).rejects.toMatchObject({
+      code: "EISDIR",
+    });
+    expect(record).not.toHaveBeenCalled();
   });
 });

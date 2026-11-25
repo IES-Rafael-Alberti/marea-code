@@ -1,6 +1,7 @@
 import { loadRequiredSkills } from "./required-skill-context.js";
 import { describeProject } from "./project-description.boundary.js";
 import { diagnosticGateway } from "./diagnostic-gateway.js";
+import { clientIdentity } from "./turn-diagnostic-report.js";
 import { FileOperationExecutor } from "./operation-executor.boundary.js";
 import { GitProjectEvidence } from "./git-evidence.boundary.js";
 import { join, resolve } from "node:path";
@@ -136,7 +137,6 @@ export async function createProductionStudentApplication(
   const server = createHttpStudentServer(httpOptions);
   const tokenBinding = new StudentRunTokenBinding();
   const localSession = new LocalSession(stores.state, ids, clock);
-  const serverDiagnostics = { supported: false };
   const gateway = diagnosticGateway(
     createHttpModelGateway({
       ...httpOptions,
@@ -144,7 +144,6 @@ export async function createProductionStudentApplication(
     }),
     localSession,
     ids,
-    serverDiagnostics,
   );
   const projectContext = await describeProject(projectRoot);
   const checkpoint = await openRecoverableCheckpoint(localState, {
@@ -193,13 +192,12 @@ export async function createProductionStudentApplication(
   });
   const controller = new StudentSessionController({
     liveProgress: true,
+    // Stryker disable next-line ObjectLiteral: deleting required constructor fields is a type error.
     diagnostics: {
-      client: { version: clientVersion, platform: `${process.platform}-${process.arch}` },
+      client: clientIdentity(clientVersion),
       log: stores.failures,
       lastModelResponse: gateway.lastResponse,
-      onServerSupport: (supported) => {
-        serverDiagnostics.supported = supported;
-      },
+      onServerSupport: gateway.reportRepairs,
     },
     onStartupStage: options.onStartupStage,
     agent,

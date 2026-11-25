@@ -81,7 +81,7 @@ export function failureDiagnostic(error: unknown): TurnDiagnostic {
   const deepest = [top, ...causes].findLast((value) => value instanceof Error);
   return {
     exception: exception(top),
-    causes: causes.slice(0, MAX_CAUSES).map(exception),
+    causes: causes.map(exception),
     stack: (deepest instanceof Error ? (deepest.stack ?? "") : "").slice(0, MAX_STACK),
   };
 }

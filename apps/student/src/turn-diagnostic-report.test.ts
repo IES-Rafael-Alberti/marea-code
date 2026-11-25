@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AgentEvent } from "./contracts.js";
 import { createFixtureController, FixtureAgent, FixtureServer } from "./student.fixture.js";
+import { clientIdentity } from "./turn-diagnostic-report.js";
 
 class FailingAgent extends FixtureAgent {
   override async *streamMessage(): AsyncIterable<AgentEvent> {
@@ -91,6 +92,26 @@ describe("diagnostics of a failed turn", () => {
     expect(subject.log.append).toHaveBeenCalledOnce();
   });
 
+  it("records one diagnostic per failed attempt", async () => {
+    const subject = setup(true);
+    await fail(subject);
+    await expect(
+      subject.fixture.controller.sendMessage("message:2", "Otra", new AbortController().signal),
+    ).rejects.toThrow();
+    expect(
+      events(subject.fixture)
+        .filter((event) => event.eventType === "turn-diagnostic")
+        .map((event) => ("messageId" in event ? event.messageId : null)),
+    ).toEqual(["message:1", "message:2"]);
+  });
+
+  it("names the client by version and platform", () => {
+    expect(clientIdentity("0.1.0-preview.44")).toEqual({
+      version: "0.1.0-preview.44",
+      platform: `${process.platform}-${process.arch}`,
+    });
+  });
+
   it("never lets a failing local copy change the failure", async () => {
     const subject = setup(true, {
       path: "/state/turn-failures.jsonl",
@@ -115,30 +136,28 @@ describe("diagnostics without every optional source", () => {
       "partial",
     ],
   ];
-  it.each(sources)(
-    "still records the failure with %s and no local log",
-    async (_label, last, response) => {
-      const server = new FixtureServer();
-      server.extraCapabilities.push(TURN_DIAGNOSTICS_CAPABILITY);
-      const fixture = createFixtureController({
-        agent: new FailingAgent(),
-        server,
-        diagnostics: {
-          client: { version: "1.0.0", platform: "linux-x64" },
-          ...(last === undefined ? {} : { lastModelResponse: last }),
-        },
-      });
-      await fixture.controller.start("Synthetic project");
-      await expect(
-        fixture.controller.sendMessage("message:1", "Busca", new AbortController().signal),
-      ).rejects.toThrow();
-      const diagnostic = [...fixture.server.events.values()].find(
-        (event) => event.eventType === "turn-diagnostic",
-      );
-      expect(diagnostic).toBeDefined();
-      expect(diagnostic).not.toHaveProperty("requestId");
-      if (response === undefined) expect(diagnostic).not.toHaveProperty("modelResponse");
-      else expect(diagnostic).toMatchObject({ modelResponse: response });
-    },
-  );
+  it.each(sources)("still records the failure with %s", async (_label, last, response) => {
+    const server = new FixtureServer();
+    server.extraCapabilities.push(TURN_DIAGNOSTICS_CAPABILITY);
+    const fixture = createFixtureController({
+      agent: new FailingAgent(),
+      server,
+      diagnostics: {
+        client: { version: "1.0.0", platform: "linux-x64" },
+        log: { path: "/state/turn-failures.jsonl", append: vi.fn() },
+        ...(last === undefined ? {} : { lastModelResponse: last }),
+      },
+    });
+    await fixture.controller.start("Synthetic project");
+    await expect(
+      fixture.controller.sendMessage("message:1", "Busca", new AbortController().signal),
+    ).rejects.toThrow();
+    const diagnostic = [...fixture.server.events.values()].find(
+      (event) => event.eventType === "turn-diagnostic",
+    );
+    expect(diagnostic).toBeDefined();
+    expect(diagnostic).not.toHaveProperty("requestId");
+    if (response === undefined) expect(diagnostic).not.toHaveProperty("modelResponse");
+    else expect(diagnostic).toMatchObject({ modelResponse: response });
+  });
 });

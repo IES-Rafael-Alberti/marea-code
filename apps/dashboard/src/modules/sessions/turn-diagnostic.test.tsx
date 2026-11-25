@@ -3,10 +3,13 @@ import { isValidElement, type ReactElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ copied: false, set: vi.fn() }));
+const state = vi.hoisted(() => ({ copied: false, initial: null as boolean | null, set: vi.fn() }));
 vi.mock("react", async (original) => ({
   ...(await original<typeof import("react")>()),
-  useState: () => [state.copied, state.set],
+  useState: (initial: boolean) => {
+    state.initial = initial;
+    return [state.copied, state.set];
+  },
 }));
 
 import { ConversationEvent } from "./conversation-events.js";
@@ -60,7 +63,17 @@ describe("turn diagnostic in the session view", () => {
     const minimal = { ...event };
     Reflect.deleteProperty(minimal, "requestId");
     Reflect.deleteProperty(minimal, "modelResponse");
-    expect(technicalDetail(minimal)).not.toMatch(/request:|model response/u);
+    expect(technicalDetail(minimal)).toBe(
+      [
+        "category: unexpected/adapter.upstream-contract-changed",
+        "retryable: false",
+        "client: 0.1.0-preview.44 (win32-x64)",
+        "exception: AgentAdapterError: unsupported approval payload",
+        "caused by: ZodError: too many items",
+        "",
+        "AgentAdapterError: unsupported\n    at approvalEventFor",
+      ].join("\n"),
+    );
   });
 
   it.each(["es", "en", "eu"] as const)(
@@ -72,6 +85,9 @@ describe("turn diagnostic in the session view", () => {
       expect(markup).toContain("unexpected/adapter.upstream-contract-changed");
       expect(markup).toContain(`<summary>${m.showDetail}</summary>`);
       expect(markup).toContain(m.copyDetail);
+      expect(markup).toContain('<time dateTime="2026-11-24T18:23:32.000Z">18:23:32</time>');
+      // The copy confirmation starts hidden.
+      expect(state.initial).toBe(false);
     },
   );
 

@@ -248,8 +248,7 @@ it("asks for repair detail only when the server stores diagnostics, and keeps th
       });
     },
   };
-  const support = { supported: false };
-  const gateway = diagnosticGateway(upstream, fixture.localSession, new FixtureIds(), support);
+  const gateway = diagnosticGateway(upstream, fixture.localSession, new FixtureIds());
   expect(gateway.lastResponse()).toBeNull();
   const drain = async () => {
     const chunks = [];
@@ -258,9 +257,11 @@ it("asks for repair detail only when the server stores diagnostics, and keeps th
     return chunks;
   };
   await drain();
-  support.supported = true;
+  gateway.reportRepairs(true);
   await drain();
-  expect(seen).toEqual([undefined, true]);
+  gateway.reportRepairs(false);
+  await drain();
+  expect(seen).toEqual([undefined, true, undefined]);
   expect(gateway.lastResponse()).toEqual({
     requestId: "request:diagnostic",
     content: expect.stringContaining('"repair":{"causes":["missing-name"]') as string,
