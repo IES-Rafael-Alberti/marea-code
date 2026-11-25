@@ -40,6 +40,8 @@ const ignoredEvents = new Set([
   "model-diagnostic",
   "turn-ended",
   "turn-failed",
+  // Diagnostics accompany a failed attempt, like turn-failed itself.
+  "turn-diagnostic",
 ]);
 const operationTimeout = process.platform === "win32" ? 60_000 : 15_000;
 const turnEvents = [
