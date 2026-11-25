@@ -4,7 +4,6 @@ import type {
   ApprovalDecision,
   BatchAction,
   BatchDecision,
-  QuestionReply,
   WorkspaceWrite,
 } from "./contracts.js";
 import { decideOperation, runOperation } from "./session-operation.js";
@@ -13,8 +12,7 @@ import type {
   SessionTurnExecutorOptions,
   StableTurnIdentity,
 } from "./session-turn-executor.js";
-import { TeacherActivity } from "./teacher-activity.js";
-import { interactionAfterAbort } from "./turn-interaction.js";
+import { askStudent } from "./session-interactions.js";
 
 interface BatchWriteChoice {
   readonly decision: ApprovalDecision;
@@ -78,7 +76,7 @@ export async function* batchEvents(
       remaining: summaries.slice(offset + 1),
     };
     if (action.kind === "questions") {
-      const reply = await askQuestions(options, action.request, identity, signal);
+      const reply = await askStudent(options, action.request, identity, signal);
       if (reply.type === "cancel") {
         cancelled = true;
         break;
@@ -134,25 +132,4 @@ export async function* batchEvents(
       signal,
     );
   }
-}
-
-async function askQuestions(
-  options: SessionTurnExecutorOptions,
-  request: Extract<BatchAction, { readonly kind: "questions" }>["request"],
-  identity: StableTurnIdentity,
-  signal: AbortSignal,
-): Promise<QuestionReply> {
-  const ask = options.studentInterface.askQuestions?.bind(options.studentInterface);
-  if (ask === undefined) throw new Error("Structured questions are not supported in this turn.");
-  const reply = await interactionAfterAbort<QuestionReply | undefined>(
-    () => ask({ ...request, ...identity }),
-    signal,
-    undefined,
-    "Structured question failed.",
-  );
-  signal.throwIfAborted();
-  if (reply === undefined) throw new Error("The question interface returned no reply.");
-  await new TeacherActivity(options).questions(identity, request, reply);
-  signal.throwIfAborted();
-  return reply;
 }

@@ -4,11 +4,13 @@ import { approvalRequired, batchApprovalRequired, snapshot } from "./deepagents-
 import { batchApprovalId, batchDecisions, batchEventFor } from "./deepagents-batch.js";
 import type { AgentBatchTurn, BatchAction, BatchDecision, WorkspaceWrite } from "./contracts.js";
 import { OperationMediator } from "./operation-mediator.js";
+import { StudentAgentBridgeError } from "./bridge-parsing.js";
 import { RunIdSchema, Sha256DigestSchema } from "@marea/protocol";
 
 const execute = new OperationMediator("execute", "linux");
+const remove = new OperationMediator("delete", "linux");
 const writes = { authorize: vi.fn() };
-const mediators = { operations: [execute], writes };
+const mediators = { operations: [remove, execute], writes };
 
 const event = batchApprovalRequired("review-7", [
   {
@@ -132,10 +134,21 @@ describe("DeepAgents batch translation", () => {
       { type: "reject", reason: "No." },
       { type: "reject", reason: "The student rejected this action." },
     ]);
+    // The first decision also travels on its own for the upstream resume.
+    expect(result.decision).toBe(result.decisions[0]);
   });
 
   it.each([
     [[{ kind: "operation", decision: "approved", result: "x" }], "exactly one decision"],
+    [
+      [
+        { kind: "operation", decision: "approved", result: "x" },
+        { kind: "write", decision: "approved", effect },
+        { kind: "questions", values: [] },
+        { kind: "questions", values: [] },
+      ],
+      "exactly one decision",
+    ],
     [
       [
         { kind: "write", decision: "approved", effect },
@@ -169,7 +182,9 @@ describe("DeepAgents batch translation", () => {
       "no recorded effect",
     ],
   ] as const)("refuses inconsistent decisions %#", (decisions, message) => {
-    expect(() => batchDecisions(turn(decisions), mediators)).toThrow(message);
+    const refused = () => batchDecisions(turn(decisions), mediators);
+    expect(refused).toThrow(StudentAgentBridgeError);
+    expect(refused).toThrow(message);
   });
 
   it("names the upstream tool after the first action, whatever its kind", () => {
@@ -214,11 +229,12 @@ describe("DeepAgents batch translation", () => {
         summary: "Delete",
       },
     };
+    const executeOnly = { operations: [execute], writes };
     for (const decision of [
       { kind: "operation", decision: "approved", result: "x" },
       { kind: "operation", decision: "rejected", result: null },
     ] as const)
-      expect(() => batchDecisions(turn([decision], [deleteAction]), mediators)).toThrow(
+      expect(() => batchDecisions(turn([decision], [deleteAction]), executeOnly)).toThrow(
         "unavailable",
       );
   });

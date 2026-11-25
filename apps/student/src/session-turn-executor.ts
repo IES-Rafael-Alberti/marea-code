@@ -307,6 +307,7 @@ export class SessionTurnExecutor {
     text: readonly string[],
     allowWrites: boolean,
   ): Promise<AsyncIterable<AgentEvent> | null> {
+    const assistantText = text.join("");
     if (event.type === "questions-required")
       return questionEvents(
         this.options,
@@ -314,7 +315,7 @@ export class SessionTurnExecutor {
         active,
         identity,
         signal,
-        text.join(""),
+        assistantText,
         allowWrites,
       );
     if (event.type === "operation-approval-required") {
@@ -326,28 +327,30 @@ export class SessionTurnExecutor {
         event,
         active,
         identity,
-        text.join(""),
+        assistantText,
         signal,
       );
     }
     if (!allowWrites) throw new Error("Tutor startup cannot request workspace writes.");
-    if (event.type === "approval-batch-required")
+    if (event.type === "approval-batch-required") {
+      const decideWrite = this.batchWrite(active, identity, assistantText, signal);
       return batchEvents(
-        { options: this.options, decideWrite: this.batchWrite(active, identity, text, signal) },
+        { options: this.options, decideWrite },
         event,
         active,
         identity,
-        text.join(""),
+        assistantText,
         signal,
       );
-    const approval = await this.resolveApproval(event, active, identity, text.join(""), signal);
+    }
+    const approval = await this.resolveApproval(event, active, identity, assistantText, signal);
     return this.options.agent.resumeApproval(approval.turn, signal);
   }
 
   private batchWrite(
     active: ActiveRun,
     identity: StableTurnIdentity,
-    text: readonly string[],
+    assistantText: string,
     signal: AbortSignal,
   ): BatchDependencies["decideWrite"] {
     return async (action, batch) => {
@@ -355,7 +358,7 @@ export class SessionTurnExecutor {
         action,
         active,
         identity,
-        text.join(""),
+        assistantText,
         signal,
         batch,
       );

@@ -1,3 +1,5 @@
+import type { QuestionRequest } from "@marea/deepagents-adapter";
+
 import type { AgentEvent, QuestionReply } from "./contracts.js";
 import type {
   ActiveRun,
@@ -40,20 +42,9 @@ export async function questionEvents(
   assistantText: string,
   allowWrites: boolean,
 ): Promise<AsyncIterable<AgentEvent> | null> {
-  const ask = options.studentInterface.askQuestions?.bind(options.studentInterface);
   const continueQuestions = options.agent.resumeQuestions?.bind(options.agent);
-  if (!allowWrites || ask === undefined || continueQuestions === undefined)
-    throw new Error("Structured questions are not supported in this turn.");
-  const reply = await interactionAfterAbort<QuestionReply | undefined>(
-    () => ask({ ...event.request, ...identity }),
-    signal,
-    undefined,
-    "Structured question failed.",
-  );
-  signal.throwIfAborted();
-  if (reply === undefined) throw new Error("The question interface returned no reply.");
-  await new TeacherActivity(options).questions(identity, event.request, reply);
-  signal.throwIfAborted();
+  if (!allowWrites || continueQuestions === undefined) throw questionsUnsupported();
+  const reply = await askStudent(options, event.request, identity, signal);
   if (reply.type === "cancel") return null;
   return continueQuestions(
     {
@@ -65,4 +56,30 @@ export async function questionEvents(
     },
     signal,
   );
+}
+
+function questionsUnsupported(): Error {
+  return new Error("Structured questions are not supported in this turn.");
+}
+
+/** Asks the student the questions of one interrupt and records the reply for the teacher. */
+export async function askStudent(
+  options: SessionTurnExecutorOptions,
+  request: QuestionRequest,
+  identity: StableTurnIdentity,
+  signal: AbortSignal,
+): Promise<QuestionReply> {
+  const ask = options.studentInterface.askQuestions?.bind(options.studentInterface);
+  if (ask === undefined) throw questionsUnsupported();
+  const reply = await interactionAfterAbort<QuestionReply | undefined>(
+    () => ask({ ...request, ...identity }),
+    signal,
+    undefined,
+    "Structured question failed.",
+  );
+  signal.throwIfAborted();
+  if (reply === undefined) throw new Error("The question interface returned no reply.");
+  await new TeacherActivity(options).questions(identity, request, reply);
+  signal.throwIfAborted();
+  return reply;
 }

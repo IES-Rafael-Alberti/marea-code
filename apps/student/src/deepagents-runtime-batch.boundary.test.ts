@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { AgentEvent } from "./contracts.js";
 import {
+  approvalRequired,
   batchApprovalRequired,
   collect,
   effect,
@@ -68,6 +69,7 @@ describe("DeepAgents bridge for a batch of approvals", () => {
     );
     expect(instance.deep.resumes.at(-1)).toMatchObject({
       reviewId: "review-9",
+      assistantText: "",
       toolName: "marea_execute",
       decision: { type: "reject", reason: "No." },
       decisions: [{ type: "reject", reason: "No." }, { type: "approve" }],
@@ -105,5 +107,72 @@ describe("DeepAgents bridge for a batch of approvals", () => {
     await expect(
       instance.options[0]?.approvalTool.execute({ path: "notes.txt", content: "content" }),
     ).rejects.toThrow("not approved");
+    const command = instance.options[0]?.effectTools?.find((tool) => tool.name === "marea_execute");
+    await expect(command?.execute({ command: "dir" })).rejects.toThrow(
+      "does not match its authorization",
+    );
+  });
+
+  it.each([
+    [
+      "once",
+      [
+        { path: "notes.txt", content: "content" },
+        { path: "notes.txt", content: "content" },
+      ],
+    ],
+    ["only with its own path", [{ path: "other.txt", content: "content" }]],
+  ])("lets an authorized write run %s", async (_label, calls) => {
+    const instance = harness(true);
+    instance.deep.messages = [batchApproval];
+    const [batch] = (await collect(
+      instance.runtime.streamMessage(message(), new AbortController().signal),
+    )) as [Extract<AgentEvent, { readonly type: "approval-batch-required" }>];
+    const outcomes: string[] = [];
+    instance.deep.resumeApproval = async function* () {
+      for (const call of calls)
+        outcomes.push(
+          await (instance.options[0]?.approvalTool.execute(call) ?? Promise.resolve("")).then(
+            () => "ran",
+            () => "refused",
+          ),
+        );
+      yield { type: "turn-completed" as const };
+    };
+    await collect(
+      resumeBatch(instance)(
+        {
+          runId,
+          snapshot: snapshot(),
+          messageId: message().messageId,
+          assistantText: "Antes",
+          reviewId: "review-9",
+          actions: batch.actions,
+          decisions: [
+            { kind: "operation", decision: "rejected", result: null },
+            { kind: "write", decision: "approved", effect },
+          ],
+        },
+        new AbortController().signal,
+      ),
+    );
+    expect(outcomes).toEqual(calls.length === 2 ? ["ran", "refused"] : ["refused"]);
+  });
+
+  it("does not treat a repeated operation approval as a repeated write", async () => {
+    const instance = harness(true);
+    const operation = approvalRequired({
+      toolName: "marea_execute",
+      arguments: { command: "dir" },
+      description: "Run dir",
+    });
+    instance.deep.messages = [operation, operation];
+    const events = await collect(
+      instance.runtime.streamMessage(message(), new AbortController().signal),
+    );
+    expect(events.map((event) => event.type)).toEqual([
+      "operation-approval-required",
+      "operation-approval-required",
+    ]);
   });
 });

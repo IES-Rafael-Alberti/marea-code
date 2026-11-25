@@ -7,7 +7,13 @@ import {
 } from "@marea/deepagents-adapter";
 
 import { parseApprovalId, parseWriteRequest, StudentAgentBridgeError } from "./bridge-parsing.js";
-import type { AgentBatchTurn, AgentEvent, BatchAction, WorkspaceWrite } from "./contracts.js";
+import type {
+  AgentBatchTurn,
+  AgentEvent,
+  BatchAction,
+  BatchDecision,
+  WorkspaceWrite,
+} from "./contracts.js";
 import type { OperationMediator } from "./operation-mediator.js";
 import type { WriteRequest } from "./write-request.js";
 
@@ -68,11 +74,7 @@ export function batchEventFor(event: ApprovalEvent, mediators: BatchMediators): 
 function toolNameOf(action: BatchAction, mediators: BatchMediators): string {
   if (action.kind === "questions") return QUESTION_TOOL_NAME;
   if (action.kind === "write") return INTERNAL_WRITE_TOOL_NAME;
-  const mediator = mediators.operations.find(
-    (candidate) => candidate.operation === action.request.tool,
-  );
-  if (mediator === undefined) throw new StudentAgentBridgeError("This operation is unavailable.");
-  return mediator.name;
+  return toolMediator(action, mediators).name;
 }
 
 /**
@@ -83,24 +85,38 @@ function toolNameOf(action: BatchAction, mediators: BatchMediators): string {
 export function batchDecisions(
   turn: AgentBatchTurn,
   mediators: BatchMediators,
-): { readonly toolName: string; readonly decisions: readonly DeepApprovalDecision[] } {
-  if (turn.decisions.length !== turn.actions.length)
-    throw new StudentAgentBridgeError("Every batch action needs exactly one decision.");
-  const decisions = turn.actions.map((action, index) =>
-    upstreamDecision(action, turn.decisions[index], mediators),
-  );
-  const [first] = turn.actions;
+): {
+  readonly toolName: string;
+  readonly decision: DeepApprovalDecision;
+  readonly decisions: readonly DeepApprovalDecision[];
+} {
+  const [first, ...rest] = turn.actions;
   if (first === undefined) throw new StudentAgentBridgeError("A batch has no actions.");
-  return { toolName: toolNameOf(first, mediators), decisions };
+  if (turn.decisions.length > turn.actions.length) throw countMismatch();
+  const decisionAt = (index: number): BatchDecision => {
+    const decision = turn.decisions[index];
+    if (decision === undefined) throw countMismatch();
+    return decision;
+  };
+  const decision = upstreamDecision(first, decisionAt(0), mediators);
+  const decisions = [
+    decision,
+    ...rest.map((action, index) => upstreamDecision(action, decisionAt(index + 1), mediators)),
+  ];
+  return { toolName: toolNameOf(first, mediators), decision, decisions };
+}
+
+function countMismatch(): StudentAgentBridgeError {
+  return new StudentAgentBridgeError("Every batch action needs exactly one decision.");
 }
 
 function upstreamDecision(
   action: BatchAction,
-  decision: AgentBatchTurn["decisions"][number] | undefined,
+  decision: BatchDecision,
   mediators: BatchMediators,
 ): DeepApprovalDecision {
   if (action.kind === "questions") {
-    if (decision?.kind !== "questions") throw mismatch();
+    if (decision.kind !== "questions") throw mismatch();
     const questions = action.request.questions;
     return {
       type: "amend",
@@ -110,7 +126,7 @@ function upstreamDecision(
       },
     };
   }
-  if (decision?.kind !== action.kind) throw mismatch();
+  if (decision.kind !== action.kind) throw mismatch();
   if (decision.decision === "rejected")
     return { type: "reject", reason: decision.reason ?? "The student rejected this action." };
   // The kinds match, so the action has the same shape as its decision.

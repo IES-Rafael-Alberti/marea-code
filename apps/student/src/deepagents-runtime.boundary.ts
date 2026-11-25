@@ -77,6 +77,7 @@ class ApprovalToolMediator implements ApprovalTool {
   readonly description =
     "Write approved text content to a file in the student workspace. Arguments: file_path, content. Use a project-relative path such as main.py or src/main.py; /main.py also refers to the project root. Parent traversal is not allowed.";
   /** Every approved write of one turn; a batch may approve several. */
+  // Stryker disable next-line ArrayDeclaration: an entry that is not a write never matches one.
   private authorized: AuthorizedWrite[] = [];
 
   authorize(request: WriteRequest, result: WorkspaceWrite): void {
@@ -84,6 +85,7 @@ class ApprovalToolMediator implements ApprovalTool {
   }
 
   clearAuthorization(): void {
+    // Stryker disable next-line ArrayDeclaration: see the field.
     this.authorized = [];
   }
 
@@ -96,6 +98,7 @@ class ApprovalToolMediator implements ApprovalTool {
     );
     const authorized = this.authorized[index];
     if (authorized === undefined) {
+      // Stryker disable next-line ArrayDeclaration: see the field.
       this.authorized = [];
       throw new StudentAgentBridgeError(
         "DeepAgents attempted a workspace write that was not approved.",
@@ -221,14 +224,14 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
     const context = this.contextForRun(turn.runId, turn.snapshot);
     const mediators = { operations: context.operations, writes: context.mediator };
     try {
-      const { toolName, decisions } = batchDecisions(turn, mediators);
-      const [decision = { type: "approve" as const }] = decisions;
+      const { toolName, decision, decisions } = batchDecisions(turn, mediators);
+      const assistantText = turn.assistantText ?? "";
       yield* this.translate(
         context.runtime.resumeApproval(
           {
             sessionId: turn.runId,
             messageId: turn.messageId,
-            assistantText: turn.assistantText ?? "",
+            assistantText,
             reviewId: turn.reviewId,
             toolName,
             decision,
@@ -238,7 +241,7 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
         ),
         context,
         turn.messageId,
-        turn.assistantText ?? "",
+        assistantText,
       );
     } finally {
       context.mediator.clearAuthorization();
