@@ -12,22 +12,20 @@ import {
   type DashboardReleaseDiagnostic,
 } from "../../dashboard-profiles/release.js";
 import type { InferenceDiagnosticSink } from "../../model-gateway/inference-failure.boundary.js";
+import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 
 import { MAX_TEACHING_CONFIGURATION_BYTES } from "@marea/protocol";
 import {
   createAuditMigrationCatalog,
   createProfileMigrationCatalog,
-  createEducationalMigrationCatalog,
-  createStudentIdentityMigrationCatalog,
-  createObservabilityMigrationCatalog,
-  createSkillAssignmentMigrationCatalog,
-  createRunClosureMigrationCatalog,
+  currentSqliteSchema,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
   openSqliteDatabaseFile,
   type SqliteApplicationDatabase,
   type SqliteDatabaseFile,
+  type SqliteSchemaCatalog,
 } from "@marea/sqlite-storage";
 import {
   identityProviderCatalog,
@@ -63,7 +61,8 @@ import {
   readOperatorCliConfig,
   type OperatorCliConfig,
 } from "../operator-cli/composition.js";
-import { acquireInstallation } from "../operator-cli/installation-lock.js";
+import { acquireInstallation, type OwnedInstallation } from "../operator-cli/installation-lock.js";
+import { createOperationsApplication } from "../operations-cli/operations-application.js";
 import type { StartResult } from "../operations/contracts.js";
 import { inspectHostRecovery } from "../operations/deletion-recovery/deletion-recovery.js";
 import { createAccountCreationGuard } from "../operations/deletion-protection/account-creation-guard.js";
@@ -97,6 +96,7 @@ import {
   type TeacherHostConfig,
 } from "./teacher-host-config.js";
 import { composeTeacherServices, type TeacherHostServiceDependencies } from "./teacher-services.js";
+import { migrateSchemaOnStartup, type StartupMigrationEvent } from "./startup-migration.js";
 
 /** The network listener of a compiled host; tests may serve requests without binding a socket. */
 export type ServePort = (options: {
@@ -120,6 +120,8 @@ export interface TeacherHostOptions {
   /** Operator-private; receives only recognized bounded release diagnostics, never caught text. */
   readonly onStartupDiagnostic?: ((diagnostic: DashboardReleaseDiagnostic) => void) | undefined;
   readonly onEvaluationError: () => void;
+  /** Operator-private; one structured line per startup schema migration or refusal. */
+  readonly onSchemaMigration?: ((event: StartupMigrationEvent) => void) | undefined;
 }
 
 export interface RunningTeacherHost {
@@ -151,11 +153,32 @@ function storageConfigurationOf(root: string, operations: OperationsConfig): Sto
   );
 }
 
+/** The same verified recovery bundle an operator backup creates, taken under the host's own lock. */
+async function startupBackup(owner: OwnedInstallation, operations: OperationsConfig) {
+  const application = createOperationsApplication(
+    owner.capability,
+    operations,
+    systemClock.now.bind(systemClock),
+  );
+  try {
+    return (await application.createBackup(`startup-migration-${randomUUID()}`)).path;
+  } finally {
+    application.close();
+  }
+}
+
 /** Host ports whose state (configuration, index, storage) is captured for composition after start. */
-function hostPorts(root: string, profiles: boolean, httpHosts: readonly string[] | undefined) {
+function hostPorts(
+  root: string,
+  profiles: boolean,
+  httpHosts: readonly string[] | undefined,
+  reportMigration: (event: StartupMigrationEvent) => void,
+) {
   const state: {
     configuration?: LoadedConfiguration;
     profiles?: boolean;
+    catalog?: SqliteSchemaCatalog;
+    owner?: OwnedInstallation;
     index?: SqliteDatabaseFile;
     handle?: HostDatabaseHandle;
   } = {};
@@ -165,7 +188,7 @@ function hostPorts(root: string, profiles: boolean, httpHosts: readonly string[]
     return state.index.database;
   };
   const configuration: HostConfigurationPort = {
-    read: () => {
+    read: async () => {
       const operator = readOperatorCliConfig(root);
       const operations = readOperationsConfig(root);
       const host = withHttpAccess(readTeacherHostConfig(root), httpHosts);
@@ -175,36 +198,28 @@ function hostPorts(root: string, profiles: boolean, httpHosts: readonly string[]
         operations,
         storage: storageConfigurationOf(root, operations),
       };
-      const version = inspectSqliteSchemaVersion({ databasePath: operator.databasePath });
-      const runClosure = version === createRunClosureMigrationCatalog().length;
-      const skillAssignments =
-        runClosure || version === createSkillAssignmentMigrationCatalog().length;
-      const observability =
-        skillAssignments || version === createObservabilityMigrationCatalog().length;
-      const identities =
-        observability || version === createStudentIdentityMigrationCatalog().length;
-      const educational = identities || version === createEducationalMigrationCatalog().length;
-      state.profiles =
-        educational || profiles || version === createProfileMigrationCatalog().length;
-      return Promise.resolve<HostInstallationConfig>({
+      // Under the installation lock and before storage opens: one schema remains for normal startup.
+      const version = await migrateSchemaOnStartup({
+        databasePath: operator.databasePath,
+        backup: () => startupBackup(required(state.owner), operations),
+        report: reportMigration,
+      });
+      const current = version === currentSqliteSchema().version;
+      state.profiles = current || profiles;
+      // A non-current schema here predates profiles; with profiles requested, validation refuses it.
+      state.catalog = current ? currentSqliteSchema().catalog : "retention-audit";
+      const installation: HostInstallationConfig = {
         releaseId: host.releaseId,
-        schemaVersion: runClosure
-          ? createRunClosureMigrationCatalog().length
-          : skillAssignments
-            ? createSkillAssignmentMigrationCatalog().length
-            : observability
-              ? createObservabilityMigrationCatalog().length
-              : identities
-                ? createStudentIdentityMigrationCatalog().length
-                : educational
-                  ? createEducationalMigrationCatalog().length
-                  : state.profiles
-                    ? createProfileMigrationCatalog().length
-                    : createAuditMigrationCatalog().length,
+        schemaVersion: current
+          ? version
+          : state.profiles
+            ? createProfileMigrationCatalog().length
+            : createAuditMigrationCatalog().length,
         databasePath: operator.databasePath,
         indexPath: operations.indexPath,
         statusPath: host.statusPath,
-      });
+      };
+      return installation;
     },
     validate: ({ config, requestedReleaseId }) =>
       config.releaseId === requestedReleaseId &&
@@ -226,7 +241,10 @@ function hostPorts(root: string, profiles: boolean, httpHosts: readonly string[]
       configuration,
       exclusivity: createSharedInstallationExclusivity(
         new FilesystemInstallationExclusivity(),
-        acquireInstallation,
+        (installationRoot) => {
+          state.owner = acquireInstallation(installationRoot);
+          return state.owner;
+        },
       ),
       recovery,
       index: {
@@ -240,25 +258,9 @@ function hostPorts(root: string, profiles: boolean, httpHosts: readonly string[]
           readonly config: HostInstallationConfig;
           readonly mode: HostDatabaseHandle["mode"];
         }) => {
-          const version = inspectSqliteSchemaVersion({
-            databasePath: loaded().operator.databasePath,
-          });
           const storage = initializeSqliteStorage({
             databasePath: config.databasePath,
-            schema:
-              version === createRunClosureMigrationCatalog().length
-                ? "run-closure"
-                : version === createSkillAssignmentMigrationCatalog().length
-                  ? "skill-assignments"
-                  : version === createObservabilityMigrationCatalog().length
-                    ? "observability"
-                    : version === createStudentIdentityMigrationCatalog().length
-                      ? "student-identities"
-                      : version === createEducationalMigrationCatalog().length
-                        ? "educational-insights"
-                        : state.profiles
-                          ? "dashboard-profiles"
-                          : "retention-audit",
+            schema: required(state.catalog),
           });
           state.handle = {
             mode,
@@ -372,6 +374,7 @@ export async function startTeacherHost(
     options.installationRoot,
     options.profiles !== undefined,
     options.httpHosts,
+    options.onSchemaMigration ?? (() => undefined),
   );
   const drain = new RequestDrain();
   const runtime = createHostRuntime({

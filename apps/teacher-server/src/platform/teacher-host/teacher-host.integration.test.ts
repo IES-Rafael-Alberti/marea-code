@@ -1,4 +1,11 @@
-import { copyFileSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -6,7 +13,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("bun:sqlite", () => import("../operator-cli/bun-sqlite.fixture.js"));
 
 import { Sha256DigestSchema } from "@marea/protocol";
-import { initializeSqliteStorage, openSqliteDatabaseFile } from "@marea/sqlite-storage";
+import {
+  currentSqliteSchema,
+  initializeSqliteStorage,
+  inspectSqliteSchemaVersion,
+  openSqliteDatabaseFile,
+} from "@marea/sqlite-storage";
 
 import { nativeOpens } from "../operator-cli/bun-sqlite.fixture.js";
 import { acquireInstallation } from "../operator-cli/installation-lock.js";
@@ -46,6 +58,17 @@ function start(
   });
 }
 
+function startRecordingMigrations(f: ReturnType<typeof installation>, events: object[]) {
+  return startTeacherHost({
+    installationRoot: f.root,
+    releaseId: "release:host",
+    serve: f.serve,
+    passwords,
+    onEvaluationError: () => undefined,
+    onSchemaMigration: (event) => events.push(event),
+  });
+}
+
 /** Every connection the host opened, including the deletion index, is closed again. */
 function expectConnectionsClosed(): void {
   expect(nativeOpens.filter((open) => !open.closed)).toEqual([]);
@@ -56,6 +79,54 @@ function status(f: ReturnType<typeof installation>): unknown {
 }
 
 describe("production teacher host", () => {
+  it("migrates an older activated schema at startup after a backup, then serves", async () => {
+    const f = installation();
+    initializeSqliteStorage({ databasePath: f.databasePath, schema: "skill-assignments" }).close();
+    const events: object[] = [];
+    const host = await startRecordingMigrations(f, events);
+    if (host.state !== "ready") throw new Error(`host failed: ${host.reason}`);
+    const current = currentSqliteSchema().version;
+    expect(status(f)).toMatchObject({ status: "ready", schemaVersion: current });
+    expect(events).toMatchObject([
+      {
+        event: "schema-migration",
+        outcome: "migrated",
+        detectedSchema: 14,
+        finalSchema: current,
+      },
+    ]);
+    expect(JSON.stringify(events[0])).toContain(join(f.root, "backups", "startup-migration-"));
+    await host.stop();
+    expectConnectionsClosed();
+    // The next start of the same binary finds nothing to migrate and takes no new backup.
+    const again = await startRecordingMigrations(f, events);
+    if (again.state !== "ready") throw new Error(`host failed: ${again.reason}`);
+    expect(events).toHaveLength(1);
+    expect(readdirSync(join(f.root, "backups"))).toHaveLength(1);
+    await again.stop();
+  });
+
+  it("leaves the database untouched and does not serve when the startup backup fails", async () => {
+    const f = installation();
+    initializeSqliteStorage({ databasePath: f.databasePath, schema: "skill-assignments" }).close();
+    // A bundle limit the database cannot fit makes the verified backup fail before migration.
+    const operationsPath = join(f.root, "config", "operations.json");
+    const operations = JSON.parse(readFileSync(operationsPath, "utf8")) as Record<string, unknown>;
+    writeFileSync(
+      operationsPath,
+      JSON.stringify({ ...operations, limits: { fileCount: 4, fileBytes: 1, totalBytes: 2 } }),
+      { mode: 0o600 },
+    );
+    const events: { outcome?: string }[] = [];
+    const host = await startRecordingMigrations(f, events);
+    expect(host).toEqual({ state: "failed", reason: "storage" });
+    expect(f.served.fetch).toBeUndefined();
+    expect(events.map((event) => event.outcome)).toEqual(["backup-failed"]);
+    expect(inspectSqliteSchemaVersion({ databasePath: f.databasePath })).toBe(14);
+    expectConnectionsClosed();
+    acquireInstallation(f.root).release();
+  });
+
   it("owns the installation, serves the composed product and stops cleanly", async () => {
     const f = installation();
     const host = await start(f);

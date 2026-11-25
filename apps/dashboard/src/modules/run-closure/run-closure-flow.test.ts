@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { RunClosureError } from "./run-closure-client.boundary.js";
 import { ClosureFlow } from "./run-closure-flow.js";
 
 function setup(perform: (key: string, signal: AbortSignal) => Promise<void>) {
@@ -96,6 +97,20 @@ describe("closing confirmation flow", () => {
     flow.open();
     await flow.confirm();
     expect(phases).toEqual(["confirming", "busy", "failed"]);
+    // An error that does not explain itself is shown as an invalid answer.
+    expect(flow.failure).toEqual({ kind: "invalid" });
+  });
+
+  it("keeps the reason a closure error gives", async () => {
+    const flow = new ClosureFlow(
+      () => Promise.reject(new RunClosureError({ kind: "forbidden" })),
+      vi.fn(),
+      vi.fn(),
+    );
+    expect(flow.failure).toEqual({ kind: "invalid" });
+    flow.open();
+    await flow.confirm();
+    expect(flow.failure).toEqual({ kind: "forbidden" });
   });
 
   it("can still be cancelled after a failure", async () => {

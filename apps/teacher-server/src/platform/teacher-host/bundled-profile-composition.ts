@@ -76,22 +76,27 @@ export const bundledDashboardProfileAuthority: DashboardProfileAuthority = {
     ),
 };
 
+/** The bundled release, offering educational insights only where their tables exist. */
+export function bundledReleaseFor(
+  database: Pick<SqliteApplicationDatabase, "readOne">,
+): DashboardProfileRelease<DashboardModuleSelection> {
+  const release = bundledDashboardProfileRelease();
+  const educational =
+    database.readOne(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'marea_learning_settings'",
+    ) !== undefined;
+  return {
+    ...release,
+    capabilities: release.capabilities.filter(
+      (c) => educational || c !== "educational-insights/v1",
+    ),
+  };
+}
+
 export function composeBundledDashboardProfiles(database: SqliteApplicationDatabase) {
   return composeDashboardProfiles({
     database,
-    release: (() => {
-      const release = bundledDashboardProfileRelease();
-      const educational =
-        database.readOne(
-          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'marea_learning_settings'",
-        ) !== undefined;
-      return {
-        ...release,
-        capabilities: release.capabilities.filter(
-          (c) => educational || c !== "educational-insights/v1",
-        ),
-      };
-    })(),
+    release: bundledReleaseFor(database),
     authority: bundledDashboardProfileAuthority,
     clock: systemClock,
     ids: cryptoIdGenerator,

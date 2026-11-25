@@ -92,7 +92,8 @@ web setup. Visiting the server root opens the dashboard, and startup prints its 
 
 Managed server updates check installation ownership and offer abandoned-lock recovery
 before downloading. The activation step still rechecks ownership to protect against
-a server starting during the download. Managed updates migrate the database to schema 15, which only adds the teacher who ended a
+a server starting during the download. The updated server migrates the database to schema 15 when it
+first starts, after a backup in `installation/backups/`; the migration only adds the teacher who ended a
 session (`marea_runs.closed_by`); existing
 sessions keep their frozen skill content, and compatible students continue to connect.
 
@@ -252,7 +253,7 @@ configure **Settings → Server → External traces**, test a synthetic connecti
 explicitly enable delivery with content. Langfuse supports self-hosted base URLs;
 OTLP accepts an HTTP collector. No student-side credentials are needed.
 
-Managed updates back up and migrate the database to schema 15. Export authorization,
+The updated server backs up and migrates the database to schema 15 when it first starts. Export authorization,
 content limits, retries and local/external retention are documented in
 [Observability](OBSERVABILITY.md). Existing clients remain compatible; their traces
 contain only the diagnostic detail they actually recorded.
@@ -352,8 +353,11 @@ Close a running host with Ctrl+C before retrying; do not remove its lock while i
 owns the installation. Activation checks ownership again in case a process started
 during the download. There is no need to start and stop the server to recover an
 abandoned lock before updating.
-A deletion-aware backup precedes migration; the matching dashboard and
-server version change together. Settings and credentials are preserved.
+A deletion-aware backup precedes activation, and the new server takes its own
+backup before migrating the database at startup (one JSON line on stderr records the
+detected schema, the final schema and the backup path). If that backup or the migration
+fails, the database is left unchanged and the server does not start. The matching
+dashboard and server version change together. Settings and credentials are preserved.
 
 An interrupted server update leaves `installation/state/preview-update-pending.json`
 with the backup location and previous host configuration. The managed launcher

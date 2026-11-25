@@ -360,6 +360,25 @@ it("writes recognized private startup diagnostics to stderr as bounded JSON", as
     "Teacher host did not start: config.\n",
   ]);
 });
+it("writes startup schema migration events to stderr as one JSON line each", async () => {
+  const target = dependencies();
+  const event = {
+    event: "schema-migration",
+    outcome: "backup-failed",
+    detectedSchema: 14,
+    targetSchema: 15,
+    error: "OperatorCliError",
+  } as const;
+  mocks.start.mockImplementationOnce((options: TeacherHostOptions) => {
+    options.onSchemaMigration?.(event);
+    return Promise.resolve({ state: "failed", reason: "storage" });
+  });
+  expect(await runTeacherHost(ARGV, target.ports)).toBe(5);
+  expect(target.stderr).toEqual([
+    JSON.stringify(event) + "\n",
+    "Teacher host did not start: storage.\n",
+  ]);
+});
 it("cancels private telemetry resolution when signalled during startup", async () => {
   const f = dependencies();
   const pending = Promise.withResolvers<{ state: "failed"; reason: "config" }>();

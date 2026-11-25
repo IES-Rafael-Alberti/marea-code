@@ -10,9 +10,23 @@ import {
 } from "../identity/errors.js";
 import { protocolError } from "./response.js";
 
+/** The exception behind each generic 500, kept beside its response for the request log. */
+const unhandledFailures = new WeakMap<
+  Response,
+  { readonly error: unknown; readonly requestId: RequestId }
+>();
+
+export function unhandledFailureOf(
+  response: Response,
+): { readonly error: unknown; readonly requestId: RequestId } | undefined {
+  return unhandledFailures.get(response);
+}
+
 function domainError(error: unknown, requestId: RequestId): Response {
   if (!(error instanceof TeacherDomainError)) {
-    return protocolError(500, "server.error", true, requestId);
+    const response = protocolError(500, "server.error", true, requestId);
+    unhandledFailures.set(response, { error, requestId });
+    return response;
   }
   if (error.code === "protocol.incompatible")
     return protocolError(409, "protocol.incompatible", false, requestId);

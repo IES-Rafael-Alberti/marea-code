@@ -48,6 +48,7 @@ import { registerGovernanceRoutes } from "./governance-http.boundary.js";
 import { registerDashboardSessionRoutes } from "./dashboard-session-http.boundary.js";
 import { registerExternalIdentityRoutes } from "./external-identity-http.boundary.js";
 import { registerClassroomRoutes } from "./classroom-http.boundary.js";
+import { unhandledErrorLog, writeUnhandledError } from "./unhandled-error-log.boundary.js";
 const MODEL_REQUEST_LIMIT = 2 * 1_024 * 1_024;
 const DEFAULT_COOKIE_NAME = "marea_teacher_session";
 const DASHBOARD_QUERY_KEYS = new Set(["cursor", "kind", "limit", "protocolVersion", "requestId"]);
@@ -127,6 +128,7 @@ export function createTeacherProductHttp(
   const cookieName = validateCookieName(options.dashboardCookieName ?? DEFAULT_COOKIE_NAME);
   const secureCookie = options.secureDashboardCookie ?? true;
   const app = new Hono();
+  app.use("*", unhandledErrorLog(options.onUnhandledError ?? writeUnhandledError));
   const productPolicy = policyMiddleware(policy, false);
   registerPresenceRoute(
     app,

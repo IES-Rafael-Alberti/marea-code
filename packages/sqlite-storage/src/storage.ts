@@ -43,6 +43,8 @@ export interface StorageDependencies {
   readonly maxBackupBytes: number;
 }
 
+type ReleaseSchemaCatalogKey = Exclude<SqliteSchemaCatalog, "application">;
+
 const RELEASE_CATALOGS = {
   "retention-audit": createAuditMigrationCatalog,
   "dashboard-profiles": createProfileMigrationCatalog,
@@ -51,10 +53,21 @@ const RELEASE_CATALOGS = {
   observability: createObservabilityMigrationCatalog,
   "skill-assignments": createSkillAssignmentMigrationCatalog,
   "run-closure": createRunClosureMigrationCatalog,
-} as const satisfies Record<
-  Exclude<SqliteSchemaCatalog, "application">,
-  () => readonly MigrationDefinition[]
->;
+} as const satisfies Record<ReleaseSchemaCatalogKey, () => readonly MigrationDefinition[]>;
+
+/**
+ * The release catalog a current binary runs on: always the longest one, so adding a migration
+ * catalog moves the startup target without another hand-maintained constant.
+ */
+export function currentSqliteSchema(): {
+  readonly catalog: ReleaseSchemaCatalogKey;
+  readonly version: number;
+} {
+  const [current] = (Object.keys(RELEASE_CATALOGS) as ReleaseSchemaCatalogKey[])
+    .map((catalog) => ({ catalog, version: RELEASE_CATALOGS[catalog]().length }))
+    .toSorted((left, right) => right.version - left.version);
+  return current as { readonly catalog: ReleaseSchemaCatalogKey; readonly version: number };
+}
 
 /** Selects the explicitly requested release catalog; omission retains the legacy application catalog. */
 export function createDefaultDependencies(schema?: SqliteSchemaCatalog): StorageDependencies {

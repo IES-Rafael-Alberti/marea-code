@@ -39,8 +39,8 @@ network. HTTPS uses a reverse proxy and a school-reachable address. A local
 Managed installations offer **recommended** updates at startup; `marea update`
 and `marea-teacher update` let a pilot group try the latest published preview first.
 Client and server software versions can differ while their wire protocol and
-required capabilities remain compatible. Teachers update a stopped server, with a
-backup before migration. Download failures do not replace the installed program.
+required capabilities remain compatible. Teachers update a stopped server; on its
+first start the new server backs up the database and migrates it to its schema. Download failures do not replace the installed program.
 See [distribution](DISTRIBUTION.md) for recommendation, recovery and uninstall commands.
 
 ## Develop

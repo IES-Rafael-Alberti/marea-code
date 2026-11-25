@@ -28,6 +28,68 @@ describe("run closure messages", () => {
     expect(runClosureMessages("eu").classPending("Ana")).toContain("Ana");
   });
 
+  it("tells each failure apart and quotes the server reference in every language", () => {
+    for (const locale of ["en", "es", "eu"] as const) {
+      const m = runClosureMessages(locale);
+      const texts = [
+        m.failed,
+        m.offline,
+        m.unavailable,
+        m.forbidden,
+        m.expired,
+        m.serverFailed("request:abc"),
+      ];
+      expect(new Set(texts).size).toBe(texts.length);
+      expect(m.serverFailed("request:abc")).toContain("request:abc");
+    }
+    const es = runClosureMessages("es");
+    expect(es.unavailable).toBe(
+      "Esta sesión ya no está disponible; puede que ya haya terminado. Actualiza la página para ver su estado.",
+    );
+    expect(es.expired).toBe(
+      "Tu sesión del panel ha caducado. Vuelve a iniciar sesión e inténtalo de nuevo.",
+    );
+    expect(es.forbidden).toBe("No tienes permiso para finalizar estas sesiones.");
+    expect(es.offline).toBe(
+      "No hay conexión con el servidor. Comprueba la red e inténtalo de nuevo.",
+    );
+    expect(es.serverFailed("request:abc")).toBe(
+      "El servidor no pudo finalizar las sesiones. Inténtalo de nuevo; si se repite, da a quien administra el servidor esta referencia: request:abc.",
+    );
+  });
+
+  it.each([
+    [
+      "en",
+      [
+        "The server cannot be reached. Check the network and try again.",
+        "This session is no longer available; it may have ended already. Refresh the page to see its current state.",
+        "You do not have permission to end these sessions.",
+        "Your dashboard session has expired. Sign in again and retry.",
+        "The server could not end the sessions. Try again; if it happens again, give the server administrator this reference: request:abc.",
+      ],
+    ],
+    [
+      "eu",
+      [
+        "Ezin da zerbitzarira konektatu. Egiaztatu sarea eta saiatu berriro.",
+        "Saio hau ez dago erabilgarri; baliteke dagoeneko amaitu izana. Freskatu orria bere egoera ikusteko.",
+        "Ez duzu saio hauek amaitzeko baimenik.",
+        "Panelaren saioa iraungi da. Hasi saioa berriro eta saiatu berriro.",
+        "Zerbitzariak ezin izan ditu saioak amaitu. Saiatu berriro; berriz gertatzen bada, eman erreferentzia hau zerbitzariaren administratzaileari: request:abc.",
+      ],
+    ],
+  ] as const)("publishes the exact %s failure wording", (locale, expected) => {
+    const m = runClosureMessages(locale);
+    expect([
+      m.offline,
+      m.unavailable,
+      m.forbidden,
+      m.expired,
+      m.serverFailed("request:abc"),
+    ]).toEqual(expected);
+  });
+
   it("counts the sessions in the class dialog in every language", () => {
     const en = runClosureMessages("en");
     expect([en.classTitle(1), en.classTitle(3)]).toEqual(["End 1 session?", "End 3 sessions?"]);

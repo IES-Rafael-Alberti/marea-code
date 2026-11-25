@@ -5,14 +5,44 @@ import {
   type RunsCloseResponse,
 } from "@marea/protocol";
 
+import * as z from "zod";
+
 import { browserRandomUUID } from "../../browser-random-uuid.js";
 import { dashboardPost } from "../../dashboard-post.js";
 import type { DashboardFetch } from "../active-runs/active-runs-client.boundary.js";
 
+/** Why the server did not end the sessions, so the teacher sees what to do next. */
+export type RunClosureFailure =
+  | { readonly kind: "offline" }
+  | { readonly kind: "unavailable" }
+  | { readonly kind: "forbidden" }
+  | { readonly kind: "expired" }
+  | { readonly kind: "server"; readonly requestId: string }
+  | { readonly kind: "invalid" };
+
 export class RunClosureError extends Error {
-  constructor() {
+  constructor(readonly failure: RunClosureFailure = { kind: "invalid" }) {
     super("The sessions could not be ended. Refresh to check their current state.");
   }
+}
+
+/** The server's request reference for the log line, or the one this client sent. */
+async function errorRequestId(response: Response, sentRequestId: string): Promise<string> {
+  try {
+    const parsed = z.object({ requestId: z.string() }).safeParse(await response.json());
+    return parsed.success ? parsed.data.requestId : sentRequestId;
+  } catch {
+    return sentRequestId;
+  }
+}
+
+async function failureOf(response: Response, sentRequestId: string): Promise<RunClosureFailure> {
+  if (response.status === 401) return { kind: "expired" };
+  if (response.status === 403) return { kind: "forbidden" };
+  if (response.status === 409) return { kind: "unavailable" };
+  if (response.status >= 500)
+    return { kind: "server", requestId: await errorRequestId(response, sentRequestId) };
+  return { kind: "invalid" };
 }
 
 export interface RunClosureClient {
@@ -35,8 +65,14 @@ export function createRunClosureClient(
     runIds: readonly string[],
     signal: AbortSignal,
   ): Promise<RunsCloseResponse> {
-    const response = await fetchRequest(path, dashboardPost(body, signal));
-    if (!response.ok) throw new RunClosureError();
+    let response: Response;
+    try {
+      response = await fetchRequest(path, dashboardPost(body, signal));
+    } catch (error) {
+      if (signal.aborted) throw error;
+      throw new RunClosureError({ kind: "offline" });
+    }
+    if (!response.ok) throw new RunClosureError(await failureOf(response, body.requestId));
     const result = RunsCloseResponseSchema.parse(await response.json());
     // A response must account for exactly the runs that were asked about.
     const asked = new Set(runIds);

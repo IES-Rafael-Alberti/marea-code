@@ -86,6 +86,9 @@ export async function runTeacherHost(
       onStartupDiagnostic: (diagnostic) => {
         dependencies.stderr(JSON.stringify(diagnostic) + "\n");
       },
+      onSchemaMigration: (event) => {
+        dependencies.stderr(JSON.stringify(event) + "\n");
+      },
       onEvaluationError: () => {
         dependencies.stderr("Teacher host evaluation work failed; it will retry.\n");
       },

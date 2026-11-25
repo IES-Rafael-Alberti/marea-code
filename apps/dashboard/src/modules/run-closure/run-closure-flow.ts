@@ -1,4 +1,5 @@
 import { browserRandomUUID } from "../../browser-random-uuid.js";
+import { RunClosureError, type RunClosureFailure } from "./run-closure-client.boundary.js";
 
 export type ClosurePhase = "idle" | "confirming" | "busy" | "failed";
 
@@ -8,6 +9,8 @@ export type ClosurePhase = "idle" | "confirming" | "busy" | "failed";
  */
 export class ClosureFlow {
   public phase: ClosurePhase = "idle";
+  /** Why the last attempt failed; read only while the phase is "failed". */
+  public failure: RunClosureFailure = { kind: "invalid" };
   private key = "";
   private abort: AbortController | null = null;
 
@@ -37,8 +40,9 @@ export class ClosureFlow {
     this.changed();
     try {
       await this.perform(this.key, controller.signal);
-    } catch {
+    } catch (error) {
       if (controller.signal.aborted) return;
+      this.failure = error instanceof RunClosureError ? error.failure : { kind: "invalid" };
       this.phase = "failed";
       this.changed();
       return;

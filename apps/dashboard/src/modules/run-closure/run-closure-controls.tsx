@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type ReactElement, type ReactNode } from "react";
 import type { Locale } from "@marea/i18n";
 
-import type { RunClosureClient } from "./run-closure-client.boundary.js";
+import type { RunClosureClient, RunClosureFailure } from "./run-closure-client.boundary.js";
 import { ClosureFlow, type ClosurePhase } from "./run-closure-flow.js";
-import { runClosureMessages } from "./run-closure-messages.js";
+import { runClosureMessages, type RunClosureMessages } from "./run-closure-messages.js";
 import "./run-closure.css";
 
 export interface ClosableRun {
@@ -42,10 +42,16 @@ function useClosureFlow(
   return current;
 }
 
+function failureText(m: RunClosureMessages, failure: RunClosureFailure): string {
+  if (failure.kind === "invalid") return m.failed;
+  return failure.kind === "server" ? m.serverFailed(failure.requestId) : m[failure.kind];
+}
+
 function ClosureDialog({
   idBase,
   locale,
   phase,
+  failure,
   title,
   confirmLabel,
   onCancel,
@@ -56,6 +62,7 @@ function ClosureDialog({
   readonly idBase: string;
   readonly locale: Locale;
   readonly phase: Exclude<ClosurePhase, "idle">;
+  readonly failure: RunClosureFailure;
   readonly title: string;
   readonly confirmLabel: string;
   readonly onCancel: () => void;
@@ -81,7 +88,7 @@ function ClosureDialog({
       <div id={bodyId}>
         {children}
         <p className="closure-note">{m.evaluationNote}</p>
-        {phase === "failed" && <p role="alert">{m.failed}</p>}
+        {phase === "failed" && <p role="alert">{failureText(m, failure)}</p>}
       </div>
       <div className="actions">
         <button type="button" autoFocus disabled={busy} onClick={onCancel}>
@@ -127,6 +134,7 @@ export function EndSessionControl({
           idBase={`close-${run.runId}`}
           locale={locale}
           phase={closure.phase}
+          failure={closure.failure}
           title={m.oneTitle}
           confirmLabel={m.confirmOne}
           onCancel={() => {
@@ -188,6 +196,7 @@ export function EndClassSessionsControl({
           idBase={`close-class-${classId}`}
           locale={locale}
           phase={closure.phase}
+          failure={closure.failure}
           title={m.classTitle(listed.length)}
           confirmLabel={m.confirmClass(listed.length)}
           onCancel={() => {
