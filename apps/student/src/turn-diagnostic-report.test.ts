@@ -126,6 +126,19 @@ describe("diagnostics of a failed turn", () => {
 
 type ModelResponse = { readonly requestId: string; readonly content: string } | null;
 
+it("sends no diagnostic when the client records none, even to a server that stores them", async () => {
+  const server = new FixtureServer();
+  server.extraCapabilities.push(TURN_DIAGNOSTICS_CAPABILITY);
+  const fixture = createFixtureController({ agent: new FailingAgent(), server });
+  await fixture.controller.start("Synthetic project");
+  await expect(
+    fixture.controller.sendMessage("message:1", "Busca", new AbortController().signal),
+  ).rejects.toThrow();
+  expect(
+    [...fixture.server.events.values()].some((event) => event.eventType === "turn-diagnostic"),
+  ).toBe(false);
+});
+
 describe("diagnostics without every optional source", () => {
   const sources: readonly [string, (() => ModelResponse) | undefined, string | undefined][] = [
     ["no model exchange yet", () => null, undefined],

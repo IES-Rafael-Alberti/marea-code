@@ -101,7 +101,8 @@ export class StudentSessionController {
   private sessionToken: SessionToken | null = null;
   /** Set from the negotiated capabilities before any interactive sign-in. */
   private externalSignIn!: boolean;
-  private turnDiagnostics = false;
+  /** Set from the negotiated capabilities before any turn can fail. */
+  private turnDiagnostics!: boolean;
   private readonly turns: SessionTurnExecutor;
 
   constructor(private readonly options: SessionControllerOptions) {
