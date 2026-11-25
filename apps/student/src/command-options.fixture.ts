@@ -62,3 +62,14 @@ export function testConversationRuntime(
     startConversation,
   };
 }
+
+/** A runtime for commands that must never open the application or a conversation. */
+export function idleRuntime(): MareaCommandRuntime {
+  return {
+    createApplication: vi.fn(),
+    nextAttemptId: vi.fn(),
+    nextMessageId: vi.fn(),
+    readGitContext: () => ({ branch: "", repositoryUrl: "" }),
+    startConversation: vi.fn(),
+  };
+}
