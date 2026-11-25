@@ -149,6 +149,8 @@ it.each(["retry:e1", "composer"])(
         {
           id: "e1",
           kind: "error",
+          technicalDetail: "",
+          expanded: false,
           message: "Interrupted",
           detail: "Resume",
           retryable: true,

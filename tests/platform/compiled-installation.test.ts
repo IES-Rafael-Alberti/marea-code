@@ -481,7 +481,8 @@ describe("compiled pilot", () => {
     await waitForTutoring(beforeCap + 1);
     await idleRun(1);
     await submit(capped, "Beyond the cap.", async () => (await turnCount()) >= 2);
-    await capped.waitForText("insufficient inference budget", 120_000);
+    // The student sees the interface's own words; the server's technical text stays in /details.
+    await capped.waitForText("insufficient budget for another request", 120_000);
     await capped.waitForQuiet(500);
     expect(tutoring()).toHaveLength(beforeCap + 1);
     expect(await exit(capped)).toMatchObject({ exitCode: 0 });

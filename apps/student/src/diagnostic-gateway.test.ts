@@ -222,3 +222,48 @@ it("records short failures exactly and ignores transport lifecycle chunks in res
     status: "failed",
   });
 });
+
+it("asks for repair detail only when the server stores diagnostics, and keeps the last response", async () => {
+  const fixture = createFixtureController();
+  await fixture.controller.start("Synthetic");
+  const base = {
+    protocolVersion: "0.1",
+    requestId: request.requestId,
+    modelAlias: "marea",
+    emittedAt: "2026-09-20T10:00:00.000Z",
+  };
+  const seen: (true | undefined)[] = [];
+  const upstream: MareaModelGateway = {
+    async *stream(sent) {
+      await Promise.resolve();
+      seen.push(sent.diagnostics);
+      yield ModelGatewayStreamChunkSchema.parse({
+        ...base,
+        sequence: 0,
+        event: "tool-call",
+        callId: "call-1",
+        tool: "unknown_tool",
+        arguments: {},
+        repair: { causes: ["missing-name"], rawName: null, rawArguments: "{}" },
+      });
+    },
+  };
+  const gateway = diagnosticGateway(upstream, fixture.localSession, new FixtureIds());
+  expect(gateway.lastResponse()).toBeNull();
+  const drain = async () => {
+    const chunks = [];
+    for await (const chunk of gateway.stream(request, new AbortController().signal))
+      chunks.push(chunk);
+    return chunks;
+  };
+  await drain();
+  gateway.reportRepairs(true);
+  await drain();
+  gateway.reportRepairs(false);
+  await drain();
+  expect(seen).toEqual([undefined, true, undefined]);
+  expect(gateway.lastResponse()).toEqual({
+    requestId: "request:diagnostic",
+    content: expect.stringContaining('"repair":{"causes":["missing-name"]') as string,
+  });
+});

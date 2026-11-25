@@ -1,6 +1,7 @@
 import { loadRequiredSkills } from "./required-skill-context.js";
 import { describeProject } from "./project-description.boundary.js";
 import { diagnosticGateway } from "./diagnostic-gateway.js";
+import { clientIdentity } from "./turn-diagnostic-report.js";
 import { FileOperationExecutor } from "./operation-executor.boundary.js";
 import { GitProjectEvidence } from "./git-evidence.boundary.js";
 import { join, resolve } from "node:path";
@@ -191,6 +192,13 @@ export async function createProductionStudentApplication(
   });
   const controller = new StudentSessionController({
     liveProgress: true,
+    // Stryker disable next-line ObjectLiteral: deleting required constructor fields is a type error.
+    diagnostics: {
+      client: clientIdentity(clientVersion),
+      log: stores.failures,
+      lastModelResponse: gateway.lastResponse,
+      onServerSupport: gateway.reportRepairs,
+    },
     onStartupStage: options.onStartupStage,
     agent,
     classPreference: createFileClassPreferenceStore(stateDirectory),

@@ -110,6 +110,15 @@ function eventChunk(
       arguments: event.arguments,
       callId: event.callId,
       tool: event.name,
+      ...(request.diagnostics === true && event.repair !== undefined
+        ? {
+            repair: {
+              causes: event.repair.causes,
+              rawName: event.repair.rawName?.slice(0, 256) ?? null,
+              rawArguments: event.repair.rawArguments.slice(0, 4_096),
+            },
+          }
+        : {}),
     }),
     state: { ...state, sequence: sequence + 1 },
   };

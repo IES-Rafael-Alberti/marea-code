@@ -30,8 +30,24 @@ import type { AuthorizedRunLease, RunSessionRepository, RunSnapshotSource } from
 
 const LEASE_DURATION_MS = 10 * 60 * 1_000;
 
+/** One operator-private line per failed student turn: identifiers and category, no content. */
+export interface TurnFailureRecord {
+  readonly component: "run-events";
+  readonly event: "turn-failed";
+  readonly runId: string;
+  readonly messageId: string;
+  readonly category: string;
+  readonly requestId: string | null;
+}
+
+export const writeTurnFailure = (record: TurnFailureRecord): void => {
+  process.stderr.write(`${JSON.stringify(record)}\n`);
+};
+
 export interface RunSessionServiceDependencies {
   readonly clock: Clock;
+  /** Defaults to one JSON line on stderr. */
+  readonly onTurnFailure?: (record: TurnFailureRecord) => void;
   readonly digest: SecretDigest;
   readonly ids: IdGenerator;
   readonly repository: RunSessionRepository;
@@ -130,12 +146,37 @@ export class RunSessionService {
       leaseTokenHash: this.#dependencies.digest.digest(leaseToken),
       now: this.#dependencies.clock.now(),
     });
+    this.reportFailures(leaseToken, request);
     return AppendRunEventsResponseSchema.parse({
       highestDurableSequence,
       kind: "run-events-acknowledged",
       protocolVersion: CURRENT_PROTOCOL_VERSION,
       requestId: request.requestId,
     });
+  }
+
+  private reportFailures(leaseToken: string, request: AppendRunEventsRequest): void {
+    const failures = request.events.filter((event) => event.eventType === "turn-failed");
+    const sink = this.#dependencies.onTurnFailure ?? writeTurnFailure;
+    for (const failure of failures) {
+      const { runId } = this.authorizeLease(leaseToken);
+      const diagnostic = request.events.find(
+        (event) => event.eventType === "turn-diagnostic" && event.messageId === failure.messageId,
+      );
+      try {
+        sink({
+          component: "run-events",
+          event: "turn-failed",
+          runId,
+          messageId: failure.messageId,
+          category: failure.category,
+          requestId:
+            diagnostic?.eventType === "turn-diagnostic" ? (diagnostic.requestId ?? null) : null,
+        });
+      } catch {
+        // A failing private sink cannot change the accepted events.
+      }
+    }
   }
 
   public authorizeLease(leaseToken: string): AuthorizedRunLease {

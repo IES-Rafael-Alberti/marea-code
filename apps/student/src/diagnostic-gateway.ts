@@ -1,14 +1,45 @@
 import type { MareaModelGateway } from "@marea/deepagents-adapter";
+import type { ModelGatewayStreamChunk } from "@marea/protocol";
 import type { LocalSession } from "./local-session.js";
 import type { IdSource } from "./contracts.js";
 
-/** Captures normalized exchanges, never HTTP headers, credentials or provider envelopes. */
+/** The recorded text of one chunk: model text, a tool call (with any repair) or a failure code. */
+function chunkText(chunk: ModelGatewayStreamChunk): string {
+  if (chunk.event === "text-delta") return chunk.delta;
+  if (chunk.event === "tool-call")
+    return `\n${JSON.stringify({
+      tool: chunk.tool,
+      arguments: chunk.arguments,
+      // An absent repair is left out of the JSON text.
+      repair: chunk.repair,
+    })}\n`;
+  return chunk.event === "failed" ? `\n${chunk.code}\n` : "";
+}
+
+export interface DiagnosticGateway extends MareaModelGateway {
+  /** The last exchange's request and recorded response, for a failed turn's diagnostic. */
+  readonly lastResponse: () => { readonly requestId: string; readonly content: string } | null;
+  /** Called once the server says whether it stores turn diagnostics. */
+  readonly reportRepairs: (supported: boolean) => void;
+}
+
+/**
+ * Captures normalized exchanges, never HTTP headers, credentials or provider envelopes. With a
+ * server that stores turn diagnostics it also asks for, and records, how the provider's tool calls
+ * were repaired.
+ */
 export function diagnosticGateway(
   gateway: MareaModelGateway,
   localSession: LocalSession,
   ids: IdSource,
-): MareaModelGateway {
+): DiagnosticGateway {
+  let last: { readonly requestId: string; readonly content: string } | null = null;
+  let repairs = false;
   return {
+    lastResponse: () => last,
+    reportRepairs: (supported) => {
+      repairs = supported;
+    },
     async *stream(request, signal) {
       const record = async (
         phase: "request" | "response",
@@ -46,15 +77,9 @@ export function diagnosticGateway(
       let truncated = false;
       let status: "completed" | "failed" | "interrupted" = "interrupted";
       try {
-        for await (const chunk of gateway.stream(request, signal)) {
-          const addition =
-            chunk.event === "text-delta"
-              ? chunk.delta
-              : chunk.event === "tool-call"
-                ? `\n${JSON.stringify({ tool: chunk.tool, arguments: chunk.arguments })}\n`
-                : chunk.event === "failed"
-                  ? `\n${chunk.code}\n`
-                  : "";
+        const sent = repairs ? { ...request, diagnostics: true as const } : request;
+        for await (const chunk of gateway.stream(sent, signal)) {
+          const addition = chunkText(chunk);
           truncated ||= text.length + addition.length > 16_384;
           text = (text + addition).slice(0, 16_384);
           if (chunk.event === "completed") status = "completed";
@@ -65,6 +90,7 @@ export function diagnosticGateway(
         status = signal.aborted ? "interrupted" : "failed";
         throw error;
       } finally {
+        last = { requestId: request.requestId, content: text };
         await record("response", text, status, truncated);
       }
     },

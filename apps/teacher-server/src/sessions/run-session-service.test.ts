@@ -7,7 +7,7 @@ import {
   RenewRunLeaseRequestSchema,
   StudentRunSnapshotSchema,
 } from "@marea/protocol";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AuthenticatedIdentity } from "../identity/contracts.js";
 import type {
@@ -19,7 +19,12 @@ import type {
   RenewStoredLeaseInput,
   RunSessionRepository,
 } from "./contracts.js";
-import { RunSessionService, type RunSessionServiceDependencies } from "./run-session-service.js";
+import {
+  RunSessionService,
+  writeTurnFailure,
+  type RunSessionServiceDependencies,
+  type TurnFailureRecord,
+} from "./run-session-service.js";
 
 const STUDENT: AuthenticatedIdentity = {
   classId: "class:physics",
@@ -191,6 +196,115 @@ describe("run session service", () => {
     expect(() => service.open(STUDENT, resume)).toThrow(
       expect.objectContaining({ code: "run.unavailable" }),
     );
+  });
+
+  it("writes one private line per failed turn, with the request of its diagnostic", () => {
+    const records: TurnFailureRecord[] = [];
+    const service = new RunSessionService({
+      ...dependencies,
+      onTurnFailure: (record) => records.push(record),
+    });
+    const failure = (sequence: number, messageId: string) => ({
+      eventId: `event:failed-${String(sequence)}`,
+      eventType: "turn-failed",
+      occurredAt: "2026-09-03T10:01:00.000Z",
+      sequence,
+      messageId,
+      category: "request-failed/provider.invalid-response",
+      retryable: true,
+    });
+    service.append(
+      "lease",
+      AppendRunEventsRequestSchema.parse({
+        ...APPEND,
+        events: [
+          failure(2, "message:1"),
+          {
+            eventId: "event:diagnostic",
+            eventType: "turn-diagnostic",
+            occurredAt: "2026-09-03T10:01:00.000Z",
+            sequence: 3,
+            messageId: "message:1",
+            category: "request-failed/provider.invalid-response",
+            retryable: true,
+            exception: { name: "ModelStreamError", message: "failed" },
+            causes: [],
+            stack: "",
+            requestId: "request:model",
+            client: { version: "0.1.0", platform: "linux-x64" },
+          },
+          failure(4, "message:2"),
+          failure(5, "message:4"),
+          {
+            eventId: "event:diagnostic-4",
+            eventType: "turn-diagnostic",
+            occurredAt: "2026-09-03T10:01:00.000Z",
+            sequence: 6,
+            messageId: "message:4",
+            category: "unexpected/client.Error",
+            retryable: false,
+            exception: { name: "Error", message: "offline" },
+            causes: [],
+            stack: "",
+            client: { version: "0.1.0", platform: "linux-x64" },
+          },
+        ],
+      }),
+    );
+    expect(records).toEqual([
+      {
+        component: "run-events",
+        event: "turn-failed",
+        runId: "run:stored",
+        messageId: "message:1",
+        category: "request-failed/provider.invalid-response",
+        requestId: "request:model",
+      },
+      {
+        component: "run-events",
+        event: "turn-failed",
+        runId: "run:stored",
+        messageId: "message:2",
+        category: "request-failed/provider.invalid-response",
+        requestId: null,
+      },
+      {
+        component: "run-events",
+        event: "turn-failed",
+        runId: "run:stored",
+        messageId: "message:4",
+        category: "request-failed/provider.invalid-response",
+        requestId: null,
+      },
+    ]);
+    const throwing = new RunSessionService({
+      ...dependencies,
+      onTurnFailure: () => {
+        throw new Error("sink");
+      },
+    });
+    expect(
+      throwing.append(
+        "lease",
+        AppendRunEventsRequestSchema.parse({ ...APPEND, events: [failure(2, "message:3")] }),
+      ).kind,
+    ).toBe("run-events-acknowledged");
+    expect(service.append("lease", APPEND).kind).toBe("run-events-acknowledged");
+  });
+
+  it("writes the default failure record as one JSON line on stderr", () => {
+    const write = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+    const record: TurnFailureRecord = {
+      component: "run-events",
+      event: "turn-failed",
+      runId: "run:1",
+      messageId: "message:1",
+      category: "unexpected/client.Error",
+      requestId: null,
+    };
+    writeTurnFailure(record);
+    expect(write).toHaveBeenCalledWith(`${JSON.stringify(record)}\n`);
+    write.mockRestore();
   });
 
   it("appends acknowledged canonical events and closes idempotently as reported", () => {

@@ -371,8 +371,10 @@ it.each([
   presentation.sync({ ...ready, failure, status: "failed" });
   const snapshot = presentation.snapshot();
   expect(snapshot.fatal).toBe(expected.fatal);
+  // Technical detail stays out of the student's message and is kept for /details.
   expect(snapshot.transcript.at(-1)).toMatchObject({
-    detail: expected.detail,
+    detail: expected.detail === copy.failure.resumeDetail ? expected.detail : "",
+    technicalDetail: failure.detail,
     kind: "error",
     message: expected.message,
     retryable: expected.retryable,

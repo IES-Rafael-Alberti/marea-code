@@ -152,6 +152,8 @@ function classifyTopLevel(error: unknown, prefix: string): TurnFailureInfo {
       };
     }
     return {
+      // An approval Marea cannot prepare gets its own advice for the student.
+      ...(error.code === "upstream-contract-changed" ? { code: error.code } : {}),
       detail: exceptionDetail(error),
       hasPrefix,
       kind: "unexpected",

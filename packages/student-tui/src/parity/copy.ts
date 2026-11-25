@@ -112,6 +112,12 @@ interface NoticeCopy {
 }
 
 interface FailureCopy {
+  /** The adapter met an approval it cannot prepare. */
+  readonly actionNotPrepared: string;
+  /** The model's response could not be read even after retrying. */
+  readonly invalidResponse: string;
+  /** Takes `{{path}}`. */
+  readonly logLocation: string;
   readonly deadlineExceeded: string;
   readonly budgetExhausted: string;
   readonly concurrencyLimited: string;
