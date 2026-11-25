@@ -100,6 +100,7 @@ export function createConversationStudentInterface(
           content: prompt.content,
           path: prompt.path,
           summary: prompt.summary,
+          batch: prompt.batch,
         },
         prompt.messageId,
         prompt.attemptId,

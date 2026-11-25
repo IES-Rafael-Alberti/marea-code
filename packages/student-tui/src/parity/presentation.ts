@@ -63,6 +63,17 @@ function approvalArguments(approval: NonNullable<ConversationSnapshot["approval"
   };
 }
 
+function approvalRequest(approval: NonNullable<ConversationSnapshot["approval"]>) {
+  return {
+    arguments: approvalArguments(approval),
+    interruptId: approval.approvalId ?? "",
+    name: approval.toolName ?? "write_file",
+    preview: `${approval.summary}\n${approval.path}`,
+    warnings: approval.warnings ?? [],
+    batch: approval.batch,
+  };
+}
+
 export function createPresentation(
   context: SessionContext,
   copy: ParityCopy,
@@ -243,13 +254,7 @@ export function createPresentation(
         const approval = snapshot.approval;
         state = applyEvent(state, {
           type: "approval-requested",
-          request: {
-            arguments: approvalArguments(approval),
-            interruptId: approval.approvalId ?? "",
-            name: approval.toolName ?? "write_file",
-            preview: `${approval.summary}\n${approval.path}`,
-            warnings: approval.warnings ?? [],
-          },
+          request: approvalRequest(approval),
         });
       }
       if (snapshot.approval === null) {
@@ -308,8 +313,8 @@ export function createPresentation(
       const step = applyApproval(state, action);
       if (step === null) return;
       state = step.state;
-      if (step.decision?.type === "approve")
-        dispatch({ type: "approve", interruptId: step.decision.interruptId });
+      if (step.decision?.type === "approve" || step.decision?.type === "approve-all")
+        dispatch({ type: step.decision.type, interruptId: step.decision.interruptId });
       if (step.decision?.type === "reject")
         dispatch({
           type: "reject",

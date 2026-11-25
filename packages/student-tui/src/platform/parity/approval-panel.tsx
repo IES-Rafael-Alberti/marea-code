@@ -21,13 +21,50 @@ export interface ApprovalPanelProperties {
   readonly state: ApprovalState;
 }
 
+/** One line per action of the batch that comes after this one. */
+function RemainingActions({
+  heading,
+  lines,
+}: {
+  readonly heading: string;
+  readonly lines: readonly string[];
+}) {
+  if (lines.length === 0) return null;
+  return (
+    <text fg={PALETTE.dimOnSurface} marginBottom={1}>
+      {[heading, ...lines.map((line) => `  · ${line}`)].join("\n")}
+    </text>
+  );
+}
+
+function ApproveAllButton({
+  focused,
+  label,
+  onAction,
+}: {
+  readonly focused: boolean;
+  readonly label: string;
+  readonly onAction: (action: ApprovalAction) => void;
+}) {
+  return (
+    <ReferenceButton
+      label={`${label} `}
+      background={focused ? PALETTE.buttonApproveFocused : PALETTE.buttonApprove}
+      focused={focused}
+      onPress={() => {
+        onAction({ type: "approve-all" });
+      }}
+    />
+  );
+}
+
 export function ApprovalPanel({ copy, onAction, state, interaction, id }: ApprovalPanelProperties) {
   const view = approvalView(state, copy);
   const resolved = !view.actionsVisible;
   return (
     <InlinePanel id={id} resolved={resolved}>
       <text attributes={ATTRIBUTES.bold} fg={PALETTE.warning}>
-        {view.title}
+        {view.position === null ? view.title : `${view.title} · ${view.position}`}
       </text>
       {view.preview === "" ? null : (
         <referenceScrollbox
@@ -57,6 +94,10 @@ export function ApprovalPanel({ copy, onAction, state, interaction, id }: Approv
           )}
         </referenceScrollbox>
       )}
+      <RemainingActions
+        heading={copy.remaining}
+        lines={view.actionsVisible ? view.remaining : []}
+      />
       {view.warnings.map((warning) => (
         <text fg={PALETTE.warning} key={warning} marginBottom={1}>
           ⚠ {warning}
@@ -79,6 +120,13 @@ export function ApprovalPanel({ copy, onAction, state, interaction, id }: Approv
               onAction({ type: "approve" });
             }}
           />
+          {view.approveAllVisible ? (
+            <ApproveAllButton
+              label={copy.approveAll}
+              focused={interaction?.focus === "approve-all"}
+              onAction={onAction}
+            />
+          ) : null}
           <ReferenceButton
             label={`${copy.reject} `}
             background={PALETTE.buttonReject}

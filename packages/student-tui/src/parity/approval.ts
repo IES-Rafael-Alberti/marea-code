@@ -25,10 +25,21 @@ export interface ApprovalRequest {
   /** Already formatted by the runtime: a diff, a command, a path. */
   readonly preview: string;
   readonly warnings: readonly string[];
+  /** Present when the model asked for several actions at once. */
+  readonly batch?: ApprovalBatch | undefined;
+}
+
+interface ApprovalBatch {
+  /** 1-based. */
+  readonly position: number;
+  readonly total: number;
+  /** One line per action after this one. */
+  readonly remaining: readonly string[];
 }
 
 type ApprovalDecision =
   | { readonly type: "approve" }
+  | { readonly type: "approve-all" }
   | { readonly type: "reject"; readonly reason: string }
   | { readonly type: "cancel" };
 
@@ -73,6 +84,11 @@ export function previewExpandable(request: ApprovalRequest, copy: ApprovalCopy):
 
 export interface ApprovalView {
   readonly actionsVisible: boolean;
+  /** "Approve all" approves this action and the rest of its batch, so it needs a rest. */
+  readonly approveAllVisible: boolean;
+  /** "Action i of N" in a batch; null for a single action. */
+  readonly position: string | null;
+  readonly remaining: readonly string[];
   readonly outcome: string | null;
   readonly preview: string;
   readonly previewToggle: string | null;
@@ -83,6 +99,7 @@ export interface ApprovalView {
 
 function outcomeLabel(decision: ApprovalDecision, copy: ApprovalCopy): string {
   if (decision.type === "approve") return copy.approved;
+  if (decision.type === "approve-all") return copy.approvedAll;
   if (decision.type === "cancel") return copy.cancelled;
   return decision.reason === ""
     ? copy.rejected
@@ -92,8 +109,15 @@ function outcomeLabel(decision: ApprovalDecision, copy: ApprovalCopy): string {
 export function approvalView(state: ApprovalState, copy: ApprovalCopy): ApprovalView {
   const resolved = state.stage === "resolved";
   const expandable = previewExpandable(state.request, copy);
+  const batch = state.request.batch;
   return {
     actionsVisible: !resolved,
+    approveAllVisible: !resolved && batch !== undefined && batch.position < batch.total,
+    position:
+      batch === undefined
+        ? null
+        : fill(copy.position, { position: String(batch.position), total: String(batch.total) }),
+    remaining: batch?.remaining ?? [],
     outcome: state.decision === null ? null : outcomeLabel(state.decision, copy),
     preview: state.expanded ? fullPreview(state.request, copy) : state.request.preview,
     previewToggle: expandable ? (state.expanded ? copy.collapse : copy.expand) : null,
@@ -105,6 +129,7 @@ export function approvalView(state: ApprovalState, copy: ApprovalCopy): Approval
 
 export type ApprovalAction =
   | { readonly type: "approve" }
+  | { readonly type: "approve-all" }
   | { readonly type: "start-reject" }
   | { readonly type: "set-reason"; readonly reason: string }
   | { readonly type: "confirm-reject" }
@@ -124,6 +149,11 @@ export function approvalReducer(state: ApprovalState, action: ApprovalAction): A
   switch (action.type) {
     case "approve":
       return resolve(state, { type: "approve" });
+    case "approve-all":
+      // Only offered while the batch has actions left; anything else would hide a decision.
+      return (state.request.batch?.position ?? 0) < (state.request.batch?.total ?? 0)
+        ? resolve(state, { type: "approve-all" })
+        : state;
     case "start-reject":
       return { ...state, stage: "rejecting" };
     case "set-reason":

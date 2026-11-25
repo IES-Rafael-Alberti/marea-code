@@ -49,6 +49,7 @@ export type ParityEvent =
 
 export type ParityDecision =
   | { readonly type: "approve"; readonly interruptId: string }
+  | { readonly type: "approve-all"; readonly interruptId: string }
   | { readonly type: "reject"; readonly interruptId: string; readonly reason: string }
   | { readonly type: "answers"; readonly interruptId: string; readonly values: readonly string[] }
   | { readonly type: "cancel" };

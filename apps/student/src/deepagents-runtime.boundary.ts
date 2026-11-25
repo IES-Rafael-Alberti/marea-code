@@ -1,7 +1,9 @@
 import { RequiredSkillContext } from "./required-skill-context.js";
 import { deniesWrite, socraticOptions } from "./operation-mediator.js";
 import { OperationMediator } from "./operation-mediator.js";
-import { WriteRequestSchema, type WriteRequest } from "./write-request.js";
+import type { WriteRequest } from "./write-request.js";
+import { parseApprovalId, parseWriteRequest, StudentAgentBridgeError } from "./bridge-parsing.js";
+export { StudentAgentBridgeError } from "./bridge-parsing.js";
 import type { OperationTurn } from "./operation-contracts.js";
 import {
   createAgentRuntime,
@@ -14,14 +16,20 @@ import {
   type ReadOnlyTool,
 } from "@marea/deepagents-adapter";
 import {
-  ApprovalIdSchema,
   STARTUP_MESSAGE_ID,
   type ApprovalId,
   type RunId,
   type StudentRunSnapshot,
 } from "@marea/protocol";
 
+import { batchDecisions, batchEventFor } from "./deepagents-batch.js";
+import {
+  approvalStateFor,
+  assertDurableApprovalContext,
+  type DurableAgentApprovalTurn,
+} from "./durable-approval.js";
 import type {
+  AgentBatchTurn,
   AgentApprovalTurn,
   AgentQuestionTurn,
   AgentEvent,
@@ -48,29 +56,6 @@ export interface DeepAgentsStudentRuntimeOptions {
   readonly readOnlyTools?: (runId: RunId, snapshot: StudentRunSnapshot) => readonly ReadOnlyTool[];
 }
 
-function parseApprovalId(reviewId: string): ApprovalId {
-  const parsed = ApprovalIdSchema.safeParse(reviewId);
-  if (!parsed.success) {
-    throw new StudentAgentBridgeError("DeepAgents returned an invalid approval identity.");
-  }
-  return parsed.data;
-}
-export class StudentAgentBridgeError extends Error {}
-
-interface PendingApproval extends WriteRequest {
-  readonly approvalId: ApprovalId;
-  readonly messageId: string;
-  readonly reviewId: string;
-  readonly summary: string;
-}
-
-interface DurableApprovalContext extends WriteRequest {
-  readonly snapshot: StudentRunSnapshot;
-  readonly summary: string;
-}
-
-type DurableAgentApprovalTurn = AgentApprovalTurn & DurableApprovalContext;
-
 interface AuthorizedWrite extends WriteRequest {
   readonly result: WorkspaceWrite;
 }
@@ -87,119 +72,41 @@ interface RunContexts {
   readonly conversation: RunContext | undefined;
 }
 
-async function approvalStateFor(
-  runtime: DeepAgentRuntime,
-  turn: DurableAgentApprovalTurn,
-  assistantText: string,
-): Promise<PendingApproval | null> {
-  const recovery = await runtime.recoverMessage({
-    assistantText,
-    messageId: turn.messageId,
-    sessionId: turn.runId,
-  });
-  if (recovery?.type === "in-progress") {
-    return {
-      approvalId: turn.approvalId,
-      content: turn.content,
-      messageId: turn.messageId,
-      path: turn.path,
-      reviewId: turn.approvalId,
-      summary: turn.summary,
-    };
-  }
-  if (recovery?.type !== "pending-approval") return null;
-  const event = recovery.events.find((candidate) => candidate.type === "tool-approval-required");
-  if (event?.toolName !== INTERNAL_WRITE_TOOL_NAME) {
-    throw new StudentAgentBridgeError("The DeepAgents approval is not pending for this message.");
-  }
-  const approvalId = parseApprovalId(event.reviewId);
-  if (approvalId !== turn.approvalId) {
-    throw new StudentAgentBridgeError("The DeepAgents approval is not pending for this message.");
-  }
-  const pending = {
-    ...parseWriteRequest(event.arguments),
-    approvalId,
-    messageId: turn.messageId,
-    reviewId: event.reviewId,
-    summary: event.description,
-  };
-  assertPersistedApprovalContext(turn, pending);
-  return pending;
-}
-
-function assertPersistedApprovalContext(
-  turn: DurableAgentApprovalTurn,
-  pending: PendingApproval,
-): void {
-  const persisted = durableApprovalContext(turn);
-  if (
-    persisted.content !== pending.content ||
-    persisted.path !== pending.path ||
-    persisted.summary !== pending.summary
-  ) {
-    throw new StudentAgentBridgeError("The persisted approval does not match DeepAgents state.");
-  }
-}
-
-function assertDurableApprovalContext(
-  turn: AgentApprovalTurn,
-): asserts turn is DurableAgentApprovalTurn {
-  const candidate: Partial<DurableApprovalContext> = turn;
-  if (
-    typeof candidate.content !== "string" ||
-    typeof candidate.path !== "string" ||
-    candidate.snapshot === undefined ||
-    typeof candidate.summary !== "string"
-  ) {
-    throw new StudentAgentBridgeError("The persisted approval context is incomplete.");
-  }
-}
-
-function durableApprovalContext(turn: DurableAgentApprovalTurn): DurableApprovalContext {
-  return {
-    content: turn.content,
-    path: turn.path,
-    snapshot: turn.snapshot,
-    summary: turn.summary,
-  };
-}
-
 class ApprovalToolMediator implements ApprovalTool {
   readonly name = INTERNAL_WRITE_TOOL_NAME;
   readonly description =
     "Write approved text content to a file in the student workspace. Arguments: file_path, content. Use a project-relative path such as main.py or src/main.py; /main.py also refers to the project root. Parent traversal is not allowed.";
-  private authorized: AuthorizedWrite | null = null;
+  /** Every approved write of one turn; a batch may approve several. */
+  // Stryker disable next-line ArrayDeclaration: an entry that is not a write never matches one.
+  private authorized: AuthorizedWrite[] = [];
 
   authorize(request: WriteRequest, result: WorkspaceWrite): void {
-    this.authorized = { content: request.content, path: request.path, result };
+    this.authorized.push({ content: request.content, path: request.path, result });
   }
 
   clearAuthorization(): void {
-    this.authorized = null;
+    // Stryker disable next-line ArrayDeclaration: see the field.
+    this.authorized = [];
   }
 
   // The upstream tool contract is asynchronous even though this mediator performs no I/O.
   // eslint-disable-next-line @typescript-eslint/require-await
   async execute(arguments_: Readonly<Record<string, string>>): Promise<string> {
     const request = parseWriteRequest(arguments_);
-    const authorized = this.authorized;
-    if (authorized?.path !== request.path || authorized.content !== request.content) {
-      this.authorized = null;
+    const index = this.authorized.findIndex(
+      (write) => write.path === request.path && write.content === request.content,
+    );
+    const authorized = this.authorized[index];
+    if (authorized === undefined) {
+      // Stryker disable next-line ArrayDeclaration: see the field.
+      this.authorized = [];
       throw new StudentAgentBridgeError(
         "DeepAgents attempted a workspace write that was not approved.",
       );
     }
-    this.authorized = null;
+    this.authorized.splice(index, 1);
     return JSON.stringify(authorized.result);
   }
-}
-
-function parseWriteRequest(arguments_: Readonly<Record<string, string>>): WriteRequest {
-  const parsed = WriteRequestSchema.safeParse(arguments_);
-  if (!parsed.success) {
-    throw new StudentAgentBridgeError("DeepAgents returned invalid write_file arguments.");
-  }
-  return parsed.data;
 }
 
 class DeepAgentsStudentRuntime implements AgentRuntime {
@@ -311,6 +218,35 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
       throw new StudentAgentBridgeError("A rejected write cannot include an effect.");
     }
     return this.resumeRecovered(context, turn, approvedEffect, signal);
+  }
+
+  async *resumeBatch(turn: AgentBatchTurn, signal: AbortSignal): AsyncGenerator<AgentEvent> {
+    const context = this.contextForRun(turn.runId, turn.snapshot);
+    const mediators = { operations: context.operations, writes: context.mediator };
+    try {
+      const { toolName, decision, decisions } = batchDecisions(turn, mediators);
+      const assistantText = turn.assistantText ?? "";
+      yield* this.translate(
+        context.runtime.resumeApproval(
+          {
+            sessionId: turn.runId,
+            messageId: turn.messageId,
+            assistantText,
+            reviewId: turn.reviewId,
+            toolName,
+            decision,
+            decisions,
+          },
+          signal,
+        ),
+        context,
+        turn.messageId,
+        assistantText,
+      );
+    } finally {
+      context.mediator.clearAuthorization();
+      for (const operation of context.operations) operation.clear();
+    }
   }
 
   async *resumeOperation(turn: OperationTurn, signal: AbortSignal): AsyncGenerator<AgentEvent> {
@@ -445,40 +381,14 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
     for await (const event of events) {
       if (event.type === "tool-approval-submitted") continue;
       if (event.type === "tool-approval-required") {
-        if (event.toolName === QUESTION_TOOL_NAME) {
-          yield {
-            type: "questions-required",
-            request: { interruptId: event.reviewId, questions: parseQuestions(event.arguments) },
-          };
-          continue;
+        const approval = approvalEventFor(event, context);
+        if (approval.type === "write-approval-required") {
+          if (pendingApprovalId === approval.approvalId) {
+            throw new StudentAgentBridgeError("DeepAgents repeated a pending approval.");
+          }
+          pendingApprovalId = approval.approvalId;
         }
-        const operation = context.operations.find((candidate) => candidate.name === event.toolName);
-        if (operation !== undefined) {
-          yield {
-            type: "operation-approval-required",
-            approvalId: parseApprovalId(event.reviewId),
-            tool: operation.operation,
-            arguments: event.arguments,
-            summary: event.description,
-          };
-          continue;
-        }
-        if (event.toolName !== INTERNAL_WRITE_TOOL_NAME) {
-          throw new StudentAgentBridgeError("DeepAgents requested an unsupported tool.");
-        }
-        const request = parseWriteRequest(event.arguments);
-        const approvalId = parseApprovalId(event.reviewId);
-        if (pendingApprovalId === approvalId) {
-          throw new StudentAgentBridgeError("DeepAgents repeated a pending approval.");
-        }
-        pendingApprovalId = approvalId;
-        yield {
-          type: "write-approval-required",
-          approvalId,
-          content: request.content,
-          path: request.path,
-          summary: event.description,
-        };
+        yield approval;
       } else {
         if (event.type === "assistant-text-delta") {
           assistantText += event.text;
@@ -488,6 +398,43 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
       }
     }
   }
+}
+
+/** The student-side request for one interrupt: a batch, questions, an operation or a write. */
+function approvalEventFor(
+  event: Extract<
+    import("@marea/deepagents-adapter").AgentEvent,
+    { type: "tool-approval-required" }
+  >,
+  context: RunContext,
+): AgentEvent {
+  if (event.actions.length > 1)
+    return batchEventFor(event, { operations: context.operations, writes: context.mediator });
+  if (event.toolName === QUESTION_TOOL_NAME)
+    return {
+      type: "questions-required",
+      request: { interruptId: event.reviewId, questions: parseQuestions(event.arguments) },
+    };
+  const operation = context.operations.find((candidate) => candidate.name === event.toolName);
+  if (operation !== undefined)
+    return {
+      type: "operation-approval-required",
+      approvalId: parseApprovalId(event.reviewId),
+      tool: operation.operation,
+      arguments: event.arguments,
+      summary: event.description,
+    };
+  if (event.toolName !== INTERNAL_WRITE_TOOL_NAME) {
+    throw new StudentAgentBridgeError("DeepAgents requested an unsupported tool.");
+  }
+  const request = parseWriteRequest(event.arguments);
+  return {
+    type: "write-approval-required",
+    approvalId: parseApprovalId(event.reviewId),
+    content: request.content,
+    path: request.path,
+    summary: event.description,
+  };
 }
 
 export function createDeepAgentsStudentRuntime(

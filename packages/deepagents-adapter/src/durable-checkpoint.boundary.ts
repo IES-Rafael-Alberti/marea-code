@@ -349,8 +349,36 @@ function createPersistedStateSchema() {
         arguments: z.record(z.string(), z.string()),
         description: z.string().min(1),
         allowedDecisions: z.tuple([z.literal("approve"), z.literal("amend"), z.literal("reject")]),
+        actions: z
+          .array(
+            z
+              .object({
+                index: z.number().int().nonnegative(),
+                toolName: z.string().min(1),
+                arguments: z.record(z.string(), z.string()),
+                description: z.string().min(1),
+              })
+              .strict(),
+          )
+          .min(1)
+          .optional(),
       })
-      .strict(),
+      .strict()
+      // Journals written before approvals listed their actions describe exactly one. Approvals are
+      // always rebuilt from the graph interrupt, so this only keeps such a journal well typed.
+      .transform((event) => ({
+        ...event,
+        // Stryker disable all: no reader takes the actions of a journaled approval.
+        actions: event.actions ?? [
+          {
+            index: 0,
+            toolName: event.toolName,
+            arguments: event.arguments,
+            description: event.description,
+          },
+        ],
+        // Stryker restore all
+      })),
     z
       .object({
         type: z.literal("tool-approval-submitted"),

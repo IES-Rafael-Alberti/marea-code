@@ -93,6 +93,7 @@ export function LiveParityScreen({
     else if (id.startsWith("retry:")) presentation.retry();
     else if (id === "preview") approve({ type: "toggle-preview" });
     else if (id === "approve") approve({ type: "approve" });
+    else if (id === "approve-all") approve({ type: "approve-all" });
     else if (id === "reject") approve({ type: "start-reject" });
     else if (id === "previous") answer({ type: "previous" });
     else if (id === "next" && pending?.kind === "questions") answer(enterAction(pending.questions));

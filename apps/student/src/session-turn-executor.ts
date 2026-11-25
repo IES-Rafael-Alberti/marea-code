@@ -1,6 +1,9 @@
 import { TurnProgress } from "./turn-progress.js";
+import { resolvedReply } from "./approval-reply.js";
 import { finishTurn, failTurn, startupStream } from "./turn-outcome.boundary.js";
 import { resolveOperation } from "./session-operation.js";
+import { batchEvents, isBatchApproval, type BatchDependencies } from "./session-batch.js";
+import { presentTool, questionEvents } from "./session-interactions.js";
 import type { OperationExecutor } from "./operation-contracts.js";
 import type { ProjectEvidence } from "./project-evidence.js";
 import { interactionAfterAbort } from "./turn-interaction.js";
@@ -20,8 +23,8 @@ import type {
   AgentApprovalTurn,
   AgentEvent,
   AgentRuntime,
+  ApprovalBatchPosition,
   ApprovalReply,
-  QuestionReply,
   GuardedWorkspaceWriter,
   IdSource,
   StoredPendingApproval,
@@ -87,7 +90,7 @@ export class SessionTurnExecutor {
     pending: StoredPendingApproval | undefined,
     startup: boolean,
   ): Promise<{ readonly state: "completed" | "cancelled"; readonly text: string }> {
-    if (pending !== undefined) {
+    if (pending !== undefined && !isBatchApproval(pending.approvalId)) {
       return this.resumeStoredApproval(pending, active, identity, signal, initialText);
     }
     let stream: AsyncIterable<AgentEvent>;
@@ -223,57 +226,12 @@ export class SessionTurnExecutor {
             type: "assistant-text",
             text: event.text,
           });
-        } else if (event.type === "questions-required") {
-          resume = await this.questionEvents(
-            event,
-            active,
-            identity,
-            signal,
-            text.join(""),
-            allowWrites,
-          );
+        } else if (event.type === "tool-started" || event.type === "tool-finished") {
+          presentTool(this.options, identity, event);
+        } else if (event.type !== "turn-cancelled" && event.type !== "turn-completed") {
+          resume = await this.interruption(event, active, identity, signal, text, allowWrites);
           if (resume === null) return { state: "cancelled", text: text.join("") };
           break;
-        } else if (event.type === "operation-approval-required") {
-          if (!allowWrites || this.options.operations === undefined)
-            throw new Error("Operations are unavailable in this turn.");
-          resume = await resolveOperation(
-            this.options,
-            this.options.operations,
-            event,
-            active,
-            identity,
-            text.join(""),
-            signal,
-          );
-          break;
-        } else if (event.type === "write-approval-required") {
-          if (!allowWrites) throw new Error("Tutor startup cannot request workspace writes.");
-          const approval = await this.resolveApproval(
-            event,
-            active,
-            identity,
-            text.join(""),
-            signal,
-          );
-          resume = this.options.agent.resumeApproval(approval.turn, signal);
-          break;
-        } else if (event.type === "tool-started") {
-          this.options.studentInterface.present({
-            ...identity,
-            arguments: event.arguments,
-            callId: event.callId,
-            name: event.name,
-            type: "tool-started",
-          });
-        } else if (event.type === "tool-finished") {
-          this.options.studentInterface.present({
-            ...identity,
-            callId: event.callId,
-            failed: event.failed,
-            result: event.result,
-            type: "tool-finished",
-          });
         } else if (event.type === "turn-cancelled") {
           return { state: "cancelled", text: text.join("") };
         } else {
@@ -330,13 +288,92 @@ export class SessionTurnExecutor {
     );
   }
 
+  /** Asks the student about an interrupt and returns the stream that continues the turn. */
+  private async interruption(
+    event: Exclude<
+      AgentEvent,
+      {
+        readonly type:
+          | "assistant-text-delta"
+          | "tool-started"
+          | "tool-finished"
+          | "turn-cancelled"
+          | "turn-completed";
+      }
+    >,
+    active: ActiveRun,
+    identity: StableTurnIdentity,
+    signal: AbortSignal,
+    text: readonly string[],
+    allowWrites: boolean,
+  ): Promise<AsyncIterable<AgentEvent> | null> {
+    const assistantText = text.join("");
+    if (event.type === "questions-required")
+      return questionEvents(
+        this.options,
+        event,
+        active,
+        identity,
+        signal,
+        assistantText,
+        allowWrites,
+      );
+    if (event.type === "operation-approval-required") {
+      if (!allowWrites || this.options.operations === undefined)
+        throw new Error("Operations are unavailable in this turn.");
+      return resolveOperation(
+        this.options,
+        this.options.operations,
+        event,
+        active,
+        identity,
+        assistantText,
+        signal,
+      );
+    }
+    if (!allowWrites) throw new Error("Tutor startup cannot request workspace writes.");
+    if (event.type === "approval-batch-required") {
+      const decideWrite = this.batchWrite(active, identity, assistantText, signal);
+      return batchEvents(
+        { options: this.options, decideWrite },
+        event,
+        active,
+        identity,
+        assistantText,
+        signal,
+      );
+    }
+    const approval = await this.resolveApproval(event, active, identity, assistantText, signal);
+    return this.options.agent.resumeApproval(approval.turn, signal);
+  }
+
+  private batchWrite(
+    active: ActiveRun,
+    identity: StableTurnIdentity,
+    assistantText: string,
+    signal: AbortSignal,
+  ): BatchDependencies["decideWrite"] {
+    return async (action, batch) => {
+      const { turn, remaining } = await this.resolveApproval(
+        action,
+        active,
+        identity,
+        assistantText,
+        signal,
+        batch,
+      );
+      return { decision: turn.decision, reason: turn.reason, remaining, effect: turn.effect };
+    };
+  }
+
   private async resolveApproval(
     event: ApprovalRequest,
     active: ActiveRun,
     identity: StableTurnIdentity,
     assistantText: string,
     signal: AbortSignal,
-  ): Promise<{ readonly turn: AgentApprovalTurn }> {
+    batch?: { readonly position: ApprovalBatchPosition; readonly approved: boolean },
+  ): Promise<{ readonly turn: AgentApprovalTurn; readonly remaining: boolean }> {
     const { messageId } = identity;
     const existingPending = await this.options.localSession.findPendingApproval(event.approvalId);
     const effectId = EffectIdSchema.parse(
@@ -369,21 +406,23 @@ export class SessionTurnExecutor {
     const stored = await this.options.localSession.findApproval(event.approvalId);
     const reply =
       stored ??
-      (await interactionAfterAbort<ApprovalReply>(
-        () =>
-          this.options.studentInterface.confirmWrite({
-            approvalId: event.approvalId,
-            content: event.content,
-            ...identity,
-            path: event.path,
-            summary: event.summary,
-          }),
-        signal,
-        "rejected",
-        "Write approval failed.",
-      ));
-    const { decision, reason } =
-      typeof reply === "string" ? { decision: reply, reason: undefined } : reply;
+      (batch?.approved === true
+        ? ("approved" as const)
+        : await interactionAfterAbort<ApprovalReply>(
+            () =>
+              this.options.studentInterface.confirmWrite({
+                approvalId: event.approvalId,
+                content: event.content,
+                ...identity,
+                path: event.path,
+                summary: event.summary,
+                ...(batch === undefined ? {} : { batch: batch.position }),
+              }),
+            signal,
+            "rejected",
+            "Write approval failed.",
+          ));
+    const { decision, reason, remaining } = resolvedReply(reply);
     await this.options.localSession.resolveApproval(
       { approvalId: event.approvalId, decision, reason },
       (sequence, occurredAt) => ({
@@ -420,6 +459,7 @@ export class SessionTurnExecutor {
         snapshot: active.snapshot,
         summary: event.summary,
       },
+      remaining,
     };
   }
 
@@ -455,40 +495,5 @@ export class SessionTurnExecutor {
     );
     await this.options.flushOutbox();
     return result;
-  }
-
-  private async questionEvents(
-    event: Extract<AgentEvent, { readonly type: "questions-required" }>,
-    active: ActiveRun,
-    identity: StableTurnIdentity,
-    signal: AbortSignal,
-    assistantText: string,
-    allowWrites: boolean,
-  ): Promise<AsyncIterable<AgentEvent> | null> {
-    const ask = this.options.studentInterface.askQuestions?.bind(this.options.studentInterface);
-    const continueQuestions = this.options.agent.resumeQuestions?.bind(this.options.agent);
-    if (!allowWrites || ask === undefined || continueQuestions === undefined)
-      throw new Error("Structured questions are not supported in this turn.");
-    const reply = await interactionAfterAbort<QuestionReply | undefined>(
-      () => ask({ ...event.request, ...identity }),
-      signal,
-      undefined,
-      "Structured question failed.",
-    );
-    signal.throwIfAborted();
-    if (reply === undefined) throw new Error("The question interface returned no reply.");
-    await new TeacherActivity(this.options).questions(identity, event.request, reply);
-    signal.throwIfAborted();
-    if (reply.type === "cancel") return null;
-    return continueQuestions(
-      {
-        ...active,
-        messageId: identity.messageId,
-        assistantText,
-        request: event.request,
-        values: reply.values,
-      },
-      signal,
-    );
   }
 }

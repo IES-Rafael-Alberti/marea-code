@@ -4,7 +4,11 @@ import type { ParityCopy } from "../src/parity/copy.js";
 export const PARITY_TEST_COPY: ParityCopy = Object.freeze({
   approval: Object.freeze({
     approve: "Autorizar",
+    approveAll: "Autorizar todas",
     approved: "Autorizado",
+    approvedAll: "Autorizada junto con las restantes de este lote",
+    position: "Acción {{position}} de {{total}}",
+    remaining: "Después:",
     cancelled: "Cancelado",
     collapse: "v contraer",
     editAfter: "+ después",

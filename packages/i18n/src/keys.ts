@@ -65,6 +65,10 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.conversation.student-label",
   "student.conversation.title",
   "student.tui.approval.approve",
+  "student.tui.approval.approve-all",
+  "student.tui.approval.approved-all",
+  "student.tui.approval.position",
+  "student.tui.approval.remaining",
   "student.tui.approval.approved",
   "student.tui.approval.cancelled",
   "student.tui.approval.collapse",
@@ -182,6 +186,7 @@ export interface MessageParameterMap {
   readonly "student.tui.approval.lines.other": { readonly count: number };
   readonly "student.tui.approval.rejected-with-reason": { readonly reason: string };
   readonly "student.tui.approval.title": { readonly name: string };
+  readonly "student.tui.approval.position": { readonly position: number; readonly total: number };
   readonly "student.tui.question.progress": { readonly index: number; readonly total: number };
   readonly "student.tui.status.detail": { readonly seconds: number };
   readonly "student.tui.tool.lines-read": { readonly count: number };

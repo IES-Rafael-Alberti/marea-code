@@ -65,6 +65,9 @@ export function handleParityKey(
     case "approve":
       context.activate("approve");
       break;
+    case "approve-all":
+      context.activate("approve-all");
+      break;
     case "reject":
       context.activate("reject");
       break;

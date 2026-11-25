@@ -89,7 +89,10 @@ export interface ApprovalTurn {
   readonly toolName?: string;
   /** Durable assistant-text prefix already stored by the caller. */
   readonly assistantText?: string;
+  /** The decision on the first action; ignored when `decisions` is present. */
   readonly decision: ApprovalDecision;
+  /** One decision per pending action, in the order of the approval's `actions`. */
+  readonly decisions?: readonly ApprovalDecision[];
 }
 
 export type AgentRecovery =
@@ -140,10 +143,17 @@ export type AgentEvent =
   | {
       readonly type: "tool-approval-required";
       readonly reviewId: string;
+      /** The first action; `actions` lists every action of this approval in call order. */
       readonly toolName: string;
       readonly arguments: Readonly<Record<string, string>>;
       readonly description: string;
       readonly allowedDecisions: readonly ["approve", "amend", "reject"];
+      readonly actions: readonly {
+        readonly index: number;
+        readonly toolName: string;
+        readonly arguments: Readonly<Record<string, string>>;
+        readonly description: string;
+      }[];
     }
   | {
       readonly type: "tool-approval-submitted";

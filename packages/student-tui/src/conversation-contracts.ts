@@ -77,6 +77,10 @@ export interface ConversationApproval {
   readonly content?: string;
   readonly path: string;
   readonly summary: string;
+  /** Position in a batch of several approvals from one model message. */
+  readonly batch?:
+    | { readonly position: number; readonly total: number; readonly remaining: readonly string[] }
+    | undefined;
 }
 
 export interface ConversationSnapshot {
@@ -108,11 +112,16 @@ export type ConversationAction =
   | { readonly type: "cancel" }
   | { readonly type: "exit" }
   | { readonly type: "approve"; readonly interruptId?: string }
+  | { readonly type: "approve-all"; readonly interruptId?: string }
   | { readonly type: "reject"; readonly reason?: string; readonly interruptId?: string }
   | { readonly type: "answers"; readonly interruptId: string; readonly values: readonly string[] };
 
 export type ConversationApprovalDecision =
-  "approved" | "rejected" | { readonly decision: "rejected"; readonly reason: string };
+  | "approved"
+  | "rejected"
+  | { readonly decision: "rejected"; readonly reason: string }
+  /** This action and the remaining actions of its batch. */
+  | { readonly decision: "approved"; readonly remaining: true };
 
 export interface ConversationView {
   /** Native views yield all terminal ownership to an external interactive flow. */

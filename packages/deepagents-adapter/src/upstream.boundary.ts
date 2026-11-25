@@ -1,6 +1,5 @@
 import { createSocraticGate } from "./socratic-gate.boundary.js";
 import { createControlledTools } from "./controlled-tools.boundary.js";
-import { toUpstreamDecision } from "./approval-decision.js";
 import {
   createQuestionTools,
   questionInterrupts,
@@ -10,7 +9,7 @@ import { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { type BaseMessageChunk } from "@langchain/core/messages";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { Command } from "@langchain/langgraph";
-import { createDeepAgent, registerHarnessProfile } from "deepagents";
+import { createDeepAgent } from "deepagents";
 import { createMiddleware } from "langchain";
 import * as z from "zod";
 
@@ -31,12 +30,15 @@ import {
   assertPendingReview,
   assertRecoveredReview,
   parseApprovalEvent,
+  pendingApproval,
 } from "./approval-state.boundary.js";
 import { resolveCheckpoint } from "./checkpoint.boundary.js";
-import { GATEWAY_MODEL_PROFILE_KEY, MareaGatewayChatModel } from "./gateway-model.boundary.js";
+import { MareaGatewayChatModel } from "./gateway-model.boundary.js";
+import { registerMareaProfile } from "./harness-profile.js";
 import { createReadOnlyTools } from "./read-tools.boundary.js";
 import { createTurnInput } from "./turn-input.boundary.js";
 import { createUnknownToolMiddleware } from "./unknown-tool.boundary.js";
+import { createBatchRejections } from "./batch-rejections.boundary.js";
 import { type ToolLifecycleEvent } from "./tool-events.boundary.js";
 import {
   cancelTurnWith,
@@ -61,8 +63,6 @@ interface UpstreamRun {
   readonly output: PromiseLike<unknown>;
 }
 
-/** The gateway model's own key, and the key of adapter test models that present as OpenAI. */
-const PROFILE_KEYS = [GATEWAY_MODEL_PROFILE_KEY, "openai:marea"] as const;
 const modelRegistry = new WeakMap<AgentModel, BaseLanguageModel<BaseMessageChunk>>();
 const diagnosticCauseRegistry = new WeakMap<AgentAdapterError, DiagnosticCause>();
 const sessionIdSchema = z
@@ -116,6 +116,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     ...createReadOnlyTools(options.readOnlyTools ?? [], options.approvalTool.name, reportToolEvent),
   ];
   const unknownTool = createUnknownToolMiddleware(() => tools.map((entry) => entry.name));
+  const batchRejections = createBatchRejections();
   const agent = createDeepAgent({
     model,
     middleware:
@@ -135,7 +136,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             }),
             unknownTool,
           ]
-        : [unknownTool, ...(gate === null ? [] : [gate.middleware])],
+        : [unknownTool, batchRejections.middleware, ...(gate === null ? [] : [gate.middleware])],
     tools,
     systemPrompt: options.systemPrompt,
     checkpointer,
@@ -194,20 +195,21 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       )
         throw invalidDependency("The requested interrupt tool is not available.");
       const config = streamConfig(turn.sessionId, turn.messageId, signal);
+      const decisions = turn.decisions ?? [turn.decision];
       return resumeApprovalWithRecovery(
         turn,
         config,
         toolName,
         (checkpointConfig) => agent.graph.getState(checkpointConfig),
-        (runConfig) =>
-          agent.streamEvents(
+        (runConfig, state) => {
+          const pending = pendingApproval(state);
+          return agent.streamEvents(
             new Command({
-              resume: {
-                decisions: [toUpstreamDecision(turn.decision, toolName)],
-              },
+              resume: { decisions: batchRejections.plan(state, pending.actions, decisions) },
             }),
             runConfig,
-          ) as unknown as UpstreamRun,
+          ) as unknown as UpstreamRun;
+        },
         (runConfig) => agent.streamEvents(null as never, runConfig) as unknown as UpstreamRun,
         signal,
         checkpointer,
@@ -228,14 +230,6 @@ export function normalizeDiagnosticCause(input: unknown): DiagnosticCause {
         name: "NonErrorThrownValue",
         message: "The upstream runtime threw a non-Error value.",
       });
-}
-
-function registerMareaProfile(): void {
-  for (const key of PROFILE_KEYS)
-    registerHarnessProfile(key, {
-      excludedTools: ["task"],
-      generalPurposeSubagent: { enabled: false },
-    });
 }
 
 function streamConfig(sessionId: string, messageId: string, signal: AbortSignal) {
@@ -430,7 +424,7 @@ async function* resumeApprovalWithRecovery(
   config: RunnableConfig,
   toolName: string,
   getState: (config: RunnableConfig) => Promise<unknown>,
-  resume: (config: RunnableConfig) => UpstreamRun | PromiseLike<UpstreamRun>,
+  resume: (config: RunnableConfig, state: unknown) => UpstreamRun | PromiseLike<UpstreamRun>,
   continueRun: (config: RunnableConfig) => UpstreamRun | PromiseLike<UpstreamRun>,
   signal: AbortSignal,
   checkpointer: ReturnType<typeof resolveCheckpoint> & {},
@@ -458,9 +452,10 @@ async function* resumeApprovalWithRecovery(
   }
   const runConfig = continuationConfig(config, recovered?.checkpointConfig ?? config);
   const replay = recovered === null ? null : recoveryAfterPrefix(recovered, turn.assistantText);
+  let pendingState: unknown;
   if (recovered !== null) {
-    const state = await getState(runConfig);
-    assertPendingReview(state, turn.reviewId, toolName, turn.messageId);
+    pendingState = await getState(runConfig);
+    assertPendingReview(pendingState, turn.reviewId, toolName, turn.messageId, decisionCount(turn));
     await persistRecoveredApproval(checkpointer, turn, recovered);
   }
   if (replay !== null) {
@@ -469,18 +464,28 @@ async function* resumeApprovalWithRecovery(
   yield* translateRun(
     async () => {
       if (recovered === null) {
-        const state = await getState(runConfig);
-        assertPendingReview(state, turn.reviewId, toolName, turn.messageId);
+        pendingState = await getState(runConfig);
+        assertPendingReview(
+          pendingState,
+          turn.reviewId,
+          toolName,
+          turn.messageId,
+          decisionCount(turn),
+        );
       }
-      return resume(runConfig);
+      return resume(runConfig, pendingState);
     },
     signal,
-    turn.decision.type,
+    (turn.decisions?.[0] ?? turn.decision).type,
     recordTurnWith(checkpointer, turn, recoveredAssistantText(recovered)),
     cancelTurnWith(checkpointer, turn, recoveredAssistantText(recovered)),
     undefined,
     drainToolEvents,
   );
+}
+
+function decisionCount(turn: ApprovalTurn): number {
+  return turn.decisions?.length ?? 1;
 }
 
 function recoveredAssistantText(

@@ -13,6 +13,7 @@ export type ParityAction =
   | { readonly type: "page-up" }
   | { readonly type: "page-down" }
   | { readonly type: "approve" }
+  | { readonly type: "approve-all" }
   | { readonly type: "reject" }
   | { readonly type: "tab"; readonly backwards: boolean }
   | { readonly type: "history-older" }
@@ -49,6 +50,7 @@ const WITH_CTRL = new Map<string, ParityAction>([
 
 function approvalAction(key: KeyPress): ParityAction | null {
   if (key.name === "y") return { type: "approve" };
+  if (key.name === "a") return { type: "approve-all" };
   return key.name === "n" ? { type: "reject" } : null;
 }
 

@@ -70,3 +70,25 @@ it("traverses finished tools and live actions, restores the correct input after 
   expect(defaultFocus(state)).toBe("");
   expect(focusTargets(state)).toEqual(["tool:e0"]);
 });
+
+it("offers approve all as a focus target only while the batch has actions left", () => {
+  const ask = (position: number) =>
+    applyEvent(
+      { ...openSession(), starting: false, turnActive: false },
+      {
+        type: "approval-requested",
+        request: {
+          interruptId: "a",
+          name: "execute",
+          arguments: {},
+          preview: "dir",
+          warnings: [],
+          batch: { position, total: 2, remaining: position < 2 ? ["execute cd"] : [] },
+        },
+      },
+    );
+  expect(focusTargets(ask(1))).toEqual(["preview", "approve", "approve-all", "reject"]);
+  expect(focusTargets(ask(2))).toEqual(["preview", "approve", "reject"]);
+  const decided = applyApproval(ask(1), { type: "approve-all" });
+  expect(decided?.decision).toEqual({ interruptId: "a", type: "approve-all" });
+});

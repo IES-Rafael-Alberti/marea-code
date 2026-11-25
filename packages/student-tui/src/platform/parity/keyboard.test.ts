@@ -63,6 +63,8 @@ it("routes global controls and preserves native editing keys", () => {
   key("pagedown", { scroll: null });
   expect(key("y", { approvalKeys: true, focus: "approve" })).toBe(true);
   expect(key("n", { approvalKeys: true, focus: "reject" })).toBe(true);
+  expect(key("a", { approvalKeys: true, focus: "approve" })).toBe(true);
+  expect(context.activate).toHaveBeenCalledWith("approve-all");
   expect(key("y", { focus: "reason" })).toBe(false);
   for (const name of ["return", "enter", "space"])
     expect(key(name, { focus: "tool:e1" })).toBe(true);

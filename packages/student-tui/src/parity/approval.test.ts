@@ -97,6 +97,9 @@ describe("approval view", () => {
     const state = openApproval(request({ warnings: ["Sale de la carpeta."] }));
     expect(approvalView(state, copy)).toEqual({
       actionsVisible: true,
+      approveAllVisible: false,
+      position: null,
+      remaining: [],
       outcome: null,
       preview: "pytest -q",
       previewToggle: null,
@@ -114,6 +117,41 @@ describe("approval view", () => {
     const expanded = approvalReducer(state, { type: "toggle-preview" });
     expect(approvalView(expanded, copy).previewToggle).toBe("v contraer");
     expect(approvalView(expanded, copy).preview).toContain("a.py  (1 línea)");
+  });
+});
+
+describe("several approvals in one turn", () => {
+  const batch = (position: number, total: number) =>
+    openApproval(
+      request({ batch: { position, total, remaining: total > position ? ["execute dir"] : [] } }),
+    );
+
+  it("shows the position, the remaining actions and approve all while actions remain", () => {
+    expect(approvalView(batch(1, 2), copy)).toMatchObject({
+      position: "Acción 1 de 2",
+      remaining: ["execute dir"],
+      approveAllVisible: true,
+    });
+    expect(approvalView(batch(2, 2), copy)).toMatchObject({
+      position: "Acción 2 de 2",
+      remaining: [],
+      approveAllVisible: false,
+    });
+  });
+
+  it("approves the rest of the batch only while actions remain, and never twice", () => {
+    const resolved = approvalReducer(batch(1, 3), { type: "approve-all" });
+    expect(resolved.decision).toEqual({ type: "approve-all" });
+    expect(approvalView(resolved, copy)).toMatchObject({
+      outcome: "Autorizada junto con las restantes de este lote",
+      approveAllVisible: false,
+      actionsVisible: false,
+    });
+    const last = batch(3, 3);
+    expect(approvalReducer(last, { type: "approve-all" })).toBe(last);
+    const single = openApproval(request());
+    expect(approvalReducer(single, { type: "approve-all" })).toBe(single);
+    expect(approvalView(single, copy).position).toBeNull();
   });
 });
 

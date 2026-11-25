@@ -50,7 +50,14 @@ describe("HITL payload parser", () => {
     expect(parseApprovalEvent({ messages: [] })).toBeNull();
   });
 
-  it("copies the supported single-action interrupt", () => {
+  const action = (index: number) => ({
+    index,
+    toolName: "confirm_change",
+    arguments: { path: "src/example.ts" },
+    description: "Review the synthetic change",
+  });
+
+  it("copies a single-action interrupt", () => {
     expect(parseApprovalEvent(approvalEnvelope())).toEqual({
       type: "tool-approval-required",
       reviewId: "review-1",
@@ -58,7 +65,55 @@ describe("HITL payload parser", () => {
       arguments: { path: "src/example.ts" },
       description: "Review the synthetic change",
       allowedDecisions: ["approve", "amend", "reject"],
+      actions: [action(0)],
     });
+  });
+
+  it.each([
+    ["several requests reviewed by one configuration", { requests: 3 }, 3],
+    ["one review configuration per request", { requests: 2, reviews: 2 }, 2],
+    ["decisions that include approve and reject", { decisions: ["reject", "approve"] }, 1],
+    ["extra decisions", { decisions: ["approve", "edit", "reject", "reject"] }, 1],
+  ] as const)("accepts %s", (_label, overrides, count) => {
+    const event = parseApprovalEvent(approvalEnvelope(overrides));
+    expect(event).toMatchObject({ toolName: "confirm_change", reviewId: "review-1" });
+    expect(event?.type === "tool-approval-required" ? event.actions : []).toEqual(
+      Array.from({ length: count }, (_, index) => action(index)),
+    );
+  });
+
+  it("pairs each request with the review of its own tool, whatever the order", () => {
+    const event = parseApprovalEvent({
+      __interrupt__: [
+        {
+          id: "review-2",
+          value: {
+            actionRequests: [
+              { name: "marea_execute", args: { command: "dir" }, description: "Run dir" },
+              { name: "marea_delete", args: { path: "a.txt" }, description: "Delete a.txt" },
+            ],
+            reviewConfigs: [
+              { actionName: "marea_delete", allowedDecisions: ["approve", "reject"] },
+              { actionName: "marea_execute", allowedDecisions: ["approve", "edit", "reject"] },
+            ],
+          },
+        },
+      ],
+    });
+    expect(event?.type === "tool-approval-required" ? event.actions : []).toEqual([
+      {
+        index: 0,
+        toolName: "marea_execute",
+        arguments: { command: "dir" },
+        description: "Run dir",
+      },
+      {
+        index: 1,
+        toolName: "marea_delete",
+        arguments: { path: "a.txt" },
+        description: "Delete a.txt",
+      },
+    ]);
   });
 
   it.each([
@@ -66,19 +121,14 @@ describe("HITL payload parser", () => {
     ["no interrupt", approvalEnvelope({ interrupts: 0 })],
     ["multiple interrupts", approvalEnvelope({ interrupts: 2 })],
     ["no request", approvalEnvelope({ requests: 0 })],
-    ["multiple requests", approvalEnvelope({ requests: 2 })],
     ["no review", approvalEnvelope({ reviews: 0 })],
-    ["multiple reviews", approvalEnvelope({ reviews: 2 })],
     ["different action names", approvalEnvelope({ reviewName: "different_tool" })],
-    ["one decision", approvalEnvelope({ decisions: ["approve"] })],
-    ["two decisions", approvalEnvelope({ decisions: ["approve", "reject"] })],
-    ["a non-approve first decision", approvalEnvelope({ decisions: ["edit", "edit", "reject"] })],
+    ["no reject decision", approvalEnvelope({ decisions: ["approve"] })],
+    ["no approve decision", approvalEnvelope({ decisions: ["edit", "edit", "reject"] })],
     [
-      "a non-edit second decision",
-      approvalEnvelope({ decisions: ["approve", "approve", "reject"] }),
+      "an unknown decision",
+      approvalEnvelope({ decisions: ["approve", "ignore" as "edit", "reject"] }),
     ],
-    ["a non-reject third decision", approvalEnvelope({ decisions: ["approve", "edit", "edit"] })],
-    ["four decisions", approvalEnvelope({ decisions: ["approve", "edit", "reject", "reject"] })],
   ])("rejects %s", (_label, value) => {
     expect(() => parseApprovalEvent(value)).toThrow(
       expect.objectContaining({
@@ -186,6 +236,14 @@ describe("recovered review parser", () => {
     arguments: { path: "src/example.ts" },
     description: "Review the synthetic change",
     allowedDecisions: ["approve", "amend", "reject"] as const,
+    actions: [
+      {
+        index: 0,
+        toolName: "confirm_change",
+        arguments: { path: "src/example.ts" },
+        description: "Review the synthetic change",
+      },
+    ],
   };
 
   it("accepts the exact recovered review", () => {
