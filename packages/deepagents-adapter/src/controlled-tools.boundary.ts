@@ -4,6 +4,7 @@ import { parameterSchema } from "./tool-parameters.boundary.js";
 import { AgentAdapterError, type ApprovalTool } from "./contracts.js";
 import { observeExecution, type ToolLifecycleEvent } from "./tool-events.boundary.js";
 import { QUESTION_TOOL_NAME } from "./questions.boundary.js";
+import { boundToolResult } from "./tool-output.js";
 
 export function createControlledTools(
   effects: readonly ApprovalTool[],
@@ -20,8 +21,10 @@ export function createControlledTools(
     names.add(effect.name);
     const execute = (input: Readonly<Record<string, string>>) =>
       effect.execute(Object.freeze({ ...input }));
+    const run =
+      effect.lifecycle === "external" ? execute : observeExecution(effect.name, execute, report);
     return tool(
-      effect.lifecycle === "external" ? execute : observeExecution(effect.name, execute, report),
+      async (input: Readonly<Record<string, string>>) => boundToolResult(await run(input)),
       {
         name: effect.name,
         description: effect.description,

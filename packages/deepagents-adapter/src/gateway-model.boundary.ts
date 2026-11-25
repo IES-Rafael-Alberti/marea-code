@@ -122,11 +122,23 @@ export class MareaGatewayChatModel extends BaseChatModel<GatewayCallOptions> {
   }
 }
 
+/** The gateway contract's per-request message limit; compaction keeps sessions below it. */
+export const GATEWAY_MESSAGE_LIMIT = 256;
+
 function createRequest(
   requestId: RequestId,
   messages: readonly BaseMessage[],
   tools: readonly BindToolsInput[],
 ): ModelGatewayRequest {
+  if (messages.length > GATEWAY_MESSAGE_LIMIT) {
+    // Last-resort guard: compaction should make this unreachable in a real session.
+    throw new ModelStreamError({
+      code: "context-exceeded",
+      message:
+        "The conversation has more messages than the model gateway accepts in one request. Start a new session to continue. Nothing was truncated.",
+      retryable: false,
+    });
+  }
   return ModelGatewayRequestSchema.parse({
     kind: "model-gateway-request",
     protocolVersion: CURRENT_PROTOCOL_VERSION,

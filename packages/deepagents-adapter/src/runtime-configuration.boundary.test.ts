@@ -34,8 +34,8 @@ describe("upstream tool configuration boundary", () => {
     );
     expect(configuration?.middleware?.map((middleware) => middleware.name)).toEqual(
       readOnly
-        ? ["MareaReadOnlyStartup", "MareaUnknownTool"]
-        : ["MareaUnknownTool", "MareaBatchRejections"],
+        ? ["SummarizationMiddleware", "MareaReadOnlyStartup", "MareaUnknownTool"]
+        : ["SummarizationMiddleware", "MareaUnknownTool", "MareaBatchRejections"],
     );
     expect(configuration?.interruptOn).toEqual(
       readOnly ? {} : { [unusedTool.name]: { allowedDecisions: ["approve", "edit", "reject"] } },
