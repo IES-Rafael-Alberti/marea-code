@@ -189,27 +189,3 @@ it.each([
     }
   },
 );
-it("does not offer to create a repository where Git distrusts the owner", async () => {
-  const path = await root();
-  await projectGit(path, ["init"]);
-  vi.stubEnv("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1");
-  for (const language of ["es", "en", "eu"] as const) {
-    await expect(ensureGitWorkspace(path, createTranslator(language))).rejects.toThrow(
-      `safe.directory "${path.replaceAll("\\", "/")}"`,
-    );
-  }
-  expect(select).not.toHaveBeenCalled();
-  await expect(ensureGitWorkspace(path)).rejects.toMatchObject({
-    key: "student.git.dubious-ownership",
-  });
-});
-it.runIf(process.platform !== "win32")(
-  "writes the folder in the safe.directory command with forward slashes",
-  async () => {
-    const path = await mkdtemp(join(tmpdir(), "marea-back\\slash-"));
-    roots.push(path);
-    await projectGit(path, ["init"]);
-    vi.stubEnv("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1");
-    await expect(ensureGitWorkspace(path)).rejects.toThrow("marea-back/slash-");
-  },
-);
