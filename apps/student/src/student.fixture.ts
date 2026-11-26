@@ -438,6 +438,7 @@ export function createFixtureController(
     readonly state?: MemoryStateStore;
     readonly studentInterface?: FixtureInterface;
     readonly workspace?: FixtureWorkspace;
+    readonly versionGate?: SessionControllerOptions["versionGate"];
   } = {},
 ) {
   const ids = new FixtureIds();
@@ -459,6 +460,7 @@ export function createFixtureController(
         ? {}
         : { onServerCapabilities: options.onServerCapabilities }),
       ...(options.onStartupStage === undefined ? {} : { onStartupStage: options.onStartupStage }),
+      ...(options.versionGate === undefined ? {} : { versionGate: options.versionGate }),
       ...(options.classPreference === undefined
         ? {}
         : { classPreference: options.classPreference }),

@@ -15,6 +15,7 @@ const RUN_DELETIONS = [
   "DELETE FROM marea_run_events WHERE run_id = ?1",
   "DELETE FROM marea_run_leases WHERE run_id = ?1",
   "DELETE FROM marea_run_open_requests WHERE run_id = ?1",
+  "DELETE FROM marea_metadata WHERE key = 'run-client-version:' || ?1",
   "DELETE FROM marea_active_runs WHERE run_id = ?1",
   "DELETE FROM marea_runs WHERE id = ?1",
 ] as const;

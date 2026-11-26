@@ -389,3 +389,57 @@ it("stops every composed background worker before releasing its database", async
     vi.useRealTimers();
   }
 });
+
+it("marks on the teacher dashboard the sessions opened by a client of another version", async () => {
+  const database = seededDatabase();
+  const host = await composedHost(database);
+  try {
+    const student = await host.call("/v1/auth/login", login("student", "student-password"));
+    const token = (student.body.session as { token: string }).token;
+    for (const [key, clientVersion] of [
+      ["older", "0.1.0"],
+      ["same", "0.2.0"],
+    ] as const)
+      await host.call(
+        "/v1/runs/open",
+        {
+          clientSessionId: `client:${key}`,
+          clientVersion,
+          idempotencyKey: `open:${key}`,
+          intent: { kind: "new" },
+          project: { displayName: `Project ${key}` },
+          protocolVersion: "0.1",
+          requestId: `request:${key}`,
+        },
+        token,
+      );
+    const teacher = await host.app.fetch(
+      request("/v1/auth/login", login("teacher", "teacher-password")),
+    );
+    const cookie = String(teacher.headers.get("set-cookie")).split(";")[0] ?? "";
+    const response = await host.app.fetch(
+      request(
+        "/api/v1/dashboard/history/classes",
+        {
+          kind: "session-history-query",
+          protocolVersion: "0.1",
+          requestId: "request:classes",
+          limit: 10,
+        },
+        undefined,
+        { cookie, origin: "https://dashboard.test" },
+      ),
+    );
+    expect(response.status).toBe(200);
+    const { runs } = (await response.json()) as {
+      runs: { projectDisplayName: string; versionMismatch?: unknown }[];
+    };
+    expect(runs.map((run) => [run.projectDisplayName, run.versionMismatch]).toSorted()).toEqual([
+      ["Project older", { clientVersion: "0.1.0", serverVersion: "0.2.0" }],
+      ["Project same", undefined],
+    ]);
+  } finally {
+    await host.composed.evaluations.stop();
+    database.close();
+  }
+});

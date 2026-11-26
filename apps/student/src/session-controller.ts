@@ -73,6 +73,9 @@ export interface SessionControllerOptions {
   };
   /** Every capability the teacher's server announced, once per start. */
   readonly onServerCapabilities?: (capabilities: readonly string[]) => void;
+  /** Confirms that the student accepts a server whose software version differs from this client. */
+  readonly versionGate?:
+    ((serverVersion: string, clientVersion: string) => Promise<void>) | undefined;
   readonly evidence?: ProjectEvidence;
   readonly operations?: OperationExecutor;
   readonly onStartupStage?: ((stage: StudentStartupStage) => void) | undefined;
@@ -239,6 +242,7 @@ export class StudentSessionController {
       clientVersion: this.options.clientVersion,
       ids: this.options.ids,
       server: this.options.server,
+      versionGate: this.options.versionGate,
     });
     this.externalSignIn = capabilities.includes("marea.auth.external");
     this.turnDiagnostics = capabilities.includes(TURN_DIAGNOSTICS_CAPABILITY);

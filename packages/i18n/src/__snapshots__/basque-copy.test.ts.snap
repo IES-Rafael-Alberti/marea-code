@@ -211,5 +211,12 @@ Ireki Marea uneko proiektuan, irakurri irakaslearen irakurri gabeko feedbacka, m
   "student.tui.turn.interrupted": "Txanda etenda.",
   "student.tui.turn.retry": "Berriro saiatu / jarraitu",
   "student.tui.turn.retry-started": "Berriro saiatzen hasi da",
+  "student.version.continue": "Bai, arriskua onartzen dut eta jarraitzen dut",
+  "student.version.declined": "Ez duzu arriskua onartu, beraz Marea ez da abiarazi.",
+  "student.version.exit": "Ez, irten",
+  "student.version.mismatch": "Ekipo honetako Marearen bertsioa ({{client}}) ez da irakasleen zerbitzariarena ({{server}}) bera.",
+  "student.version.question": "Bertsio desberdinekin jarraitzen baduzu, zerbaitek huts egin dezake edo bestela jokatu dezake. Onartzen duzu arrisku hori?",
+  "student.version.recommendation": "Onena da irakasleak zerbitzaria eguneratzea edo zuk ekipo honetan marea update exekutatzea, bi bertsioak berdinak izan daitezen.",
+  "student.version.terminal-required": "Arriskua onartzeko, ireki marea zuzenean terminal interaktibo batean.",
 }
 `;

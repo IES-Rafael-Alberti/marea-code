@@ -385,6 +385,11 @@ button:disabled {
     Menlo,
     monospace;
 }
+.session-list .session-version,
+.session-detail-header .session-version {
+  color: var(--color-accent);
+  font-weight: 700;
+}
 .session-detail {
   padding: 1rem 1.5rem;
   min-width: 0;

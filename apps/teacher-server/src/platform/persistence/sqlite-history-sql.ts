@@ -14,7 +14,9 @@ export const RUN_SELECT = `SELECT runs.*, users.display_name AS student_name,
   JOIN marea_users users ON users.id = runs.student_id
   JOIN marea_classes classes ON classes.id = runs.class_id`;
 
-const HistoryRunSchema = ClassSessionItemSchema.unwrap().omit({ review: true }).readonly();
+const HistoryRunSchema = ClassSessionItemSchema.unwrap()
+  .omit({ review: true, versionMismatch: true })
+  .readonly();
 /** The run fields every history listing shares, before any teacher-only review summary. */
 export function historyItem(row: SqliteRow) {
   return HistoryRunSchema.parse({

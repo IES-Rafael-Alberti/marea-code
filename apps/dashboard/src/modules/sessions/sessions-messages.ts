@@ -81,6 +81,7 @@ const en = {
   proposed: "Proposed file content",
   classLabel: "Class",
   nothing: "No recorded messages yet.",
+  clientVersionDiffers: "Different client version: {client} (server {server})",
   evaluationState: {
     none: "Not evaluated",
     queued: "Evaluation queued",
@@ -186,6 +187,7 @@ const es: typeof en = {
   proposed: "Contenido propuesto del archivo",
   classLabel: "Clase",
   nothing: "Todavía no hay mensajes registrados.",
+  clientVersionDiffers: "Versión del cliente distinta: {client} (servidor {server})",
   evaluationState: {
     none: "Sin evaluación",
     queued: "Evaluación en cola",
@@ -291,6 +293,7 @@ const eu: SessionsMessages = {
   proposed: "Fitxategi-eduki proposatua",
   classLabel: "Ikasgela",
   nothing: "Oraindik ez dago erregistratutako mezurik.",
+  clientVersionDiffers: "Bezeroaren bertsio desberdina: {client} (zerbitzaria {server})",
   evaluationState: {
     none: "Ebaluatu gabe",
     queued: "Ebaluazioa ilaran",

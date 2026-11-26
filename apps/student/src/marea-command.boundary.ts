@@ -44,6 +44,8 @@ import {
   type StudentConversationPort,
 } from "./conversation-interface.js";
 import type { PendingStudentTurn } from "./contracts.js";
+import { createVersionGate } from "./version-gate.boundary.js";
+import type { StudentVersionAcceptanceStore } from "./version-acceptance.boundary.js";
 import { createParityCopy } from "./parity-copy.js";
 import { readProjectGitContext, type ProjectGitContext } from "./project-git.boundary.js";
 import { runInteractiveMarea, type MareaSessionLifecycle } from "./main.js";
@@ -77,6 +79,7 @@ export interface MareaCommandOptions {
   readonly languagePreferenceStore?: StudentLanguagePreferenceStore;
   readonly usagePreferenceStore?: StudentUsagePreferenceStore;
   readonly savedServerStore?: SavedServerStore;
+  readonly versionAcceptanceStore?: StudentVersionAcceptanceStore;
 }
 
 export interface MareaCommandRuntime {
@@ -274,6 +277,11 @@ async function runStudent(
     serverUrl,
     stateDirectory,
     translator,
+    versionGate: createVersionGate({
+      serverUrl,
+      translator,
+      store: options.versionAcceptanceStore,
+    }),
     studentInterface: createConversationStudentInterface({
       authentication,
       withAuthentication: (operation) => session?.withTerminalSuspended(operation) ?? operation(),

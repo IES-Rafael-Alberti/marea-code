@@ -1,6 +1,6 @@
 import * as z from "zod";
 import { RequestIdSchema, RunIdSchema } from "./identifiers.js";
-import { RevisionIdSchema } from "./technical.js";
+import { RevisionIdSchema, SoftwareVersionSchema } from "./technical.js";
 import { CurrentProtocolVersionSchema } from "./version.js";
 import { SessionHistoryItemSchema, SessionHistoryQuerySchema } from "./history.js";
 import { MAX_EVALUATION_CRITERIA } from "./evaluation-draft.js";
@@ -30,12 +30,21 @@ export const SessionReviewSchema = z
   })
   .strict()
   .readonly();
+/** Present only on sessions whose client software version differs from the server's. */
+const VersionMismatchSchema = z
+  .object({ clientVersion: SoftwareVersionSchema, serverVersion: SoftwareVersionSchema })
+  .strict()
+  .readonly();
 /**
  * Dashboard-only projection; the existing student history wire shape stays unchanged. `review`
  * is present only when the request sets `includeReview`, so older strict dashboards keep theirs.
  */
 export const ClassSessionItemSchema = SessionHistoryItemSchema.unwrap()
-  .extend({ classId: RevisionIdSchema, review: SessionReviewSchema.optional() })
+  .extend({
+    classId: RevisionIdSchema,
+    review: SessionReviewSchema.optional(),
+    versionMismatch: VersionMismatchSchema.optional(),
+  })
   .strict()
   .readonly();
 /** Characters a session search may hold after trimming. */

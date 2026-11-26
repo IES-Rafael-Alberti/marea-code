@@ -12,6 +12,7 @@
   "catchingUp": "Erregistratutako jarduera kargatzen…",
   "choose": "Aukeratu saio bat elkarrizketa jarraitzeko.",
   "classLabel": "Ikasgela",
+  "clientVersionDiffers": "Bezeroaren bertsio desberdina: {client} (zerbitzaria {server})",
   "closeReasons": {
     "cancelled": "Ikasleak saioa bertan behera utzi du",
     "class-ended": "Irakasle batek ikasgelako saio guztiak amaitu ditu",
