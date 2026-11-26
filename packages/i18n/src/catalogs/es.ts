@@ -78,6 +78,8 @@ const spanishCatalog = {
   "student.git.confirm":
     "Marea necesita un repositorio Git para registrar tus cambios y mostrarlos al profesor. ¿Crearlo en esta carpeta?",
   "student.git.create": "Sí, crear repositorio",
+  "student.git.dubious-ownership":
+    'Git no se fía del propietario de esta carpeta (ocurre con memorias USB, carpetas de red u otra cuenta), así que Marea no la toca ni crea un repositorio nuevo. Si confías en ella, ejecuta git config --global --add safe.directory "{{path}}" y vuelve a iniciar Marea.',
   "student.git.missing":
     "Marea necesita Git para registrar tu trabajo. Instala Git y vuelve a iniciar Marea.",
   "student.git.not-root":

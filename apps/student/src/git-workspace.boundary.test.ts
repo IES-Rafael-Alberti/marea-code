@@ -94,6 +94,8 @@ it("uses the requested private index and never enables interactive Git prompts",
   await projectGit(path, ["config", "alias.promptstate", '!printf %s "$GIT_TERMINAL_PROMPT"']);
   vi.stubEnv("GIT_TERMINAL_PROMPT", "1");
   expect(await projectGit(path, ["promptstate"])).toBe("0");
+  await projectGit(path, ["config", "alias.localestate", '!printf %s "$LC_ALL"']);
+  expect(await projectGit(path, ["localestate"])).toBe("C");
 });
 
 async function nestedProject() {
@@ -185,5 +187,29 @@ it.each([
         else Object.defineProperty(stream, "isTTY", descriptor);
       }
     }
+  },
+);
+it("does not offer to create a repository where Git distrusts the owner", async () => {
+  const path = await root();
+  await projectGit(path, ["init"]);
+  vi.stubEnv("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1");
+  for (const language of ["es", "en", "eu"] as const) {
+    await expect(ensureGitWorkspace(path, createTranslator(language))).rejects.toThrow(
+      `safe.directory "${path.replaceAll("\\", "/")}"`,
+    );
+  }
+  expect(select).not.toHaveBeenCalled();
+  await expect(ensureGitWorkspace(path)).rejects.toMatchObject({
+    key: "student.git.dubious-ownership",
+  });
+});
+it.runIf(process.platform !== "win32")(
+  "writes the folder in the safe.directory command with forward slashes",
+  async () => {
+    const path = await mkdtemp(join(tmpdir(), "marea-back\\slash-"));
+    roots.push(path);
+    await projectGit(path, ["init"]);
+    vi.stubEnv("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1");
+    await expect(ensureGitWorkspace(path)).rejects.toThrow("marea-back/slash-");
   },
 );

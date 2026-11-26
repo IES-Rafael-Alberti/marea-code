@@ -58,13 +58,22 @@ function printableServerOrigin(value: string): string | null {
 }
 
 export class StudentWorkspaceError extends Error {
-  /** `message` is already translated; only `student.git.not-root`, which names folders, needs it. */
+  /** `message` is already translated; only the keys that name folders need it. */
   constructor(
-    readonly key: "student.git.missing" | "student.git.not-root" | "student.git.cancelled",
+    readonly key:
+      | "student.git.missing"
+      | "student.git.not-root"
+      | "student.git.dubious-ownership"
+      | "student.git.cancelled",
     translator: Translator,
     message?: string,
   ) {
-    super(message ?? translator.t(key as Exclude<typeof key, "student.git.not-root">));
+    super(
+      message ??
+        translator.t(
+          key as Exclude<typeof key, "student.git.not-root" | "student.git.dubious-ownership">,
+        ),
+    );
   }
 }
 

@@ -12,7 +12,8 @@ import { spawnSync } from "node:child_process";
 
 export type GitCommandRunner = (args: readonly string[], cwd: string) => string | null;
 
-const GIT_TIMEOUT_MS = 5_000;
+// The banner waits for both probes before the session starts, so a stuck Git must not stall it.
+const GIT_TIMEOUT_MS = 2_000;
 
 /** The first line of command output, without surrounding whitespace. */
 export function firstOutputLine(output: string): string {
@@ -23,8 +24,14 @@ export function firstOutputLine(output: string): string {
 
 export function createSystemGitRunner(): GitCommandRunner {
   return (args, cwd) => {
-    // Default stdio is pipe: stdout is read below, the rest is ignored.
-    const result = spawnSync("git", args, { cwd, encoding: "utf8", timeout: GIT_TIMEOUT_MS });
+    const result = spawnSync("git", args, {
+      cwd,
+      encoding: "utf8",
+      timeout: GIT_TIMEOUT_MS,
+      // No console window on Windows; only stdout is read.
+      windowsHide: true,
+      stdio: ["ignore", "pipe", "ignore"],
+    });
     // A spawn failure leaves status null, which is also not zero.
     if (result.status !== 0) return null;
     return firstOutputLine(result.stdout);

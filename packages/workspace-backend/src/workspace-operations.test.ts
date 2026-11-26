@@ -312,7 +312,9 @@ describe("guarded workspace operations", () => {
     await expect(workspace.renameEntry("/linked-file", "/renamed")).rejects.toEqual(
       new WorkspaceError("unsafe-entry", "rename"),
     );
-    await expect(workspace.list("/")).rejects.toEqual(new WorkspaceError("unsafe-entry", "list"));
+    await expect(workspace.list("/")).resolves.toEqual([
+      expect.objectContaining({ path: "/inside-target" }),
+    ]);
   });
 
   it("rejects hard-linked regular files", async () => {
@@ -337,9 +339,12 @@ describe("guarded workspace operations", () => {
     );
   });
 
-  it.runIf(process.platform !== "win32")("rejects unsafe discovered names", async () => {
+  it.runIf(process.platform !== "win32")("skips unsafe discovered names", async () => {
     const unsafeName = "unsafe\\name";
     await writeFile(join(rootPath, unsafeName), "content");
-    await expect(workspace.list("/")).rejects.toEqual(new WorkspaceError("invalid-path", "list"));
+    await writeFile(join(rootPath, "kept.txt"), "content");
+    await expect(workspace.list("/")).resolves.toEqual([
+      expect.objectContaining({ path: "/kept.txt" }),
+    ]);
   });
 });
