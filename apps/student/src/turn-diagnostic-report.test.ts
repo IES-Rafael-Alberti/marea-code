@@ -50,6 +50,25 @@ async function fail(subject: ReturnType<typeof setup>): Promise<void> {
 }
 
 describe("diagnostics of a failed turn", () => {
+  it("keeps one undelivered diagnostic per failed message while the server is unreachable", async () => {
+    const subject = setup(true);
+    await subject.fixture.controller.start("Synthetic project");
+    subject.fixture.server.appendRunEvents = () => Promise.reject(new Error("offline"));
+
+    for (const messageId of ["message:1", "message:2"]) {
+      await expect(
+        subject.fixture.controller.sendMessage(messageId, "Busca", new AbortController().signal),
+      ).rejects.toThrow();
+    }
+
+    const queued = subject.fixture.state.state.run?.outbox ?? [];
+    const diagnostics = queued.filter((entry) => entry.value.eventType === "turn-diagnostic");
+    expect(diagnostics.map((entry) => entry.key)).toEqual([
+      expect.stringContaining("message:1"),
+      expect.stringContaining("message:2"),
+    ]);
+  });
+
   it("names the origin in turn-failed and stores the detail with the session", async () => {
     const subject = setup(true);
     await fail(subject);

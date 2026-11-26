@@ -8,6 +8,7 @@ import {
 
 import { describeError } from "../operations/host/error-detail.js";
 import { HostOperationError } from "../operations/host/contracts.js";
+import { RecoveryBundleError } from "../recovery/contracts.js";
 
 /** One operator-private stderr line per startup schema decision that changed or refused data. */
 export type StartupMigrationEvent =
@@ -36,6 +37,10 @@ export interface StartupMigrationDependencies {
 
 function migrateWithCatalog(databasePath: string, schema: SqliteSchemaCatalog): void {
   initializeSqliteStorage({ databasePath, schema }).close();
+}
+
+function lacksBackupSpace(error: unknown): error is RecoveryBundleError {
+  return error instanceof RecoveryBundleError && error.code === "bundle-insufficient-space";
 }
 
 /**
@@ -70,9 +75,15 @@ export async function migrateSchemaOnStartup(
       outcome: "backup-failed",
       detectedSchema,
       targetSchema: target.version,
+      // The description already carries the figures of a missing-space failure.
       error: describeError(error),
     });
-    throw new HostOperationError("not-ready", "the pre-migration backup could not be created");
+    throw new HostOperationError(
+      "not-ready",
+      lacksBackupSpace(error)
+        ? `the pre-migration backup needs more free disk space: ${error.message}`
+        : "the pre-migration backup could not be created",
+    );
   }
   try {
     (dependencies.migrate ?? migrateWithCatalog)(databasePath, target.catalog);

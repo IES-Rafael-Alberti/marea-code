@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -27,15 +28,13 @@ try {
     "INSERT INTO marea_classes (id, seed_key, display_name) VALUES (?1, ?2, ?3)",
     ["class:legacy", "legacy", "Legacy migration class"],
   );
-  const backup = legacyStorage.createBackup();
-  validateBackupSchema(backup.schemaVersion);
 
   const stateRoot = join(root, "state");
   mkdirSync(stateRoot, { recursive: true });
   writeFileSync(join(stateRoot, "legacy.json"), "Legacy state bytes.");
 
   const bundle = createRecoveryBundle(join(root, "bundle"), {
-    createBackup: { createBackup: legacyStorage.createBackup.bind(legacyStorage) },
+    createBackup: legacyStorage,
     createExclusive: (operation) => operation(),
     files: ["legacy.json"],
     limits: { fileBytes: 262_144, fileCount: 1, totalBytes: 1_048_576 },
@@ -43,6 +42,7 @@ try {
     sourceRoot: stateRoot,
   });
   legacyStorage.close();
+  validateBackupSchema(bundle.manifest.database.schemaVersion);
 
   const corrupted = join(root, "corrupted");
   mkdirSync(corrupted, { recursive: true });
@@ -67,7 +67,9 @@ try {
   }
   validatePreserved(
     rejectedCorruptRestore &&
-      Buffer.from(readFileSync(join(bundle.path, "database.sqlite"))).equals(backup.bytes) &&
+      createHash("sha256")
+        .update(readFileSync(join(bundle.path, "database.sqlite")))
+        .digest("hex") === bundle.manifest.database.sha256 &&
       !existsSync(join(root, "failed-restore")),
   );
 

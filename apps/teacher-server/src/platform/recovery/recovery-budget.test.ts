@@ -1,14 +1,14 @@
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, linkSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { SqliteStorageError } from "@marea/sqlite-storage";
 import { describe, expect, it, vi } from "vitest";
 
 import { createRecoveryBundle, restoreRecoveryBundle } from "./index.js";
 import { lastRestoredBackup } from "./recovery-sqlite-mocks.fixture.js";
 import { expectRecoveryError } from "./recovery-assertions.fixture.js";
 import { startRecoveryTest } from "./recovery-test-environment.fixture.js";
-import { recoveryInput } from "./recovery-test-state.fixture.js";
+import { fileBackup, recoveryInput } from "./recovery-test-state.fixture.js";
 vi.mock(
   "@marea/sqlite-storage",
   async () => (await import("./recovery-sqlite-mocks.fixture.js")).default,
@@ -25,43 +25,25 @@ const input = () => ({
 });
 
 describe("recovery capture and restore budgets", () => {
-  it("rejects a captured database larger than the total budget", () => {
+  it("does not count the database against the state-file budget", () => {
     writeState();
-    const largeBytes = new TextEncoder().encode(`${"s".repeat(6000)}\n`);
-    expectRecoveryError(
-      () =>
-        createRecoveryBundle(join(root(), "database-over-budget"), {
-          ...input(),
-          createBackup: {
-            createBackup: () => ({
-              bytes: largeBytes,
-              format: "sqlite3",
-              schemaVersion: 1,
-              sha256: createHash("sha256").update(largeBytes).digest("hex"),
-            }),
-          },
-          files: [],
-          limits: { fileBytes: 8192, fileCount: 1, totalBytes: 5_000 },
-        }),
-      "bundle-input-invalid",
-    );
-    expect(existsSync(join(root(), "database-over-budget"))).toBe(false);
-
-    const exactBytes = new TextEncoder().encode("s".repeat(5_000));
-    const exactDatabase = createRecoveryBundle(join(root(), "database-exact-budget"), {
+    const largeBytes = new TextEncoder().encode("s".repeat(6000));
+    const bundle = createRecoveryBundle(join(root(), "database-over-budget"), {
       ...input(),
-      createBackup: {
-        createBackup: () => ({
-          bytes: exactBytes,
-          format: "sqlite3",
-          schemaVersion: 1,
-          sha256: createHash("sha256").update(exactBytes).digest("hex"),
-        }),
-      },
-      files: [],
-      limits: { fileBytes: 8192, fileCount: 1, totalBytes: exactBytes.byteLength },
+      createBackup: fileBackup(largeBytes),
+      files: ["state/one"],
+      limits: { fileBytes: 16, fileCount: 1, totalBytes: 12 },
     });
-    expect(exactDatabase.manifest.database.sizeBytes).toBe(5_000);
+    expect(bundle.manifest.database.sizeBytes).toBe(6000);
+    const restored = restoreRecoveryBundle(
+      { destinationRoot: join(root(), "database-over-budget-restored"), path: bundle.path },
+      { id: "release:one", schemaVersion: 1 },
+      { fileBytes: 16, fileCount: 1, totalBytes: 12 },
+    );
+    restored.close();
+    expect(
+      readFileSync(join(root(), "database-over-budget-restored/database.sqlite")).byteLength,
+    ).toBe(6000);
   });
 
   it("passes bounded verified database bytes and metadata to restore", () => {
@@ -73,7 +55,10 @@ describe("recovery capture and restore budgets", () => {
       { fileBytes: 64, fileCount: 2, totalBytes: 1024 },
     ).close();
     const restored = lastRestoredBackup();
-    expect(restored?.bytes).toEqual(new TextEncoder().encode("synthetic-sqlite"));
+    expect(new Uint8Array(restored?.bytes ?? [])).toEqual(
+      new TextEncoder().encode("synthetic-sqlite"),
+    );
+    expect(restored?.backupPath).toBe(join(bundle.path, "database.sqlite"));
     expect(restored?.format).toBe("sqlite3");
     expect(restored?.schemaVersion).toBe(1);
     expect(restored?.sha256).toBe(bundle.manifest.database.sha256);
@@ -106,20 +91,10 @@ describe("recovery capture and restore budgets", () => {
 
   it("enforces the aggregate capture budget while accumulating required files", () => {
     writeState();
-    const bytes = new TextEncoder().encode(`${"s".repeat(4095)}\n`);
-    const sha256 = createHash("sha256").update(bytes).digest("hex");
     const overBudgetInput = () => ({
       ...input(),
-      createBackup: {
-        createBackup: () => ({
-          bytes,
-          format: "sqlite3" as const,
-          schemaVersion: 1,
-          sha256,
-        }),
-      },
       files: ["state/configuration.json", "state/snapshot.json"],
-      limits: { fileBytes: 4096, fileCount: 2, totalBytes: bytes.byteLength + 24 },
+      limits: { fileBytes: 4096, fileCount: 2, totalBytes: 24 },
     });
     for (const name of ["over-budget", "callback-over-budget"]) {
       expectRecoveryError(
@@ -131,13 +106,72 @@ describe("recovery capture and restore budgets", () => {
 
     const exact = createRecoveryBundle(join(root(), "exact-budget"), {
       ...input(),
-      createBackup: {
-        createBackup: () => ({ bytes, format: "sqlite3", schemaVersion: 1, sha256 }),
-      },
       files: ["state/one"],
-      limits: { fileBytes: 4096, fileCount: 1, totalBytes: bytes.byteLength + 11 },
+      limits: { fileBytes: 4096, fileCount: 1, totalBytes: 11 },
     });
-    expect(exact.manifest.database.sizeBytes).toBe(bytes.byteLength);
     expect(exact.manifest.files[0]?.sizeBytes).toBe(11);
+  });
+});
+
+describe("recovery database capture failures", () => {
+  it("reports missing disk space with the figures and without a path", () => {
+    writeState();
+    const failure = new SqliteStorageError(
+      "insufficient-disk-space",
+      "The SQLite backup needs 900 MiB of free disk space but only 12 MiB is available.",
+    );
+    expect(() =>
+      createRecoveryBundle(join(root(), "no-space"), {
+        ...input(),
+        createBackup: {
+          createBackupFile: () => {
+            throw failure;
+          },
+        },
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        code: "bundle-insufficient-space",
+        message: failure.message,
+      }),
+    );
+    expect(existsSync(join(root(), "no-space"))).toBe(false);
+    expect(readdirSync(root()).filter((entry) => entry.includes(".marea-recovery."))).toEqual([]);
+  });
+
+  it("rejects a captured database that cannot be hashed as a regular file", () => {
+    writeState();
+    expectRecoveryError(
+      () =>
+        createRecoveryBundle(join(root(), "linked-database"), {
+          ...input(),
+          createBackup: {
+            createBackupFile: (destinationPath) => {
+              const result = fileBackup(new TextEncoder().encode("db")).createBackupFile(
+                destinationPath,
+              );
+              linkSync(destinationPath, `${destinationPath}.link`);
+              return result;
+            },
+          },
+        }),
+      "bundle-database-invalid",
+    );
+  });
+
+  it("reports any other storage failure as an unusable database", () => {
+    writeState();
+    expectRecoveryError(
+      () =>
+        createRecoveryBundle(join(root(), "storage-failure"), {
+          ...input(),
+          createBackup: {
+            createBackupFile: () => {
+              throw new SqliteStorageError("backup-failed", "private detail");
+            },
+          },
+        }),
+      "bundle-database-invalid",
+    );
   });
 });

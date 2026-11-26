@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   chmodSync,
   cpSync,
@@ -315,12 +314,10 @@ describe("installation lifecycle commands", () => {
     const bytes = new Uint8Array(readFileSync(olderPath));
     const older = createRecoveryBundle(join(f.root, "work", "older-bundle"), {
       createBackup: {
-        createBackup: () => ({
-          bytes,
-          format: "sqlite3",
-          schemaVersion: 7,
-          sha256: createHash("sha256").update(bytes).digest("hex"),
-        }),
+        createBackupFile: (destinationPath) => {
+          writeFileSync(destinationPath, bytes, { flag: "wx" });
+          return { format: "sqlite3", schemaVersion: 7 };
+        },
       },
       createExclusive: (operation) => operation(),
       files: [],

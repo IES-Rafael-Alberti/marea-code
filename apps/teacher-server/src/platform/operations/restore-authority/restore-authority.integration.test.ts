@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -34,14 +33,9 @@ function bundleInput(
     limits: LIMITS,
     release: { id: "release:one", schemaVersion: 1 },
     createBackup: {
-      createBackup: () => {
-        const bytes = createBackup();
-        return {
-          bytes,
-          format: "sqlite3",
-          schemaVersion: 1,
-          sha256: createHash("sha256").update(bytes).digest("hex"),
-        };
+      createBackupFile: (destinationPath) => {
+        writeFileSync(destinationPath, createBackup(), { flag: "wx" });
+        return { format: "sqlite3", schemaVersion: 1 };
       },
     },
   };

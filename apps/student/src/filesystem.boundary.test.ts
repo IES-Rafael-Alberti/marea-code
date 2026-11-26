@@ -399,7 +399,7 @@ describe("file student stores", () => {
       { ...run, turns: [{ messageId: "message:1", state: "started", text: "x".repeat(65_537) }] },
       { ...run, pendingApprovals: [{}] },
       { ...run, pendingApprovals: [pendingApproval, { ...pendingApproval, content: "Duplicate" }] },
-      { ...run, pendingApprovals: [{ ...pendingApproval, content: "x".repeat(65_537) }] },
+      { ...run, pendingApprovals: [{ ...pendingApproval, content: "x".repeat(1_048_577) }] },
       { ...run, pendingApprovals: [{ ...pendingApproval, effectId: "" }] },
       { ...run, pendingApprovals: [{ ...pendingApproval, effectId: "invalid effect" }] },
       { ...run, pendingApprovals: [{ ...pendingApproval, effectId: "e".repeat(257) }] },

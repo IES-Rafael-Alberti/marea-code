@@ -43,6 +43,7 @@ it("discards only acknowledged progress deduplication keys, retaining durable de
   await f.controller.start("Progress retention");
   const ids = new FixtureIds();
   const messageId = MessageIdSchema.parse("message:retention");
+  await f.localSession.setTurn({ messageId, state: "started" });
   for (const key of ["progress:one", "progress:two", "other:message"]) {
     await f.localSession.appendEvent(key, (sequence, occurredAt) =>
       key.startsWith("progress:")

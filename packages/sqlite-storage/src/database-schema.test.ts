@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import type { AppliedMigration } from "./contracts.js";
-import { SqliteStorageError } from "./contracts.js";
+import { SqliteStorageError, type AppliedMigration } from "./contracts.js";
 import type { DatabaseRow, SqliteDatabasePort, SqliteParameter } from "./database-port.js";
 import { configureDatabase, migrateDatabase, verifyDatabase } from "./database-schema.js";
 import {
@@ -37,6 +36,7 @@ function schemaRows(): readonly DatabaseRow[] {
 
 class FakeDatabase implements SqliteDatabasePort {
   public applied: DatabaseRow[];
+  public readonly backupTo = (): void => undefined;
   public closed = false;
   public readonly executions: { parameters: readonly SqliteParameter[]; sql: string }[] = [];
   public failOnSql: string | undefined;

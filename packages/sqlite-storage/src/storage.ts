@@ -1,16 +1,20 @@
+import { dirname } from "node:path";
+
 import { createRunClosureMigrationCatalog } from "./run-closure-migration-catalog.js";
 import { createSkillAssignmentMigrationCatalog } from "./skill-assignment-migration-catalog.js";
 import { createEducationalMigrationCatalog } from "./educational-migration-catalog.js";
 import { createObservabilityMigrationCatalog } from "./observability-migration-catalog.js";
 import { createStudentIdentityMigrationCatalog } from "./student-identity-migration-catalog.js";
 import { createProfileMigrationCatalog } from "./profile-migration-catalog.js";
-import { backupFileInstaller } from "./backup-file.boundary.js";
+import { backupFileCopier, backupFileInstaller } from "./backup-file.boundary.js";
 import { calculateBackupDigest, parseBackup } from "./backup-parser.boundary.js";
 import {
   SQLITE_BACKUP_FORMAT,
+  type RestoreSqliteBackupFileOptions,
   type RestoreSqliteBackupOptions,
   type SqliteApplicationDatabase,
   type SqliteBackup,
+  type SqliteBackupFile,
   type SqliteDatabaseFile,
   type SqliteDatabaseFileOptions,
   type SqliteSchemaCatalog,
@@ -22,12 +26,16 @@ import {
   type SqliteStorageOptions,
 } from "./contracts.js";
 import type {
+  BackupFileCopyPort,
   BackupFilePort,
+  DiskSpacePort,
   InitializationLockPort,
   SqliteDatabasePort,
   SqliteDriverPort,
 } from "./database-port.js";
 import { canonicalizeDatabasePath } from "./database-path.boundary.js";
+import { assertBackupSpace } from "./backup-space.js";
+import { diskSpace } from "./disk-space.boundary.js";
 import { configureDatabase, migrateDatabase, verifyDatabase } from "./database-schema.js";
 import { fileInitializationLock } from "./initialization-lock.boundary.js";
 import { createAuditMigrationCatalog } from "./audit-migration-catalog.js";
@@ -36,7 +44,9 @@ import { parseMigrationCatalog } from "./migration-catalog.boundary.js";
 import { bunSqliteDriver } from "./sqlite-driver.boundary.js";
 
 export interface StorageDependencies {
+  readonly backupFileCopier: BackupFileCopyPort;
   readonly backupFiles: BackupFilePort;
+  readonly diskSpace: DiskSpacePort;
   readonly driver: SqliteDriverPort;
   readonly initializationLock: InitializationLockPort;
   readonly migrations: readonly MigrationDefinition[];
@@ -72,7 +82,9 @@ export function currentSqliteSchema(): {
 /** Selects the explicitly requested release catalog; omission retains the legacy application catalog. */
 export function createDefaultDependencies(schema?: SqliteSchemaCatalog): StorageDependencies {
   return Object.freeze({
+    backupFileCopier,
     backupFiles: backupFileInstaller,
+    diskSpace,
     driver: bunSqliteDriver,
     initializationLock: fileInitializationLock,
     migrations:
@@ -108,6 +120,7 @@ function withCleanupOnFailure<T>(
 class ManagedSqliteStorage implements SqliteStorage {
   readonly #database: SqliteDatabasePort;
   readonly #maxBackupBytes: number;
+  readonly #diskSpace: DiskSpacePort;
   #isClosed = false;
   public readonly database: SqliteApplicationDatabase;
   public readonly schema: SqliteSchemaInfo;
@@ -116,8 +129,10 @@ class ManagedSqliteStorage implements SqliteStorage {
     database: SqliteDatabasePort,
     schema: SqliteSchemaInfo,
     maxBackupBytes: number,
+    space: DiskSpacePort,
   ) {
     this.#database = database;
+    this.#diskSpace = space;
     this.#maxBackupBytes = maxBackupBytes;
     this.database = Object.freeze({
       execute: (sql: string, parameters?: readonly SqliteParameter[]): void => {
@@ -159,6 +174,17 @@ class ManagedSqliteStorage implements SqliteStorage {
         "The SQLite database could not be closed cleanly.",
       );
     }
+  }
+
+  public createBackupFile(destinationPath: string): SqliteBackupFile {
+    this.assertOpen();
+    assertBackupSpace(this.#database, this.#diskSpace, dirname(destinationPath));
+    try {
+      this.#database.backupTo(destinationPath);
+    } catch {
+      throw new SqliteStorageError("backup-failed", "The SQLite backup could not be created.");
+    }
+    return Object.freeze({ format: SQLITE_BACKUP_FORMAT, schemaVersion: this.schema.version });
   }
 
   public createBackup(): SqliteBackup {
@@ -229,7 +255,12 @@ function initializeLocked(
     withCleanupOnFailure(dependencies.driver, options.databasePath, (database) => {
       configureDatabase(database);
       const schema = migrateDatabase(database, migrations);
-      return new ManagedSqliteStorage(database, schema, dependencies.maxBackupBytes);
+      return new ManagedSqliteStorage(
+        database,
+        schema,
+        dependencies.maxBackupBytes,
+        dependencies.diskSpace,
+      );
     }),
   );
 }
@@ -242,7 +273,10 @@ const UNMIGRATED_SCHEMA: SqliteSchemaInfo = Object.freeze({
 /** Opens a SQLite file with the storage durability settings and no migration ledger. */
 function openSqliteDatabaseFileWith(
   options: SqliteDatabaseFileOptions,
-  dependencies: Pick<StorageDependencies, "driver" | "initializationLock" | "maxBackupBytes">,
+  dependencies: Pick<
+    StorageDependencies,
+    "diskSpace" | "driver" | "initializationLock" | "maxBackupBytes"
+  >,
 ): SqliteDatabaseFile {
   const databasePath = canonicalizeDatabasePath(options.databasePath);
   return dependencies.initializationLock.runExclusive(databasePath, () =>
@@ -253,6 +287,7 @@ function openSqliteDatabaseFileWith(
           database,
           UNMIGRATED_SCHEMA,
           dependencies.maxBackupBytes,
+          dependencies.diskSpace,
         );
         return Object.freeze({
           database: storage.database,
@@ -292,24 +327,25 @@ function verifyStagedBackup(
   }
 }
 
-export function restoreSqliteBackupWith(
-  options: RestoreSqliteBackupOptions,
+type InstallBackup = (
+  databasePath: string,
+  validateStagedFile: (stagedPath: string) => void,
+) => void;
+
+function installAndOpen(
+  options: SqliteStorageOptions,
   dependencies: StorageDependencies,
+  migrations: readonly MigrationDefinition[],
+  schemaVersion: number,
+  install: InstallBackup,
 ): SqliteStorage {
   const canonicalOptions = {
     databasePath: canonicalizeDatabasePath(options.databasePath),
   };
-  const migrations = validateStorageDependencies(dependencies);
-  const expectedVersion = migrations.length;
-  const backup = parseBackup(options.backup, expectedVersion, dependencies.maxBackupBytes);
   try {
-    dependencies.backupFiles.installNew(
-      canonicalOptions.databasePath,
-      backup.bytes,
-      (stagedPath) => {
-        verifyStagedBackup(stagedPath, dependencies, migrations.slice(0, backup.schemaVersion));
-      },
-    );
+    install(canonicalOptions.databasePath, (stagedPath) => {
+      verifyStagedBackup(stagedPath, dependencies, migrations.slice(0, schemaVersion));
+    });
   } catch (error) {
     if (error instanceof SqliteStorageError && error.code === "backup-invalid") {
       throw error;
@@ -322,12 +358,61 @@ export function restoreSqliteBackupWith(
   return initializeCanonical(canonicalOptions, dependencies, migrations);
 }
 
+export function restoreSqliteBackupWith(
+  options: RestoreSqliteBackupOptions,
+  dependencies: StorageDependencies,
+): SqliteStorage {
+  const migrations = validateStorageDependencies(dependencies);
+  const backup = parseBackup(options.backup, migrations.length, dependencies.maxBackupBytes);
+  return installAndOpen(
+    options,
+    dependencies,
+    migrations,
+    backup.schemaVersion,
+    (path, validate) => {
+      dependencies.backupFiles.installNew(path, backup.bytes, validate);
+    },
+  );
+}
+
+const SHA256_DIGEST = /^[0-9a-f]{64}$/u;
+
+/** Restores a backup file by copying it, so a database of any size never loads into memory. */
+export function restoreSqliteBackupFileWith(
+  options: RestoreSqliteBackupFileOptions,
+  dependencies: StorageDependencies,
+): SqliteStorage {
+  const migrations = validateStorageDependencies(dependencies);
+  if (
+    (options.format as string) !== SQLITE_BACKUP_FORMAT ||
+    !Number.isSafeInteger(options.schemaVersion) ||
+    options.schemaVersion < 1 ||
+    options.schemaVersion > migrations.length ||
+    !SHA256_DIGEST.test(options.sha256)
+  ) {
+    throw new SqliteStorageError("backup-invalid", "The SQLite backup is invalid.");
+  }
+  return installAndOpen(
+    options,
+    dependencies,
+    migrations,
+    options.schemaVersion,
+    (path, validate) => {
+      dependencies.backupFileCopier.installFile(path, options.backupPath, options.sha256, validate);
+    },
+  );
+}
+
 export function initializeSqliteStorage(options: SqliteStorageOptions): SqliteStorage {
   return initializeSqliteStorageWith(options, createDefaultDependencies(options.schema));
 }
 
 export function restoreSqliteBackup(options: RestoreSqliteBackupOptions): SqliteStorage {
   return restoreSqliteBackupWith(options, createDefaultDependencies(options.schema));
+}
+
+export function restoreSqliteBackupFile(options: RestoreSqliteBackupFileOptions): SqliteStorage {
+  return restoreSqliteBackupFileWith(options, createDefaultDependencies(options.schema));
 }
 
 export function openSqliteDatabaseFile(options: SqliteDatabaseFileOptions): SqliteDatabaseFile {

@@ -25,6 +25,8 @@ import type {
 import { pendingStoredTurn } from "./pending-turn.js";
 import { narrowStoredDelivery, setAsideFirstPending } from "./local-session-outbox.js";
 import { assertActivationCompatible } from "./local-session-recovery.js";
+import { closeFailedTurnsExcept, closeSupersededTurns } from "./local-session-closure.js";
+import { acknowledgeStored, pruneEventKeys } from "./local-session-keys.js";
 import { prepareStoredStartup, recordStartupProgress } from "./local-startup.js";
 import { SerialOperationQueue } from "./serial-operation-queue.js";
 import { addUsage, type CallUsage } from "./session-usage.js";
@@ -235,6 +237,13 @@ export class LocalSession {
     });
   }
 
+  /** A reopen that failed leaves the run as it was, so the next call can try again. */
+  restoreAfterFailedReopen(runId: RunId, phase: "active" | "closing"): Promise<StoredRun> {
+    return this.mutateRun((run) =>
+      run.runId === runId && run.phase === "opening" ? { ...run, phase } : run,
+    );
+  }
+
   appendEvent(key: string, factory: EventFactory): Promise<StoredRun> {
     return this.mutateRun((run) => {
       if (run.eventKeys.includes(key)) return run;
@@ -250,7 +259,15 @@ export class LocalSession {
 
   beginTurn(messageId: string, studentText: string, factory: EventFactory): Promise<StoredRun> {
     return this.mutateRun((run) =>
-      beginStoredTurn(run, messageId, studentText, factory, this.clock),
+      pruneEventKeys(
+        beginStoredTurn(
+          closeFailedTurnsExcept(run, messageId, this.ids, this.clock),
+          messageId,
+          studentText,
+          factory,
+          this.clock,
+        ),
+      ),
     );
   }
 
@@ -278,8 +295,16 @@ export class LocalSession {
     }));
   }
 
+  /** Several started turns can only be leftovers: the selected one continues, the rest close. */
   pendingTurn(): Promise<PendingStudentTurn | null> {
-    return this.load().then((state) => pendingStoredTurn(state.run));
+    return this.mutate((state) => {
+      if (state.run?.phase !== "active") return { state, value: null };
+      const run = pruneEventKeys(closeSupersededTurns(state.run, this.ids, this.clock));
+      return {
+        state: run === state.run ? state : { ...state, run },
+        value: pendingStoredTurn(run),
+      };
+    });
   }
 
   updateTurnText(messageId: string, text: string): Promise<StoredRun> {
@@ -337,40 +362,16 @@ export class LocalSession {
   ): Promise<StoredRun> {
     return this.mutateRun((run) => {
       const finished = finishStoredTurn(run, messageId, state, text, this.ids, this.clock);
-      return run.turns.find((turn) => turn.messageId === messageId)?.kind === "startup"
-        ? recordStartupProgress(finished, state, this.ids, this.clock)
-        : finished;
+      return pruneEventKeys(
+        run.turns.find((turn) => turn.messageId === messageId)?.kind === "startup"
+          ? recordStartupProgress(finished, state, this.ids, this.clock)
+          : finished,
+      );
     });
   }
 
   acknowledge(highestDurableSequence: number): Promise<StoredRun> {
-    return this.mutateRun((run) => {
-      // Delivered progress is observational; retaining its keys would exhaust
-      // the bounded state during long sessions. Decisions keep their keys.
-      const progress = new Set(
-        run.outbox
-          .filter(
-            (event) =>
-              event.value.eventType === "assistant-progress" &&
-              event.value.sequence <= highestDurableSequence,
-          )
-          .map((event) => event.key),
-      );
-      return {
-        ...run,
-        eventKeys: run.eventKeys.filter((key) => !progress.has(key)),
-        outbox: run.outbox.filter((event) => event.value.sequence > highestDurableSequence),
-        pendingDelivery:
-          run.pendingDelivery === null || run.pendingDelivery === undefined
-            ? null
-            : (() => {
-                const events = run.pendingDelivery.events.filter(
-                  (event) => event.value.sequence > highestDurableSequence,
-                );
-                return events.length === 0 ? null : { events };
-              })(),
-      };
-    });
+    return this.mutateRun((run) => acknowledgeStored(run, highestDurableSequence));
   }
 
   /** After a permanent refusal of a batch, retry its first event alone to find the culprit. */

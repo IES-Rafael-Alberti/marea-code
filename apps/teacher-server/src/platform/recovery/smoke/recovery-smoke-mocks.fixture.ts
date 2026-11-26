@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 
 export const smokeState = {
@@ -31,14 +30,9 @@ function storage(phase: string) {
     close: () => {
       smokeState.closeCalls = [...smokeState.closeCalls, phase];
     },
-    createBackup: () => {
-      const bytes = new TextEncoder().encode("synthetic-sqlite");
-      return {
-        bytes,
-        format: "sqlite3",
-        schemaVersion: 6,
-        sha256: createHash("sha256").update(bytes).digest("hex"),
-      };
+    createBackupFile: (destinationPath: string) => {
+      writeFileSync(destinationPath, "synthetic-sqlite", { flag: "wx" });
+      return { format: "sqlite3", schemaVersion: 6 };
     },
     database: {
       execute: (sql: string, parameters?: readonly unknown[]) => {
@@ -86,10 +80,10 @@ export default {
     }
     return storage("reopened");
   },
-  restoreSqliteBackup: (options: { backup: { schemaVersion: number }; databasePath: string }) => {
+  restoreSqliteBackupFile: (options: { schemaVersion: number; databasePath: string }) => {
     smokeState.restoreCalls = [
       ...smokeState.restoreCalls,
-      { backupSchemaVersion: options.backup.schemaVersion, databasePath: options.databasePath },
+      { backupSchemaVersion: options.schemaVersion, databasePath: options.databasePath },
     ];
     writeFileSync(options.databasePath, "synthetic-sqlite", { flag: "wx" });
     return storage("restored");

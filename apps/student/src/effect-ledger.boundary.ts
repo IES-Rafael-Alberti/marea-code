@@ -46,10 +46,29 @@ function parseJson(text: string): unknown {
   return JSON.parse(text);
 }
 
+/**
+ * Completed writes of long-closed runs are never replayed, so the oldest ones are dropped to keep
+ * the file within its read limit. A prepared write is unfinished work and is always kept.
+ */
+function retainRecent(
+  records: readonly EffectLedgerRecord[],
+  retained: number,
+): readonly EffectLedgerRecord[] {
+  let excess = records.length - retained;
+  return records.filter((record) => {
+    if (excess <= 0 || record.phase !== "completed") return true;
+    excess -= 1;
+    return false;
+  });
+}
+
 class FileEffectLedger implements EffectLedger {
   private mutationTail: Promise<void> = Promise.resolve();
 
-  constructor(private readonly path: string) {}
+  constructor(
+    private readonly path: string,
+    private readonly retained: number,
+  ) {}
 
   find(effectId: string): Promise<EffectLedgerRecord | null> {
     return this.afterMutations(async () => {
@@ -73,10 +92,13 @@ class FileEffectLedger implements EffectLedger {
         }
         if (existing.phase === "completed") return;
       }
-      const next = [
-        ...records.filter((existing) => existing.effectId !== record.effectId),
-        EffectLedgerRecordSchema.parse(record),
-      ];
+      const next = retainRecent(
+        [
+          ...records.filter((existing) => existing.effectId !== record.effectId),
+          EffectLedgerRecordSchema.parse(record),
+        ],
+        this.retained,
+      );
       await writePrivateFileAtomically(
         this.path,
         JSON.stringify(EffectLedgerFileSchema.parse({ effects: next })),
@@ -101,6 +123,6 @@ class FileEffectLedger implements EffectLedger {
   }
 }
 
-export function createFileEffectLedger(stateDirectory: string): EffectLedger {
-  return new FileEffectLedger(join(stateDirectory, "workspace-effects.json"));
+export function createFileEffectLedger(stateDirectory: string, retained = 1_024): EffectLedger {
+  return new FileEffectLedger(join(stateDirectory, "workspace-effects.json"), retained);
 }
