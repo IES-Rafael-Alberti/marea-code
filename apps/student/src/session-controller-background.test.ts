@@ -56,14 +56,17 @@ describe("StudentSessionController background lease checks", () => {
 
   it("lets a student who acts during a failing background check sign in", async () => {
     const fixture = await expiringFixture();
-    fixture.server.rejectStored = true;
+    const bootstrap = fixture.server.bootstrap.bind(fixture.server);
+    let rejections = 2;
+    fixture.server.bootstrap = (token, request) =>
+      rejections-- > 0 ? Promise.resolve({ authenticated: false }) : bootstrap(token, request);
 
     const background = fixture.controller.modelRunToken(false);
     const acting = fixture.controller.modelRunToken();
 
     await expect(background).rejects.toMatchObject(signInRequired);
     await expect(acting).resolves.toBeDefined();
-    expect(fixture.server.bootstrapCalls).toBe(3);
+    expect(fixture.studentInterface.authenticationReasons).toEqual(["missing", "rejected"]);
     expect(fixture.server.renewCalls).toBe(1);
   });
 
