@@ -203,13 +203,32 @@ try {
     "0.1.0-preview.2",
   );
   assert.equal(assertPreviewServerReady(root), "release:preview");
+  // An update interrupted before the new binary migrated returns to the previous release.
+  const journalPath = join(root, "state", updateJournal);
+  let journal;
   await assert.rejects(
-    activatePreviewServer(root, release, "0.1.0-preview.3", () =>
-      Promise.reject(new Error("synthetic interruption")),
-    ),
+    activatePreviewServer(root, release, "0.1.0-preview.3", () => {
+      journal = JSON.parse(readFileSync(journalPath, "utf8"));
+      return Promise.reject(new Error("synthetic interruption"));
+    }),
+    { name: "UpdateRolledBackError", message: "synthetic interruption" },
+  );
+  assert.equal(existsSync(journalPath), false);
+  assert.equal(assertPreviewServerReady(root), "release:preview");
+  assert.equal(
+    JSON.parse(readFileSync(join(root, "config/teacher-host.json"), "utf8")).serverVersion,
+    "0.1.0-preview.2",
+  );
+  // A journal whose database schema no longer matches means data may have changed: fail closed.
+  writeFileSync(
+    journalPath,
+    JSON.stringify({ ...journal, schemaVersion: journal.schemaVersion + 1 }),
+    {
+      mode: 0o600,
+    },
   );
   assert.throws(() => assertPreviewServerReady(root), /interrupted update/);
-  const journal = JSON.parse(readFileSync(join(root, "state", updateJournal), "utf8"));
+  rmSync(journalPath);
   const input = join(root, "work", "restore-preview.json");
   writeFileSync(
     input,
@@ -262,7 +281,7 @@ try {
     "Unowned recovery destinations must survive",
   );
   process.stdout.write(
-    "Preview setup passed: offline CLIs, private state, teacher provisioning, version negotiation, busy update refusal, upgrade, interrupted update, deletion-aware restore and managed uninstall.\n",
+    "Preview setup passed: offline CLIs, private state, teacher provisioning, version negotiation, busy update refusal, upgrade, interrupted update rollback and fail-closed journal, deletion-aware restore and managed uninstall.\n",
   );
 } finally {
   rmSync(scratch, { recursive: true, force: true });
