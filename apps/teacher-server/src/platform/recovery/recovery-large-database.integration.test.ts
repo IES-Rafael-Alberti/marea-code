@@ -19,7 +19,10 @@ import { RecoveryBundleError, createRecoveryBundle, restoreRecoveryBundle } from
 import { readVerifiedBundle } from "../operations/retention/retention-backups.boundary.js";
 
 const roots: string[] = [];
+/** Open databases are closed before their folders go: Windows cannot delete an open file. */
+const open: { close(): void }[] = [];
 afterEach(() => {
+  for (const database of open.splice(0)) database.close();
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
@@ -35,6 +38,7 @@ function installation(availableBytes = 1_000_000_000_000) {
     { databasePath: join(root, "teacher.sqlite") },
     { ...createDefaultDependencies(), diskSpace: { freeBytes: () => availableBytes } },
   );
+  open.push(storage);
   storage.database.execute(
     "INSERT INTO marea_classes (id, seed_key, display_name) VALUES (?1, ?2, ?3)",
     ["class:large", "large", "Synthetic large class"],
@@ -66,7 +70,9 @@ describe("backing up a database larger than the state-file limits", () => {
     const databaseBytes = statSync(join(bundle.path, "database.sqlite")).size;
     expect(databaseBytes).toBeGreaterThan(LIMITS.totalBytes);
     expect(bundle.manifest.database.sizeBytes).toBe(databaseBytes);
-    expect(statSync(join(bundle.path, "database.sqlite")).mode & 0o777).toBe(0o600);
+    // POSIX permission bits; Windows protects the bundle with its private ACLs instead.
+    if (process.platform !== "win32")
+      expect(statSync(join(bundle.path, "database.sqlite")).mode & 0o777).toBe(0o600);
 
     expect(readVerifiedBundle(bundle.path, LIMITS).bytes).toBeGreaterThan(LIMITS.totalBytes);
 
@@ -75,13 +81,12 @@ describe("backing up a database larger than the state-file limits", () => {
       { id: RELEASE_ID, schemaVersion: storage.schema.version },
       LIMITS,
     );
+    open.push(restored);
     expect(
       restored.database.readOne("SELECT display_name FROM marea_classes WHERE id = ?1", [
         "class:large",
       ]),
     ).toEqual({ display_name: "Synthetic large class" });
-    restored.close();
-    storage.close();
   });
 
   it("refuses before copying when the volume lacks the space, naming both figures", () => {
@@ -99,6 +104,5 @@ describe("backing up a database larger than the state-file limits", () => {
     );
     expect(existsSync(join(root, "bundle"))).toBe(false);
     expect(readdirSync(root).filter((entry) => entry.includes(".marea-recovery."))).toEqual([]);
-    storage.close();
   });
 });
