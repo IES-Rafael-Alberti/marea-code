@@ -45,6 +45,7 @@ const englishCatalog = {
     "Invalid language option {{option}}. Use automatic, es, en, or eu.",
   "student.cli.language-save-failed":
     "The interface language could not be saved. It is active for this session only.",
+  "student.cli.connecting": "Connecting to {{server}}…",
   "student.cli.server-url-missing": "Marea does not have a teacher server address yet.",
   "student.cli.class-configuration-required":
     "Your teacher must save this class configuration in Settings → This class before you can start. Then run marea again; you do not need to reinstall or delete your session.",
