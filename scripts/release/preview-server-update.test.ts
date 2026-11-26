@@ -311,6 +311,18 @@ describe("rollback of a failed update", () => {
     expect(statSync(hostPath()).mode & 0o777).toBe(0o600);
   });
 
+  it("reports a failure that is not an Error object by its text", async () => {
+    await expect(
+      activatePreviewServer(root, destination, "0.1.0-preview.2", () =>
+        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+        Promise.reject("disk vanished"),
+      ),
+    ).rejects.toThrow(
+      expect.objectContaining({ name: "UpdateRolledBackError", message: "disk vanished" }),
+    );
+    expect(existsSync(journalPath())).toBe(false);
+  });
+
   it("rolls back an activation that failed before it changed anything", async () => {
     rmSync(pointerPath());
     await expect(
