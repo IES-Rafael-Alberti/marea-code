@@ -106,6 +106,19 @@ describe("streamed database hashing", () => {
     }
   });
 
+  it("reports an unreadable, linked or missing database as an invalid database", () => {
+    const record = recoveryManifest().database;
+    const real = join(root(), "real-database");
+    writeFileSync(real, "database-bytes");
+    linkSync(real, join(root(), "hard-linked-database"));
+    symlinkSync(real, join(root(), "soft-linked-database"));
+    for (const name of ["real-database", "soft-linked-database", "missing-database"]) {
+      expectRecoveryError(() => {
+        verifyDatabaseFile(join(root(), name), record);
+      }, "bundle-database-invalid");
+    }
+  });
+
   it("verifies an artifact whose database is larger than the per-file limit", () => {
     const bytes = new Uint8Array(1000).fill(7);
     const base = join(root(), "large-database-artifact");
