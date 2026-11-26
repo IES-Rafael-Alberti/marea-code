@@ -13,7 +13,7 @@ import { rowInteger, rowJson, rowText } from "./row-parser.boundary.js";
 
 // Keep the captured sequence complete without retaining auxiliary model bodies
 // or repeated streaming prefixes as grading evidence.
-const EVIDENCE_PAYLOAD = `CASE WHEN event_type IN ('model-diagnostic', 'assistant-progress')
+const EVIDENCE_PAYLOAD = `CASE WHEN event_type IN ('model-diagnostic', 'assistant-progress', 'turn-diagnostic')
   THEN json_object('eventType', 'internal-activity',
     'eventId', json_extract(payload_json, '$.eventId'),
     'sequence', json_extract(payload_json, '$.sequence'),

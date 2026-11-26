@@ -15,6 +15,7 @@ import { SqliteRunSessionRepository } from "../src/platform/persistence/sqlite-r
 import { SqliteRunSkillRepository } from "../src/platform/persistence/sqlite-run-skill-repository.js";
 import { SqliteTeachingConfigurationRepository } from "../src/platform/persistence/sqlite-teaching-configuration-repository.js";
 import { RunSessionService } from "../src/sessions/run-session-service.js";
+import { teachingSkill } from "./teaching-fixture.js";
 import { TeachingConfigurationService } from "../src/teaching/configuration/configuration-service.js";
 import { ConfigurationSnapshotSource } from "../src/teaching/configuration/configuration-snapshot-source.js";
 import type { SkillBundle, SkillSource } from "../src/teaching/skills/index.js";
@@ -34,6 +35,15 @@ export const student: AuthenticatedIdentity = {
   displayName: "Synthetic student",
 };
 export const clock = { now: () => "2026-09-07T12:00:00.000Z" };
+
+/** The two teaching skills every integration run of a class needs. */
+export function bundleSource(): SkillSource {
+  const bundles = [teachingSkill("didactic"), teachingSkill("evaluation")];
+  return {
+    list: (kind) => Promise.resolve(bundles.filter((bundle) => bundle.kind === kind)),
+    load: (id) => Promise.resolve(bundles.find((bundle) => bundle.id === id) ?? null),
+  };
+}
 
 export function servicesFor(database: NodeSqliteTestDatabase, source: SkillSource) {
   const configurations = new SqliteTeachingConfigurationRepository(database);

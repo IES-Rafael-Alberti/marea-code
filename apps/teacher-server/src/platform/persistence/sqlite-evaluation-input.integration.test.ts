@@ -235,6 +235,16 @@ it("keeps auxiliary streaming and model bodies out of the capture budget while r
               },
         ),
         {
+          eventType: "turn-diagnostic",
+          messageId: "message:auxiliary",
+          category: "empty-response",
+          retryable: true,
+          exception: { name: "Error", message: "empty" },
+          causes: [],
+          stack: "z".repeat(8192),
+          client: { version: "1.0.0", platform: "linux" },
+        },
+        {
           eventType: "project-change",
           actor: "student",
           patch: "+student implementation",
@@ -260,7 +270,7 @@ it("keeps auxiliary streaming and model bodies out of the capture budget while r
       captureEvaluationInput(test.database, "run:b"),
     );
     expect(captured.content).not.toBeNull();
-    expect(captured.content?.events).toHaveLength(523);
+    expect(captured.content?.events).toHaveLength(524);
     expect(captured.content?.events[1]).toMatchObject({
       eventType: "internal-activity",
       sequence: 2,
@@ -271,6 +281,11 @@ it("keeps auxiliary streaming and model bodies out of the capture budget while r
     });
     expect(JSON.stringify(captured)).not.toContain("x".repeat(100));
     expect(JSON.stringify(captured)).not.toContain("y".repeat(100));
+    expect(captured.content?.events[521]).toMatchObject({
+      eventType: "internal-activity",
+      sequence: 522,
+    });
+    expect(JSON.stringify(captured)).not.toContain("z".repeat(100));
     expect(JSON.stringify(captured)).toContain("+student implementation");
     test.database.execute(
       "UPDATE marea_run_events SET payload_json = json_set(payload_json, '$.sequence', 999) WHERE event_id = 'event:auxiliary:1'",

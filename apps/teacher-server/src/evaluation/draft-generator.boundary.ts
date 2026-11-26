@@ -52,7 +52,9 @@ export class EvaluationDraftGenerator {
       didacticSkills: content.teaching.didacticSkills,
       events: content.events.filter(
         (event) =>
-          event.eventType !== "model-diagnostic" && event.eventType !== "assistant-progress",
+          event.eventType !== "model-diagnostic" &&
+          event.eventType !== "assistant-progress" &&
+          event.eventType !== "turn-diagnostic",
       ),
     });
     const system = `${INSTRUCTIONS}\n\nJSON schema:\n${JSON.stringify(z.toJSONSchema(EvaluationDraftSchema))}`;

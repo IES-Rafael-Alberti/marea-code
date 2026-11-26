@@ -9,6 +9,7 @@ import {
   STARTUP_MESSAGE_ID,
   type CloseRunResponse,
   type AppendRunEventsResponse,
+  type CanonicalRunEvent,
   type OpenRunResponse,
   type RunId,
   type RunToken,
@@ -53,6 +54,11 @@ export type StudentStartupStage =
 /** The server refused the run itself, not the class configuration it needs. */
 function isRunUnavailable(error: StudentHttpError): boolean {
   return error.code === "run.unavailable" && !error.classConfigurationRequired;
+}
+
+/** The server will refuse this event every time; retrying it can only block the ones after it. */
+function isPermanentRejection(error: StudentHttpError): boolean {
+  return error.code === "request.invalid" && !error.retryable;
 }
 
 function isRejectedPendingClose(error: StudentHttpError): boolean {
@@ -510,31 +516,66 @@ export class StudentSessionController {
       const batch = await this.options.localSession.prepareDelivery(128);
       const [firstEvent] = batch;
       if (firstEvent === undefined) return;
-      const run = await this.ensureLease();
-      if (run.runToken === null) throw new Error("The active run token is unavailable.");
       let response: AppendRunEventsResponse;
-      const request = {
-        kind: "run-events-append",
-        protocolVersion: CURRENT_PROTOCOL_VERSION,
-        requestId: this.options.ids.request(),
-        events: batch,
-      } as const;
       try {
-        response = await this.options.server.appendRunEvents(run.runToken, request);
+        response = await this.appendBatch(batch);
       } catch (error) {
-        if (!(error instanceof StudentHttpError) || !isRunUnavailable(error)) throw error;
-        const reopened = await this.reopenRevokedLease(run);
-        if (reopened.runToken === null) {
-          throw new Error("The active run token is unavailable.", { cause: error });
-        }
-        // Retry the same idempotent delivery once with the resumed run lease.
-        response = await this.options.server.appendRunEvents(reopened.runToken, request);
+        if (!(error instanceof StudentHttpError) || !isPermanentRejection(error)) throw error;
+        await this.isolateRejection(batch.length, error);
+        continue;
       }
-      const firstSequence = firstEvent.sequence;
-      if (response.highestDurableSequence < firstSequence) {
+      if (response.highestDurableSequence < firstEvent.sequence) {
         throw new Error("The teacher server did not acknowledge the pending event delivery.");
       }
       await this.options.localSession.acknowledge(response.highestDurableSequence);
+    }
+  }
+
+  private async appendBatch(batch: readonly CanonicalRunEvent[]): Promise<AppendRunEventsResponse> {
+    const run = await this.ensureLease();
+    if (run.runToken === null) throw new Error("The active run token is unavailable.");
+    const request = {
+      kind: "run-events-append",
+      protocolVersion: CURRENT_PROTOCOL_VERSION,
+      requestId: this.options.ids.request(),
+      events: batch,
+    } as const;
+    try {
+      return await this.options.server.appendRunEvents(run.runToken, request);
+    } catch (error) {
+      if (!(error instanceof StudentHttpError) || !isRunUnavailable(error)) throw error;
+      const reopened = await this.reopenRevokedLease(run);
+      if (reopened.runToken === null) {
+        throw new Error("The active run token is unavailable.", { cause: error });
+      }
+      // Retry the same idempotent delivery once with the resumed run lease.
+      return this.options.server.appendRunEvents(reopened.runToken, request);
+    }
+  }
+
+  /**
+   * The server refuses a whole delivery when any event in it is refused, so a refused batch is
+   * retried one event at a time; an event refused on its own is set aside and delivery goes on.
+   */
+  private async isolateRejection(batchSize: number, error: StudentHttpError): Promise<void> {
+    if (batchSize > 1) {
+      await this.options.localSession.narrowDelivery();
+      return;
+    }
+    const event = await this.options.localSession.setAsideFirstPending();
+    const log = this.options.diagnostics?.log;
+    // Stryker disable next-line ConditionalExpression: without it the append below throws and the catch swallows it.
+    if (log === undefined) return;
+    try {
+      await log.append({
+        occurredAt: this.options.clock.now(),
+        kind: "event-set-aside",
+        status: error.status,
+        code: error.code,
+        event,
+      });
+    } catch {
+      // The local copy is best effort; it never blocks the events that follow.
     }
   }
 

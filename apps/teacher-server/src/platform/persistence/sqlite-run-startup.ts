@@ -62,6 +62,7 @@ export function validateStartupEvent(
             event.eventType === "assistant-progress" ||
             event.eventType === "tool-finished" ||
             event.eventType === "turn-failed" ||
+            event.eventType === "turn-diagnostic" ||
             (event.eventType === "project-change" && event.actor !== "agent"));
   if (!valid) throw new TeacherDomainError("request.conflict");
 }
