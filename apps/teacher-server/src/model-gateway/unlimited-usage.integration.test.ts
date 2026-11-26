@@ -105,3 +105,19 @@ it("does not impose a deadline but still cancels an uncooperative provider promp
   expect(cleanup).toHaveBeenCalledOnce();
   deferred.resolve({ done: true, value: undefined });
 });
+
+it("forwards the model-maximum preference only under an unlimited budget", async () => {
+  const asked = { ...USAGE_REQUEST, maxOutputTokens: 32_768, preferModelMaxOutput: true };
+  const open = fixture(unlimited);
+  const limited = fixture();
+  try {
+    await collect(open.metered.stream(asked, cancellation()));
+    await collect(limited.metered.stream(asked, cancellation()));
+    expect(open.provider.requests).toEqual([asked]);
+    expect(limited.provider.requests).toEqual([{ ...USAGE_REQUEST, maxOutputTokens: 10 }]);
+    expect(limited.provider.requests[0]).not.toHaveProperty("preferModelMaxOutput");
+  } finally {
+    open.database.close();
+    limited.database.close();
+  }
+});

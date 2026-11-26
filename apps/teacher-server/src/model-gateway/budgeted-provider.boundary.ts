@@ -83,6 +83,16 @@ function failureUsage(code: string, emitted: boolean, usage: TokenUsage | null):
   return rejected ? { inputTokens: 0, outputTokens: 0 } : null;
 }
 
+/** A limited budget decides the output room itself, so the request's own preference is dropped. */
+function limitedRequest(
+  request: InferenceProviderRequest,
+  maxOutputTokens: number,
+): InferenceProviderRequest {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- omitted on purpose
+  const { preferModelMaxOutput: _dropped, ...rest } = request;
+  return { ...rest, maxOutputTokens };
+}
+
 export class BudgetedInferenceProvider implements InferenceProvider {
   private attempt = 0;
 
@@ -142,7 +152,7 @@ export class BudgetedInferenceProvider implements InferenceProvider {
         this.options.provider,
         reservation.policy.unlimited === true
           ? request
-          : { ...request, maxOutputTokens: reservation.policy.maxOutputTokens },
+          : limitedRequest(request, reservation.policy.maxOutputTokens),
         cancellation,
         requestDuration(reservation.policy),
       )) {

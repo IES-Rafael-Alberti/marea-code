@@ -41,10 +41,11 @@ export function createContextPreflight(
       });
     }
     const capacity = model.contextWindowTokens;
-    const output = Math.min(
-      request.maxOutputTokens ?? DEFAULT_OUTPUT_TOKENS,
-      model.maxOutputTokens ?? DEFAULT_OUTPUT_TOKENS,
-    );
+    const requested = request.maxOutputTokens ?? DEFAULT_OUTPUT_TOKENS;
+    const output =
+      request.preferModelMaxOutput === true
+        ? (model.maxOutputTokens ?? requested)
+        : Math.min(requested, model.maxOutputTokens ?? DEFAULT_OUTPUT_TOKENS);
     const input =
       new TextEncoder().encode(JSON.stringify({ messages: request.messages, tools: request.tools }))
         .byteLength + 4096;

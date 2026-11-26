@@ -81,8 +81,22 @@ it("asks an unlimited budget for room beyond a provider default, which a limited
     );
     // Long reasoning sessions outgrew the 8192-token provider default and were truncated.
     expect(EVALUATION_OUTPUT_TOKENS).toBe(32_768);
+    // The fallback for a model that declares no maximum, and the request to use the model's own one.
     expect(test.requests[0]?.maxOutputTokens).toBe(EVALUATION_OUTPUT_TOKENS);
+    expect(test.requests[0]?.preferModelMaxOutput).toBe(true);
     expect(budget.evaluation.maxOutputTokens).toBeLessThan(EVALUATION_OUTPUT_TOKENS);
+  } finally {
+    test.database.close();
+  }
+});
+
+it("does not forward the model-maximum preference under a limited budget, whose policy value applies", async () => {
+  const test = setup(response());
+  try {
+    test.queue();
+    await test.worker.runNext(new AbortController().signal);
+    expect(test.requests[0]).not.toHaveProperty("preferModelMaxOutput");
+    expect(test.requests[0]?.maxOutputTokens).toBe(16_384);
   } finally {
     test.database.close();
   }

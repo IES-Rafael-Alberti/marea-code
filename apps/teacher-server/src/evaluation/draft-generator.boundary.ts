@@ -30,8 +30,9 @@ In free mode, criteria must be empty. The selected method's teacher_note means t
 student_feedback means studentFeedback. Do not invent personal history. When adaptive targets are supplied, include levelAttempted for each criterion exactly matching its captured target, and learningNote: a concise pedagogical summary for the next tutor session, reviewed by the teacher before use.`;
 
 /**
- * Output room every evaluation asks for. Reasoning models count their reasoning as output, and long
- * sessions need more than a provider's small default; a limited budget still caps it lower.
+ * Output room an evaluation asks for when its model declares no maximum. Reasoning models count
+ * their reasoning as output, and long sessions need more than a provider's small default. Under an
+ * unlimited budget the model's declared maximum is requested instead; a limited budget caps it lower.
  */
 export const EVALUATION_OUTPUT_TOKENS = 32_768;
 
@@ -106,6 +107,7 @@ export class EvaluationDraftGenerator {
         requestId: claim.evaluationId,
         upstreamModel: selection.model,
         maxOutputTokens: EVALUATION_OUTPUT_TOKENS,
+        preferModelMaxOutput: true,
         tools: [],
         messages: [
           { role: "system", content: system },
