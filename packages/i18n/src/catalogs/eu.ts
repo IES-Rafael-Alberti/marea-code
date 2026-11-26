@@ -143,7 +143,8 @@ const basqueCatalog = {
   "student.tui.failure.action-not-prepared":
     "Mareak ezin izan du ekintza hori prestatu. Eskatu berriro urratsez urrats.",
   "student.tui.failure.invalid-response":
-    "Mareak ezin izan du ekintza osatu. Idatzi /retry berriro saiatzeko.",
+    "Ezin izan da IA ereduaren erantzuna irakurri. Idatzi /retry berriro saiatzeko.",
+  "student.tui.failure.model-failed": "IA ereduaren erantzunak huts egin du.",
   "student.tui.failure.empty-response":
     "Ereduak ez du erantzunik eman. Idatzi /retry berriro saiatzeko.",
   "student.tui.failure.log-location": "Ordenagailu honetako hutsegiteen erregistroa: {{path}}",
@@ -191,6 +192,7 @@ const basqueCatalog = {
   "student.tui.notice.outputs-compact": "Irteera trinkoak",
   "student.tui.notice.outputs-detailed": "Irteera zehatzak",
   "student.tui.notice.retrying": "↻ Eten den txandarekin berriro saiatzen…",
+  "student.tui.notice.regenerated": "Erantzuna eten egin da; Mareak berriro sortu du.",
   "student.tui.question.cancelled": "Bertan behera utzita",
   "student.tui.question.next": "Hurrengoa",
   "student.tui.question.placeholder": "Aukera-zenbakia edo erantzuna",

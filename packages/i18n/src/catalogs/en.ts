@@ -144,7 +144,8 @@ const englishCatalog = {
   "student.tui.failure.action-not-prepared":
     "Marea could not prepare that action. Ask for it again step by step.",
   "student.tui.failure.invalid-response":
-    "Marea could not complete the action. Type /retry to try again.",
+    "The AI model's response could not be read. Type /retry to try again.",
+  "student.tui.failure.model-failed": "The AI model's response failed.",
   "student.tui.failure.empty-response": "The model returned no answer. Type /retry to try again.",
   "student.tui.failure.log-location": "Failure log on this computer: {{path}}",
   "student.tui.failure.session-ended-by-teacher":
@@ -191,6 +192,7 @@ const englishCatalog = {
   "student.tui.notice.outputs-compact": "Compact outputs",
   "student.tui.notice.outputs-detailed": "Detailed outputs",
   "student.tui.notice.retrying": "↻ Retrying the interrupted turn…",
+  "student.tui.notice.regenerated": "The answer was cut off; Marea generated it again.",
   "student.tui.question.cancelled": "Cancelled",
   "student.tui.question.next": "Next",
   "student.tui.question.placeholder": "Option number or answer",

@@ -5,6 +5,7 @@ import type { TeacherActivityOptions } from "./teacher-activity.js";
 /** Durable, bounded progress snapshots; terminal messages remain evaluation evidence. */
 export class TurnProgress {
   private last = -Infinity;
+  private generation = 0;
   private sending = false;
   private unavailable = false;
   constructor(
@@ -13,6 +14,13 @@ export class TurnProgress {
     },
     private readonly identity: StableTurnIdentity,
   ) {}
+  /** The next snapshot follows a discarded answer and is sent even if it looks the same. */
+  restart(): void {
+    // Stryker disable next-line AssignmentOperator: any change of the generation gives new keys.
+    this.generation += 1;
+    this.last = -Infinity;
+  }
+
   async publish(text: string): Promise<void> {
     if (
       this.options.liveProgress !== true ||
@@ -23,7 +31,8 @@ export class TurnProgress {
       return;
     this.last = Date.now();
     await this.options.localSession.appendEvent(
-      `progress:${this.identity.messageId}:${String(text.length)}`,
+      // A regenerated answer can repeat the length of the one it replaces; it is a new snapshot.
+      `progress:${this.identity.messageId}:${this.identity.attemptId}:${String(this.generation)}:${String(text.length)}`,
       (sequence, occurredAt) => ({
         eventType: "assistant-progress",
         eventId: this.options.ids.event(),

@@ -52,7 +52,9 @@ export const PARITY_TEST_COPY: ParityCopy = Object.freeze({
     actionNotPrepared: "Marea no pudo preparar esa acción. Vuelve a pedirla paso a paso.",
     emptyResponse:
       "El modelo no ha devuelto ninguna respuesta. Escribe /retry para intentarlo de nuevo.",
-    invalidResponse: "Marea no pudo completar la acción. Escribe /retry para intentarlo de nuevo.",
+    invalidResponse:
+      "No se ha podido leer la respuesta del modelo de IA. Escribe /retry para intentarlo de nuevo.",
+    modelFailed: "Ha fallado la respuesta del modelo de IA.",
     logLocation: "Registro de fallos en este equipo: {{path}}",
     sessionUnavailable: "La sesión ya no está disponible.",
     sessionEndedByTeacher: "Tu docente ha finalizado esta sesión.",
@@ -77,6 +79,7 @@ export const PARITY_TEST_COPY: ParityCopy = Object.freeze({
     outputsCompact: "Outputs compactos",
     outputsDetailed: "Outputs detallados",
     retrying: "↻ Reintentando el turno interrumpido…",
+    regenerated: "La respuesta se cortó; Marea la ha vuelto a generar.",
   }),
   preparing: "Preparando la sesión…",
   question: Object.freeze({

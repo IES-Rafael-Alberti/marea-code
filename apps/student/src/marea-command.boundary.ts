@@ -169,6 +169,11 @@ export function createBindableConversationPort(): BindableConversationPort {
       messageId?: ConversationMessageId,
       attemptId?: ConversationAttemptId,
     ) => requireTarget().appendAssistantText(text, messageId, attemptId),
+    restartAssistantText: (
+      discardedLength: number,
+      messageId?: ConversationMessageId,
+      attemptId?: ConversationAttemptId,
+    ) => requireTarget().restartAssistantText(discardedLength, messageId, attemptId),
     bind(port: StudentConversationPort): void {
       target = port;
       if (startupUsage !== null) port.reportUsage(startupUsage);

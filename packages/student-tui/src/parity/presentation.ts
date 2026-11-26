@@ -1,5 +1,6 @@
 import { newerEntry, olderEntry, rememberEntry } from "./history.js";
-import { withdrawRetryOffers } from "./transcript.js";
+import { withdrawRetryOffers, withoutAssistantTail } from "./transcript.js";
+import { droppedAnswerLength } from "../answer-restart.js";
 import type {
   ConversationAction,
   ConversationLanguageChange,
@@ -20,11 +21,18 @@ import { applyApproval, applyEvent, applyQuestions, openSession } from "./sessio
 import { filterToolArguments } from "./tool.js";
 import { finishAssistantText } from "./transcript.js";
 
+const modelFailed = (copy: ParityCopy) => copy.failure.modelFailed;
+
 /** Failures the student can act on get their own words instead of the kind's message. */
 const CODE_MESSAGES: ReadonlyMap<string | undefined, (copy: ParityCopy) => string> = new Map([
   ["upstream-contract-changed", (copy: ParityCopy) => copy.failure.actionNotPrepared],
   ["empty-response", (copy: ParityCopy) => copy.failure.emptyResponse],
   ["invalid-response", (copy: ParityCopy) => copy.failure.invalidResponse],
+  // The model gateway refused or could not use the model's answer: not the teacher's server.
+  ["authentication-failed", modelFailed],
+  ["usage-invalid", modelFailed],
+  ["context-exceeded", modelFailed],
+  ["context-unavailable", modelFailed],
 ]);
 
 const FAILURE_MESSAGES: Record<TurnFailureKind, (copy: ParityCopy) => string> = {
@@ -170,6 +178,13 @@ export function createPresentation(
       }
     }
   };
+  /** An interrupted answer leaves the screen; a notice says a new one takes its place. */
+  const syncRestart = (snapshot: ConversationSnapshot): void => {
+    const dropped = droppedAnswerLength(previous.messages, snapshot.messages);
+    if (dropped === 0) return;
+    state = { ...state, transcript: withoutAssistantTail(state.transcript, dropped) };
+    notice(copy.notices.regenerated);
+  };
   const syncTools = (snapshot: ConversationSnapshot): void => {
     const previousTools = new Map(previous.tools?.map((tool) => [tool.callId, tool]));
     for (const tool of snapshot.tools ?? []) {
@@ -271,6 +286,7 @@ export function createPresentation(
       usage = snapshot.usage ?? usage;
       showUsage();
       syncActivity(snapshot);
+      syncRestart(snapshot);
       syncMessages(snapshot);
       syncTools(snapshot);
       if (snapshot.approval !== null && snapshot.approval !== previous.approval) {

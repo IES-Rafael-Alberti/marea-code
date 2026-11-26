@@ -145,7 +145,8 @@ const spanishCatalog = {
   "student.tui.failure.action-not-prepared":
     "Marea no pudo preparar esa acción. Vuelve a pedirla paso a paso.",
   "student.tui.failure.invalid-response":
-    "Marea no pudo completar la acción. Escribe /retry para intentarlo de nuevo.",
+    "No se ha podido leer la respuesta del modelo de IA. Escribe /retry para intentarlo de nuevo.",
+  "student.tui.failure.model-failed": "Ha fallado la respuesta del modelo de IA.",
   "student.tui.failure.empty-response":
     "El modelo no ha devuelto ninguna respuesta. Escribe /retry para intentarlo de nuevo.",
   "student.tui.failure.log-location": "Registro de fallos en este equipo: {{path}}",
@@ -193,6 +194,7 @@ const spanishCatalog = {
   "student.tui.notice.outputs-compact": "Outputs compactos",
   "student.tui.notice.outputs-detailed": "Outputs detallados",
   "student.tui.notice.retrying": "↻ Reintentando el turno interrumpido…",
+  "student.tui.notice.regenerated": "La respuesta se cortó; Marea la ha vuelto a generar.",
   "student.tui.question.cancelled": "Cancelado",
   "student.tui.question.next": "Siguiente",
   "student.tui.question.placeholder": "Número de opción o respuesta",

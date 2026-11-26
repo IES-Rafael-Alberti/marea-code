@@ -23,6 +23,7 @@ export type StudentConversationPort = Pick<
   ConversationTuiSession,
   | "requestQuestions"
   | "appendAssistantText"
+  | "restartAssistantText"
   | "cancel"
   | "complete"
   | "requestApproval"
@@ -50,6 +51,7 @@ export function adaptConversationTuiSession(
 ): StudentConversationPort {
   return Object.freeze({
     appendAssistantText: session.appendAssistantText.bind(session),
+    restartAssistantText: session.restartAssistantText.bind(session),
     cancel: session.cancel.bind(session),
     complete: session.complete.bind(session),
     requestApproval: session.requestApproval.bind(session),
@@ -115,6 +117,12 @@ export function createConversationStudentInterface(
     present(event: StudentViewEvent): void {
       if (event.type === "assistant-text") {
         options.conversation.appendAssistantText(event.text, event.messageId, event.attemptId);
+      } else if (event.type === "assistant-text-restarted") {
+        options.conversation.restartAssistantText(
+          event.discardedLength,
+          event.messageId,
+          event.attemptId,
+        );
       } else if (event.type === "skills-loading") {
         options.conversation.thinking(event.messageId, event.attemptId, "loadingSkills");
       } else if (event.type === "thinking") {

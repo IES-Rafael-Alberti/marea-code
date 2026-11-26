@@ -2,6 +2,7 @@ import { createQuestionChannel } from "./question-channel.js";
 import type { QuestionsRequest } from "./parity/questions.js";
 import { trackTurnOperation } from "./turn-failure.boundary.js";
 import { AutomaticRetries, withoutSettledRetry } from "./automatic-retry.js";
+import { withoutAnswerTail } from "./answer-restart.js";
 import {
   finishTool,
   startTool,
@@ -349,6 +350,18 @@ export function createConversationController(
             ])
           : appendMessage(current.messages, { author: "marea", text });
       return update({ ...current, activity: undefined, messages });
+    },
+    restartAssistantText(
+      discardedLength: number,
+      messageId?: ConversationMessageId,
+      attemptId?: ConversationAttemptId,
+    ): boolean {
+      const last = current.messages.at(-1);
+      if (!matchesTurn(turn, messageId, attemptId) || last?.author !== "marea") return false;
+      return update({
+        ...current,
+        messages: withoutAnswerTail(current.messages.slice(0, -1), last.text, discardedLength),
+      });
     },
     cancel,
     complete,

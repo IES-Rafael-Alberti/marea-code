@@ -173,6 +173,15 @@ interface ConversationTurnSurface {
     messageId?: ConversationMessageId,
     attemptId?: ConversationAttemptId,
   ): boolean;
+  /**
+   * Drops the last `discardedLength` characters of the turn's answer: an interrupted answer
+   * that Marea is generating again. The new answer then arrives as ordinary text.
+   */
+  restartAssistantText(
+    discardedLength: number,
+    messageId?: ConversationMessageId,
+    attemptId?: ConversationAttemptId,
+  ): boolean;
   cancel(messageId?: ConversationMessageId, attemptId?: ConversationAttemptId): boolean;
   complete(messageId?: ConversationMessageId, attemptId?: ConversationAttemptId): boolean;
   fail(messageId?: ConversationMessageId, attemptId?: ConversationAttemptId): boolean;
