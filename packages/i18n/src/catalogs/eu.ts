@@ -43,6 +43,7 @@ const basqueCatalog = {
     "{{option}} hizkuntza-aukera ez da baliozkoa. Erabili automatic, es, en edo eu.",
   "student.cli.language-save-failed":
     "Ezin izan da interfazearen hizkuntza gorde. Saio honetan bakarrik egongo da aktibo.",
+  "student.cli.connecting": "{{server}} zerbitzarira konektatzen…",
   "student.cli.server-url-missing": "Mareak oraindik ez du irakaslearen zerbitzariaren helbiderik.",
   "student.cli.class-configuration-required":
     "Irakasleak klase honen konfigurazioa Ezarpenak → Klase hau atalean gorde behar du hasi ahal izateko. Ondoren, exekutatu marea berriro; ez duzu berriro instalatu edo saioa ezabatu behar.",

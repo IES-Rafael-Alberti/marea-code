@@ -40,6 +40,7 @@ exports[`preserves the reviewed Basque interface copy 1`] = `
   "student.auth.password-label": "Pasahitza",
   "student.auth.required": "Eremu hau beharrezkoa da.",
   "student.cli.class-configuration-required": "Irakasleak klase honen konfigurazioa Ezarpenak → Klase hau atalean gorde behar du hasi ahal izateko. Ondoren, exekutatu marea berriro; ez duzu berriro instalatu edo saioa ezabatu behar.",
+  "student.cli.connecting": "{{server}} zerbitzarira konektatzen…",
   "student.cli.connection-timeout": "Zerbitzariak ez du garaiz erantzun. Egiaztatu martxan dagoela eta ikasgelako sarean zaudela; exekutatu marea berriro.",
   "student.cli.failure-code": "Diagnostiko-kodea: {{code}}. Sartu arazoaren berri ematean.",
   "student.cli.help": "Erabilera: marea [--server <URL>] [--lang <locale>] [--no-mouse]

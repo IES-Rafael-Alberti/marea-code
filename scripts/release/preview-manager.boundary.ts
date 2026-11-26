@@ -1,3 +1,4 @@
+import { parseSavedServer, SAVED_SERVER_FILE } from "../../apps/student/src/saved-server.js";
 import { parseServerArguments } from "../../apps/student/src/server-arguments.js";
 import { OperatorCliError } from "../../apps/teacher-server/src/platform/operator-cli/errors.js";
 import { InstallerUsageError } from "./installer-cli.boundary.js";
@@ -238,13 +239,29 @@ async function initialInstall(
   }
 }
 
-function managedEnvironment(root: string, settings: PreviewSettings): NodeJS.ProcessEnv {
+function studentStateHome(root: string): string {
   const stateHome = (process.env.MAREA_STATE_HOME ?? "").trim();
+  return stateHome.length > 0 ? stateHome : join(root, "student-state");
+}
+
+function managedEnvironment(root: string, settings: PreviewSettings): NodeJS.ProcessEnv {
   return {
     ...process.env,
     MAREA_SERVER_URL: settings.serverUrl,
-    MAREA_STATE_HOME: stateHome.length > 0 ? stateHome : join(root, "student-state"),
+    MAREA_STATE_HOME: studentStateHome(root),
   };
+}
+
+/** The saved server, or undefined when missing, corrupt or unusable (serverOrigin then throws). */
+function savedServerOrigin(root: string): string | undefined {
+  try {
+    const text = readFileSync(join(studentStateHome(root), SAVED_SERVER_FILE), "utf8");
+    // Stryker disable next-line StringLiteral: any non-URL fallback makes serverOrigin throw alike.
+    return serverOrigin(parseSavedServer(text) ?? "");
+  } catch {
+    // The installed server stays in charge.
+  }
+  return undefined;
 }
 
 function shouldOfferUpdate(
@@ -374,7 +391,9 @@ function updateFailureMessage(error: unknown): string {
   return `No se ha podido actualizar; se conserva la instalación verificada. Causa: ${failureReason(error)}\n`;
 }
 
+/** The same server the student will connect to: --server, then the saved one, then the install. */
 function selectedServerSettings(
+  root: string,
   settings: PreviewSettings,
   forwarded: readonly string[],
 ): PreviewSettings {
@@ -382,7 +401,9 @@ function selectedServerSettings(
   const parsed = parseServerArguments(forwarded);
   if (parsed === undefined) throw new Error("Use --server <http(s)://host:port> once");
   const url =
-    parsed.serverUrl ?? ((process.env.MAREA_SERVER_URL ?? "").trim() || settings.serverUrl);
+    parsed.serverUrl ??
+    savedServerOrigin(root) ??
+    ((process.env.MAREA_SERVER_URL ?? "").trim() || settings.serverUrl);
   return url === undefined ? settings : { ...settings, serverUrl: serverOrigin(url) };
 }
 
@@ -455,7 +476,7 @@ export async function previewMain(argv: readonly string[]): Promise<void> {
   }
   if (settings.installation !== undefined && !pending)
     assertPreviewServerReady(settings.installation);
-  const selectedSettings = selectedServerSettings(settings, request.forwarded);
+  const selectedSettings = selectedServerSettings(root, settings, request.forwarded);
   release = await updateBeforeStart(
     root,
     selectedSettings,

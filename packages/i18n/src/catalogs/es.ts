@@ -45,6 +45,7 @@ const spanishCatalog = {
     "La opción de idioma {{option}} no es válida. Usa automatic, es, en o eu.",
   "student.cli.language-save-failed":
     "No se ha podido guardar el idioma de la interfaz. Solo estará activo durante esta sesión.",
+  "student.cli.connecting": "Conectando a {{server}}…",
   "student.cli.server-url-missing":
     "Marea todavía no tiene configurada la dirección del servidor del profesor.",
   "student.cli.class-configuration-required":
