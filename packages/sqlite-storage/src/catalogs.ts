@@ -7,3 +7,4 @@ export { createObservabilityMigrationCatalog } from "./observability-migration-c
 
 export { createSkillAssignmentMigrationCatalog } from "./skill-assignment-migration-catalog.js";
 export { createRunClosureMigrationCatalog } from "./run-closure-migration-catalog.js";
+export { createLearningNotesMigrationCatalog } from "./learning-notes-migration-catalog.js";

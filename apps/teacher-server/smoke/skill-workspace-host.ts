@@ -30,7 +30,7 @@ f.writeHost({
 });
 const storage = initializeSqliteStorage({
   databasePath: f.databasePath,
-  schema: "run-closure",
+  schema: "learning-notes",
 });
 storage.database.execute(
   "INSERT INTO marea_classes VALUES ('class:ready', 'ready', 'Clase de prueba')",

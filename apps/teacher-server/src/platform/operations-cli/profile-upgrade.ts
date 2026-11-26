@@ -2,6 +2,7 @@ import {
   createAuditMigrationCatalog,
   createObservabilityMigrationCatalog,
   createSkillAssignmentMigrationCatalog,
+  createRunClosureMigrationCatalog,
   createEducationalMigrationCatalog,
   createStudentIdentityMigrationCatalog,
   createProfileMigrationCatalog,
@@ -27,6 +28,7 @@ export async function upgradeProfilesOffline(
       createAuditMigrationCatalog().length,
       createObservabilityMigrationCatalog().length,
       createSkillAssignmentMigrationCatalog().length,
+      createRunClosureMigrationCatalog().length,
       createProfileMigrationCatalog().length,
       createEducationalMigrationCatalog().length,
       createStudentIdentityMigrationCatalog().length,
@@ -40,7 +42,7 @@ export async function upgradeProfilesOffline(
   capability.assertOwned();
   const upgraded = initializeSqliteStorage({
     databasePath: config.databasePath,
-    schema: "run-closure",
+    schema: "learning-notes",
   });
   try {
     durable?.("migrated");

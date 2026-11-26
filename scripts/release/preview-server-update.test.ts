@@ -65,7 +65,7 @@ beforeEach(() => {
     close: ports.close,
   });
   ports.createBackup.mockResolvedValue({ path: join(root, "backups/safety") });
-  ports.inspectSqliteSchemaVersion.mockReturnValue(14);
+  ports.inspectSqliteSchemaVersion.mockReturnValue(15);
 });
 
 it("checks exclusive access before downloading without migrating or backing up, and refuses uncertain release", async () => {
@@ -89,7 +89,7 @@ it("backs up before activation without migrating, preserves settings and clears 
     expect(JSON.parse(readFileSync(join(root, "state", updateJournal), "utf8"))).toMatchObject({
       format: 2,
       version: "0.1.0-preview.2",
-      schemaVersion: 14,
+      schemaVersion: 15,
       previousActive: null,
       destinationExisted: false,
       backup: join(root, "backups/safety"),
@@ -140,7 +140,7 @@ it("refuses live owners, keeps interrupted updates blocked, and never activates 
   await expect(
     activatePreviewServer(root, "new", "v2", () => {
       // The new binary ran and migrated before the update was interrupted.
-      ports.inspectSqliteSchemaVersion.mockReturnValue(15);
+      ports.inspectSqliteSchemaVersion.mockReturnValue(16);
       return Promise.reject(new Error("activation interrupted"));
     }),
   ).rejects.toThrow("activation interrupted");
@@ -366,7 +366,7 @@ describe("rollback of a failed update", () => {
     await expect(
       activatePreviewServer(root, destination, "0.1.0-preview.2", async () => {
         await activateNewRelease();
-        ports.inspectSqliteSchemaVersion.mockReturnValue(15);
+        ports.inspectSqliteSchemaVersion.mockReturnValue(16);
         throw new Error("failed after migration");
       }),
     ).rejects.toThrow(
@@ -399,7 +399,7 @@ describe("rollback of a failed update", () => {
         destination,
         backup: join(root, "backups/safety"),
         previousHost: { ...previousHost, dashboardDistPath: join(root, "dashboard") },
-        schemaVersion: 14,
+        schemaVersion: 15,
         previousActive: previousPointer,
         destinationExisted: false,
       }),

@@ -39,14 +39,18 @@ afterEach(cleanupTeacherHostInstallations);
 // up to 40 seconds for one case.
 vi.setConfig({ testTimeout: 120_000 });
 
-it.each([
+/** Every activated release schema a host may find, with its version. */
+const RELEASE_SCHEMAS = [
   ["dashboard-profiles", 10],
   ["educational-insights", 11],
   ["student-identities", 12],
   ["observability", 13],
   ["skill-assignments", 14],
   ["run-closure", 15],
-] as const)(
+  ["learning-notes", 16],
+] as const;
+
+it.each(RELEASE_SCHEMAS)(
   "starts the production host on %s, migrates to the current schema, persists, reopens and restores profiles",
   async (schema, version) => {
     const current = currentSqliteSchema();
@@ -193,14 +197,7 @@ it.each([
   },
 );
 
-it.each([
-  ["dashboard-profiles", 10],
-  ["educational-insights", 11],
-  ["student-identities", 12],
-  ["observability", 13],
-  ["skill-assignments", 14],
-  ["run-closure", 15],
-] as const)(
+it.each(RELEASE_SCHEMAS)(
   "includes %s in the authorized operations backup and restore workflow",
   async (schema, version) => {
     const f = teacherHostInstallation();

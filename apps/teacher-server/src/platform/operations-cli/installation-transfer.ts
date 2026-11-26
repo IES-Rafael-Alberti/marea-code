@@ -5,6 +5,7 @@ import {
   createObservabilityMigrationCatalog,
   createSkillAssignmentMigrationCatalog,
   createRunClosureMigrationCatalog,
+  createLearningNotesMigrationCatalog,
   type SqliteSchemaCatalog,
 } from "@marea/sqlite-storage";
 import { createHash, randomUUID } from "node:crypto";
@@ -474,6 +475,7 @@ function restoreSchema(schemaVersion: number): SqliteSchemaCatalog {
   return (
     (
       [
+        [createLearningNotesMigrationCatalog().length, "learning-notes"],
         [createRunClosureMigrationCatalog().length, "run-closure"],
         [createSkillAssignmentMigrationCatalog().length, "skill-assignments"],
         [createObservabilityMigrationCatalog().length, "observability"],
