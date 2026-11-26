@@ -149,12 +149,8 @@ describe("StudentSessionController", () => {
     expect(events.find((event) => event.eventType === "assistant-message")).toMatchObject({
       content: "I will help. Done.",
     });
+    // The closed turn keeps only its terminal key; every other key was delivered and pruned.
     expect(first.state.state.run?.eventKeys).toEqual([
-      "student:message:1",
-      "approval:approval:1:requested",
-      "approval:approval:1:resolved",
-      "approval:approval:1:effect",
-      "assistant:message:1",
       JSON.stringify(["message:1", "terminal", "turn-ended"]),
     ]);
   });

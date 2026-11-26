@@ -2,9 +2,11 @@ import { lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
+import { ZodError } from "zod";
 
 import { CURRENT_STUDENT_STATE_VERSION, type LegacyValue } from "./contracts.js";
 import { createFileStudentStores, parseStudentState } from "./filesystem.boundary.js";
+import { StudentStateNewerVersionError } from "./student-state-version.boundary.js";
 import { TemporaryDirectories } from "./filesystem-test.fixture.js";
 import { LocalSession } from "./local-session.js";
 import { FIXTURE_CLOCK, FixtureIds } from "./student.fixture.js";
@@ -15,16 +17,20 @@ afterEach(async () => {
   await temporaryDirectories.removeAll();
 });
 
+async function openedState(name: string) {
+  const root = await temporaryDirectories.create(name);
+  const projectRoot = join(root, "project");
+  const stateDirectory = join(root, "state");
+  await mkdir(projectRoot);
+  const stores = await createFileStudentStores({ projectRoot, stateDirectory });
+  const local = new LocalSession(stores.state, new FixtureIds(), FIXTURE_CLOCK);
+  await local.ensureOpening("Project One", { kind: "new" });
+  return { local, statePath: join(stateDirectory, "session.json"), stores };
+}
+
 describe("file student state migration", () => {
   it("migrates legacy session files in place without discarding unknown data", async () => {
-    const root = await temporaryDirectories.create("state-migration");
-    const projectRoot = join(root, "project");
-    const stateDirectory = join(root, "state");
-    await mkdir(projectRoot);
-    const stores = await createFileStudentStores({ projectRoot, stateDirectory });
-    const local = new LocalSession(stores.state, new FixtureIds(), FIXTURE_CLOCK);
-    await local.ensureOpening("Project One", { kind: "new" });
-    const statePath = join(stateDirectory, "session.json");
+    const { local, statePath, stores } = await openedState("state-migration");
     const legacy = JSON.parse(await readFile(statePath, "utf8")) as {
       futureRootField?: LegacyValue;
       run: Record<string, LegacyValue>;
@@ -110,10 +116,37 @@ describe("file student state migration", () => {
     await writeFile(statePath, future, "utf8");
     const inode = (await lstat(statePath)).ino;
 
-    await expect(stores.state.load()).rejects.toThrow("version is unsupported");
+    await expect(stores.state.load()).rejects.toBeInstanceOf(StudentStateNewerVersionError);
 
     expect(await readFile(statePath, "utf8")).toBe(future);
     expect((await lstat(statePath)).ino).toBe(inode);
+  });
+
+  it("refuses a state with fields only a newer client writes instead of treating it as damaged", async () => {
+    const { statePath, stores } = await openedState("newer-fields");
+    const written = JSON.parse(await readFile(statePath, "utf8")) as { run: object };
+    const newer = JSON.stringify({ ...written, run: { ...written.run, futureField: { a: 1 } } });
+    await writeFile(statePath, newer, "utf8");
+
+    await expect(stores.state.load()).rejects.toBeInstanceOf(StudentStateNewerVersionError);
+
+    expect(await readFile(statePath, "utf8")).toBe(newer);
+  });
+
+  it("rejects an older or malformed version as unsupported, not as a newer client", () => {
+    for (const version of [0, 1.5, "2"]) {
+      expect(() => parseStudentState({ run: null, version })).toThrow(
+        "The student state version is unsupported.",
+      );
+    }
+  });
+
+  it("keeps treating a malformed current-version state as damaged data", () => {
+    const damaged = { run: { phase: "invalid" }, version: CURRENT_STUDENT_STATE_VERSION };
+    expect(() => parseStudentState(damaged)).toThrow(ZodError);
+    expect(() => parseStudentState({ ...damaged, run: { phase: "invalid", extra: true } })).toThrow(
+      ZodError,
+    );
   });
 
   it("accepts only legacy unfinished turns with reliable input and approval evidence", () => {

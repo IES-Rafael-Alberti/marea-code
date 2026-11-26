@@ -1,6 +1,7 @@
 import { STARTUP_MESSAGE_ID, type OpenRunResponse } from "@marea/protocol";
 
 import type { Clock, IdSource, StoredRun } from "./contracts.js";
+import { appendKeyedEvent } from "./outbox-append.js";
 
 export function prepareStoredStartup(run: StoredRun, response: OpenRunResponse): StoredRun {
   if (response.snapshot.agentMode !== "tutoring" || response.snapshot.startup === undefined)
@@ -36,24 +37,11 @@ export function recordStartupProgress(
   ids: IdSource,
   clock: Clock,
 ): StoredRun {
-  const key = `startup:${state}`;
-  if (run.eventKeys.includes(key)) return run;
-  return {
-    ...run,
-    eventKeys: [...run.eventKeys, key],
-    nextSequence: run.nextSequence + 1,
-    outbox: [
-      ...run.outbox,
-      {
-        key,
-        value: {
-          eventType: "tutor-startup",
-          state,
-          eventId: ids.event(),
-          sequence: run.nextSequence,
-          occurredAt: clock.now(),
-        },
-      },
-    ],
-  };
+  return appendKeyedEvent(run, `startup:${state}`, (sequence) => ({
+    eventType: "tutor-startup",
+    state,
+    eventId: ids.event(),
+    sequence,
+    occurredAt: clock.now(),
+  }));
 }

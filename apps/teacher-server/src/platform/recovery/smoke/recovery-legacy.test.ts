@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { SqliteBackup, SqliteStorage } from "@marea/sqlite-storage";
+import type { SqliteStorage } from "@marea/sqlite-storage";
 
 const legacyBackupBytes = new TextEncoder().encode("legacy-sqlite");
 const state = {
@@ -73,12 +73,7 @@ vi.mock("node:fs", async () => {
   };
 });
 
-const legacyBackup: SqliteBackup = {
-  bytes: legacyBackupBytes,
-  format: "sqlite3",
-  schemaVersion: state.legacySchemaVersion,
-  sha256: createHash("sha256").update(legacyBackupBytes).digest("hex"),
-};
+const legacyDatabaseDigest = createHash("sha256").update(legacyBackupBytes).digest("hex");
 
 vi.mock("@marea/sqlite-storage", () => {
   const reopened = {
@@ -114,10 +109,6 @@ vi.mock("../../../../../../packages/sqlite-storage/src/storage.js", () => {
     close: () => {
       state.closed += 1;
     },
-    createBackup: () => ({
-      ...legacyBackup,
-      schemaVersion: state.backupSchemaVersion,
-    }),
     database: {
       execute: (statement: string, parameters: readonly unknown[]) => {
         state.legacyWrites.push([statement, parameters]);
@@ -162,15 +153,22 @@ vi.mock("../index.js", () => {
       state.bundlePath = path;
       if (!path.endsWith("/bundle")) throw new Error("unexpected bundle path");
       const createInput = input as {
-        createBackup: { createBackup: () => SqliteBackup };
+        createBackup: { close: () => void };
         createExclusive: (operation: () => undefined) => undefined;
       };
-      expect(createInput.createBackup.createBackup()).toEqual(legacyBackup);
+      expect(createInput.createBackup.close).toBeTypeOf("function");
       createInput.createExclusive(() => {
         state.exclusiveCalls += 1;
         return undefined;
       });
-      return { input, manifest: { release: { id: "release:legacy-smoke" } }, path };
+      return {
+        input,
+        manifest: {
+          database: { schemaVersion: state.backupSchemaVersion, sha256: legacyDatabaseDigest },
+          release: { id: "release:legacy-smoke" },
+        },
+        path,
+      };
     },
     restoreRecoveryBundle: (options: unknown, release: unknown, limits: unknown) => {
       const restoreOptions = options as { destinationRoot: string };
@@ -372,7 +370,10 @@ describe("real recovery legacy smoke", () => {
         persisted: { display_name: "Restored legacy class" },
       },
       files: ["Legacy state bytes."],
-      manifest: { release: { id: "release:legacy-smoke" } },
+      manifest: {
+        database: { schemaVersion: 2, sha256: legacyDatabaseDigest },
+        release: { id: "release:legacy-smoke" },
+      },
       ok: true,
       schemaVersion: 6,
     });

@@ -4,6 +4,7 @@ export type SqliteStorageErrorCode =
   | "backup-failed"
   | "backup-invalid"
   | "database-unavailable"
+  | "insufficient-disk-space"
   | "invalid-database-path"
   | "migration-drift"
   | "migration-invalid"
@@ -40,11 +41,23 @@ export interface SqliteBackup {
   readonly sha256: string;
 }
 
+/** A backup written to a file on disk; its bytes never pass through memory. */
+export interface SqliteBackupFile {
+  readonly format: typeof SQLITE_BACKUP_FORMAT;
+  readonly schemaVersion: number;
+}
+
 export interface SqliteStorage {
   readonly database: SqliteApplicationDatabase;
   readonly schema: SqliteSchemaInfo;
   close(): void;
   createBackup(): SqliteBackup;
+  /**
+   * Writes a consistent copy of the database to a new file with SQLite itself, so a database of
+   * any size is backed up without loading it. The free space of the destination volume is checked
+   * first and `insufficient-disk-space` names what is needed and what is available.
+   */
+  createBackupFile(destinationPath: string): SqliteBackupFile;
 }
 
 type SqliteValue = bigint | number | string | Uint8Array | null;
@@ -88,4 +101,12 @@ export interface SqliteDatabaseFile {
 
 export interface RestoreSqliteBackupOptions extends SqliteStorageOptions {
   readonly backup: SqliteBackup;
+}
+
+export interface RestoreSqliteBackupFileOptions extends SqliteStorageOptions {
+  /** A backup file written by `createBackupFile`; it is copied, never read into memory. */
+  readonly backupPath: string;
+  readonly format: typeof SQLITE_BACKUP_FORMAT;
+  readonly schemaVersion: number;
+  readonly sha256: string;
 }

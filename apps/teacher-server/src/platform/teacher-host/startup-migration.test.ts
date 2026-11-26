@@ -15,6 +15,7 @@ import {
   type SqliteSchemaCatalog,
 } from "@marea/sqlite-storage";
 
+import { RecoveryBundleError } from "../recovery/contracts.js";
 import { HostOperationError } from "../operations/host/contracts.js";
 import { migrateSchemaOnStartup, type StartupMigrationEvent } from "./startup-migration.js";
 
@@ -107,6 +108,45 @@ describe("startup schema migration", () => {
         error: "TypeError: disk full",
       },
     ]);
+  });
+
+  it("tells the teacher how much free disk space the pre-migration backup needs", async () => {
+    const path = database("skill-assignments");
+    const detail =
+      "The SQLite backup needs 900 MiB of free disk space but only 12 MiB is available.";
+    const subject = harness(path, () =>
+      Promise.reject(new RecoveryBundleError("bundle-insufficient-space", detail)),
+    );
+    const migrate = vi.fn();
+    const failure = await subject.run(migrate).catch((error: unknown) => error);
+    expect(failure).toMatchObject({
+      code: "not-ready",
+      message: `the pre-migration backup needs more free disk space: ${detail}`,
+    });
+    expect(migrate).not.toHaveBeenCalled();
+    expect(subject.events).toEqual([
+      {
+        event: "schema-migration",
+        outcome: "backup-failed",
+        detectedSchema: previous,
+        targetSchema: currentSqliteSchema().version,
+        error: `RecoveryBundleError bundle-insufficient-space: ${detail}`,
+      },
+    ]);
+  });
+
+  it("keeps other recovery failures generic", async () => {
+    const path = database("skill-assignments");
+    const subject = harness(path, () =>
+      Promise.reject(new RecoveryBundleError("bundle-database-invalid")),
+    );
+    const failure = await subject.run(vi.fn()).catch((error: unknown) => error);
+    expect(failure).toMatchObject({
+      message: "the pre-migration backup could not be created",
+    });
+    expect(subject.events[0]).toMatchObject({
+      error: "RecoveryBundleError bundle-database-invalid: bundle-database-invalid",
+    });
   });
 
   it("reports a failed migration and refuses to start", async () => {

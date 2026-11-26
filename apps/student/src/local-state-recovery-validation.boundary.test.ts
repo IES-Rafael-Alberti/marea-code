@@ -6,6 +6,7 @@ import {
   createLocalStateRecovery,
   type LocalStateRecoveryFileSystem,
 } from "./local-state-recovery.boundary.js";
+import { StudentStateNewerVersionError } from "./student-state-version.boundary.js";
 
 function filesystem() {
   return {
@@ -59,6 +60,26 @@ describe("local recovery validation boundaries", () => {
       join("/state", "session.json"),
       join(directory, "session.json"),
     );
+  });
+
+  it("never sets aside state written by a newer version", async () => {
+    const fs = filesystem();
+    const recovery = createLocalStateRecovery({
+      filesystem: fs,
+      stateDirectory: "/state",
+      probes: [
+        {
+          file: "session.json",
+          reason: "session",
+          load: () => Promise.reject(new StudentStateNewerVersionError()),
+        },
+      ],
+    });
+
+    await expect(recovery.prepare()).rejects.toBeInstanceOf(StudentStateNewerVersionError);
+
+    expect(fs.move).not.toHaveBeenCalled();
+    expect(recovery.report().recovered).toBe(false);
   });
 
   it("reuses its quarantine identity and moves only matching temporary siblings", async () => {

@@ -2,6 +2,7 @@ import {
   OperatorCliError,
   OperatorCliInterrupted,
 } from "../../apps/teacher-server/src/platform/operator-cli/errors.js";
+import { RecoveryBundleError } from "../../apps/teacher-server/src/platform/recovery/contracts.js";
 
 /** An expected, actionable installer diagnostic containing no private input. */
 export class InstallerUsageError extends Error {}
@@ -19,6 +20,12 @@ export async function installerExitCode(operation: () => Promise<void>): Promise
     if (error instanceof OperatorCliInterrupted) {
       process.stderr.write("Operación cancelada.\n");
       return error.exitCode;
+    }
+    if (error instanceof RecoveryBundleError && error.code === "bundle-insufficient-space") {
+      process.stderr.write(
+        `No hay espacio libre suficiente en el disco para la copia de seguridad previa. Libera espacio y vuelve a intentarlo; los datos no se han modificado.\n${error.message}\n`,
+      );
+      return 1;
     }
     if (!(error instanceof OperatorCliError)) throw error;
     if (error.code === "installation-busy") {

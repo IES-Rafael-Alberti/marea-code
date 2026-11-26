@@ -3,6 +3,7 @@ import {
   OperatorCliError,
   OperatorCliInterrupted,
 } from "../../apps/teacher-server/src/platform/operator-cli/errors.js";
+import { RecoveryBundleError } from "../../apps/teacher-server/src/platform/recovery/contracts.js";
 import { installerExitCode, InstallerUsageError } from "./installer-cli.boundary.js";
 
 it("prints an actionable existing-installation diagnostic without a stack", async () => {
@@ -37,6 +38,28 @@ it("prints a concise terminal failure without an exception or a stack", async ()
     await installerExitCode(vi.fn().mockRejectedValue(new OperatorCliError("invalid-input"))),
   ).toBe(1);
   expect(output.mock.calls).toEqual([["No se ha podido completar la lectura de la entrada.\n"]]);
+});
+
+it("explains a missing disk space for the backup with the figures and keeps the data untouched", async () => {
+  const output = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+  const detail = "The SQLite backup needs 900 MiB of free disk space but only 12 MiB is available.";
+  expect(
+    await installerExitCode(
+      vi.fn().mockRejectedValue(new RecoveryBundleError("bundle-insufficient-space", detail)),
+    ),
+  ).toBe(1);
+  expect(output.mock.calls).toEqual([
+    [
+      `No hay espacio libre suficiente en el disco para la copia de seguridad previa. Libera espacio y vuelve a intentarlo; los datos no se han modificado.\n${detail}\n`,
+    ],
+  ]);
+});
+
+it("keeps other recovery bundle failures as unexpected errors", async () => {
+  const output = vi.spyOn(process.stderr, "write").mockReturnValue(true);
+  const error = new RecoveryBundleError("bundle-database-invalid");
+  await expect(installerExitCode(vi.fn().mockRejectedValue(error))).rejects.toBe(error);
+  expect(output).not.toHaveBeenCalled();
 });
 
 it("explains an installation lock without misreporting a terminal failure", async () => {

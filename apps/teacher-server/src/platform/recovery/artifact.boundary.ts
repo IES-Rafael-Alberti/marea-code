@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   closeSync,
   constants,
@@ -19,6 +20,8 @@ import { RECOVERY_MANIFEST_BYTES, RecoveryBundleError } from "./contracts.js";
 import { failWithFile, safeArtifactPath } from "./safe-paths.boundary.js";
 import { createFileRecord, parseManifest, sha256Bytes } from "./manifest.boundary.js";
 import type { RecoveryBundleManifest } from "./contracts.js";
+
+const READ_CHUNK_BYTES = 65_536;
 
 export function ensureAbsentDirectory(path: string): void {
   const parent = dirname(path);
@@ -105,24 +108,32 @@ function changedReadMetadata(
   );
 }
 
-export function readBoundedRegularFile(
+interface ReadDependencies {
+  readonly closeSync?: typeof closeSync;
+  readonly fstatSync?: (descriptor: number) => {
+    isFile(): boolean;
+    readonly nlink: number;
+    readonly dev: number;
+    readonly ino: number;
+    readonly size: number;
+    readonly mtimeMs: number;
+    readonly ctimeMs: number;
+  };
+  readonly readSync?: (descriptor: number, buffer: Uint8Array) => number;
+}
+
+/**
+ * Reads one regular file in fixed chunks, refusing links, files that exceed `maximumBytes` and
+ * files that change while they are read. Nothing is retained: callers keep what they need.
+ */
+function scanRegularFile(
   path: string,
   maximumBytes: number,
   code: Parameters<typeof createFileRecord>[3],
-  dependencies: {
-    readonly closeSync?: typeof closeSync;
-    readonly fstatSync?: (descriptor: number) => {
-      isFile(): boolean;
-      readonly nlink: number;
-      readonly dev: number;
-      readonly ino: number;
-      readonly size: number;
-      readonly mtimeMs: number;
-      readonly ctimeMs: number;
-    };
-    readonly readSync?: (descriptor: number, buffer: Uint8Array) => number;
-  } = {},
-): Uint8Array {
+  dependencies: ReadDependencies,
+  begin: (size: number) => void,
+  consume: (chunk: Uint8Array, offset: number) => void,
+): number {
   let descriptor: number | undefined;
   const closeFile = dependencies.closeSync ?? closeSync;
   const statFile =
@@ -141,27 +152,69 @@ export function readBoundedRegularFile(
     if (!isFile || before.nlink !== 1) failWithFile(code);
     if (!Number.isSafeInteger(maximumBytes)) failWithFile(code);
     if (before.size > maximumBytes) failWithFile(code);
-    // One bounded allocation; a growing file cannot write beyond its initial size.
-    const bytes = new Uint8Array(before.size);
-    const chunk = new Uint8Array(65_536);
+    begin(before.size);
+    const chunk = new Uint8Array(READ_CHUNK_BYTES);
     let totalBytes = 0;
     for (;;) {
       const readBytes = readFile(descriptor, chunk);
       if (readBytes === 0) break;
       const offset = totalBytes;
       totalBytes += readBytes;
-      bytes.set(chunk.subarray(0, readBytes), offset);
+      consume(chunk.subarray(0, readBytes), offset);
     }
     const after = statFile(descriptor);
     if (changedReadMetadata(before, after, totalBytes)) {
       failWithFile(code);
     }
-    return bytes;
+    return totalBytes;
   } catch {
     throw new RecoveryBundleError(code);
   } finally {
     if (descriptor !== undefined) closeFile(descriptor);
   }
+}
+
+export function readBoundedRegularFile(
+  path: string,
+  maximumBytes: number,
+  code: Parameters<typeof createFileRecord>[3],
+  dependencies: ReadDependencies = {},
+): Uint8Array {
+  // One bounded allocation; a growing file cannot write beyond its initial size.
+  let bytes = new Uint8Array(0);
+  scanRegularFile(
+    path,
+    maximumBytes,
+    code,
+    dependencies,
+    (size) => {
+      bytes = new Uint8Array(size);
+    },
+    (chunk, offset) => {
+      bytes.set(chunk, offset);
+    },
+  );
+  return bytes;
+}
+
+/** Hashes a regular file of any size in constant memory, with the checks of a bounded read. */
+export function hashRegularFile(
+  path: string,
+  code: Parameters<typeof createFileRecord>[3],
+  dependencies: ReadDependencies = {},
+): { readonly sha256: string; readonly sizeBytes: number } {
+  const hash = createHash("sha256");
+  const sizeBytes = scanRegularFile(
+    path,
+    Number.MAX_SAFE_INTEGER,
+    code,
+    dependencies,
+    () => undefined,
+    (chunk) => {
+      hash.update(chunk);
+    },
+  );
+  return { sha256: hash.digest("hex"), sizeBytes };
 }
 
 export function verifyArtifactManifest(
@@ -178,7 +231,8 @@ export function verifyArtifactManifest(
   if (parsed.files.length > limits.fileCount) {
     throw new RecoveryBundleError("bundle-manifest-invalid");
   }
-  let totalBytes = parsed.database.sizeBytes;
+  // The database is bounded by the free space of its volume, not by the state-file budget.
+  let totalBytes = 0;
   for (const file of parsed.files) {
     totalBytes += file.sizeBytes;
   }
@@ -195,7 +249,7 @@ export function verifyArtifactFiles(
 ): readonly string[] {
   listArtifactFiles(root, manifest, limits);
   const databasePath = join(root, "database.sqlite");
-  verifyFileBytes(databasePath, manifest.database, limits, "bundle-database-invalid");
+  verifyDatabaseFile(databasePath, manifest.database);
   for (const file of manifest.files) {
     const path = join(root, file.path);
     verifyFileBytes(path, file, limits, "bundle-filesystem-invalid");
@@ -205,7 +259,7 @@ export function verifyArtifactFiles(
 
 export interface VerifiedArtifactFiles {
   readonly database: {
-    readonly bytes: Uint8Array;
+    readonly path: string;
     readonly record: RecoveryBundleManifest["database"];
   };
 }
@@ -217,15 +271,21 @@ export function verifyArtifactFilesWithDatabase(
 ): VerifiedArtifactFiles {
   listArtifactFiles(root, manifest, limits);
   const databasePath = join(root, "database.sqlite");
-  const databaseBytes = verifyFileBytes(
-    databasePath,
-    manifest.database,
-    limits,
-    "bundle-database-invalid",
-  );
+  verifyDatabaseFile(databasePath, manifest.database);
   return Object.freeze({
-    database: Object.freeze({ bytes: databaseBytes, record: manifest.database }),
+    database: Object.freeze({ path: databasePath, record: manifest.database }),
   });
+}
+
+/** Streams the database through its digest; it is never held in memory and has no size cap. */
+export function verifyDatabaseFile(
+  path: string,
+  record: { readonly sha256: string; readonly sizeBytes: number },
+): void {
+  const actual = hashRegularFile(path, "bundle-database-invalid");
+  if (actual.sizeBytes !== record.sizeBytes || actual.sha256 !== record.sha256) {
+    failWithFile("bundle-database-invalid");
+  }
 }
 
 export function verifyFileBytes(

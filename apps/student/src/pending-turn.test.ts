@@ -36,3 +36,26 @@ it.each([false, true])(
     );
   },
 );
+
+it("hydrates a startup that saved no text yet and refuses a turn without its original input", async () => {
+  const fixture = createFixtureController();
+  await fixture.controller.start("Project");
+  const run = fixture.state.state.run;
+  if (run === null) throw new Error("Missing fixture run");
+
+  expect(
+    pendingStoredTurn({
+      ...run,
+      turns: [{ kind: "startup", messageId: STARTUP_MESSAGE_ID, state: "started" }],
+    }),
+  ).toStrictEqual({
+    assistantText: "",
+    kind: "startup",
+    messageId: STARTUP_MESSAGE_ID,
+    text: "",
+  });
+  expect(() =>
+    pendingStoredTurn({ ...run, turns: [{ messageId: "message:legacy", state: "started" }] }),
+  ).toThrow("no reliable original input");
+  expect(pendingStoredTurn({ ...run, turns: [{ messageId: "m", state: "completed" }] })).toBeNull();
+});

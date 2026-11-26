@@ -1,24 +1,27 @@
-import type { PendingStudentTurn, StoredRun } from "./contracts.js";
+import type { PendingStudentTurn, StoredRun, StoredTurn } from "./contracts.js";
 
-export function pendingStoredTurn(run: StoredRun | null): PendingStudentTurn | null {
-  if (run?.phase !== "active") return null;
+/**
+ * The turn that continues after a restart: the latest one waiting on a write approval, otherwise
+ * the latest started one. Every other started turn is superseded.
+ */
+export function selectedStartedTurn(run: StoredRun): StoredTurn | undefined {
   const started = run.turns.filter((turn) => turn.state === "started");
-  const approvals = run.pendingApprovals;
-  const candidates =
-    approvals === undefined
-      ? []
-      : started.filter((turn) =>
-          approvals.some((approval) => approval.messageId === turn.messageId),
-        );
-  const selected =
-    candidates.length === 1 ? candidates[0] : started.length === 1 ? started[0] : undefined;
-  if (selected === undefined) {
-    if (started.length > 0) throw new Error("The pending student turn is ambiguous.");
-    return null;
-  }
+  // Stryker disable next-line ArrayDeclaration: a non-approval placeholder never matches any message, as an empty list.
+  const approvals = run.pendingApprovals ?? [];
+  return (
+    started.findLast((turn) =>
+      approvals.some((approval) => approval.messageId === turn.messageId),
+    ) ?? started.at(-1)
+  );
+}
+
+export function pendingStoredTurn(run: StoredRun): PendingStudentTurn | null {
+  const selected = selectedStartedTurn(run);
+  if (selected === undefined) return null;
+  const failure = selected.lastFailure === undefined ? {} : { failure: selected.lastFailure };
   if (selected.kind === "startup") {
     return {
-      ...(selected.lastFailure === undefined ? {} : { failure: selected.lastFailure }),
+      ...failure,
       kind: "startup",
       assistantText: selected.text ?? "",
       messageId: selected.messageId,
@@ -29,7 +32,7 @@ export function pendingStoredTurn(run: StoredRun | null): PendingStudentTurn | n
     throw new Error("The pending student turn has no reliable original input.");
   }
   return {
-    ...(selected.lastFailure === undefined ? {} : { failure: selected.lastFailure }),
+    ...failure,
     assistantText: selected.text ?? "",
     messageId: selected.messageId,
     text: selected.studentText,

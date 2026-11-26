@@ -325,10 +325,10 @@ describe("recovery bundle boundaries", () => {
     const totalBoundaryRoot = join(root(), "total-boundary-artifact");
     makeArtifact(totalBoundaryRoot);
     expect(
-      verifyArtifactManifest(totalBoundaryRoot, { ...limits, totalBytes: 28 }, "release:one"),
+      verifyArtifactManifest(totalBoundaryRoot, { ...limits, totalBytes: 14 }, "release:one"),
     ).toEqual(manifest());
     expectRecoveryError(
-      () => verifyArtifactManifest(totalBoundaryRoot, { ...limits, totalBytes: 27 }, "release:one"),
+      () => verifyArtifactManifest(totalBoundaryRoot, { ...limits, totalBytes: 13 }, "release:one"),
       "bundle-manifest-invalid",
     );
     const mismatchedRoot = join(root(), "mismatched-artifact");
