@@ -13,8 +13,8 @@ const ALICE: AuthenticatedIdentity = {
   userId: "user:alice",
 };
 
-function classroom() {
-  const f = governanceFixture();
+function classroom(schema: "application" | "student-identities" = "application") {
+  const f = governanceFixture(undefined, schema);
   seedGovernancePilot(f);
   for (const [userId, role] of [
     ["user:alice", "student"],
@@ -196,4 +196,108 @@ it("counts only current owned lease presence using the server clock", () => {
   expect(activity()).toEqual({ last_activity_at: "2026-09-12T10:02:00.000Z" });
   expect(extend("lease:alice:opened", "2026-09-12T10:10:00.000Z")).toBeUndefined();
   expect(activity()).toEqual({ last_activity_at: "2026-09-12T10:02:00.000Z" });
+});
+
+describe.each(["application", "student-identities"] as const)(
+  "SQLite student presence on the %s schema",
+  (schema) => {
+    const LEASE = "lease:alice:opened";
+    function present() {
+      const value = classroom(schema);
+      const expiry = (token: string) =>
+        value.f.database.readOne(
+          "SELECT expires_at FROM marea_auth_sessions WHERE token_hash = ?1",
+          [token],
+        );
+      return { ...value, expiry };
+    }
+
+    it("slides only the run owner's newest session, never shortening it", () => {
+      const { f, signIn, extend, expiry } = present();
+      signIn("older", "user:alice", "2026-09-12T09:00:00.000Z", "2026-09-12T10:30:00.000Z");
+      signIn("newest", "user:alice", "2026-09-12T09:30:00.000Z", "2026-09-12T10:30:00.000Z");
+      signIn("bob", "user:bob", "2026-09-12T09:45:00.000Z", "2026-09-12T10:30:00.000Z");
+
+      expect(extend(LEASE, "2026-09-12T10:05:00.000Z")).toBe("2026-09-12T10:35:00.000Z");
+      expect(expiry("newest")).toEqual({ expires_at: "2026-09-12T10:35:00.000Z" });
+      expect(expiry("older")).toEqual({ expires_at: "2026-09-12T10:30:00.000Z" });
+      expect(expiry("bob")).toEqual({ expires_at: "2026-09-12T10:30:00.000Z" });
+      expect(f.identities.resolveSession("newest", "2026-09-12T10:34:00.000Z")).toEqual(ALICE);
+      expect(extend(LEASE, "2026-09-12T10:04:00.000Z")).toBeUndefined();
+      expect(expiry("newest")).toEqual({ expires_at: "2026-09-12T10:35:00.000Z" });
+      expect(extend(LEASE, "2026-09-12T10:06:00.000Z")).toBe("2026-09-12T10:36:00.000Z");
+    });
+
+    it("never passes the eight-hour limit", () => {
+      const { signIn, extend, expiry } = present();
+      signIn("capped", "user:alice", "2026-09-12T02:20:00.000Z", "2026-09-12T10:15:00.000Z");
+      expect(extend(LEASE, "2026-09-12T10:05:00.000Z")).toBe("2026-09-12T10:20:00.000Z");
+      expect(extend(LEASE, "2026-09-12T10:08:00.000Z")).toBeUndefined();
+      expect(expiry("capped")).toEqual({ expires_at: "2026-09-12T10:20:00.000Z" });
+    });
+
+    it("never revives the newest session nor falls back to an older one", () => {
+      const { f, signIn, extend, expiry } = present();
+      signIn("older", "user:alice", "2026-09-12T09:00:00.000Z", "2026-09-12T10:30:00.000Z");
+      signIn("lapsed", "user:alice", "2026-09-12T09:30:00.000Z", "2026-09-12T10:04:00.000Z");
+      expect(extend(LEASE, "2026-09-12T10:05:00.000Z")).toBeUndefined();
+      expect(f.identities.resolveSession("lapsed", "2026-09-12T10:05:00.000Z")).toBeUndefined();
+      signIn("revoked", "user:alice", "2026-09-12T09:40:00.000Z", "2026-09-12T10:30:00.000Z");
+      expect(f.identities.revokeSession("revoked", "2026-09-12T10:05:00.000Z")).toBe(true);
+      expect(extend(LEASE, "2026-09-12T10:06:00.000Z")).toBeUndefined();
+      expect(expiry("revoked")).toEqual({ expires_at: "2026-09-12T10:30:00.000Z" });
+      expect(expiry("older")).toEqual({ expires_at: "2026-09-12T10:30:00.000Z" });
+      expect(expiry("lapsed")).toEqual({ expires_at: "2026-09-12T10:04:00.000Z" });
+    });
+
+    it("needs a current lease of the owner's active run while the student may act", () => {
+      const { f, runs, signIn, extend, expiry } = present();
+      signIn("alice", "user:alice", "2026-09-12T09:30:00.000Z", "2026-09-12T10:30:00.000Z");
+      expect(extend("lease:unknown", "2026-09-12T10:05:00.000Z")).toBeUndefined();
+      expect(extend(LEASE, "2026-09-12T10:05:00.000Z", "run:other")).toBeUndefined();
+      expect(extend(LEASE, "2026-09-12T10:10:00.000Z")).toBeUndefined();
+      runs.renewLease({
+        classId: "class:a",
+        expiresAt: "2026-09-12T10:20:00.000Z",
+        issuedAt: "2026-09-12T10:06:00.000Z",
+        leaseId: "lease:alice:renewed",
+        leaseTokenHash: "lease:alice:renewed",
+        runId: "run:alice",
+        studentId: "user:alice",
+      });
+      expect(extend(LEASE, "2026-09-12T10:07:00.000Z")).toBeUndefined();
+      f.database.execute(
+        "UPDATE marea_governance_accounts SET state = 'disabled' WHERE user_id = 'user:alice'",
+      );
+      expect(extend("lease:alice:renewed", "2026-09-12T10:08:00.000Z")).toBeUndefined();
+      f.database.execute(
+        "UPDATE marea_governance_accounts SET state = 'active' WHERE user_id = 'user:alice'",
+      );
+      expect(extend("lease:alice:renewed", "2026-09-12T10:09:00.000Z")).toBe(
+        "2026-09-12T10:39:00.000Z",
+      );
+      f.database.execute("UPDATE marea_runs SET state = 'closed' WHERE id = 'run:alice'");
+      expect(extend("lease:alice:renewed", "2026-09-12T10:11:00.000Z")).toBeUndefined();
+      expect(expiry("alice")).toEqual({ expires_at: "2026-09-12T10:39:00.000Z" });
+    });
+  },
+);
+
+it("slides only a session for the run's own class once sessions name their class", () => {
+  const { f, signIn, extend } = classroom("student-identities");
+  signIn("alice", "user:alice", "2026-09-12T09:30:00.000Z", "2026-09-12T10:30:00.000Z");
+  f.identities.createSession({
+    classId: "class:second",
+    expiresAt: "2026-09-12T10:30:00.000Z",
+    issuedAt: "2026-09-12T09:50:00.000Z",
+    sessionId: "session:other-class",
+    tokenHash: "other-class",
+    userId: "user:alice",
+  });
+  expect(extend("lease:alice:opened", "2026-09-12T10:05:00.000Z")).toBe("2026-09-12T10:35:00.000Z");
+  expect(
+    f.database.readOne(
+      "SELECT expires_at FROM marea_auth_sessions WHERE token_hash = 'other-class'",
+    ),
+  ).toEqual({ expires_at: "2026-09-12T10:30:00.000Z" });
 });
