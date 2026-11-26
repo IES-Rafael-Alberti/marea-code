@@ -122,6 +122,7 @@ Ireki Marea uneko proiektuan, irakurri irakaslearen irakurri gabeko feedbacka, m
   "student.tui.failure.budget-exhausted": "Saioak ez du nahikoa aurrekontu beste eskaera baterako.",
   "student.tui.failure.concurrency-limited": "Beste eskaera bat martxan dago. Itxaron amaitu arte.",
   "student.tui.failure.deadline-exceeded": "Eskaera honetarako ezarritako denbora-muga gainditu da.",
+  "student.tui.failure.empty-response": "Ereduak ez du erantzunik eman. Idatzi /retry berriro saiatzeko.",
   "student.tui.failure.invalid-response": "Mareak ezin izan du ekintza osatu. Idatzi /retry berriro saiatzeko.",
   "student.tui.failure.log-location": "Ordenagailu honetako hutsegiteen erregistroa: {{path}}",
   "student.tui.failure.provider-interrupted": "Hornitzaileak erantzuna eten du.",

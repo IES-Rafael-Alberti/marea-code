@@ -87,13 +87,17 @@ function classifyRecognized(recognized: RecognizedFailure, prefix: string): Turn
           : recognized.streamCode === "authentication-failed" ||
               recognized.streamCode === "usage-invalid" ||
               recognized.streamCode === "invalid-response" ||
+              recognized.streamCode === "empty-response" ||
               recognized.streamCode === "context-exceeded" ||
               recognized.streamCode === "context-unavailable"
             ? "request-failed"
             : "provider-interrupted",
       recoverable: true,
       // A response the model sent in a shape Marea could not read may be fine on the next try.
-      retryable: recognized.streamRetryable || recognized.streamCode === "invalid-response",
+      retryable:
+        recognized.streamRetryable ||
+        recognized.streamCode === "invalid-response" ||
+        recognized.streamCode === "empty-response",
     };
   }
   // A run the server refuses (closed by the teacher or its leases revoked) cannot be retried

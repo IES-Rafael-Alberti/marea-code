@@ -99,6 +99,49 @@ async function collect(service: ModelGatewayService, signal = new AbortControlle
 }
 
 describe("model gateway service", () => {
+  async function deltasFor(text: string): Promise<readonly string[]> {
+    const provider = new ScriptedProvider([
+      {
+        events: [
+          { type: "text-delta", text },
+          { type: "usage", inputTokens: 1, outputTokens: 1 },
+          { type: "completed", finishReason: "stop" },
+        ],
+      },
+    ]);
+    const chunks = await collect(createService(provider));
+    expect(chunks.map((chunk) => chunk.sequence)).toEqual(chunks.map((_, index) => index));
+    return chunks.flatMap((chunk) => (chunk.event === "text-delta" ? [chunk.delta] : []));
+  }
+
+  it("splits a provider delta larger than the chunk limit into several chunks", async () => {
+    const text = "a".repeat(16_384 * 2 + 5);
+    const deltas = await deltasFor(text);
+    expect(deltas.map((delta) => delta.length)).toEqual([16_384, 16_384, 5]);
+    expect(deltas.join("")).toBe(text);
+  });
+
+  it.each([
+    ["the first half of a pair ends the text", `${"a".repeat(20_000)}\ud83d`, 16_384],
+    ["the lowest high surrogate is at the cut", `${"a".repeat(16_383)}\ud800b`, 16_383],
+    ["the highest high surrogate is at the cut", `${"a".repeat(16_383)}\udbffb`, 16_383],
+    ["a low surrogate is at the cut", `${"a".repeat(16_382)}\ud83d\ude00b`, 16_384],
+  ])("cuts only where a pair is not split: %s", async (_label, text, first) => {
+    const deltas = await deltasFor(text);
+    expect(deltas[0]).toHaveLength(first);
+    expect(deltas.join("")).toBe(text);
+  });
+
+  it("keeps a delta of exactly the limit in one chunk", async () => {
+    expect(await deltasFor("b".repeat(16_384))).toHaveLength(1);
+  });
+
+  it("does not cut a surrogate pair when splitting", async () => {
+    const text = `${"a".repeat(16_383)}\u{1F600}tail`;
+    const deltas = await deltasFor(text);
+    expect(deltas).toEqual(["a".repeat(16_383), "\u{1F600}tail"]);
+  });
+
   it("translates the private provider stream into public marea chunks", async () => {
     const provider = new ScriptedProvider([
       {

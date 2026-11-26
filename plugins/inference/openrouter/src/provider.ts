@@ -60,14 +60,23 @@ function httpError(response: OpenRouterHttpResponse): InferenceProviderError {
     : providerError("invalid-response", "The inference provider rejected the request.", false);
 }
 
-function finishReason(value: string | null | undefined): InferenceFinishReason | undefined {
+/** Reasons that end a response without being a normal completion; handled after usage. */
+type AbnormalFinish = "content_filter" | "error";
+
+/** Shown in place of an answer the provider's filter blocked; the turn still completes. */
+const CONTENT_FILTER_NOTICE =
+  "El proveedor del modelo ha bloqueado esta respuesta con su filtro de contenido. Reformula tu mensaje e inténtalo de nuevo.";
+
+function finishReason(
+  value: string | null | undefined,
+): InferenceFinishReason | AbnormalFinish | undefined {
   if (value == null) {
     return undefined;
   }
   if (value === "tool_calls") {
     return "tool-call";
   }
-  if (value === "stop" || value === "length") {
+  if (value === "stop" || value === "length" || value === "content_filter" || value === "error") {
     return value;
   }
   throw providerError(
@@ -75,6 +84,26 @@ function finishReason(value: string | null | undefined): InferenceFinishReason |
     "The inference provider returned an unsupported finish reason.",
     false,
   );
+}
+
+/** A response the provider cut short: an error is retried; a filtered one ends with a notice. */
+function* abnormalCompletion(
+  reason: AbnormalFinish,
+  streamedText: boolean,
+): Generator<InferenceProviderEvent> {
+  if (reason === "error") {
+    throw providerError(
+      "unavailable",
+      "The inference provider reported an error while answering.",
+      true,
+    );
+  }
+  // Calls cut off by the filter are dropped: the student cannot review half a request.
+  yield Object.freeze({
+    text: `${streamedText ? "\n\n" : ""}${CONTENT_FILTER_NOTICE}`,
+    type: "text-delta",
+  });
+  yield Object.freeze({ finishReason: "stop", type: "completed" });
 }
 
 async function* translateStream(
@@ -91,7 +120,8 @@ async function* translateStream(
   }
   const calls = new ToolCallAccumulator(requestId);
   let completed = false;
-  let reason: InferenceFinishReason | undefined;
+  let reason: InferenceFinishReason | AbnormalFinish | undefined;
+  let streamedText = false;
   let usage: InferenceProviderEvent | undefined;
   for await (const data of readSseData(response.body)) {
     if (data === "[DONE]") {
@@ -101,6 +131,7 @@ async function* translateStream(
     const chunk = parseOpenRouterData(data);
     const text = chunk.delta?.content;
     if (text !== undefined && text !== null && text.length > 0) {
+      streamedText = true;
       yield Object.freeze({ text, type: "text-delta" });
     }
     if (chunk.delta?.toolCalls !== undefined) {
@@ -127,6 +158,10 @@ async function* translateStream(
       "The inference provider stream ended before completion.",
       false,
     );
+  }
+  if (reason === "error" || reason === "content_filter") {
+    yield* abnormalCompletion(reason, streamedText);
+    return;
   }
   for (const event of calls.finish()) {
     yield event;

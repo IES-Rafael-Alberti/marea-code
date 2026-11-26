@@ -29,7 +29,9 @@ type ExpectedValueExports =
   | "normalizeDiagnosticCause"
   | "QUESTION_TOOL_NAME"
   | "parseQuestions"
-  | "questionAnswers";
+  | "questionAnswers"
+  | "questionsProblem"
+  | "describeIssues";
 
 export type OnlyMareaValuesEscape = Assert<Equal<keyof typeof publicApi, ExpectedValueExports>>;
 export type ModelInputIsOwned = Assert<

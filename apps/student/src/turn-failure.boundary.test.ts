@@ -317,6 +317,7 @@ it.each([
   ["authentication-failed", "request-failed"],
   ["usage-invalid", "request-failed"],
   ["invalid-response", "request-failed"],
+  ["empty-response", "request-failed"],
 ])("preserves the explicit %s cause and refusal over a saved prefix", (code, kind) => {
   const failure = classifyTurnFailure(new TurnAttemptFailed("Saved", streamFailure({ code })));
   expect(failure).toEqual({
@@ -326,7 +327,7 @@ it.each([
     hasPrefix: true,
     recoverable: true,
     // Only an unreadable response is worth another attempt; the others repeat deterministically.
-    retryable: code === "invalid-response",
+    retryable: code === "invalid-response" || code === "empty-response",
   });
   const persisted = new StoredTurnFailure(failure);
   expect(persisted.name).toBe("StoredTurnFailure");

@@ -140,6 +140,8 @@ const basqueCatalog = {
     "Mareak ezin izan du ekintza hori prestatu. Eskatu berriro urratsez urrats.",
   "student.tui.failure.invalid-response":
     "Mareak ezin izan du ekintza osatu. Idatzi /retry berriro saiatzeko.",
+  "student.tui.failure.empty-response":
+    "Ereduak ez du erantzunik eman. Idatzi /retry berriro saiatzeko.",
   "student.tui.failure.log-location": "Ordenagailu honetako hutsegiteen erregistroa: {{path}}",
   "student.tui.failure.session-ended-by-teacher":
     "Zure irakasleak saio hau amaitu du. Exekutatu marea berriro saio berri bat hasteko.",

@@ -24,5 +24,11 @@ export type {
   MareaModelGateway,
 } from "./contracts.js";
 
-export { QUESTION_TOOL_NAME, parseQuestions, questionAnswers } from "./questions.boundary.js";
+export {
+  QUESTION_TOOL_NAME,
+  parseQuestions,
+  questionAnswers,
+  questionsProblem,
+} from "./questions.boundary.js";
 export type { QuestionRequest, StudentQuestion } from "./questions.boundary.js";
+export { describeIssues } from "./input-issues.js";

@@ -8,16 +8,9 @@ import type { GuardedWorkspaceWriter } from "./contracts.js";
 import type { OperationExecutor, OperationRequest } from "./operation-contracts.js";
 import { readPrivateTextFile, writePrivateFileAtomically } from "./filesystem.boundary.js";
 import { runProjectCommand } from "./command-runner.boundary.js";
+import { CommandSchema, DeleteSchema, EditSchema } from "./operation-arguments.js";
+import { OperationRejectedError } from "./operation-feedback.boundary.js";
 
-const EditSchema = z
-  .object({
-    path: z.string().min(1).max(512),
-    old_string: z.string().min(1).max(65_536),
-    new_string: z.string().max(65_536),
-  })
-  .strict();
-const DeleteSchema = z.object({ path: z.string().min(1).max(512) }).strict();
-const CommandSchema = z.object({ command: z.string().min(1).max(4096) }).strict();
 const RecordSchema = z
   .object({
     fingerprint: z.string(),
@@ -82,7 +75,9 @@ export class FileOperationExecutor implements OperationExecutor {
         edit.path.startsWith("/") ? edit.path : `/${edit.path}`,
       );
       if (before.split(edit.old_string).length !== 2)
-        throw new Error("The text to replace must occur exactly once. Read the file again.");
+        throw new OperationRejectedError(
+          "The text to replace must occur exactly once. Read the file again.",
+        );
       record = { ...record, before, after: before.replace(edit.old_string, () => edit.new_string) };
     }
     await this.save(request, record);
@@ -137,7 +132,7 @@ export class FileOperationExecutor implements OperationExecutor {
       throw error;
     }
     if (current !== record.before)
-      throw new Error("The file changed after review. Request a new deletion.");
+      throw new OperationRejectedError("The file changed after review. Request a new deletion.");
     await this.save(request, { ...record, phase: "started" });
     await this.options.workspace.deleteEntry(virtual);
     return JSON.stringify({ path, operation: "deleted" });

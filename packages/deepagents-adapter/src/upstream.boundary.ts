@@ -6,6 +6,7 @@ import {
   questionInterrupts,
   QUESTION_TOOL_NAME,
 } from "./questions.boundary.js";
+import { createReviewChecks } from "./argument-checks.boundary.js";
 import { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { type BaseMessageChunk } from "@langchain/core/messages";
 import type { RunnableConfig } from "@langchain/core/runnables";
@@ -105,11 +106,9 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   const drainToolEvents = (): readonly ToolLifecycleEvent[] => pendingToolEvents.splice(0);
   const effectTools = options.effectTools ?? [];
   const gate = createSocraticGate(options.socratic);
-  const controlled = createControlledTools(
-    [options.approvalTool, ...effectTools],
-    reportToolEvent,
-    gate?.shouldBlock,
-  );
+  const effects = [options.approvalTool, ...effectTools];
+  const checks = createReviewChecks(effects, gate);
+  const controlled = createControlledTools(effects, reportToolEvent, checks.noReview);
   const readers = options.readOnlyTools ?? [];
   const tools = [
     ...(options.readOnly === true ? [] : controlled.tools),
@@ -125,7 +124,12 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       createCompactionMiddleware(),
       ...(options.readOnly === true
         ? [createReadOnlyStartupMiddleware(readers), unknownTool]
-        : [unknownTool, batchRejections.middleware, ...(gate === null ? [] : [gate.middleware])]),
+        : [
+            unknownTool,
+            checks.middleware,
+            batchRejections.middleware,
+            ...(gate === null ? [] : [gate.middleware]),
+          ]),
     ],
     tools,
     systemPrompt: options.systemPrompt,
@@ -137,7 +141,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       options.readOnly === true
         ? {}
         : {
-            ...questionInterrupts(options.questions === true),
+            ...questionInterrupts(options.questions === true, checks.noReview),
             ...controlled.interrupts,
           },
   });

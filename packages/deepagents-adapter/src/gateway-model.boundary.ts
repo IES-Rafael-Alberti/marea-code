@@ -159,8 +159,22 @@ function translateMessages(messages: readonly BaseMessage[]): readonly ModelGate
     });
   }
   const toolNames = new Map<string, string>();
-  return messages.map((message) => translateMessage(message, toolNames));
+  return messages
+    .filter((message) => !isEmptyAssistantMessage(message))
+    .map((message) => translateMessage(message, toolNames));
 }
+
+/** Sessions saved before empty replies were refused hold such messages; the gateway rejects them. */
+function isEmptyAssistantMessage(message: BaseMessage): boolean {
+  return (
+    AIMessage.isInstance(message) &&
+    message.text.length === 0 &&
+    (message.tool_calls ?? []).length === 0
+  );
+}
+
+/** A tool message must carry text; older sessions may hold an empty one. */
+const EMPTY_TOOL_RESULT = "The tool returned no content.";
 
 function translateMessage(
   message: BaseMessage,
@@ -197,7 +211,7 @@ function translateMessage(
         message.name === undefined
           ? toolNames.get(message.tool_call_id)
           : toPublicToolName(message.name),
-      content: message.text,
+      content: message.text.length === 0 ? EMPTY_TOOL_RESULT : message.text,
     });
   }
   throw gatewayContractError();
@@ -302,6 +316,7 @@ class GatewayStreamState {
   private toolIndex = 1;
   private started = false;
   private completed = false;
+  private produced = false;
 
   constructor(requestId: RequestId) {
     this.requestId = requestId;
@@ -326,7 +341,18 @@ class GatewayStreamState {
     if (!this.started) {
       throw gatewayContractError();
     }
+    if (chunk.event === "text-delta" || chunk.event === "tool-call") {
+      this.produced = true;
+    }
     if (chunk.event === "completed") {
+      if (!this.produced) {
+        // Nothing was said or asked: saving that turn would poison every later request.
+        throw new ModelStreamError({
+          code: "empty-response",
+          message: "The model finished without any text or tool call.",
+          retryable: true,
+        });
+      }
       this.completed = true;
     }
   }

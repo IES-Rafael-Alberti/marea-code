@@ -5,6 +5,8 @@ import { MareaFakeModel, unusedTool } from "./adapter.fixture.js";
 import { createInMemoryCheckpointForTest } from "./checkpoint.boundary.js";
 import { bindTestModel, createAgentRuntime } from "./upstream.boundary.js";
 
+const anyFunction = expect.any(Function) as never;
+
 vi.mock("deepagents", { spy: true });
 
 afterEach(() => vi.clearAllMocks());
@@ -35,10 +37,22 @@ describe("upstream tool configuration boundary", () => {
     expect(configuration?.middleware?.map((middleware) => middleware.name)).toEqual(
       readOnly
         ? ["SummarizationMiddleware", "MareaReadOnlyStartup", "MareaUnknownTool"]
-        : ["SummarizationMiddleware", "MareaUnknownTool", "MareaBatchRejections"],
+        : [
+            "SummarizationMiddleware",
+            "MareaUnknownTool",
+            "MareaArgumentChecks",
+            "MareaBatchRejections",
+          ],
     );
     expect(configuration?.interruptOn).toEqual(
-      readOnly ? {} : { [unusedTool.name]: { allowedDecisions: ["approve", "edit", "reject"] } },
+      readOnly
+        ? {}
+        : {
+            [unusedTool.name]: {
+              allowedDecisions: ["approve", "edit", "reject"],
+              when: anyFunction,
+            },
+          },
     );
   });
 });
@@ -63,8 +77,14 @@ it.each([true, false])(
       readOnly
         ? {}
         : {
-            [unusedTool.name]: { allowedDecisions: ["approve", "edit", "reject"] },
-            marea_ask_user: { allowedDecisions: ["approve", "edit", "reject"] },
+            [unusedTool.name]: {
+              allowedDecisions: ["approve", "edit", "reject"],
+              when: anyFunction,
+            },
+            marea_ask_user: {
+              allowedDecisions: ["approve", "edit", "reject"],
+              when: anyFunction,
+            },
           },
     );
   },

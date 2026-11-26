@@ -3,7 +3,7 @@ import { createMiddleware } from "langchain";
 import * as z from "zod";
 
 import type { ApprovalDecision } from "./contracts.js";
-import { toUpstreamDecision } from "./approval-decision.js";
+import { rejectionMessage, toUpstreamDecision } from "./approval-decision.js";
 import { approvalContractChanged } from "./approval-state.boundary.js";
 
 interface PendingAction {
@@ -49,7 +49,7 @@ export function createBatchRejections() {
         return pairs.map(({ action, decision }) => toUpstreamDecision(decision, action.toolName));
       return withCallIds(state, pairs).map(({ action, decision, id }) => {
         if (decision.type !== "reject") return toUpstreamDecision(decision, action.toolName);
-        rejected.set(id, decision.reason);
+        rejected.set(id, rejectionMessage(decision.reason));
         return { type: "approve" as const };
       });
     },

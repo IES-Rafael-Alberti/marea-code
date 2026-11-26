@@ -15,6 +15,7 @@ import type {
   WorkspaceWrite,
 } from "./contracts.js";
 import type { OperationMediator } from "./operation-mediator.js";
+import { rejectionReason } from "./rejection-reason.js";
 import type { WriteRequest } from "./write-request.js";
 
 const INTERNAL_WRITE_TOOL_NAME = "marea_write_file";
@@ -128,7 +129,10 @@ function upstreamDecision(
   }
   if (decision.kind !== action.kind) throw mismatch();
   if (decision.decision === "rejected")
-    return { type: "reject", reason: decision.reason ?? "The student rejected this action." };
+    return {
+      type: "reject",
+      reason: rejectionReason(decision.reason, "The student rejected this action."),
+    };
   // The kinds match, so the action has the same shape as its decision.
   if (decision.kind === "operation") {
     if (decision.result === null)

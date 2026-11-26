@@ -54,8 +54,10 @@ it.each([
 ])("rejects an invalid write path before it reaches the local event journal: %s", async (path) => {
   const { deep, runtime } = harness();
   deep.messages = [approvalRequired({ arguments: { path, content: "content" } })];
+  // The model gets the refusal as the tool's result; the path never reaches the journal.
   await expect(
     collect(runtime.streamMessage(message(), new AbortController().signal)),
-  ).rejects.toThrow("DeepAgents returned invalid write_file arguments.");
-  expect(deep.resumes).toHaveLength(0);
+  ).resolves.toEqual([{ type: "turn-completed" }]);
+  expect(deep.resumes).toHaveLength(1);
+  expect(deep.resumes[0]?.decision).toMatchObject({ type: "reject" });
 });

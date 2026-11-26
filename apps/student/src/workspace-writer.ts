@@ -19,6 +19,14 @@ export class WorkspaceEffectError extends Error {
   }
 }
 
+/** The file is not what the student reviewed; the model can read it again and propose anew. */
+export class StaleReviewError extends WorkspaceEffectError {
+  constructor() {
+    super("The file changed after review.");
+    this.name = "StaleReviewError";
+  }
+}
+
 function digest(content: string): Sha256Digest {
   return Sha256DigestSchema.parse(`sha256:${createHash("sha256").update(content).digest("hex")}`);
 }
@@ -79,7 +87,7 @@ class CrashSafeWorkspaceWriter implements GuardedWorkspaceWriter {
     }
     const beforeDigest = await readDigest(this.options.workspace, path);
     if (expectedDigest !== undefined && beforeDigest !== expectedDigest)
-      throw new WorkspaceEffectError("The file changed after review.");
+      throw new StaleReviewError();
     const prepared: EffectLedgerRecord = {
       beforeDigest,
       contentDigest,

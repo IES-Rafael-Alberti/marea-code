@@ -1,7 +1,8 @@
 import { RequiredSkillContext } from "./required-skill-context.js";
 import { deniesWrite, socraticOptions } from "./operation-mediator.js";
 import { OperationMediator } from "./operation-mediator.js";
-import type { WriteRequest } from "./write-request.js";
+import { rejectionReason } from "./rejection-reason.js";
+import { writeRequestProblem, type WriteRequest } from "./write-request.js";
 import { parseApprovalId, parseWriteRequest, StudentAgentBridgeError } from "./bridge-parsing.js";
 export { StudentAgentBridgeError } from "./bridge-parsing.js";
 import type { OperationTurn } from "./operation-contracts.js";
@@ -10,6 +11,8 @@ import {
   QUESTION_TOOL_NAME,
   parseQuestions,
   questionAnswers,
+  questionsProblem,
+  type AgentEvent as DeepAgentEvent,
   type AgentRuntime as DeepAgentRuntime,
   type AgentRuntimeOptions as DeepAgentRuntimeOptions,
   type ApprovalTool,
@@ -89,6 +92,10 @@ class ApprovalToolMediator implements ApprovalTool {
     this.authorized = [];
   }
 
+  validate(arguments_: Readonly<Record<string, string>>): string | null {
+    return writeRequestProblem(arguments_);
+  }
+
   // The upstream tool contract is asynchronous even though this mediator performs no I/O.
   // eslint-disable-next-line @typescript-eslint/require-await
   async execute(arguments_: Readonly<Record<string, string>>): Promise<string> {
@@ -134,6 +141,22 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
       context,
       turn.messageId,
       assistantText,
+      // A pending call saved before arguments were checked is answered, not replayed forever.
+      (event, textSoFar) => {
+        const reason = unreviewable(event, context);
+        if (reason === null) return null;
+        return context.runtime.resumeApproval(
+          {
+            assistantText: textSoFar,
+            messageId: turn.messageId,
+            sessionId: turn.runId,
+            reviewId: event.reviewId,
+            toolName: event.toolName,
+            decision: { type: "reject", reason },
+          },
+          signal,
+        );
+      },
     );
   }
 
@@ -270,7 +293,10 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
             decision:
               turn.decision === "approved"
                 ? { type: "approve" }
-                : { type: "reject", reason: turn.reason ?? "The student rejected this operation." },
+                : {
+                    type: "reject",
+                    reason: rejectionReason(turn.reason, "The student rejected this operation."),
+                  },
           },
           signal,
         ),
@@ -356,7 +382,10 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
                 ? { type: "approve" }
                 : {
                     type: "reject",
-                    reason: turn.reason ?? "The student rejected the workspace edit.",
+                    reason: rejectionReason(
+                      turn.reason,
+                      "The student rejected the workspace edit.",
+                    ),
                   },
           },
           signal,
@@ -375,12 +404,21 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
     context: RunContext,
     messageId: string,
     initialAssistantText: string,
+    answerUnreviewable?: (
+      event: Extract<DeepAgentEvent, { readonly type: "tool-approval-required" }>,
+      assistantText: string,
+    ) => AsyncIterable<DeepAgentEvent> | null,
   ): AsyncGenerator<AgentEvent> {
     let pendingApprovalId: ApprovalId | null = null;
     let assistantText = initialAssistantText;
     for await (const event of events) {
       if (event.type === "tool-approval-submitted") continue;
       if (event.type === "tool-approval-required") {
+        const answered = answerUnreviewable?.(event, assistantText) ?? null;
+        if (answered !== null) {
+          yield* this.translate(answered, context, messageId, assistantText, answerUnreviewable);
+          return;
+        }
         const approval = approvalEventFor(event, context);
         if (approval.type === "write-approval-required") {
           if (pendingApprovalId === approval.approvalId) {
@@ -398,6 +436,20 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
       }
     }
   }
+}
+
+/** Why a single call cannot be shown to the student, or null; a batch is never answered here. */
+function unreviewable(
+  event: Extract<DeepAgentEvent, { readonly type: "tool-approval-required" }>,
+  context: RunContext,
+): string | null {
+  if (event.actions.length > 1) return null;
+  if (event.toolName === QUESTION_TOOL_NAME) return questionsProblem(event.arguments);
+  const operation = context.operations.find((candidate) => candidate.name === event.toolName);
+  if (operation !== undefined) return operation.validate(event.arguments);
+  return event.toolName === INTERNAL_WRITE_TOOL_NAME
+    ? context.mediator.validate(event.arguments)
+    : null;
 }
 
 /** The student-side request for one interrupt: a batch, questions, an operation or a write. */
