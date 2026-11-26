@@ -91,6 +91,7 @@ export function EvaluationEditor({
                     changeCriterion(index, { learningNote: event.currentTarget.value });
                   }}
                 />
+                <small>{m.learningNoteHelp}</small>
               </label>
             )}
             <label>

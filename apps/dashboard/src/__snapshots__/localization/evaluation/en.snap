@@ -29,6 +29,7 @@
   "generation": "Generation",
   "heading": "Session evaluation",
   "learningNote": "Summary for the tutor",
+  "learningNoteHelp": "On approval it is added to the learning notes history with the session date. Nothing is added when the criterion has no evidence or the note is empty.",
   "load": "Load sessions",
   "method": "Evaluation method",
   "more": "Older sessions",

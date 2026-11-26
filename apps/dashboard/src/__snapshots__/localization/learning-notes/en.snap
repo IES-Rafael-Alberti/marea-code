@@ -1,0 +1,32 @@
+{
+  "budget": "The model budget is exhausted; try again later.",
+  "cancel": "Cancel",
+  "conflict": "A new note was added while you were editing; review it.",
+  "count": [Function],
+  "empty": "There are no notes to summarize.",
+  "error": "The notes could not be loaded or saved. Try again.",
+  "interpolated": {
+    "count": [
+      "1 characters",
+      "8,000 characters",
+      "200,000 characters",
+    ],
+    "notice": [
+      "Ana's notes did not fit; they were summarized automatically for the session of 07/09/2026. Consider summarizing them.",
+      "Ana's notes did not fit; only the most recent ones were used for the session of 07/09/2026. Consider summarizing them.",
+    ],
+  },
+  "long": "The notes history is very long; consider summarizing it.",
+  "longSummary": "⚠ long notes",
+  "notes": "Learning notes",
+  "notesHelp": "Private history the tutor receives in the next sessions. Each approval adds a line with the session date; you can correct, summarize or clear it.",
+  "notice": [Function],
+  "omitted": "The oldest notes are not shown because the history is too long; if you save, the text you see replaces the whole history.",
+  "proposalFailed": "A summary could not be proposed. The text has not changed.",
+  "propose": "Propose summary",
+  "proposed": "Proposed summary: review it before saving. Nothing has been saved yet.",
+  "save": "Save",
+  "tooLarge": "The notes are too long for the model; shorten them by hand.",
+  "tooLong": "The text exceeds the 200,000-character maximum; shorten it to save.",
+  "unconfigured": "The class has no model configured to propose summaries.",
+}

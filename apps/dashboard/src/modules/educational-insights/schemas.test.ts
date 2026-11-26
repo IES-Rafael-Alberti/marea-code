@@ -31,6 +31,7 @@ const criterion = {
   level: 1,
   levels: ["1", "2", "3", "4"],
   epoch: 0,
+  notesLength: 0,
 };
 const evidence = {
   runId: "run",
@@ -73,7 +74,9 @@ it("keeps every field of the dashboard's responses", async () => {
     [
       overviewSchema,
       {
-        students: [{ id: "s", displayName: "Ana", revision: "v", entries: [criterion] }],
+        students: [
+          { id: "s", displayName: "Ana", revision: "v", entries: [criterion], notesNotice: null },
+        ],
         next: null,
       },
     ],
@@ -119,4 +122,35 @@ it("accepts a report with or without a failure code and an unavailable reason", 
   );
   expect(item.parse(evidence).reason).toBeUndefined();
   expect(item.safeParse({ ...evidence, reason: 1 }).success).toBe(false);
+});
+
+it("keeps the learning notes fields and the session notice", async () => {
+  const { notesSchema, overviewSchema, proposalSchema, savedNotesSchema } = await load();
+  const notes = { notes: "07/09/2026: N.", omitted: 0, revision: "sha256:a" };
+  expect(notesSchema.parse(notes)).toStrictEqual(notes);
+  expect(savedNotesSchema.parse({ ...notes, conflict: true })).toStrictEqual({
+    ...notes,
+    conflict: true,
+  });
+  expect(savedNotesSchema.safeParse(notes).success).toBe(false);
+  for (const value of [
+    { proposal: "S", failure: null },
+    { proposal: null, failure: "budget" },
+  ])
+    expect(proposalSchema.parse(value)).toStrictEqual(value);
+  expect(proposalSchema.safeParse({ proposal: null }).success).toBe(false);
+  const student = (notesNotice: object | null) => ({
+    students: [{ id: "s", displayName: "Ana", revision: "v", entries: [criterion], notesNotice }],
+    next: null,
+  });
+  for (const shortened of ["summarized", "trimmed"]) {
+    const value = student({ sessionDate: "07/09/2026", shortened });
+    expect(overviewSchema.parse(value)).toStrictEqual(value);
+  }
+  expect(overviewSchema.safeParse(student({ sessionDate: "x", shortened: "" })).success).toBe(
+    false,
+  );
+  expect(overviewSchema.safeParse(student({ shortened: "trimmed" })).success).toBe(false);
+  const old = { ...student(null).students[0], entries: [{ ...criterion, notesLength: "1" }] };
+  expect(overviewSchema.safeParse({ students: [old], next: null }).success).toBe(false);
 });

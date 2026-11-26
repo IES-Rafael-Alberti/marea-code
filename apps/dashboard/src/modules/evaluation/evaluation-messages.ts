@@ -5,6 +5,8 @@ export function evaluationMessages(locale: Locale) {
     ? {
         heading: "Session evaluation",
         learningNote: "Summary for the tutor",
+        learningNoteHelp:
+          "On approval it is added to the learning notes history with the session date. Nothing is added when the criterion has no evidence or the note is empty.",
         review: "Evaluation content",
         results: { passed: "Met", "not-passed": "Not met", "no-evidence": "No evidence" },
         confidences: { low: "Low", medium: "Medium", high: "High" },
@@ -53,6 +55,8 @@ export function evaluationMessages(locale: Locale) {
       ? {
           heading: "Saioen ebaluazioa",
           learningNote: "Tutorearentzako laburpena",
+          learningNoteHelp:
+            "Onartzean, ikaskuntza-oharren historiari gehituko zaio saioaren datarekin. Irizpideak ebidentziarik ez badu edo oharra hutsik badago, ez da ezer gehitzen.",
           review: "Ebaluazio-edukia",
           results: {
             passed: "Beteta",
@@ -105,6 +109,8 @@ export function evaluationMessages(locale: Locale) {
       : {
           heading: "Evaluación de sesiones",
           learningNote: "Síntesis para el tutor",
+          learningNoteHelp:
+            "Al aprobar, se añadirá al historial de notas de aprendizaje con la fecha de la sesión. Si el criterio no tiene evidencia o la nota está vacía, no se añade nada.",
           review: "Contenido de evaluación",
           results: {
             passed: "Cumplido",

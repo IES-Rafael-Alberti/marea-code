@@ -67,7 +67,7 @@ const en = {
   affected: "Affected / assessed",
   more: "More",
   adaptationNote:
-    "Changes apply to new tutoring sessions. Manual adjustments prevent older sessions from advancing these criteria.",
+    "Changes apply to new tutoring sessions. Manual adjustments prevent older sessions from advancing these criteria and do not change the learning notes.",
   mapNote: "Attention estimates are not grades. Silence alone does not mean difficulty.",
   reportNote: "Provisional analyses do not approve evaluations or change learner progress.",
   reasonRequired: "A reason is required",
@@ -164,7 +164,7 @@ const es: Messages = {
   affected: "Afectados / evaluables",
   more: "Más",
   adaptationNote:
-    "Los cambios se aplican a nuevas sesiones de tutoría. Los ajustes manuales impiden que sesiones anteriores hagan avanzar estos criterios.",
+    "Los cambios se aplican a nuevas sesiones de tutoría. Los ajustes manuales impiden que sesiones anteriores hagan avanzar estos criterios y no modifican las notas de aprendizaje.",
   mapNote:
     "Las estimaciones de atención no son calificaciones. El silencio por sí solo no indica dificultad.",
   reportNote: "Los análisis provisionales no aprueban evaluaciones ni modifican el progreso.",
@@ -261,7 +261,7 @@ const eu: Messages = {
   affected: "Kaltetuak / ebaluagarriak",
   more: "Gehiago",
   adaptationNote:
-    "Aldaketak tutoretza saio berriei aplikatzen zaizkie. Eskuzko doikuntzek aurreko saioek irizpideak aurreratzea eragozten dute.",
+    "Aldaketak tutoretza saio berriei aplikatzen zaizkie. Eskuzko doikuntzek aurreko saioek irizpideak aurreratzea eragozten dute eta ez dituzte ikaskuntza-oharrak aldatzen.",
   mapNote:
     "Arreta estimazioak ez dira kalifikazioak. Isiltasunak bakarrik ez du zailtasunik adierazten.",
   reportNote: "Behin-behineko analisiek ez dituzte ebaluazioak onartzen edo aurrerapena aldatzen.",

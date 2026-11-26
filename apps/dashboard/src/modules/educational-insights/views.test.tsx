@@ -53,6 +53,7 @@ describe("educational dashboard views", () => {
           id: "student",
           displayName: "Ana",
           revision: "revision:1",
+          notesNotice: null,
           entries: [
             criterion,
             { ...criterion, key: "done", code: "C2", level: 4 },

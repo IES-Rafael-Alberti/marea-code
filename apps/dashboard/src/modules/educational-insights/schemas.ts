@@ -36,12 +36,31 @@ export const progressSchema = z.object({
       level: z.number(),
       levels: z.array(z.string()).length(4),
       epoch: z.number(),
+      notesLength: z.number(),
     }),
   ),
 });
 export const overviewSchema = z.object({
-  students: z.array(progressSchema.extend({ id: z.string(), displayName: z.string() })),
+  students: z.array(
+    progressSchema.extend({
+      id: z.string(),
+      displayName: z.string(),
+      notesNotice: z
+        .object({ sessionDate: z.string(), shortened: z.enum(["summarized", "trimmed"]) })
+        .nullable(),
+    }),
+  ),
   next: z.string().nullable(),
+});
+export const notesSchema = z.object({
+  notes: z.string(),
+  omitted: z.number(),
+  revision: z.string(),
+});
+export const savedNotesSchema = notesSchema.extend({ conflict: z.boolean() });
+export const proposalSchema = z.object({
+  proposal: z.string().nullable(),
+  failure: z.string().nullable(),
 });
 export const reportSchema = z.object({
   budget: budgetSchema.nullable().optional(),

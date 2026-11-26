@@ -1,5 +1,6 @@
 import { insightsMessages } from "./modules/educational-insights/messages.js";
 import { failureMessages } from "./modules/educational-insights/failure-messages.js";
+import { notesMessages } from "./modules/educational-insights/notes-messages.js";
 import { describe, expect, it } from "vitest";
 
 import { governanceMessages } from "./modules/governance/governance-messages.js";
@@ -21,6 +22,19 @@ const catalogs = {
     ...insightsMessages(locale),
     ...failureMessages(locale),
   }),
+  "learning-notes": (locale: Parameters<typeof notesMessages>[0]) => {
+    const messages = notesMessages(locale);
+    return {
+      ...messages,
+      interpolated: {
+        count: [messages.count(1), messages.count(8000), messages.count(200_000)],
+        notice: [
+          messages.notice("Ana", "07/09/2026", true),
+          messages.notice("Ana", "07/09/2026", false),
+        ],
+      },
+    };
+  },
   session: (locale: Parameters<typeof sessionMessages>[0]) => {
     const messages = sessionMessages(locale);
     return { ...messages, interpolated: { signedInAs: messages.signedInAs("Ada") } };

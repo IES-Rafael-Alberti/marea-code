@@ -1,0 +1,32 @@
+{
+  "budget": "Ereduaren aurrekontua agortu da; saiatu geroago.",
+  "cancel": "Utzi",
+  "conflict": "Ohar berri bat gehitu da editatzen ari zinen bitartean; berrikusi.",
+  "count": [Function],
+  "empty": "Ez dago laburtzeko oharrik.",
+  "error": "Ezin izan dira oharrak kargatu edo gorde. Saiatu berriro.",
+  "interpolated": {
+    "count": [
+      "1 karaktere",
+      "8.000 karaktere",
+      "200.000 karaktere",
+    ],
+    "notice": [
+      "Ana(r)en oharrak ez ziren sartzen; 07/09/2026 eguneko saiorako automatikoki laburtu ziren. Komeni da laburtzea.",
+      "Ana(r)en oharrak ez ziren sartzen; 07/09/2026 eguneko saioan berrienak bakarrik erabili ziren. Komeni da laburtzea.",
+    ],
+  },
+  "long": "Oharren historia oso luzea da; komeni da laburtzea.",
+  "longSummary": "⚠ ohar luzeak",
+  "notes": "Ikaskuntza-oharrak",
+  "notesHelp": "Tutoreak hurrengo saioetan jasotzen duen historia pribatua. Onarpen bakoitzak saioaren data duen lerro bat gehitzen du; zuzendu, laburtu edo hustu dezakezu.",
+  "notice": [Function],
+  "omitted": "Ohar zaharrenak ez dira erakusten historia luzeegia delako; gordetzen baduzu, ikusten duzun testuak historia osoa ordeztuko du.",
+  "proposalFailed": "Ezin izan da laburpenik proposatu. Testua ez da aldatu.",
+  "propose": "Proposatu laburpena",
+  "proposed": "Proposatutako laburpena: berrikusi gorde aurretik. Oraindik ez da ezer gorde.",
+  "save": "Gorde",
+  "tooLarge": "Oharrak luzeegiak dira eredurako; laburtu eskuz.",
+  "tooLong": "Testuak 200 000 karaktereko muga gainditzen du; laburtu gorde ahal izateko.",
+  "unconfigured": "Gelak ez du laburpenak proposatzeko eredurik konfiguratuta.",
+}

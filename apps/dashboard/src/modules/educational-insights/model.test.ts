@@ -46,7 +46,7 @@ const map = { enabled: true, configured: true, entries: [] };
 const mapData = map;
 const progress = { revision: "revision:one", entries: [] };
 const overview = {
-  students: [{ id: "student", displayName: "Ana", ...progress }],
+  students: [{ id: "student", displayName: "Ana", notesNotice: null, ...progress }],
   next: null,
 };
 const report = {

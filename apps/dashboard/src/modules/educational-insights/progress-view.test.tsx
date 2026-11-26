@@ -1,5 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { StudentProgress } from "./progress-view.js";
+import { CriterionNotes, LONG_NOTES_CHARACTERS } from "./notes-editor.js";
+import { notesMessages } from "./notes-messages.js";
 import { button, elements, model, props, criterion } from "./interactions.fixture.js";
 const hooks = vi.hoisted(() => ({ values: [] as (string | number)[], index: 0 }));
 vi.mock("react", async (original) => ({
@@ -19,10 +21,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
   hooks.values = [];
 });
-const student = {
+const student: Parameters<typeof StudentProgress>[0]["student"] = {
   id: "student",
   displayName: "Ana",
   revision: "v1",
+  notesNotice: null,
   entries: [
     criterion,
     { ...criterion, key: "next" },
@@ -95,4 +98,43 @@ it("groups every criterion by skill in encounter order without Map.groupBy", () 
     expect.objectContaining({ keys: ["key", "next"] }),
   );
   expect(state.action).toHaveBeenNthCalledWith(2, expect.objectContaining({ keys: ["other"] }));
+});
+
+it("flags long notes, shows the session notice and reloads after saving notes", () => {
+  const state = model();
+  const notes = notesMessages("es");
+  const summary = (value: typeof student) =>
+    elements(render(state, value)).find((e) => e.type === "span")?.props.children;
+  expect(summary(student)).not.toContain(notes.longSummary);
+  expect(
+    summary({ ...student, entries: [{ ...criterion, notesLength: LONG_NOTES_CHARACTERS }] }),
+  ).not.toContain(notes.longSummary);
+  expect(
+    summary({ ...student, entries: [{ ...criterion, notesLength: LONG_NOTES_CHARACTERS + 1 }] }),
+  ).toBe(`1 ${state.m.criteria} · 0 ${state.m.consolidatedCount} · ${notes.longSummary}`);
+  // One long criterion is enough.
+  expect(
+    summary({
+      ...student,
+      entries: [criterion, { ...criterion, key: "long", notesLength: LONG_NOTES_CHARACTERS + 1 }],
+    }),
+  ).toContain(notes.longSummary);
+  const status = (value: typeof student) =>
+    elements(render(state, value)).find((e) => e.props.role === "status")?.props.children;
+  expect(status(student)).toBeUndefined();
+  for (const shortened of ["summarized", "trimmed"] as const)
+    expect(status({ ...student, notesNotice: { sessionDate: "07/09/2026", shortened } })).toBe(
+      notes.notice("Ana", "07/09/2026", shortened === "summarized"),
+    );
+  const editors = elements(render(state)).filter((e) => e.type === CriterionNotes);
+  expect(editors.map((e) => e.props)).toMatchObject(
+    ["key", "next", "other"].map((criterionKey) => ({
+      classId: props.classId,
+      studentId: "student",
+      criterionKey,
+      locale: "es",
+    })),
+  );
+  (editors[0]?.props as { onSaved: () => void }).onSaved();
+  expect(state.load).toHaveBeenCalledOnce();
 });

@@ -29,6 +29,7 @@
   "generation": "Generación",
   "heading": "Evaluación de sesiones",
   "learningNote": "Síntesis para el tutor",
+  "learningNoteHelp": "Al aprobar, se añadirá al historial de notas de aprendizaje con la fecha de la sesión. Si el criterio no tiene evidencia o la nota está vacía, no se añade nada.",
   "load": "Cargar sesiones",
   "method": "Método de evaluación",
   "more": "Sesiones anteriores",
