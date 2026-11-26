@@ -86,12 +86,23 @@ export class ReadyDatabase implements SqliteDatabasePort {
   public applied: DatabaseRow[] = [];
   public closeError = false;
   public closeCalls = 0;
+  public readonly backups: string[] = [];
+  public backupError = false;
+  public pageCount = 1;
+  public pageSize = 4096;
   public readonly executions: string[] = [];
   public integrity = "ok";
   public schema: DatabaseRow[] = [];
   public serializeError = false;
   public serializedBytes = Uint8Array.from([1, 2, 3]);
   public userVersion = 0;
+
+  public backupTo(destinationPath: string): void {
+    if (this.backupError) {
+      throw new Error("private backup detail");
+    }
+    this.backups.push(destinationPath);
+  }
 
   public close(): void {
     this.closeCalls += 1;
@@ -126,6 +137,8 @@ export class ReadyDatabase implements SqliteDatabasePort {
       ["PRAGMA foreign_keys", { foreign_keys: 1n }],
       ["PRAGMA synchronous", { synchronous: 2n }],
       ["PRAGMA quick_check", { quick_check: this.integrity }],
+      ["PRAGMA page_count", { page_count: BigInt(this.pageCount) }],
+      ["PRAGMA page_size", { page_size: BigInt(this.pageSize) }],
       ["PRAGMA user_version", { user_version: BigInt(this.userVersion) }],
     ]);
     return rows.get(sql);
@@ -164,11 +177,17 @@ export function dependencies(
   change: Partial<StorageDependencies> = {},
 ): StorageDependencies {
   return {
+    backupFileCopier: {
+      installFile(_databasePath, _sourcePath, _sha256, validateStagedFile): void {
+        validateStagedFile("/tmp/staged.sqlite");
+      },
+    },
     backupFiles: {
       installNew(_databasePath, _bytes, validateStagedFile): void {
         validateStagedFile("/tmp/staged.sqlite");
       },
     },
+    diskSpace: { freeBytes: () => undefined },
     driver: driverFor(() => database),
     initializationLock: {
       runExclusive<T>(_databasePath: string, operation: () => T): T {
@@ -199,6 +218,7 @@ export function expectCode(
     "backup-failed": "The SQLite backup could not be created.",
     "backup-invalid": "The SQLite backup is invalid.",
     "database-unavailable": "The SQLite database could not be initialized.",
+    "insufficient-disk-space": "The SQLite backup needs more free disk space.",
     "invalid-database-path": "The SQLite database path must be an absolute persistent file path.",
     "migration-drift": "The database migration history does not match this release.",
     "migration-invalid": "The migration catalog is invalid.",

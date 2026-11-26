@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
@@ -13,7 +12,6 @@ import { join } from "node:path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { SqliteBackup } from "@marea/sqlite-storage";
 import {
   RECOVERY_BUNDLE_FORMAT,
   RECOVERY_BUNDLE_SCHEMA_VERSION,
@@ -25,7 +23,7 @@ import {
 } from "./index.js";
 import { ensureRecoveryError } from "./contracts.js";
 import { lastReopenPath, sqliteCloseCount } from "./recovery-sqlite-mocks.fixture.js";
-import { recoveryInput } from "./recovery-test-state.fixture.js";
+import { fileBackup, recoveryInput } from "./recovery-test-state.fixture.js";
 import { expectRecoveryError } from "./recovery-assertions.fixture.js";
 import { startRecoveryTest } from "./recovery-test-environment.fixture.js";
 vi.mock(
@@ -146,9 +144,9 @@ describe("recovery bundle service", () => {
     createRecoveryBundle(join(root(), "ordered"), {
       ...backupInput,
       createBackup: {
-        createBackup: () => {
+        createBackupFile: (destinationPath) => {
           calls.push("backup");
-          return backupInput.createBackup.createBackup();
+          return backupInput.createBackup.createBackupFile(destinationPath);
         },
       },
       createExclusive: (operation) => {
@@ -175,8 +173,8 @@ describe("recovery bundle service", () => {
         createRecoveryBundle(destination, {
           ...captureInput,
           createBackup: {
-            createBackup: () => {
-              const backup = captureInput.createBackup.createBackup();
+            createBackupFile: (destinationPath) => {
+              const backup = captureInput.createBackup.createBackupFile(destinationPath);
               mkdirSync(destination, { recursive: true });
               writeFileSync(join(destination, "sentinel"), "untouched");
               return backup;
@@ -194,14 +192,7 @@ describe("recovery bundle service", () => {
     const bytes = new TextEncoder().encode("synthetic-sqlite");
     const legacy = createRecoveryBundle(join(root(), "legacy"), {
       ...input(),
-      createBackup: {
-        createBackup: () => ({
-          bytes,
-          format: "sqlite3",
-          schemaVersion: 2,
-          sha256: createHash("sha256").update(bytes).digest("hex"),
-        }),
-      },
+      createBackup: fileBackup(bytes, 2),
       release: { id: "release:legacy", schemaVersion: 2 },
     });
     expect(legacy.manifest.database.schemaVersion).toBe(2);
@@ -251,7 +242,7 @@ describe("recovery bundle service", () => {
         createRecoveryBundle(join(root(), "bundle-database"), {
           ...input(),
           createBackup: {
-            createBackup: () => {
+            createBackupFile: () => {
               throw new Error("database unavailable");
             },
           },
@@ -331,7 +322,7 @@ describe("recovery bundle service", () => {
         createRecoveryBundle(join(root(), "bundle"), {
           ...input(),
           createBackup: {
-            createBackup: () => {
+            createBackupFile: () => {
               throw new Error("backup failed");
             },
           },
@@ -365,29 +356,25 @@ describe("recovery bundle service", () => {
 
   it("rejects inconsistent captured backup metadata", () => {
     writeState();
-    const cases = [
-      { format: "not-sqlite" },
-      { schemaVersion: 2 },
-      { sha256: "0".repeat(64) },
-    ] as const;
+    const cases = [{ format: "not-sqlite" }, { schemaVersion: 2 }] as const;
     for (const [index, change] of cases.entries()) {
-      const bytes = new TextEncoder().encode("synthetic-sqlite");
-      const backup = {
-        bytes,
-        format: "sqlite3" as const,
-        schemaVersion: 1,
-        sha256: createHash("sha256").update(bytes).digest("hex"),
-        ...change,
-      } as unknown as SqliteBackup;
+      const artifactPath = join(root(), `invalid-backup-${String(index)}`);
       expectRecoveryError(
         () =>
-          createRecoveryBundle(join(root(), `invalid-backup-${String(index)}`), {
+          createRecoveryBundle(artifactPath, {
             ...input(),
-            createBackup: { createBackup: () => backup },
+            createBackup: {
+              createBackupFile: (destinationPath) => {
+                fileBackup(new TextEncoder().encode("synthetic-sqlite")).createBackupFile(
+                  destinationPath,
+                );
+                return { format: "sqlite3", schemaVersion: 1, ...change } as never;
+              },
+            },
           }),
         "bundle-database-invalid",
       );
-      expect(existsSync(join(root(), `invalid-backup-${String(index)}`))).toBe(false);
+      expect(existsSync(artifactPath)).toBe(false);
     }
   });
 

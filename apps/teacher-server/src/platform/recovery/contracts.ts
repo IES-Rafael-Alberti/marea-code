@@ -9,6 +9,7 @@ export type RecoveryErrorCode =
   | "bundle-database-invalid"
   | "bundle-filesystem-invalid"
   | "bundle-input-invalid"
+  | "bundle-insufficient-space"
   | "bundle-manifest-invalid"
   | "bundle-maintenance-failed"
   | "bundle-restore-failed";
@@ -37,8 +38,13 @@ interface ReleaseIdentity {
   readonly schemaVersion: number;
 }
 
-export type RecoveryBackupCapability = Pick<SqliteStorage, "createBackup">;
+/** The database is written to a file by SQLite itself, so its size never has to fit in memory. */
+export type RecoveryBackupCapability = Pick<SqliteStorage, "createBackupFile">;
 
+/**
+ * Bounds for the state files of a bundle. The database is not counted: its size is limited only
+ * by the free space of the volume, which is checked before it is copied.
+ */
 export interface RecoveryBundleLimits {
   readonly fileCount: number;
   readonly fileBytes: number;

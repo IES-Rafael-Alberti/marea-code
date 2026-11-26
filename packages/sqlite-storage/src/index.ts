@@ -2,8 +2,10 @@ export {
   SQLITE_BACKUP_FORMAT,
   SqliteStorageError,
   type AppliedMigration,
+  type RestoreSqliteBackupFileOptions,
   type RestoreSqliteBackupOptions,
   type SqliteBackup,
+  type SqliteBackupFile,
   type SqliteDatabaseFile,
   type SqliteDatabaseFileOptions,
   type SqliteSchemaCatalog,
@@ -20,6 +22,7 @@ export {
   initializeSqliteStorage,
   openSqliteDatabaseFile,
   restoreSqliteBackup,
+  restoreSqliteBackupFile,
 } from "./storage.js";
 export {
   activateRetentionAuditSchema,

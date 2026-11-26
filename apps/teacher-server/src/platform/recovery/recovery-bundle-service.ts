@@ -1,16 +1,18 @@
 import { randomUUID } from "node:crypto";
-import { renameSync } from "node:fs";
+import { chmodSync, renameSync } from "node:fs";
 import { isAbsolute, join } from "node:path";
 
 import {
   initializeSqliteStorage,
-  restoreSqliteBackup,
+  restoreSqliteBackupFile,
+  SqliteStorageError,
   type SqliteSchemaCatalog,
 } from "@marea/sqlite-storage";
 import type { SqliteStorage } from "@marea/sqlite-storage";
 
 import {
   RECOVERY_BUNDLE_SCHEMA_VERSION,
+  RECOVERY_MANIFEST_BYTES,
   ensureRecoveryError,
   type RecoveryBundle,
   type RecoveryBundleInput,
@@ -23,6 +25,7 @@ import {
 import {
   copyVerifiedArtifactFile,
   ensureAbsentDirectory,
+  hashRegularFile,
   publishArtifactDirectory,
   readBoundedRegularFile,
   removeArtifactTree,
@@ -75,30 +78,40 @@ function validateRequiredPaths(input: RecoveryBundleInput): readonly string[] {
   return [...paths].toSorted((left, right) => left.localeCompare(right));
 }
 
-function captureDatabase(input: RecoveryBundleInput): {
-  readonly bytes: Uint8Array;
+/** What the operator needs to read: the space figures name both numbers and carry no path. */
+function captureFailure(error: unknown): RecoveryBundleError {
+  if (error instanceof SqliteStorageError && error.code === "insufficient-disk-space") {
+    return new RecoveryBundleError("bundle-insufficient-space", error.message);
+  }
+  return ensureRecoveryError(error, "bundle-database-invalid");
+}
+
+/** SQLite writes the database straight into the staging directory; it is hashed from disk. */
+function captureDatabase(
+  input: RecoveryBundleInput,
+  databasePath: string,
+): {
   readonly schemaVersion: number;
+  readonly sha256: string;
+  readonly sizeBytes: number;
 } {
   try {
-    const backup = input.createBackup.createBackup();
+    const backup = input.createBackup.createBackupFile(databasePath);
     const untrustedBackup = backup as {
       readonly format?: unknown;
       readonly schemaVersion?: unknown;
-      readonly sha256?: unknown;
     };
     if (
       untrustedBackup.format !== RECOVERY_SQLITE_BACKUP_FORMAT ||
-      untrustedBackup.schemaVersion !== input.release.schemaVersion ||
-      sha256Bytes(backup.bytes) !== untrustedBackup.sha256
+      untrustedBackup.schemaVersion !== input.release.schemaVersion
     ) {
       throw new RecoveryBundleError("bundle-database-invalid");
     }
-    if (backup.bytes.byteLength > input.limits.totalBytes) {
-      throw new RecoveryBundleError("bundle-input-invalid");
-    }
-    return Object.freeze({ bytes: backup.bytes, schemaVersion: backup.schemaVersion });
+    chmodSync(databasePath, 0o600);
+    const { sha256, sizeBytes } = hashRegularFile(databasePath, "bundle-database-invalid");
+    return Object.freeze({ schemaVersion: backup.schemaVersion, sha256, sizeBytes });
   } catch (error) {
-    throw ensureRecoveryError(error, "bundle-database-invalid");
+    throw captureFailure(error);
   }
 }
 
@@ -118,7 +131,8 @@ function validateInput(input: RecoveryBundleInput): readonly string[] {
   validateSourceRoot(input);
   const paths = validateRequiredPaths(input);
   if (
-    typeof (input.createBackup as RecoveryBackupCapability | undefined)?.createBackup !== "function"
+    typeof (input.createBackup as RecoveryBackupCapability | undefined)?.createBackupFile !==
+    "function"
   ) {
     throw new RecoveryBundleError("bundle-input-invalid");
   }
@@ -133,8 +147,8 @@ function buildManifest(
   return Object.freeze({
     database: Object.freeze({
       path: "database.sqlite",
-      sha256: sha256Bytes(database.bytes),
-      sizeBytes: database.bytes.byteLength,
+      sha256: database.sha256,
+      sizeBytes: database.sizeBytes,
       format: "sqlite3",
       schemaVersion: database.schemaVersion,
     }),
@@ -167,8 +181,8 @@ export function createRecoveryBundle(
   stageArtifactDirectory(stagingPath);
   try {
     const operation = (): void => {
-      const database = captureDatabase(input);
-      let aggregateBytes = database.bytes.byteLength;
+      const database = captureDatabase(input, join(stagingPath, "database.sqlite"));
+      let aggregateBytes = 0;
       const files = requiredPaths.map((path) => {
         const file = captureFile(input.sourceRoot, path, input.limits);
         aggregateBytes += file.bytes.byteLength;
@@ -176,13 +190,12 @@ export function createRecoveryBundle(
         return file;
       });
       const manifest = buildManifest(input, database, files);
-      writeArtifactBytes(join(stagingPath, "database.sqlite"), database.bytes, input.limits);
       for (const file of files)
         writeArtifactBytes(join(stagingPath, file.path), file.bytes, input.limits);
       manifestBytes = serializeManifest(manifest);
       writeArtifactBytes(join(stagingPath, "manifest.json"), manifestBytes, {
         ...input.limits,
-        fileBytes: input.limits.totalBytes,
+        fileBytes: RECOVERY_MANIFEST_BYTES,
       });
     };
     input.createExclusive(operation);
@@ -218,20 +231,18 @@ function verifyReleaseArtifact(
 
 function restoreDatabase(
   manifest: RecoveryBundleManifest,
-  databaseBytes: Uint8Array,
+  databaseFile: string,
   destinationRoot: string,
   schema: SqliteSchemaCatalog,
 ): string {
   const stagedPath = join(destinationRoot, `.database.sqlite.${randomUUID()}.restore`);
   let restored: SqliteStorage | undefined;
   try {
-    restored = restoreSqliteBackup({
-      backup: {
-        bytes: databaseBytes,
-        format: manifest.database.format,
-        schemaVersion: manifest.database.schemaVersion,
-        sha256: manifest.database.sha256,
-      },
+    restored = restoreSqliteBackupFile({
+      backupPath: databaseFile,
+      format: manifest.database.format,
+      schemaVersion: manifest.database.schemaVersion,
+      sha256: manifest.database.sha256,
       databasePath: stagedPath,
       schema,
     });
@@ -280,7 +291,7 @@ export function restoreRecoveryBundle(
       copyVerifiedArtifactFile(join(options.path, file.path), stagingPath, file, limits);
     verifyCopiedFiles(stagingPath, manifest, limits);
     const schema = options.schema ?? "application";
-    restoreDatabase(manifest, verifiedArtifact.database.bytes, stagingPath, schema);
+    restoreDatabase(manifest, verifiedArtifact.database.path, stagingPath, schema);
     publishArtifactDirectory(stagingPath, options.destinationRoot);
     try {
       return initializeSqliteStorage({

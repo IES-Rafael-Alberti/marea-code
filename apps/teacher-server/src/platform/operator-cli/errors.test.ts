@@ -16,6 +16,7 @@ describe("typed operator CLI exit classes", () => {
   it("maps recovery bundle failures to closed exit classes", () => {
     for (const [code, exit] of [
       ["bundle-input-invalid", 2],
+      ["bundle-insufficient-space", 5],
       ["bundle-destination-invalid", 4],
       ["bundle-manifest-invalid", 5],
       ["bundle-filesystem-invalid", 5],

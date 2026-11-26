@@ -1,14 +1,13 @@
 import { createHash } from "node:crypto";
-import { existsSync, writeFileSync } from "node:fs";
+import { constants, copyFileSync, existsSync, readFileSync } from "node:fs";
 
-const bytes = new TextEncoder().encode("synthetic-sqlite");
-const digest = createHash("sha256").update(bytes).digest("hex");
 let capturedPath = "";
 const capturedSchemas: unknown[] = [];
 let closeCount = 0;
 let restoredSchemaVersion = 1;
 let capturedRestoreBackup:
   | {
+      readonly backupPath: string;
       readonly bytes: Uint8Array;
       readonly format: string;
       readonly schemaVersion: number;
@@ -20,10 +19,6 @@ function storage(schemaVersion = 1) {
   return {
     close: () => {
       closeCount += 1;
-    },
-    createBackup: () => {
-      if (capturedPath.endsWith("backup-failure")) throw new Error("backup failed");
-      return { bytes, format: "sqlite3", schemaVersion: 1, sha256: digest };
     },
     schema: { version: schemaVersion },
   };
@@ -55,26 +50,33 @@ export default {
     capturedPath = options.databasePath;
     return storage(restoredSchemaVersion);
   },
-  restoreSqliteBackup: (options: {
-    backup: {
-      bytes: Uint8Array;
-      format: string;
-      schemaVersion: number;
-      sha256: string;
-    };
+  restoreSqliteBackupFile: (options: {
+    backupPath: string;
     databasePath: string;
+    format: string;
+    schemaVersion: number;
     schema?: string;
+    sha256: string;
   }) => {
     capturedSchemas.push(options.schema);
-    capturedRestoreBackup = options.backup;
+    const restoredBytes = readFileSync(options.backupPath);
+    capturedRestoreBackup = { ...options, bytes: restoredBytes };
     if (
-      (options.backup.schemaVersion !== 1 && options.backup.schemaVersion !== 2) ||
-      options.backup.format !== "sqlite3" ||
-      createHash("sha256").update(options.backup.bytes).digest("hex") !== options.backup.sha256
+      (options.schemaVersion !== 1 && options.schemaVersion !== 2) ||
+      options.format !== "sqlite3" ||
+      createHash("sha256").update(restoredBytes).digest("hex") !== options.sha256
     )
       throw new Error("restore rejected");
-    writeFileSync(options.databasePath, options.backup.bytes, { flag: "wx" });
-    restoredSchemaVersion = options.backup.schemaVersion === 2 ? 6 : 1;
+    copyFileSync(options.backupPath, options.databasePath, constants.COPYFILE_EXCL);
+    restoredSchemaVersion = options.schemaVersion === 2 ? 6 : 1;
     return storage(restoredSchemaVersion);
+  },
+  SqliteStorageError: class SqliteStorageError extends Error {
+    public readonly code: string;
+
+    public constructor(code: string, message: string) {
+      super(message);
+      this.code = code;
+    }
   },
 };

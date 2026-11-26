@@ -109,6 +109,7 @@ const OPERATIONS: Record<OperationsBoundaryError["code"], Exclude<ExitCode, 0>> 
 
 const RECOVERY: Record<RecoveryErrorCode, Exclude<ExitCode, 0>> = {
   "bundle-input-invalid": 2,
+  "bundle-insufficient-space": 5,
   "bundle-destination-invalid": 4,
   "bundle-manifest-invalid": 5,
   "bundle-filesystem-invalid": 5,

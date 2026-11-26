@@ -1,20 +1,28 @@
-import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import type { RecoveryBundleInput } from "./contracts.js";
+import type { RecoveryBackupCapability, RecoveryBundleInput } from "./contracts.js";
+
+/** A capability that writes synthetic bytes to the requested file, as SQLite does. */
+export function fileBackup(bytes: Uint8Array, schemaVersion = 1): RecoveryBackupCapability {
+  return {
+    createBackupFile: (destinationPath) => {
+      writeFileSync(destinationPath, bytes, { flag: "wx" });
+      return { format: "sqlite3", schemaVersion };
+    },
+  };
+}
 
 export function recoveryInput(root: string): RecoveryBundleInput {
   const bytes = new TextEncoder().encode("synthetic-sqlite");
-  const digest = createHash("sha256").update(bytes).digest("hex");
   const databasePath = join(root, "source.sqlite");
   return {
     createExclusive: (operation) => operation(),
     createBackup: {
-      createBackup: () => {
+      createBackupFile: (destinationPath) => {
         if (!existsSync(databasePath)) throw new Error("database unavailable");
-        return { bytes, format: "sqlite3", schemaVersion: 1, sha256: digest };
+        return fileBackup(bytes).createBackupFile(destinationPath);
       },
     },
     files: ["state/configuration.json", "state/snapshot.json"],

@@ -22,9 +22,8 @@ try {
   writeFileSync(join(stateRoot, "configuration.json"), "Teaching configuration bytes.");
   writeFileSync(join(stateRoot, "snapshots/run.json"), "Immutable run snapshot bytes.");
 
-  const createBackup = storage.createBackup.bind(storage);
   const bundle = createRecoveryBundle(join(root, "bundle"), {
-    createBackup: { createBackup },
+    createBackup: storage,
     createExclusive: (operation) => operation(),
     files: ["configuration.json", "snapshots/run.json"],
     limits: { fileBytes: 262_144, fileCount: 2, totalBytes: 1_048_576 },

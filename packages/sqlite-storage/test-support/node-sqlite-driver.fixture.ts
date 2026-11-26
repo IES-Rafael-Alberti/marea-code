@@ -22,6 +22,9 @@ export const nodeSqliteDriver: SqliteDriverPort = {
   open(databasePath: string): SqliteDatabasePort {
     const database = new DatabaseSync(databasePath);
     return {
+      backupTo: (destinationPath) => {
+        database.prepare("VACUUM INTO ?1").run(destinationPath);
+      },
       close: () => {
         database.close();
       },

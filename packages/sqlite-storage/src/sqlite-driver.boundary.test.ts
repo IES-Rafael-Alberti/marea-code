@@ -95,6 +95,16 @@ describe("Bun SQLite driver boundary", () => {
     }
   });
 
+  it("backs a database up to a file with VACUUM INTO and a bound path", () => {
+    const database = bunSqliteDriver.open("/data/marea.sqlite");
+    const native = nativeDatabase();
+
+    database.backupTo("/backups/database.sqlite");
+
+    expect(native.run).toHaveBeenCalledWith("VACUUM INTO ?", ["/backups/database.sqlite"]);
+    expect(native.serialize).not.toHaveBeenCalled();
+  });
+
   it("maps a missing row to undefined and finalizes after read failures", () => {
     const database = bunSqliteDriver.open("/data/marea.sqlite");
     const native = nativeDatabase();
