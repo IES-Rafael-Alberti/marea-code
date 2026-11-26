@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { createSessionsClient } from "./sessions-client.boundary.js";
-import { SESSIONS } from "../evaluation/evaluation.fixture.js";
+import { SESSIONS, NO_REVIEW } from "../evaluation/evaluation.fixture.js";
 function setup(patch: object = {}, status = 200) {
   const fetchRequest = vi.fn((_url: string, init: RequestInit) => {
     const body = JSON.parse(init.body as string) as { requestId: string };
@@ -10,7 +10,7 @@ function setup(patch: object = {}, status = 200) {
           ...SESSIONS,
           kind: "class-sessions-response",
           requestId: body.requestId,
-          runs: SESSIONS.runs.map((run) => ({ ...run, classId: "class:one" })),
+          runs: SESSIONS.runs.map((run) => ({ ...run, classId: "class:one", review: NO_REVIEW })),
           ...patch,
         }),
         { status },
@@ -39,9 +39,24 @@ it("queries bounded class pages with cookie authentication and correlation", asy
     beforeRunId: "run:prior",
   });
   await client.classes(null, signal);
-  expect(JSON.parse(fetchRequest.mock.calls[1]?.[1].body as string)).not.toHaveProperty(
-    "beforeRunId",
-  );
+  const unfiltered = JSON.parse(fetchRequest.mock.calls[1]?.[1].body as string) as object;
+  for (const key of ["beforeRunId", "runState", "evaluation", "evidence", "search"])
+    expect(unfiltered).not.toHaveProperty(key);
+  expect(unfiltered).toHaveProperty("includeReview", true);
+  await client.classes(null, signal, "class:one", {
+    runState: "closed",
+    evaluation: ["draft"],
+    evidence: "without",
+    search: "Ada",
+  });
+  expect(JSON.parse(fetchRequest.mock.calls[2]?.[1].body as string)).toMatchObject({
+    kind: "session-history-query",
+    includeReview: true,
+    runState: "closed",
+    evaluation: ["draft"],
+    evidence: "without",
+    search: "Ada",
+  });
   expect(client).toHaveProperty("history", expect.any(Function));
 });
 it("carries the closing client over the same authenticated fetch", async () => {
@@ -85,8 +100,8 @@ it("rejects mixed classes and an empty page advertising another page with a diag
   await expect(
     setup({
       runs: [
-        { ...SESSIONS.runs[0], classId: "class:one" },
-        { ...SESSIONS.runs[0], runId: "run:two", classId: "class:two" },
+        { ...SESSIONS.runs[0], classId: "class:one", review: NO_REVIEW },
+        { ...SESSIONS.runs[0], runId: "run:two", classId: "class:two", review: NO_REVIEW },
       ],
       nextBeforeRunId: null,
     }).client.classes(null, signal, "class:one"),

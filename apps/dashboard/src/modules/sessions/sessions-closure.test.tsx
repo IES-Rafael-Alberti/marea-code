@@ -4,7 +4,7 @@ import { expect, it, vi } from "vitest";
 
 import { createRunClosureClient } from "../run-closure/run-closure-client.boundary.js";
 import { EndClassSessionsControl, EndSessionControl } from "../run-closure/run-closure-controls.js";
-import { evaluationClientFixture, SESSIONS } from "../evaluation/evaluation.fixture.js";
+import { evaluationClientFixture, SESSIONS, NO_REVIEW } from "../evaluation/evaluation.fixture.js";
 import { ClassClosure, SelectedClosure } from "./sessions-closure.js";
 import { SessionsController } from "./sessions-controller.js";
 
@@ -20,8 +20,20 @@ function setup(withClosures: boolean) {
     ...SESSIONS,
     kind: "class-sessions-response",
     runs: [
-      { ...SESSIONS.runs[0], classId: "class:one", state: "active", closedAt: null },
-      { ...SESSIONS.runs[0], runId: "run:two", classId: "class:one", state: "closed" },
+      {
+        ...SESSIONS.runs[0],
+        classId: "class:one",
+        review: NO_REVIEW,
+        state: "active",
+        closedAt: null,
+      },
+      {
+        ...SESSIONS.runs[0],
+        runId: "run:two",
+        classId: "class:one",
+        review: NO_REVIEW,
+        state: "closed",
+      },
     ],
   });
   const refresh = vi.spyOn(controller, "refresh").mockResolvedValue();

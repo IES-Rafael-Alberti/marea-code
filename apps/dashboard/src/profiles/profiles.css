@@ -677,10 +677,25 @@ body {
 .session-state-closed {
   border: 1.5px solid var(--color-muted);
 }
+.session-review {
+  display: block;
+}
+/* What still needs the teacher stands out; an approval reads as done. */
+.session-review-draft,
+.session-review-failed {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.session-review-approved {
+  color: #2f7d4f;
+}
 @media (prefers-color-scheme: dark) {
   .session-state-active {
     background: #7fd39b;
     box-shadow: 0 0 0 2px #7fd39b22;
+  }
+  .session-review-approved {
+    color: #7fd39b;
   }
 }
 @media (max-width: 48rem) {
@@ -890,6 +905,27 @@ body {
   box-sizing: border-box;
   width: 100%;
   margin: 0 0 0.5rem;
+}
+/* The list owns the height left below its compact search and "show" choice. */
+.session-filters {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.workspace-view .session-list .session-filters :is(input, select) {
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  font-size: 0.875rem;
+}
+.workspace-view .session-list ul {
+  min-height: 0;
+}
+/* Paging stays a footer, visibly apart from the last, possibly clipped, row. */
+.workspace-view .session-list > .actions {
+  flex-shrink: 0;
+  margin: 0;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--color-border);
 }
 @media (max-width: 32rem) {
   .workspace-navigation {

@@ -6,6 +6,7 @@ import {
   HISTORY,
   SESSIONS as LEGACY_SESSIONS,
   NOW,
+  NO_REVIEW,
 } from "../evaluation/evaluation.fixture.js";
 import { EvaluationRequestError } from "../evaluation/evaluation-client.boundary.js";
 import { SessionsController, SESSION_POLL_MS } from "./sessions-controller.js";
@@ -13,7 +14,7 @@ import type { NoticeClient } from "./notice-client.boundary.js";
 const SESSIONS = ClassSessionsResponseSchema.parse({
   ...LEGACY_SESSIONS,
   kind: "class-sessions-response",
-  runs: LEGACY_SESSIONS.runs.map((run) => ({ ...run, classId: "class:one" })),
+  runs: LEGACY_SESSIONS.runs.map((run) => ({ ...run, classId: "class:one", review: NO_REVIEW })),
 });
 const notices: NoticeClient = { publish: vi.fn(), query: vi.fn() };
 const owned: SessionsController[] = [];
@@ -81,9 +82,9 @@ it("discards late history after rapid selection and class changes", async () => 
   await controller.chooseClass("class:two");
   expect(controller.state.runId).toBeNull();
   expect(controller.state.events).toEqual([]);
-  expect(client.classes).toHaveBeenLastCalledWith(null, expect.any(AbortSignal), "class:two");
+  expect(client.classes).toHaveBeenLastCalledWith(null, expect.any(AbortSignal), "class:two", {});
   await controller.chooseClass(null);
-  expect(client.classes).toHaveBeenLastCalledWith(null, expect.any(AbortSignal), undefined);
+  expect(client.classes).toHaveBeenLastCalledWith(null, expect.any(AbortSignal), undefined, {});
 });
 it("preserves the historical list page during polling and explicitly returns to newest", async () => {
   const { client, controller } = setup();
@@ -271,6 +272,7 @@ it("clears class context immediately, cancels the previous selection and preserv
   const { controller, client } = setup();
   expect(controller.state).toEqual({
     classId: null,
+    filters: {},
     runs: [],
     next: null,
     runId: null,
@@ -409,4 +411,31 @@ it("subscribes once to live invalidations and releases the subscription on dispo
   callbacks[0]?.();
   await vi.advanceTimersByTimeAsync(0);
   expect(client.classes).toHaveBeenCalledTimes(3);
+});
+
+it("lists from the newest match again when filters change, keeping the class and trimming search", async () => {
+  const { client, controller } = setup();
+  await controller.chooseClass("class:one");
+  await controller.more();
+  await controller.select("run:one");
+  await controller.filter({ evaluation: ["draft"], evidence: "with", search: "  Ada  " });
+  expect(controller.state).toMatchObject({
+    classId: "class:one",
+    filters: { evaluation: ["draft"], evidence: "with", search: "Ada" },
+    runId: null,
+  });
+  expect(client.classes).toHaveBeenLastCalledWith(null, expect.any(AbortSignal), "class:one", {
+    evaluation: ["draft"],
+    evidence: "with",
+    search: "Ada",
+  });
+  await controller.filter({ evidence: "without" });
+  expect(controller.state.filters).toEqual({ evidence: "without", search: undefined });
+  await controller.filter({ search: ` ${"a".repeat(100)} ` });
+  expect(controller.state.filters.search).toBe("a".repeat(80));
+  await controller.filter({ runState: "closed", search: "   " });
+  expect(controller.state.filters).toEqual({ runState: "closed", search: undefined });
+  await controller.refresh();
+  expect(client.classes.mock.lastCall?.[0]).toBeNull();
+  expect(client.classes.mock.lastCall?.[3]).toEqual({ runState: "closed", search: undefined });
 });

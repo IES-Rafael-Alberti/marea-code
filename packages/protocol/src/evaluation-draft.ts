@@ -4,6 +4,8 @@ import { SkillIdSchema } from "./identifiers.js";
 import { NoticeTextSchema } from "./notices.js";
 
 export const MAX_EVALUATION_DRAFT_BYTES = 2 * 1_024 * 1_024;
+/** Criteria one evaluation draft may assess. */
+export const MAX_EVALUATION_CRITERIA = 4_096;
 
 export const CriterionAssessmentSchema = z
   .object({
@@ -24,7 +26,7 @@ export const EvaluationDraftSchema = z
     studentFeedback: NoticeTextSchema,
     teacherNote: z.string().trim().max(16_384),
     difficulties: z.array(z.string().trim().min(1).max(2_000)).max(64).readonly(),
-    criteria: z.array(CriterionAssessmentSchema).max(4_096).readonly(),
+    criteria: z.array(CriterionAssessmentSchema).max(MAX_EVALUATION_CRITERIA).readonly(),
   })
   .strict()
   .refine(

@@ -48,6 +48,15 @@ export function evaluationResponse(evaluation: TeacherEvaluation | null = RECORD
   });
 }
 
+/** The review summary of a session nobody has evaluated yet. */
+export const NO_REVIEW = {
+  evaluation: "none",
+  criteria: 0,
+  evidenced: 0,
+  applied: 0,
+  raised: 0,
+} as const;
+
 export const SESSIONS = SessionHistoryResponseSchema.parse({
   kind: "session-history-response",
   protocolVersion: "0.1",

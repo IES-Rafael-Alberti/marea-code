@@ -12,6 +12,8 @@ import { ConversationEvent } from "./conversation-events.js";
 import { NoticePanel } from "./notice-panel.js";
 import { sessionTime } from "./session-time.js";
 import { ClassClosure, SelectedClosure } from "./sessions-closure.js";
+import { SessionReviewSummary } from "./session-review-summary.js";
+import { SessionFilterControls, showFilters } from "./session-filters.js";
 export interface SessionsModuleProperties {
   readonly locale: DashboardLocale;
   readonly classSelection?: boolean;
@@ -27,7 +29,7 @@ export function SessionsModule({
   const m = sessionsMessages(locale);
   const state = controller.state;
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [show, setShow] = useState("all");
   const [tab, setTab] = useState("conversation");
   const [unread, setUnread] = useState(false);
   const scroll = useRef<HTMLDivElement>(null);
@@ -43,13 +45,8 @@ export function SessionsModule({
     if (follow.current) element.scrollTop = element.scrollHeight;
     else setUnread(true);
   }, [state.events.length]);
-  const runs = state.runs.filter(
-    (run) =>
-      (filter === "all" || run.state === filter) &&
-      `${run.studentDisplayName} ${run.projectDisplayName}`
-        .toLocaleLowerCase(locale)
-        .includes(search.toLocaleLowerCase(locale)),
-  );
+  const runs = state.runs;
+  const filters = state.filters;
   const context = state.events.find((event) => event.eventType === "project-context");
   const selected = state.selected;
   const review = controller.review;
@@ -88,25 +85,19 @@ export function SessionsModule({
             </select>
           </label>
         )}
-        <input
-          aria-label={m.search}
-          placeholder={m.search}
-          value={search}
-          onChange={(event) => {
-            setSearch(event.currentTarget.value);
+        <SessionFilterControls
+          messages={m}
+          search={search}
+          show={show}
+          onSearch={(value) => {
+            setSearch(value);
+            void controller.filter({ ...filters, search: value });
+          }}
+          onShow={(value) => {
+            setShow(value);
+            void controller.filter(showFilters(value, filters.search));
           }}
         />
-        <select
-          aria-label={m.any}
-          value={filter}
-          onChange={(event) => {
-            setFilter(event.currentTarget.value);
-          }}
-        >
-          <option value="all">{m.any}</option>
-          <option value="active">{m.active}</option>
-          <option value="closed">{m.closed}</option>
-        </select>
         <ClassClosure controller={controller} locale={locale} classId={state.classId} runs={runs} />
         {runs.length === 0 && <p>{m.empty}</p>}
         <ul>
@@ -128,6 +119,9 @@ export function SessionsModule({
                   {classSelection ? ` · ${run.classDisplayName}` : ""} ·{" "}
                   {run.state === "active" ? m.active : m.closed}
                 </small>
+                {run.review !== undefined && (
+                  <SessionReviewSummary review={run.review} messages={m} />
+                )}
               </button>
             </li>
           ))}

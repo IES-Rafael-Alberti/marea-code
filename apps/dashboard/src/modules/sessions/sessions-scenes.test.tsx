@@ -10,7 +10,12 @@ import {
 import { SessionsModule } from "./sessions-module.js";
 import { SessionsController } from "./sessions-controller.js";
 import { sessionsMessages } from "./sessions-messages.js";
-import { evaluationClientFixture, SESSIONS, HISTORY } from "../evaluation/evaluation.fixture.js";
+import {
+  evaluationClientFixture,
+  SESSIONS,
+  HISTORY,
+  NO_REVIEW,
+} from "../evaluation/evaluation.fixture.js";
 
 it.each(["en", "es"] as const)(
   "preserves the complete %s classroom copy and readable presentation",
@@ -19,7 +24,7 @@ it.each(["en", "es"] as const)(
     const page = ClassSessionsResponseSchema.parse({
       ...SESSIONS,
       kind: "class-sessions-response",
-      runs: SESSIONS.runs.map((run) => ({ ...run, classId: "class:one" })),
+      runs: SESSIONS.runs.map((run) => ({ ...run, classId: "class:one", review: NO_REVIEW })),
     });
     const client = { ...evaluationClientFixture(), classes: vi.fn().mockResolvedValue(page) };
     client.history.mockResolvedValue(

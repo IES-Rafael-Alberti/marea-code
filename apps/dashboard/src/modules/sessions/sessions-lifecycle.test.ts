@@ -2,11 +2,16 @@ import { afterEach, expect, it, vi } from "vitest";
 import { ClassSessionsResponseSchema } from "@marea/protocol";
 import { SessionsController } from "./sessions-controller.js";
 import { EvaluationRequestError } from "../evaluation/evaluation-client.boundary.js";
-import { evaluationClientFixture, HISTORY, SESSIONS } from "../evaluation/evaluation.fixture.js";
+import {
+  evaluationClientFixture,
+  HISTORY,
+  SESSIONS,
+  NO_REVIEW,
+} from "../evaluation/evaluation.fixture.js";
 const page = ClassSessionsResponseSchema.parse({
   ...SESSIONS,
   kind: "class-sessions-response",
-  runs: SESSIONS.runs.map((run) => ({ ...run, classId: "class:one" })),
+  runs: SESSIONS.runs.map((run) => ({ ...run, classId: "class:one", review: NO_REVIEW })),
 });
 const controllers: SessionsController[] = [];
 afterEach(() => {

@@ -1,7 +1,11 @@
 import { SessionRefresh } from "./session-refresh.js";
 import { SessionDrafts } from "./session-drafts.js";
-import type { SessionsClient } from "./sessions-client.boundary.js";
-import type { CanonicalRunEvent, ClassSessionItem } from "@marea/protocol";
+import type { SessionFilters, SessionsClient } from "./sessions-client.boundary.js";
+import {
+  MAX_SESSION_SEARCH_LENGTH,
+  type CanonicalRunEvent,
+  type ClassSessionItem,
+} from "@marea/protocol";
 import { EvaluationRequestError } from "../evaluation/evaluation-client.boundary.js";
 import type { EvaluationController } from "../evaluation/evaluation-controller.js";
 import type { NoticeClient } from "./notice-client.boundary.js";
@@ -9,6 +13,7 @@ import type { NoticeController } from "./notice-controller.js";
 
 export interface SessionsState {
   readonly classId: string | null;
+  readonly filters: SessionFilters;
   readonly runs: readonly ClassSessionItem[];
   readonly next: string | null;
   readonly runId: string | null;
@@ -24,6 +29,7 @@ export const SESSION_POLL_MS = 2000;
 export class SessionsController {
   public state: SessionsState = {
     classId: null,
+    filters: {},
     runs: [],
     next: null,
     runId: null,
@@ -76,6 +82,14 @@ export class SessionsController {
     return this.refresh();
   }
   async chooseClass(classId: string | null): Promise<void> {
+    await this.relist({ classId });
+  }
+  /** Replaces the listing filters and lists from the newest matching session again. */
+  async filter(filters: SessionFilters): Promise<void> {
+    const search = filters.search?.trim().slice(0, MAX_SESSION_SEARCH_LENGTH);
+    await this.relist({ filters: { ...filters, search: search === "" ? undefined : search } });
+  }
+  private async relist(patch: Pick<Partial<SessionsState>, "classId" | "filters">): Promise<void> {
     this.listing.abort();
     this.listing = new AbortController();
     this.listCursor = null;
@@ -83,7 +97,7 @@ export class SessionsController {
     this.resetSelection();
     this.through = undefined;
     this.update({
-      classId,
+      ...patch,
       runId: null,
       selected: null,
       events: [],
@@ -144,7 +158,12 @@ export class SessionsController {
     const cursor = more ? this.state.next : this.listCursor;
     if (more) this.update({ moreBusy: true });
     try {
-      const page = await this.client.classes(cursor, signal, this.state.classId ?? undefined);
+      const page = await this.client.classes(
+        cursor,
+        signal,
+        this.state.classId ?? undefined,
+        this.state.filters,
+      );
       if (signal.aborted || this.lifetime.signal.aborted) return;
       this.listFailed = false;
       this.listCursor = cursor;
