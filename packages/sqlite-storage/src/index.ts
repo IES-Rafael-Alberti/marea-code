@@ -42,17 +42,8 @@ export {
   type MigrationDefinition,
   type SchemaObjectDefinition,
 } from "./migration-catalog.js";
-export { createAuditMigrationCatalog } from "./audit-migration-catalog.js";
 export { createDashboardProfileStore, type StoredDashboardProfile } from "./profile-storage.js";
-
-export { createProfileMigrationCatalog } from "./profile-migration-catalog.js";
-
-export { createEducationalMigrationCatalog } from "./educational-migration-catalog.js";
-
-export { createStudentIdentityMigrationCatalog } from "./student-identity-migration-catalog.js";
-export { createObservabilityMigrationCatalog } from "./observability-migration-catalog.js";
-
-export { createSkillAssignmentMigrationCatalog } from "./skill-assignment-migration-catalog.js";
-export { createRunClosureMigrationCatalog } from "./run-closure-migration-catalog.js";
+// Every release migration catalog, as the lighter `./catalogs` entry point publishes them.
+export * from "./catalogs.js";
 
 export { createDashboardLanguageStore } from "./dashboard-language-store.js";

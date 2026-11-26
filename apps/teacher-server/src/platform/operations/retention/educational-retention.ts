@@ -36,6 +36,10 @@ export function educationalAccountRows(
           "learningManualHistory",
           "SELECT id,criterion_key,level,reason,1 AS rows,length(reason) AS bytes FROM marea_learning_history WHERE student_id = ?1 AND run_id IS NULL ORDER BY id",
         ],
+        [
+          "learningNotesNotice",
+          "SELECT value,1 AS rows,length(CAST(value AS BLOB)) AS bytes FROM marea_metadata WHERE key = 'learning-notes-notice:' || ?1",
+        ],
       ]
     : [];
 }

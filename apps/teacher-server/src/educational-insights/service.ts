@@ -9,12 +9,21 @@ import { LearningProgress } from "./progress.js";
 import { EducationalInference } from "./inference.js";
 import { LiveAttentionMap } from "./live-map.js";
 import { ClassReports } from "./reports.js";
+import { LearningNotes, type ClassRouteLookup } from "./progress-notes.js";
+import { SessionNotes, type ContextWindowLookup } from "./session-notes.js";
+
+/** How notes summaries find their model; without them every summary is unconfigured. */
+export interface NotesModels {
+  readonly classRoute: ClassRouteLookup;
+  readonly contextWindow: ContextWindowLookup;
+}
 
 export class EducationalInsightsService {
   readonly progress: LearningProgress;
   readonly inference: EducationalInference;
   readonly map: LiveAttentionMap;
   readonly reports: ClassReports;
+  readonly notes: LearningNotes;
   private timer: ReturnType<typeof setInterval> | undefined;
   /** Ticks still running, which stop() waits for before the database closes. */
   readonly pending = new Set<Promise<void>>();
@@ -23,9 +32,18 @@ export class EducationalInsightsService {
     readonly clock: Clock,
     providers: InferenceProviderResolver,
     public configuration: EducationalConfiguration,
+    models: NotesModels = {
+      classRoute: () => undefined,
+      contextWindow: () => Promise.resolve(undefined),
+    },
   ) {
-    this.progress = new LearningProgress(database);
     this.inference = new EducationalInference(database, providers, clock);
+    this.progress = new LearningProgress(
+      database,
+      clock,
+      new SessionNotes(this.inference, clock, models.contextWindow),
+    );
+    this.notes = new LearningNotes(this.progress, this.inference, clock, models.classRoute);
     this.map = new LiveAttentionMap(this.progress, this.inference, clock, configuration.map);
     this.reports = new ClassReports(this.progress, this.inference, clock, configuration.reports);
   }
@@ -92,6 +110,14 @@ export class EducationalInsightsService {
               level: Number(row.level),
             })),
         };
+      case "notes":
+        return this.notes.read(q.classId, q.studentId, q.key);
+      case "save-notes":
+        return this.notes.save(q.classId, q.studentId, q.key, q.notes, q.expectedRevision, () => {
+          this.progress.require(identity, q.classId);
+        });
+      case "propose-notes":
+        return this.notes.propose(identity.userId, q.classId, q.studentId, q.key);
       case "generate":
         return this.reports.generate(identity, q);
       case "reports":

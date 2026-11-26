@@ -1,9 +1,8 @@
 import { afterEach, vi } from "vitest";
-import { createEducationalMigrationCatalog } from "@marea/sqlite-storage/catalogs";
+import { createLearningNotesMigrationCatalog } from "@marea/sqlite-storage/catalogs";
 import { InsightsRequestSchema } from "@marea/protocol";
 import { evaluationFixture, NOW } from "../../test-support/evaluation-fixture.js";
 import { SYNTHETIC_ROUTE_BUDGET } from "../../test-support/usage-fixture.js";
-import { LearningProgress } from "./progress.js";
 import { EducationalInsightsService } from "./service.js";
 import type { ReportDiagnostic } from "./reports.js";
 const disposers: (() => void)[] = [];
@@ -15,9 +14,8 @@ export function fixture() {
   disposers.push(() => {
     f.database.close();
   });
-  for (const migration of createEducationalMigrationCatalog().slice(8))
+  for (const migration of createLearningNotesMigrationCatalog().slice(8))
     for (const sql of migration.statements) f.database.executeScript(sql);
-  const progress = new LearningProgress(f.database);
   let now = NOW;
   const route = {
     providerId: "synthetic-provider",
@@ -31,6 +29,7 @@ export function fixture() {
     { resolve: () => undefined },
     { map: route, reports: route },
   );
+  const progress = service.progress;
   const diagnostics = vi.fn<(entry: ReportDiagnostic) => void>();
   service.reports.diagnostics = diagnostics;
   const query = (input: object) =>

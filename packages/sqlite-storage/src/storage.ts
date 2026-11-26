@@ -1,5 +1,6 @@
 import { dirname } from "node:path";
 
+import { createLearningNotesMigrationCatalog } from "./learning-notes-migration-catalog.js";
 import { createRunClosureMigrationCatalog } from "./run-closure-migration-catalog.js";
 import { createSkillAssignmentMigrationCatalog } from "./skill-assignment-migration-catalog.js";
 import { createEducationalMigrationCatalog } from "./educational-migration-catalog.js";
@@ -63,6 +64,7 @@ const RELEASE_CATALOGS = {
   observability: createObservabilityMigrationCatalog,
   "skill-assignments": createSkillAssignmentMigrationCatalog,
   "run-closure": createRunClosureMigrationCatalog,
+  "learning-notes": createLearningNotesMigrationCatalog,
 } as const satisfies Record<ReleaseSchemaCatalogKey, () => readonly MigrationDefinition[]>;
 
 /**

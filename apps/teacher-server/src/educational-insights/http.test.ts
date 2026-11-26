@@ -1,11 +1,16 @@
 import { it, expect, vi } from "vitest";
 import { Hono } from "hono";
-import { EDUCATIONAL_INSIGHTS_PATH } from "@marea/protocol";
+import {
+  EDUCATIONAL_INSIGHTS_PATH,
+  MAX_INSIGHTS_REQUEST_BYTES,
+  MAX_LEARNING_NOTES_CHARACTERS,
+} from "@marea/protocol";
 import { registerEducationalInsightsRoutes } from "../product-http/educational-insights-http.boundary.js";
 import { TeacherDomainError } from "../identity/errors.js";
 import { ReportRefusal } from "./reports-model.js";
 import { fixture } from "./insights.fixture.js";
 import { teacher } from "../../test-support/evaluation-fixture.js";
+import { capture, enabled, targetOf } from "./progress.fixture.js";
 function insightsApp(f: ReturnType<typeof fixture>) {
   const app = new Hono();
   registerEducationalInsightsRoutes({
@@ -106,4 +111,28 @@ it("keeps unexpected generate failures generic", async () => {
     throw new Error("boom");
   });
   expect((await insightsApp(f).generate()).status).toBe(500);
+});
+it("waits for a notes proposal and admits a full notes text within the request bound", async () => {
+  const f = fixture();
+  enabled(f);
+  const key = targetOf(capture(f)).key;
+  vi.spyOn(f.service.notes, "propose").mockResolvedValue({ proposal: "Resumen.", failure: null });
+  const { post } = insightsApp(f);
+  const proposed = await post(f.query({ kind: "propose-notes", studentId: "s1", key }));
+  expect(await proposed.json()).toMatchObject({
+    kind: "propose-notes",
+    data: { proposal: "Resumen.", failure: null },
+  });
+  const { revision } = f.service.notes.read("class:one", "s1", key);
+  const notes = "\u0001".repeat(MAX_LEARNING_NOTES_CHARACTERS);
+  const saved = await post(
+    f.query({ kind: "save-notes", studentId: "s1", key, notes, expectedRevision: revision }),
+  );
+  expect(saved.status).toBe(200);
+  expect(f.service.notes.read("class:one", "s1", key).notes).toBe(notes);
+  const tooLarge = await post({
+    ...f.query({ kind: "settings" }),
+    padding: "x".repeat(MAX_INSIGHTS_REQUEST_BYTES),
+  });
+  expect(tooLarge.status).toBe(413);
 });

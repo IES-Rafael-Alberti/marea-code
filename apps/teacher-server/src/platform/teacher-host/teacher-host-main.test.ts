@@ -400,8 +400,8 @@ it("writes startup schema migration events to stderr as one JSON line each", asy
   const event = {
     event: "schema-migration",
     outcome: "backup-failed",
-    detectedSchema: 14,
-    targetSchema: 15,
+    detectedSchema: 15,
+    targetSchema: 16,
     error: "OperatorCliError",
   } as const;
   mocks.start.mockImplementationOnce((options: TeacherHostOptions) => {

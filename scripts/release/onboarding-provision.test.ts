@@ -24,8 +24,8 @@ const p = vi.hoisted(() => ({
   configureIdentityProviders: vi.fn(),
   configureInsights: vi.fn(),
 }));
-vi.mock("../../apps/teacher-server/src/educational-insights/progress.js", () => ({
-  LearningProgress: class {
+vi.mock("../../apps/teacher-server/src/educational-insights/learning-settings.js", () => ({
+  LearningSettings: class {
     configure = p.configureInsights;
   },
 }));
@@ -136,7 +136,7 @@ it.each([false, true])(
     );
     expect(p.initializeSqliteStorage).toHaveBeenCalledWith({
       databasePath: "/stage/marea.sqlite",
-      schema: "run-closure",
+      schema: "learning-notes",
     });
     expect(p.repository).toHaveBeenCalledWith("database");
     if (example) {

@@ -94,7 +94,13 @@ it("lists every student of the page, opening only the first, and pages forward a
   state.data = { students: [], next: null };
   expect(renderToStaticMarkup(view())).toContain(`<p>${state.m.noStudents}</p>`);
   expect(renderToStaticMarkup(view())).not.toContain("progress-pages");
-  const student = { id: "s1", displayName: "Ana", revision: "v1", entries: [] };
+  const student = {
+    id: "s1",
+    displayName: "Ana",
+    revision: "v1",
+    entries: [],
+    notesNotice: null,
+  };
   state.data = { students: [student, { ...student, id: "s2", displayName: "Bea" }], next: "s2" };
   const listed = elements(view()).filter((e) => e.type === StudentProgress);
   expect(listed.map((e) => [e.key, e.props.open, e.props.student?.displayName])).toEqual([

@@ -29,6 +29,7 @@
   "generation": "Sorkuntza",
   "heading": "Saioen ebaluazioa",
   "learningNote": "Tutorearentzako laburpena",
+  "learningNoteHelp": "Onartzean, ikaskuntza-oharren historiari gehituko zaio saioaren datarekin. Irizpideak ebidentziarik ez badu edo oharra hutsik badago, ez da ezer gehitzen.",
   "load": "Kargatu saioak",
   "method": "Ebaluazio-metodoa",
   "more": "Saio zaharragoak",

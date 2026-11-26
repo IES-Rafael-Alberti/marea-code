@@ -1,0 +1,32 @@
+{
+  "budget": "Se ha agotado el presupuesto del modelo; inténtalo más tarde.",
+  "cancel": "Cancelar",
+  "conflict": "Se ha añadido una nota nueva mientras editabas; revísala.",
+  "count": [Function],
+  "empty": "No hay notas que resumir.",
+  "error": "No se pudieron cargar ni guardar las notas. Vuelve a intentarlo.",
+  "interpolated": {
+    "count": [
+      "1 caracteres",
+      "8000 caracteres",
+      "200.000 caracteres",
+    ],
+    "notice": [
+      "Las notas de Ana no cabían; se resumieron automáticamente para la sesión del 07/09/2026. Conviene resumirlas.",
+      "Las notas de Ana no cabían; para la sesión del 07/09/2026 solo se usaron las más recientes. Conviene resumirlas.",
+    ],
+  },
+  "long": "El historial de notas es muy largo; conviene resumirlo.",
+  "longSummary": "⚠ notas largas",
+  "notes": "Notas de aprendizaje",
+  "notesHelp": "Historial privado que el tutor recibe en las próximas sesiones. Cada aprobación añade una línea con la fecha de la sesión; puedes corregirlo, resumirlo o vaciarlo.",
+  "notice": [Function],
+  "omitted": "Las notas más antiguas no se muestran porque el historial es demasiado largo; si guardas, el texto que ves sustituirá a todo el historial.",
+  "proposalFailed": "No se pudo proponer un resumen. El texto no ha cambiado.",
+  "propose": "Proponer resumen",
+  "proposed": "Resumen propuesto: revísalo antes de guardar. No se ha guardado nada todavía.",
+  "save": "Guardar",
+  "tooLarge": "Las notas son demasiado largas para el modelo; acórtalas a mano.",
+  "tooLong": "El texto supera el máximo de 200 000 caracteres; acórtalo para poder guardarlo.",
+  "unconfigured": "La clase no tiene un modelo configurado para proponer resúmenes.",
+}

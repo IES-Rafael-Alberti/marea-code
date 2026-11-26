@@ -12,6 +12,7 @@ interface Props {
   onChange?: (event: { currentTarget: { value: string; checked: boolean } }) => void;
   onSubmit?: (event: { preventDefault: () => void }) => void;
   open?: boolean;
+  role?: string;
   student?: { displayName: string };
   model?: object;
   props?: object;
@@ -74,6 +75,7 @@ export const criterion = {
   level: 2,
   levels: ["One", "Two", "Three", "Four"],
   epoch: 0,
+  notesLength: 0,
 };
 export const report = {
   id: "report",

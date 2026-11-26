@@ -1,4 +1,4 @@
-import { LearningProgress } from "../../apps/teacher-server/src/educational-insights/progress.js";
+import { LearningSettings } from "../../apps/teacher-server/src/educational-insights/learning-settings.js";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { identityProviderCatalog } from "@marea/plugin-runtime";
@@ -57,7 +57,7 @@ export async function provisionOnboarding(
   try {
     const storage = initializeSqliteStorage({
       databasePath: join(stage, "marea.sqlite"),
-      schema: "run-closure",
+      schema: "learning-notes",
     });
     try {
       if (request.language !== undefined)
@@ -81,7 +81,7 @@ export async function provisionOnboarding(
       if (request.features?.automaticEvaluation && evaluation.length !== 1)
         throw new Error("missing-evaluation-method");
       if (request.features?.map)
-        new LearningProgress(storage.database).configure(
+        new LearningSettings(storage.database).configure(
           "class:main",
           { map: true, adaptive: false },
           "initial",

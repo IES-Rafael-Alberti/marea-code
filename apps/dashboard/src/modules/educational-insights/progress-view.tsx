@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from "react";
 import type * as z from "zod";
 import { CriterionHistory } from "./history-view.js";
+import { CriterionNotes, LONG_NOTES_CHARACTERS } from "./notes-editor.js";
+import { notesMessages } from "./notes-messages.js";
 import { overviewSchema } from "./schemas.js";
 import type { useInsightModel, InsightViewProps } from "./model.js";
 
@@ -78,7 +80,8 @@ export function StudentProgress({
   model: Model;
   props: InsightViewProps & { classId: string };
 }) {
-  const { m, busy, client, action } = model;
+  const { m, busy, client, action, load } = model;
+  const notes = notesMessages(props.locale);
   const [reason, setReason] = useState("");
   const [level, setLevel] = useState(0);
   const blocked = busy || reason.trim() === "";
@@ -98,6 +101,7 @@ export function StudentProgress({
     skills.set(entry.skillId, entries);
   }
   const consolidated = student.entries.filter((entry) => entry.level === 4).length;
+  const long = student.entries.some((entry) => entry.notesLength > LONG_NOTES_CHARACTERS);
   return (
     <details className="progress-student" open={open}>
       <summary>
@@ -105,9 +109,18 @@ export function StudentProgress({
         <span className="progress-summary">
           {student.entries.length === 0
             ? m.noProgress
-            : `${String(student.entries.length)} ${m.criteria} · ${String(consolidated)} ${m.consolidatedCount}`}
+            : `${String(student.entries.length)} ${m.criteria} · ${String(consolidated)} ${m.consolidatedCount}${long ? ` · ${notes.longSummary}` : ""}`}
         </span>
       </summary>
+      {student.notesNotice !== null && (
+        <p className="insight-note" role="status">
+          {notes.notice(
+            student.displayName,
+            student.notesNotice.sessionDate,
+            student.notesNotice.shortened === "summarized",
+          )}
+        </p>
+      )}
       {student.entries.length > 0 && (
         <div className="insight-controls progress-adjust">
           <strong>{m.adjust}</strong>
@@ -149,13 +162,23 @@ export function StudentProgress({
               m,
               blocked,
               () => void adjust([entry.key], level),
-              <CriterionHistory
-                client={client}
-                classId={props.classId}
-                studentId={student.id}
-                criterionKey={entry.key}
-                locale={props.locale}
-              />,
+              <>
+                <CriterionHistory
+                  client={client}
+                  classId={props.classId}
+                  studentId={student.id}
+                  criterionKey={entry.key}
+                  locale={props.locale}
+                />
+                <CriterionNotes
+                  client={client}
+                  classId={props.classId}
+                  studentId={student.id}
+                  criterionKey={entry.key}
+                  locale={props.locale}
+                  onSaved={() => void load()}
+                />
+              </>,
             ),
           )}
           <button

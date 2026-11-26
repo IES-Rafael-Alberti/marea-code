@@ -407,7 +407,7 @@ it("defaults missing progress after concurrent deletion without retaining stale 
   const spy = vi
     .spyOn(f.database, "readOne")
     .mockImplementation((sql, values) =>
-      sql.startsWith("SELECT level, epoch, memory") ? undefined : read(sql, values),
+      sql.startsWith("SELECT level, epoch FROM") ? undefined : read(sql, values),
     );
   expect(targetOf(capture(f))).toMatchObject({ achieved: 0, epoch: 0, target: 1 });
   spy.mockRestore();

@@ -225,6 +225,13 @@ full-content observability through Langfuse or an OTLP collector.
 
 Published installers and tags remain immutable.
 
+## Next preview: learning notes
+
+The next preview keeps a dated history of each student's learning notes that teachers can view,
+edit and summarize from **Progress** (see [SETUP-UX.md](SETUP-UX.md#learning-notes)). Its first
+start backs up the database and migrates it to schema 16, which keeps notes when their session is
+deleted and dates existing notes. The protocol and the student client are unchanged.
+
 ## Teacher server
 
 macOS Apple Silicon or Linux x64:

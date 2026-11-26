@@ -283,6 +283,10 @@
 .progress-actions ol {
   flex-basis: 100%;
 }
+.progress-notes textarea {
+  box-sizing: border-box;
+  width: 100%;
+}
 /* One disclosure per student, as Marejada lists the whole class at once. */
 .educational-insight .progress-student {
   border: 1px solid var(--color-border);

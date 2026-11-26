@@ -55,6 +55,7 @@ describe("SQLite storage files", () => {
     ["observability", 13],
     ["skill-assignments", 14],
     ["run-closure", 15],
+    ["learning-notes", 16],
   ] as const)("opens, reopens and restores activated installations with %s", (schema, version) => {
     const root = directory();
     const databasePath = join(root, "application.sqlite");

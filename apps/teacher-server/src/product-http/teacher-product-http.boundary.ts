@@ -372,8 +372,9 @@ export function createTeacherProductHttp(
   app.post("/v1/runs/open", productPolicy, async (context) => {
     const parsed = await parseJsonRequest(context.req.raw, OpenRunRequestSchema);
     if (!parsed.ok) return parsed.response;
-    return safeOperation(parsed.value.requestId, () => {
+    return safeOperation(parsed.value.requestId, async () => {
       const session = options.services.identity.authenticate(bearer(context.req.raw));
+      await options.services.runs.prepare?.(session.identity, parsed.value);
       return jsonResponse(
         options.services.runs.open(
           session.identity,

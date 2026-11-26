@@ -162,6 +162,33 @@ change it immediately in **Settings → My dashboard**. The dedicated authentica
 The preference is namespaced account metadata in the existing SQLite database, included
 in backups and removed by account retention. Database schema 15 only adds the closing teacher of a session.
 
+## Learning notes
+
+With adaptive tutoring, each criterion of a student keeps a private history of learning notes
+that new tutor sessions receive. Approving an evaluation appends one line,
+`dd/mm/aaaa: <note>`, dated with the day the approved session opened in the server's local time
+zone (the server runs on the school's computer). A blank note or a `no-evidence` result adds
+nothing and never erases earlier notes; an older session approved later is appended too, and its
+date shows when it happened. Manual level adjustments no longer touch the notes.
+
+**Progress → Notas de aprendizaje** on each criterion opens the whole text. Teachers can correct,
+shorten or clear it and save up to 200 000 characters (about a thousand notes). A save carries a
+digest of the text that was opened; if an approval appended a note meanwhile, nothing is saved,
+the new note is added below the draft and the editor asks to review it. **Proponer resumen** asks
+the class model (its evaluation model and budget) for a summary that is placed in the editor and
+is never saved automatically. Above 8 000 characters the editor and the student summary warn that
+the notes are long; that is the session budget of a model whose context window is unknown.
+
+When a session starts, its notes may use a quarter of the tutor model's context window, measured
+in UTF-8 bytes like the provider preflight, using the provider catalog's `contextWindowTokens`
+(32 768 tokens when unknown). Longer notes are summarized by the same model for that session
+only, within 15 seconds; if that fails or the summary is still too long, the newest lines that fit
+are used. The stored notes never change, the session always starts and the dashboard shows a
+notice on the student until a teacher saves that student's notes. Database schema 16 drops the
+trigger that cleared a note when its session was deleted: notes now survive run retention and
+are removed with the student account, together with the notice. Existing notes are dated with
+their session when it still exists.
+
 ## Identity providers
 
 Installed plugins own their labels, optional configuration groups and HTTPS help

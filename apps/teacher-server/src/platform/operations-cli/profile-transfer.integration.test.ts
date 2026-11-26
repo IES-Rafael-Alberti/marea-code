@@ -14,6 +14,7 @@ it.each([
   "observability",
   "skill-assignments",
   "run-closure",
+  "learning-notes",
 ] as const)(
   "transfers %s with profile reset revisions and installation authority",
   async (schema) => {

@@ -23,6 +23,7 @@ import {
   createObservabilityMigrationCatalog,
   createSkillAssignmentMigrationCatalog,
   createRunClosureMigrationCatalog,
+  createLearningNotesMigrationCatalog,
   createMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
@@ -102,7 +103,8 @@ export function createOperationsApplication(
   const schemaVersion = existsSync(config.databasePath)
     ? inspectSqliteSchemaVersion({ databasePath: config.databasePath })
     : null;
-  let runClosure = schemaVersion === createRunClosureMigrationCatalog().length;
+  let learningNotes = schemaVersion === createLearningNotesMigrationCatalog().length;
+  const runClosure = learningNotes || schemaVersion === createRunClosureMigrationCatalog().length;
   const skillAssignments =
     runClosure || schemaVersion === createSkillAssignmentMigrationCatalog().length;
   const observability =
@@ -115,6 +117,7 @@ export function createOperationsApplication(
   const activatedSchema = (): SqliteSchemaCatalog =>
     (
       [
+        [learningNotes, "learning-notes"],
         [runClosure, "run-closure"],
         [skillAssignments, "skill-assignments"],
         [observability, "observability"],
@@ -314,7 +317,7 @@ export function createOperationsApplication(
         installations.profileUpgradeDurable,
       );
       // The newest schema selects its own catalog regardless of the older flags.
-      runClosure = true;
+      learningNotes = true;
       return result;
     },
     async preview(input: PreviewInput) {
@@ -421,6 +424,7 @@ export function createOperationsApplication(
         [createObservabilityMigrationCatalog().length, "observability" as const],
         [createSkillAssignmentMigrationCatalog().length, "skill-assignments" as const],
         [createRunClosureMigrationCatalog().length, "run-closure" as const],
+        [createLearningNotesMigrationCatalog().length, "learning-notes" as const],
       ]).get(release.schemaVersion);
       if (catalog === undefined) throw unavailable();
       const blocked = (reasonCode: RestoreResult["reasonCode"], checked = 0, tombstoned = 0) => ({

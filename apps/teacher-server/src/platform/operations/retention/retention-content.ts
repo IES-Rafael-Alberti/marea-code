@@ -55,6 +55,7 @@ function removeRows(database: SqliteApplicationDatabase, plan: RowPlan): number 
       [
         "DELETE FROM marea_learning_history WHERE student_id = ?1 AND run_id IS NULL",
         "DELETE FROM marea_learning_progress WHERE student_id = ?1",
+        "DELETE FROM marea_metadata WHERE key = 'learning-notes-notice:' || ?1",
       ],
       plan.accountIds,
     );

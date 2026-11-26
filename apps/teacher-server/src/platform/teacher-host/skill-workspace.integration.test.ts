@@ -17,7 +17,7 @@ it("creates, assigns and revises a personal skill through the production HTTP ho
   const f = teacherHostInstallation();
   const store = initializeSqliteStorage({
     databasePath: f.databasePath,
-    schema: "run-closure",
+    schema: "learning-notes",
   });
   store.database.execute("INSERT INTO marea_classes VALUES ('class:ready','ready','Ready')");
   store.database.execute("INSERT INTO marea_teacher_classes VALUES ('user:teacher','class:ready')");
@@ -160,7 +160,7 @@ it("creates, assigns and revises a personal skill through the production HTTP ho
   }
   const reopened = initializeSqliteStorage({
     databasePath: f.databasePath,
-    schema: "run-closure",
+    schema: "learning-notes",
   });
   try {
     const repository = new SqliteTeachingConfigurationRepository(reopened.database);

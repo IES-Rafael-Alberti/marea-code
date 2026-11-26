@@ -71,7 +71,7 @@ it("adapts the prompt to every unconsolidated criterion's next level and reviewe
   const skill = c1?.skillId ?? "";
   const base = first.snapshot.prompt.content.split("\n\nObjetivos pedagógicos")[0] ?? "";
   expect(adapted.snapshot.prompt.content).toBe(
-    `${base}\n\nObjetivos pedagógicos revisados para esta sesión. Adapta la ayuda a estos objetivos sin revelar notas privadas ni presentar niveles como calificaciones:\n${skill}/C2: L2\n${skill}/C3: L1\nSíntesis pedagógica revisada:\n${skill}/C1: Consolidated note\n${skill}/C2: Practice empty input`,
+    `${base}\n\nObjetivos pedagógicos revisados para esta sesión. Adapta la ayuda a estos objetivos sin revelar notas privadas ni presentar niveles como calificaciones:\n${skill}/C2: L2\n${skill}/C3: L1\nNotas de aprendizaje revisadas:\n${skill}/C1:\nConsolidated note\n${skill}/C2:\nPractice empty input`,
   );
 });
 

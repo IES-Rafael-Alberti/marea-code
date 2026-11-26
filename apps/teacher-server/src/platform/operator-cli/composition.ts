@@ -14,6 +14,7 @@ import {
   createObservabilityMigrationCatalog,
   createSkillAssignmentMigrationCatalog,
   createRunClosureMigrationCatalog,
+  createLearningNotesMigrationCatalog,
   initializeSqliteStorage,
   inspectSqliteSchemaVersion,
   type SqliteStorage,
@@ -200,6 +201,7 @@ export function composeInstallation(capability: InstallationCapability): Compose
 }
 
 function operatorSchema(version: number) {
+  if (version === createLearningNotesMigrationCatalog().length) return "learning-notes";
   if (version === createRunClosureMigrationCatalog().length) return "run-closure";
   if (version === createSkillAssignmentMigrationCatalog().length) return "skill-assignments";
   if (version === createObservabilityMigrationCatalog().length) return "observability";
