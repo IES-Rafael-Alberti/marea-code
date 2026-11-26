@@ -1,4 +1,9 @@
-import { ClassSessionItemSchema, RunIdSchema, type ClassSessionsQuery } from "@marea/protocol";
+import {
+  ClassSessionItemSchema,
+  RunIdSchema,
+  sessionSearchMatches,
+  type ClassSessionsQuery,
+} from "@marea/protocol";
 import type { SqliteApplicationDatabase, SqliteRow } from "@marea/sqlite-storage";
 
 import type { AuthenticatedIdentity } from "../../identity/contracts.js";
@@ -50,12 +55,6 @@ const filteredRuns = (progress: string) => `SELECT * FROM (${reviewedRuns(progre
       OR (?8 = 'without' AND listed.criteria_count > 0 AND listed.evidenced_count = 0))
   ORDER BY listed.opened_at DESC, listed.id DESC LIMIT ?9`;
 
-/** Case- and accent-insensitive text, so "alvaro" finds "Álvaro". */
-function folded(value: string): string {
-  // Stryker disable next-line MethodExpression: both sides fold alike, so upper case matches the same.
-  return value.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
-}
-
 function listedItem(row: SqliteRow, includeReview: boolean) {
   if (!includeReview) return ClassSessionItemSchema.parse(historyItem(row));
   const review = {
@@ -83,19 +82,20 @@ function anchorOf(
   return rowText(anchor, "opened_at");
 }
 
-/** Ids of the scoped runs whose student or project name contains the folded search. */
+/** Ids of the scoped runs whose student name or project name, each on its own, contains the search. */
 function searchMatches(
   database: SqliteApplicationDatabase,
   scope: readonly (string | null)[],
   search: string,
 ): string {
-  const needle = folded(search);
   return JSON.stringify(
     database
       .readAll(CANDIDATES, scope)
       .filter((row) =>
-        folded(`${rowText(row, "student_name")} ${rowText(row, "project_display_name")}`).includes(
-          needle,
+        sessionSearchMatches(
+          search,
+          rowText(row, "student_name"),
+          rowText(row, "project_display_name"),
         ),
       )
       .map((row) => rowText(row, "id")),

@@ -114,7 +114,11 @@ it("searches student and project names ignoring case and accents, across pages",
   const list = (search: string, patch: object = {}) =>
     service.listClassSessions(teacher, query({ search, ...patch }));
   expect(ids(list("alvaro nunez"))).toEqual(["run:b", "run:a", "run:older"]);
-  expect(ids(list("NÚÑEZ diseno"))).toEqual(["run:a"]);
+  expect(ids(list("NÚÑEZ"))).toEqual(["run:b", "run:a", "run:older"]);
+  expect(ids(list("diseno"))).toEqual(["run:a"]);
+  // The student and the project name are searched apart, never as one joined text.
+  expect(ids(list("nunez diseno"))).toEqual([]);
+  expect(ids(list("z d"))).toEqual([]);
   expect(ids(list("DISEÑO"))).toEqual(["run:a"]);
   expect(ids(list("nobody"))).toEqual([]);
   const first = list("alvaro", { limit: 2 });

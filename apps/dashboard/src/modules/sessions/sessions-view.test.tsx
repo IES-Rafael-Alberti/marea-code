@@ -114,10 +114,14 @@ it("routes the search and the single show choice to server-side filters", () => 
   const elements = render();
   const selects = elements.filter((element) => element.type === "select");
   const filter = vi.spyOn(controller, "filter").mockResolvedValue();
+  const search = vi.spyOn(controller, "search").mockReturnValue();
   elements
     .find((element) => element.type === "input")
     ?.props.onChange?.({ currentTarget: { value: "Ada" } });
   expect(hooks.setters[0]).toHaveBeenCalledWith("Ada");
+  // Typing never asks the server by itself; the controller debounces it.
+  expect(search.mock.calls).toEqual([[{ search: "Ada" }]]);
+  expect(filter).not.toHaveBeenCalled();
   for (const value of [
     "open",
     "closed",
@@ -140,7 +144,6 @@ it("routes the search and the single show choice to server-side filters", () => 
     ["unknown"],
   ]);
   expect(filter.mock.calls).toEqual([
-    [{ search: "Ada" }],
     [{ search: undefined, runState: "active" }],
     [{ search: undefined, runState: "closed" }],
     [{ search: undefined, evaluation: ["draft"], evidence: "with" }],
@@ -164,7 +167,7 @@ it("routes the search and the single show choice to server-side filters", () => 
   filtered
     .find((element) => element.type === "input")
     ?.props.onChange?.({ currentTarget: { value: "Bea" } });
-  expect(filter).toHaveBeenLastCalledWith({
+  expect(search).toHaveBeenLastCalledWith({
     search: "Bea",
     evaluation: ["draft"],
     evidence: "with",
@@ -174,6 +177,7 @@ it("routes the search and the single show choice to server-side filters", () => 
   });
   controller.state = {
     ...controller.state,
+    filters: {},
     runs: SESSIONS.runs.map((run) => ({ ...run, classId: "class:one" })),
   };
   expect(

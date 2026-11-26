@@ -139,8 +139,13 @@ progress and how many it raised a level. Manual adjustments have no session, so 
 A draft with criteria but no evidence is reported as such. One that assessed no criteria stays
 undetermined.
 
-Search ignores case and accents and matches student and project names. With the **Show** choice,
-it is applied by the server before paging, so older sessions are never missed. The options are
+Search ignores case and accents, including the tilde of ñ (so `nino` finds "Niño"), and matches
+the student name and the project name one at a time, never across both. While you type, the rows
+already loaded are filtered instantly in the browser with the same rule as the server
+(`sessionSearchMatches` in `@marea/protocol`). About 300 ms after the last key press the server
+applies the search before paging and its complete answer replaces the list, so older sessions are
+never missed. The **Show** choice asks the server at once. Changing the search or the choice never
+closes the session you are reading, even when it is not in the filtered list. The options are
 open, finished, pending with or without evidence, approved, failed, or evaluating. The
 dashboard-only `POST /api/v1/dashboard/history/classes` carries these through
 `ClassSessionsQuerySchema` and `ClassSessionItem.review`. The student history shape is

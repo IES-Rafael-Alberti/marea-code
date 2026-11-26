@@ -45,7 +45,7 @@ export function SessionsModule({
     if (follow.current) element.scrollTop = element.scrollHeight;
     else setUnread(true);
   }, [state.events.length]);
-  const runs = state.runs;
+  const runs = controller.visibleRuns;
   const filters = state.filters;
   const context = state.events.find((event) => event.eventType === "project-context");
   const selected = state.selected;
@@ -91,7 +91,7 @@ export function SessionsModule({
           show={show}
           onSearch={(value) => {
             setSearch(value);
-            void controller.filter({ ...filters, search: value });
+            controller.search({ ...filters, search: value });
           }}
           onShow={(value) => {
             setShow(value);

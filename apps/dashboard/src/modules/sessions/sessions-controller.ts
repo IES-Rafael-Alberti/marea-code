@@ -1,15 +1,14 @@
 import { SessionRefresh } from "./session-refresh.js";
 import { SessionDrafts } from "./session-drafts.js";
 import type { SessionFilters, SessionsClient } from "./sessions-client.boundary.js";
-import {
-  MAX_SESSION_SEARCH_LENGTH,
-  type CanonicalRunEvent,
-  type ClassSessionItem,
-} from "@marea/protocol";
+import type { CanonicalRunEvent, ClassSessionItem } from "@marea/protocol";
 import { EvaluationRequestError } from "../evaluation/evaluation-client.boundary.js";
 import type { EvaluationController } from "../evaluation/evaluation-controller.js";
 import type { NoticeClient } from "./notice-client.boundary.js";
 import type { NoticeController } from "./notice-controller.js";
+import { normalizedFilters, sessionMatchesFilters } from "./session-local-filter.js";
+import { Debounce } from "./debounce.js";
+import { listedConnection, mergedEvents, uniqueRuns } from "./session-merge.js";
 
 export interface SessionsState {
   readonly classId: string | null;
@@ -25,6 +24,8 @@ export interface SessionsState {
   readonly moreBusy: boolean;
 }
 export const SESSION_POLL_MS = 2000;
+/** Quiet time after the last keystroke before a search asks the server. */
+export const SESSION_SEARCH_DEBOUNCE_MS = 300;
 /** Read-only polling has separate lifetime and selection cancellation; mutations live elsewhere. */
 export class SessionsController {
   public state: SessionsState = {
@@ -47,6 +48,8 @@ export class SessionsController {
     await Promise.all([this.loadRuns(false), this.loadHistory(), this.notice?.refresh()]);
   }, SESSION_POLL_MS);
   private unsubscribe: (() => void) | undefined;
+  private readonly searchPause = new Debounce(SESSION_SEARCH_DEBOUNCE_MS);
+  private applied: SessionFilters = {};
   private listFailed = false;
   private historyFailed: boolean | undefined;
   private listCursor: string | null = null;
@@ -84,15 +87,42 @@ export class SessionsController {
   async chooseClass(classId: string | null): Promise<void> {
     await this.relist({ classId });
   }
-  /** Replaces the listing filters and lists from the newest matching session again. */
-  async filter(filters: SessionFilters): Promise<void> {
-    const search = filters.search?.trim().slice(0, MAX_SESSION_SEARCH_LENGTH);
-    await this.relist({ filters: { ...filters, search: search === "" ? undefined : search } });
+  /** The loaded rows the current filters let through, so typing narrows the list at once. */
+  get visibleRuns(): readonly ClassSessionItem[] {
+    return this.state.runs.filter((run) => sessionMatchesFilters(run, this.state.filters));
   }
-  private async relist(patch: Pick<Partial<SessionsState>, "classId" | "filters">): Promise<void> {
+  /** Applies the filters to the loaded rows now and asks the server for the complete list. */
+  async filter(filters: SessionFilters): Promise<void> {
+    this.searchPause.cancel();
+    await this.relistFilters(normalizedFilters(filters));
+  }
+  /**
+   * Narrows the loaded rows now and asks the server once typing pauses, so a key press neither
+   * sends a request nor disturbs the open session.
+   */
+  search(filters: SessionFilters): void {
+    const normalized = normalizedFilters(filters);
+    this.update({ filters: normalized });
+    this.searchPause.run(() => {
+      void this.relistFilters(normalized);
+    });
+  }
+  /** Lists again from the newest match; the open session, its history and the rows stay. */
+  private async relistFilters(filters: SessionFilters): Promise<void> {
+    this.applied = filters;
+    this.restartListing();
+    this.update({ filters, next: null, moreBusy: false });
+    await this.loadRuns(false);
+  }
+  private restartListing(): void {
     this.listing.abort();
     this.listing = new AbortController();
     this.listCursor = null;
+  }
+  private async relist(patch: Pick<Partial<SessionsState>, "classId">): Promise<void> {
+    this.searchPause.cancel();
+    this.applied = this.state.filters;
+    this.restartListing();
     this.listFailed = false;
     this.resetSelection();
     this.through = undefined;
@@ -147,6 +177,7 @@ export class SessionsController {
     this.lifetime.abort();
     this.selection.abort();
     this.listing.abort();
+    this.searchPause.cancel();
     this.refreshLoop.dispose();
     this.drafts.clear();
   }
@@ -162,17 +193,17 @@ export class SessionsController {
         cursor,
         signal,
         this.state.classId ?? undefined,
-        this.state.filters,
+        this.applied,
       );
       if (signal.aborted || this.lifetime.signal.aborted) return;
       this.listFailed = false;
       this.listCursor = cursor;
       const runs = page.runs;
       this.update({
-        runs: [...new Map(runs.map((run) => [run.runId, run])).values()],
+        runs: uniqueRuns(runs),
         next: page.nextBeforeRunId,
         selected: runs.find((run) => run.runId === this.state.runId) ?? this.state.selected,
-        connection: this.listConnection(),
+        connection: listedConnection(this.state, this.historyFailed),
         ...(this.state.runId === null ? { updatedAt: Date.now() } : {}),
       });
     } catch (error) {
@@ -186,11 +217,6 @@ export class SessionsController {
     } finally {
       if (!signal.aborted) this.update({ moreBusy: false });
     }
-  }
-  private listConnection(): SessionsState["connection"] {
-    if (this.state.runId === null) return "current";
-    if (this.historyFailed) return "stale";
-    return this.state.connection === "loading" ? "loading" : "current";
   }
   private clearAccess(): void {
     this.resetSelection();
@@ -213,10 +239,8 @@ export class SessionsController {
       if (signal.aborted || this.lifetime.signal.aborted) return;
       this.historyFailed = false;
       this.through = page.nextSequence === null ? undefined : page.throughSequence;
-      const merged = new Map(this.state.events.map((event) => [event.sequence, event]));
-      for (const event of page.events) merged.set(event.sequence, event);
       this.update({
-        events: [...merged.values()],
+        events: mergedEvents(this.state.events, page.events),
         catchingUp: page.nextSequence !== null,
         connection: this.listFailed ? "stale" : "current",
         updatedAt: Date.now(),

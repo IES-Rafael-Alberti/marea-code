@@ -1,55 +1,17 @@
-import type { SessionsClient } from "./sessions-client.boundary.js";
 import { afterEach, expect, it, vi } from "vitest";
-import { RunHistoryResponseSchema, ClassSessionsResponseSchema } from "@marea/protocol";
-import {
-  evaluationClientFixture,
-  HISTORY,
-  SESSIONS as LEGACY_SESSIONS,
-  NOW,
-  NO_REVIEW,
-} from "../evaluation/evaluation.fixture.js";
+import { ClassSessionsResponseSchema } from "@marea/protocol";
+import { evaluationClientFixture } from "../evaluation/evaluation.fixture.js";
 import { EvaluationRequestError } from "../evaluation/evaluation-client.boundary.js";
 import { SessionsController, SESSION_POLL_MS } from "./sessions-controller.js";
-import type { NoticeClient } from "./notice-client.boundary.js";
-const SESSIONS = ClassSessionsResponseSchema.parse({
-  ...LEGACY_SESSIONS,
-  kind: "class-sessions-response",
-  runs: LEGACY_SESSIONS.runs.map((run) => ({ ...run, classId: "class:one", review: NO_REVIEW })),
-});
-const notices: NoticeClient = { publish: vi.fn(), query: vi.fn() };
-const owned: SessionsController[] = [];
-afterEach(() => {
-  for (const controller of owned.splice(0)) controller.dispose();
-  vi.useRealTimers();
-});
-function setup() {
-  const client = {
-    ...evaluationClientFixture(),
-    classes: vi.fn<SessionsClient["classes"]>().mockResolvedValue(SESSIONS),
-  };
-  const changed = vi.fn();
-  const controller = new SessionsController(client, notices, changed);
-  owned.push(controller);
-  return { client, changed, controller };
-}
-function page(runId: string, after = 0, through = after + 1, more = false) {
-  return RunHistoryResponseSchema.parse({
-    ...HISTORY,
-    runId,
-    afterSequence: after,
-    throughSequence: through,
-    nextSequence: more ? after + 1 : null,
-    events: [
-      {
-        eventType: "assistant-message",
-        eventId: `event:${runId}:${String(after + 1)}`,
-        sequence: after + 1,
-        occurredAt: NOW,
-        content: runId,
-      },
-    ],
-  });
-}
+import {
+  disposeControllers,
+  notices,
+  owned,
+  page,
+  SESSIONS,
+  setup,
+} from "./sessions-controller.fixture.js";
+afterEach(disposeControllers);
 it("polls durable pages at a frozen boundary, then resumes fresh reads without duplicates", async () => {
   vi.useFakeTimers();
   const { client, controller } = setup();
@@ -417,12 +379,10 @@ it("lists from the newest match again when filters change, keeping the class and
   const { client, controller } = setup();
   await controller.chooseClass("class:one");
   await controller.more();
-  await controller.select("run:one");
   await controller.filter({ evaluation: ["draft"], evidence: "with", search: "  Ada  " });
   expect(controller.state).toMatchObject({
     classId: "class:one",
     filters: { evaluation: ["draft"], evidence: "with", search: "Ada" },
-    runId: null,
   });
   expect(client.classes).toHaveBeenLastCalledWith(null, expect.any(AbortSignal), "class:one", {
     evaluation: ["draft"],
