@@ -8,7 +8,7 @@ import {
 } from "./questions.boundary.js";
 import { createReviewChecks } from "./argument-checks.boundary.js";
 import { BaseLanguageModel } from "@langchain/core/language_models/base";
-import { type BaseMessageChunk } from "@langchain/core/messages";
+import { type BaseMessage, type BaseMessageChunk } from "@langchain/core/messages";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { Command } from "@langchain/langgraph";
 import { createDeepAgent } from "deepagents";
@@ -51,13 +51,18 @@ import {
   recoverGraphTurn,
   recoveryAfterPrefix,
 } from "./recovery-state.boundary.js";
+import { beginContinuation } from "./continuation.boundary.js";
+import {
+  diagnosticCauseFor,
+  normalizeDiagnosticCause,
+  safelyRecordTurn,
+  upstreamFailure,
+} from "./upstream-failure.boundary.js";
+import type { SupersededText } from "./superseded-text.js";
+import { withUnansweredInputs } from "./unanswered-inputs.boundary.js";
 
 export { assertPendingReview, parseApprovalEvent };
-
-export interface DiagnosticCause {
-  readonly name: string;
-  readonly message: string;
-}
+export { diagnosticCauseFor, normalizeDiagnosticCause };
 
 interface UpstreamRun {
   readonly messages: AsyncIterable<{ readonly text: AsyncIterable<string> }>;
@@ -65,7 +70,6 @@ interface UpstreamRun {
 }
 
 const modelRegistry = new WeakMap<AgentModel, BaseLanguageModel<BaseMessageChunk>>();
-const diagnosticCauseRegistry = new WeakMap<AgentAdapterError, DiagnosticCause>();
 const sessionIdSchema = z
   .string()
   .max(128)
@@ -167,10 +171,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
         turn,
         config,
         (checkpointConfig) => agent.graph.getState(checkpointConfig),
-        (runConfig) =>
+        (runConfig, unanswered) =>
           agent.streamEvents(
             {
-              messages: [input],
+              messages: [...unanswered, input],
             },
             runConfig,
           ) as unknown as UpstreamRun,
@@ -213,19 +217,6 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
   });
 }
 
-export function diagnosticCauseFor(error: AgentAdapterError): DiagnosticCause | null {
-  return diagnosticCauseRegistry.get(error) ?? null;
-}
-
-export function normalizeDiagnosticCause(input: unknown): DiagnosticCause {
-  return input instanceof Error
-    ? Object.freeze({ name: input.name, message: input.message })
-    : Object.freeze({
-        name: "NonErrorThrownValue",
-        message: "The upstream runtime threw a non-Error value.",
-      });
-}
-
 function streamConfig(sessionId: string, messageId: string, signal: AbortSignal) {
   const parsed = sessionIdSchema.safeParse(sessionId);
   if (!parsed.success) {
@@ -252,12 +243,10 @@ export async function* translateRun(
     events: readonly AgentEvent[],
   ) => Promise<void>,
   cancelTurn?: (events: readonly AgentEvent[]) => Promise<void>,
-  replayText = "",
   drainToolEvents?: () => readonly ToolLifecycleEvent[],
 ): AsyncGenerator<AgentEvent> {
   let output: unknown;
   const events: AgentEvent[] = [];
-  let remainingReplayText = replayText;
   const drainTools = function* (): Generator<AgentEvent> {
     if (drainToolEvents !== undefined) yield* drainToolEvents();
   };
@@ -274,18 +263,8 @@ export async function* translateRun(
       yield* drainTools();
       for await (const text of message.text) {
         yield* drainTools();
-        let delta = text;
-        if (remainingReplayText.startsWith(delta)) {
-          remainingReplayText = remainingReplayText.slice(delta.length);
-          delta = "";
-        } else if (delta.startsWith(remainingReplayText)) {
-          delta = delta.slice(remainingReplayText.length);
-          remainingReplayText = "";
-        } else {
-          throw invalidReplayPrefix();
-        }
-        if (delta.length > 0) {
-          const event = { type: "assistant-text-delta" as const, text: delta };
+        if (text.length > 0) {
+          const event = { type: "assistant-text-delta" as const, text };
           events.push(event);
           // The UI must never persist a prefix newer than the adapter's recovery journal.
           await safelyRecordTurn(recordTurn, "in-progress", events);
@@ -296,7 +275,6 @@ export async function* translateRun(
     }
     yield* drainTools();
     output = await run.output;
-    if (remainingReplayText.length > 0) throw invalidReplayPrefix();
   } catch (error: unknown) {
     yield* drainTools();
     if (signal.aborted) {
@@ -324,24 +302,6 @@ export async function* translateRun(
   yield completed;
 }
 
-async function safelyRecordTurn(
-  recordTurn:
-    | ((
-        state: "pending-approval" | "in-progress" | "completed",
-        events: readonly AgentEvent[],
-      ) => Promise<void>)
-    | undefined,
-  state: "pending-approval" | "in-progress" | "completed",
-  events: readonly AgentEvent[],
-): Promise<void> {
-  try {
-    await recordTurn?.(state, events);
-  } catch (error: unknown) {
-    if (error instanceof AgentAdapterError) throw error;
-    throw upstreamFailure(error);
-  }
-}
-
 async function persistRecoveredApproval(
   checkpointer: NonNullable<ReturnType<typeof resolveCheckpoint>>,
   turn: MessageIdentity,
@@ -349,29 +309,20 @@ async function persistRecoveredApproval(
 ): Promise<void> {
   if (recovered?.type !== "pending-approval") return;
   await safelyRecordTurn(
-    recordTurnWith(checkpointer, turn, ""),
+    recordTurnWith(checkpointer, turn, "", recovered.superseded),
     "pending-approval",
     recovered.events,
   );
-}
-
-function upstreamFailure(error: unknown): AgentAdapterError {
-  const adapterError = new AgentAdapterError(
-    "upstream-execution-failed",
-    "The agent runtime failed without exposing provider diagnostics.",
-  );
-  // The classifier downstream reads the typed cause; prose is never parsed.
-  // Non-enumerable, so the cause never leaks into serialized errors.
-  Object.defineProperty(adapterError, "cause", { value: error });
-  diagnosticCauseRegistry.set(adapterError, normalizeDiagnosticCause(error));
-  return adapterError;
 }
 
 async function* streamMessageWithRecovery(
   turn: MessageTurn,
   config: RunnableConfig,
   getState: (config: RunnableConfig) => Promise<unknown>,
-  start: (config: RunnableConfig) => UpstreamRun | PromiseLike<UpstreamRun>,
+  start: (
+    config: RunnableConfig,
+    unanswered: readonly BaseMessage[],
+  ) => UpstreamRun | PromiseLike<UpstreamRun>,
   continueRun: (config: RunnableConfig) => UpstreamRun | PromiseLike<UpstreamRun>,
   signal: AbortSignal,
   checkpointer: ReturnType<typeof resolveCheckpoint> & {},
@@ -384,31 +335,34 @@ async function* streamMessageWithRecovery(
     yield* recoveryAfterPrefix(recovered, turn.assistantText).events;
     return;
   }
-  if (recovered !== null) {
-    yield* recoveryAfterPrefix(recovered, turn.assistantText).events;
-  }
-  let runConfig: RunnableConfig;
   let run: () => UpstreamRun | PromiseLike<UpstreamRun>;
+  let base = "";
+  let superseded: SupersededText | null = null;
   if (recovered === null) {
     const sessionHead = await checkpointer.findSessionHead(turn.sessionId, async (candidate) =>
       isCompletedGraphState(await getState(candidate)),
     );
-    runConfig =
+    const runConfig =
       sessionHead === null
         ? emptyBranchConfig(config, turn.messageId)
         : continuationConfig(config, sessionHead);
-    run = () => start(runConfig);
+    // A question whose turn failed stays in the conversation, without its partial answer.
+    const unanswered = await withUnansweredInputs(checkpointer, getState, turn, sessionHead);
+    run = () => start(runConfig, unanswered);
   } else {
-    runConfig = continuationConfig(config, recovered.checkpointConfig);
+    const continuation = beginContinuation(turn.assistantText, recovered);
+    yield* continuation.events;
+    base = continuation.assistantText;
+    superseded = continuation.superseded;
+    const runConfig = continuationConfig(config, recovered.checkpointConfig);
     run = () => continueRun(runConfig);
   }
   yield* translateRun(
     run,
     signal,
     undefined,
-    recordTurnWith(checkpointer, turn, recoveredAssistantText(recovered)),
-    cancelTurnWith(checkpointer, turn, recoveredAssistantText(recovered)),
-    recovered?.replayText ?? "",
+    recordTurnWith(checkpointer, turn, base, superseded),
+    cancelTurnWith(checkpointer, turn, base),
     drainToolEvents,
   );
 }
@@ -431,15 +385,15 @@ async function* resumeApprovalWithRecovery(
   }
   if (recovered?.type === "in-progress") {
     assertRecoveredReview(recovered, turn.reviewId, toolName);
-    yield* recoveryAfterPrefix(recovered, turn.assistantText).events;
+    const continuation = beginContinuation(turn.assistantText, recovered);
+    yield* continuation.events;
     const runConfig = continuationConfig(config, recovered.checkpointConfig);
     yield* translateRun(
       () => continueRun(runConfig),
       signal,
       undefined,
-      recordTurnWith(checkpointer, turn, recovered.assistantText),
-      cancelTurnWith(checkpointer, turn, recovered.assistantText),
-      recovered.replayText,
+      recordTurnWith(checkpointer, turn, continuation.assistantText, continuation.superseded),
+      cancelTurnWith(checkpointer, turn, continuation.assistantText),
       drainToolEvents,
     );
     return;
@@ -453,7 +407,9 @@ async function* resumeApprovalWithRecovery(
     await persistRecoveredApproval(checkpointer, turn, recovered);
   }
   if (replay !== null) {
-    yield* replay.events.filter((event) => event.type === "assistant-text-delta");
+    yield* replay.events.filter(
+      (event) => event.type === "assistant-text-delta" || event.type === "assistant-text-restarted",
+    );
   }
   yield* translateRun(
     async () => {
@@ -471,21 +427,19 @@ async function* resumeApprovalWithRecovery(
     },
     signal,
     (turn.decisions?.[0] ?? turn.decision).type,
-    recordTurnWith(checkpointer, turn, recoveredAssistantText(recovered)),
-    cancelTurnWith(checkpointer, turn, recoveredAssistantText(recovered)),
-    undefined,
+    recordTurnWith(
+      checkpointer,
+      turn,
+      recovered?.assistantText ?? "",
+      recovered?.superseded ?? null,
+    ),
+    cancelTurnWith(checkpointer, turn, recovered?.assistantText ?? ""),
     drainToolEvents,
   );
 }
 
 function decisionCount(turn: ApprovalTurn): number {
   return turn.decisions?.length ?? 1;
-}
-
-function recoveredAssistantText(
-  recovered: Awaited<ReturnType<typeof recoverGraphTurn>> | null,
-): string {
-  return recovered?.assistantText ?? "";
 }
 
 function invalidDependency(message: string): AgentAdapterError {

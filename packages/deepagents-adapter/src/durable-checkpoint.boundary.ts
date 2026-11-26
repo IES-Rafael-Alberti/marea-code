@@ -25,6 +25,7 @@ import {
 import * as z from "zod";
 
 import { AgentAdapterError, type AgentEvent } from "./contracts.js";
+import type { SupersededText } from "./superseded-text.js";
 
 const MAX_CHECKPOINT_STATE_BYTES = 64 * 1024 * 1024;
 
@@ -43,6 +44,8 @@ const turnMetadataSchema = z.object({ messageId: z.string() }).loose();
 export interface CheckpointTurnRecord {
   readonly state: "pending-approval" | "in-progress" | "completed" | "cancelled";
   readonly events: readonly AgentEvent[];
+  /** Text the caller was told to discard when an interrupted model call was made again. */
+  readonly superseded?: SupersededText | undefined;
 }
 
 export interface RuntimeCheckpointSaver extends BaseCheckpointSaver {
@@ -403,6 +406,10 @@ function createPersistedStateSchema() {
             .object({
               state: z.enum(["pending-approval", "in-progress", "completed", "cancelled"]),
               events: z.array(agentEventSchema),
+              superseded: z
+                .object({ keptLength: z.number().int().nonnegative(), text: z.string() })
+                .strict()
+                .optional(),
             })
             .strict(),
         )

@@ -328,7 +328,8 @@ describe("agent turn recovery", () => {
         ),
       ),
     ).resolves.toEqual([
-      { type: "assistant-text-delta", text: "continued" },
+      { type: "assistant-text-restarted", discardedLength: 7 },
+      { type: "assistant-text-delta", text: "prefix continued" },
       { type: "turn-completed" },
     ]);
     const humans = resumedModel.calls[0]?.messages.filter((message) =>

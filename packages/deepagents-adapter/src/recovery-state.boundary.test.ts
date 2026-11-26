@@ -262,6 +262,7 @@ describe("recovery state helpers", () => {
         { type: "turn-completed" as const },
       ],
       replayText: "",
+      superseded: null,
       type: "completed" as const,
     };
 
