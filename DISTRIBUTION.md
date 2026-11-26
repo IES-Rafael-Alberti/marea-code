@@ -1,10 +1,54 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.47`.
+The commands below target `0.1.0-preview.48`.
 
-This preview helps students who start Marea in the wrong folder and adds a guide for students.
-It changes only the student client: **students update the client** (`marea update`). The
-server, protocol 0.1 and database schema 15 are the same as in preview 46.
+This preview fixes situations that could leave a session or a server permanently blocked. The
+protocol remains 0.1 and the database schema remains 15. **Update the server first**, then
+**students update the client** (`marea update`). Students who were stuck on preview 46 or 47
+recover once the server and their client are updated.
+
+Sessions that no longer block:
+
+- One event the server refuses (for example the diagnostic of a failed tutor startup) no longer
+  stops every later event: the client sets it aside in its private failure log and keeps
+  delivering, and the server logs the refusal on stderr. The server now accepts that diagnostic.
+- An empty model reply is retried automatically; if it stays empty the student is told to use
+  `/retry`. Empty messages already stored in a session are dropped, so those sessions heal.
+- Rejecting an action without typing a reason no longer breaks the next message.
+- Writing a new message after a failed turn closes the failed one. A computer left with several
+  pending turns (which refused to start with "the pending student turn is ambiguous") recovers
+  on the next start.
+- Mistakes the model can correct (an `old_string` that is not in the file, a path that does not
+  exist, a write or question with invalid arguments, a file changed after review) go back to the
+  model as tool errors instead of failing the turn. Duplicate tool-call ids, `content_filter` and
+  `error` finish reasons, very long text chunks and messages near the size limit are handled.
+- Long sessions keep their local state bounded, and a failed lease recovery no longer leaves the
+  run unusable until restart. A `session.json` written by a newer Marea is refused with an
+  "update Marea" message instead of being set aside.
+
+Student computers:
+
+- Commands with quotes and accented output work in Windows `cmd.exe`.
+- A Git failure while recording project changes (a file open in another program, a slow
+  repository, a huge diff) no longer fails the turn; the teacher sees that the change could not
+  be recorded.
+- Git's "dubious ownership" no longer offers to create a new repository; Marea explains the
+  `safe.directory` command instead. Folder comparisons on Windows ignore case and short names, and
+  the local state of a project no longer depends on how its path was typed.
+
+Teacher server:
+
+- Backups and restores stream the database to disk, so databases of any size can be backed up
+  before an update or a migration. The backup first checks the free disk space and names the
+  required and available space if it is not enough.
+- An update that fails before changing data returns to the previous release by itself, explains
+  why, and can be retried.
+- An initialization lock left by a crashed server is removed when its process no longer exists,
+  and a server that does not start writes the reason to stderr.
+- Turn diagnostics stay out of the student's history and the evaluation input.
+
+Preview 47, the previous published release, helped students who start Marea in the wrong folder
+and added a guide for students.
 
 - Starting Marea in a subfolder of a Git repository shows both folders. At a terminal it offers
   to leave (the default, with the `cd` command to run) or to create a new repository in the
@@ -186,13 +230,13 @@ Published installers and tags remain immutable.
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.47/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.48/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.47/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.48/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -332,13 +376,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.47/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.48/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.47/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.48/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Use **PowerShell**, identified by a prompt such as `PS C:\Users\david>`, for the
@@ -527,13 +571,15 @@ the empty root allows the same installation command to run again. Do not delete
 
 ## Test this preview in a classroom
 
-1. Update a Windows student PC (`marea update`) and check that `marea --version` shows
-   `0.1.0-preview.47`. The teacher server stays on preview 46.
-2. Run `marea` from a subfolder of a project and confirm both folders appear. Choose **Salir**,
-   run the `cd` command shown and start `marea` again.
-3. Run `marea logout`, then `marea`, and confirm it asks how to sign in.
-4. Check the previous preview's steps still pass: several approvals in one turn, `/usage`, and
-   **End session** in the dashboard.
+1. Update the teacher server (`marea-teacher update`) and start it, then update a Windows student
+   PC (`marea update`) and check that `marea --version` shows `0.1.0-preview.48`.
+2. A student who could not start Marea, or whose session stopped reaching the dashboard, starts
+   `marea` again: confirm the session works and appears in **Sessions**.
+3. Reject an action without typing a reason, then send another message: the tutor answers.
+4. Ask the tutor to edit a file with text that is not in it: the turn continues and the tutor
+   corrects itself.
+5. Run a command with quotes and accents, for example `python -c "print('canción')"`.
+6. Open the project with a file locked in another program and send a message: the turn works.
 
 Report back: the preview and OS, which step failed, and any diagnostic code shown by the client
 or the dashboard (do not send student passwords or API keys).
@@ -542,7 +588,7 @@ or the dashboard (do not send student passwords or API keys).
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.47`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.48`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
