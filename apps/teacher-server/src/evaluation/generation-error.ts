@@ -6,3 +6,14 @@ export class EvaluationGenerationError extends Error {
     this.name = "EvaluationGenerationError";
   }
 }
+
+/** Why a model answer was not a reviewable draft. Internal diagnostics only, never its content. */
+export type InvalidDraftReason =
+  "tool-call" | "oversized" | "truncated" | "unfinished" | "malformed" | "schema" | "criteria";
+
+export interface EvaluationDraftDiagnostic {
+  readonly runId: string;
+  readonly evaluationId: string;
+  readonly reason: InvalidDraftReason;
+  readonly outputBytes: number;
+}

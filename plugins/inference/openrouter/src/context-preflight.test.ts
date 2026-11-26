@@ -115,6 +115,27 @@ it("includes UTF-8 messages, tools, framing and output at the exact admission bo
   });
 });
 
+it("shrinks output asked beyond the default to the room left, never below the default", async () => {
+  const input = Buffer.byteLength(JSON.stringify({ messages: request.messages, tools: [] })) + 4096;
+  const preflight = (capacity: number) =>
+    createContextPreflight(() =>
+      Promise.resolve([{ ...model, contextWindowTokens: capacity, maxOutputTokens: 943_718 }]),
+    );
+  const wide = { ...request, maxOutputTokens: 32_768 };
+  await expect(preflight(input + 32_768)(wide, signal())).resolves.toMatchObject({
+    maxOutputTokens: 32_768,
+  });
+  await expect(preflight(input + 20_000)(wide, signal())).resolves.toMatchObject({
+    maxOutputTokens: 20_000,
+  });
+  await expect(preflight(input + 8192)(wide, signal())).resolves.toMatchObject({
+    maxOutputTokens: 8192,
+  });
+  await expect(preflight(input + 8191)(wide, signal())).rejects.toMatchObject({
+    code: "context-exceeded",
+  });
+});
+
 it("honors cancellation while the model catalog is loading", async () => {
   const controller = new AbortController();
   const preflight = createContextPreflight(() => {

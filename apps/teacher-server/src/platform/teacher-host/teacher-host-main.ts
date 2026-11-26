@@ -92,6 +92,9 @@ export async function runTeacherHost(
       onEvaluationError: () => {
         dependencies.stderr("Teacher host evaluation work failed; it will retry.\n");
       },
+      onEvaluationDiagnostic: (event) => {
+        dependencies.stderr(JSON.stringify({ component: "evaluation", ...event }) + "\n");
+      },
     });
   // The status file reads ready before start returns, so a supervisor may signal at once: listen
   // first and drain after start instead of letting the default handler kill the process.

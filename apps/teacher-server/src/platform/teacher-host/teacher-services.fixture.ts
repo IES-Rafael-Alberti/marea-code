@@ -20,7 +20,7 @@ import {
 } from "../../teaching/configuration/dashboard-module.fixture.js";
 import { withoutDeletionAuthority } from "../persistence/identity-creation-guard.js";
 import { SqliteTeachingConfigurationRepository } from "../persistence/sqlite-teaching-configuration-repository.js";
-import { composeTeacherServices } from "./teacher-services.js";
+import { composeTeacherServices, type TeacherHostServiceDependencies } from "./teacher-services.js";
 
 /** A composed teacher host over a seeded schema-eight database, for integration tests. */
 export const NOW = "2026-09-14T10:00:00.000Z";
@@ -52,6 +52,7 @@ export async function composedHost(
   teacherRoot = mkdtempSync(join(tmpdir(), "marea-host-teacher-")),
   settings?: ServerSettingsStore,
   identityProviders?: readonly ConfiguredIdentityProvider[],
+  onEvaluationDiagnostic?: TeacherHostServiceDependencies["onEvaluationDiagnostic"],
 ) {
   const provider = new RecordingProvider();
   const composed = await composeTeacherServices({
@@ -82,6 +83,7 @@ export async function composedHost(
     retry: { wait: () => Promise.resolve() },
     identities: withoutDeletionAuthority(),
     evaluationIntervalMs: 60_000,
+    onEvaluationDiagnostic,
     onEvaluationError: () => undefined,
   });
   const app = createTeacherProductHttp({

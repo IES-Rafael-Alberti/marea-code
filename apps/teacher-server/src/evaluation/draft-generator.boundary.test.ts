@@ -1,8 +1,3 @@
-import type {
-  InferenceCancellation,
-  InferenceProviderEvent,
-  InferenceProviderRequest,
-} from "@marea/plugin-api";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -11,63 +6,14 @@ import {
   NOW,
   teacher,
 } from "../../test-support/evaluation-fixture.js";
-import { SqliteUsageLedger } from "../platform/persistence/sqlite-usage-ledger.js";
 import { SqliteNoticeRepository } from "../platform/persistence/sqlite-notice-repository.js";
 import { EvaluationDraftGenerator } from "./draft-generator.boundary.js";
+import { requireClaim, response, setup } from "./draft-generator.fixture.js";
 import { EvaluationWorker } from "./evaluation-worker.js";
-import type { EvaluationClaim } from "./contracts.js";
+import type { EvaluationDraftDiagnostic } from "./generation-error.js";
+import { teachingConfiguration } from "../../test-support/teaching-fixture.js";
 import { EventIdSchema, MAX_EVALUATION_DRAFT_BYTES } from "@marea/protocol";
 import { MAX_EVALUATION_INPUT_BYTES } from "./evaluation-input.js";
-
-function setup(
-  events: readonly InferenceProviderEvent[],
-  onRequest?: (signal: InferenceCancellation) => void,
-) {
-  const test = evaluationFixture();
-  const requests: InferenceProviderRequest[] = [];
-  const ledger = new SqliteUsageLedger(test.database);
-  let id = 0;
-  const clock = { now: () => NOW };
-  const generator = new EvaluationDraftGenerator({
-    ledger,
-    clock,
-    createReservationId: () => `reservation:${String(++id)}`,
-    providers: {
-      resolve: () => ({
-        async *stream(request, signal) {
-          requests.push(request);
-          onRequest?.(signal);
-          await Promise.resolve();
-          yield* events;
-        },
-      }),
-    },
-  });
-  const worker = new EvaluationWorker({
-    repository: test.repository,
-    generator,
-    clock,
-    ids: { createId: (namespace) => `${namespace}:${String(++id)}` },
-  });
-  return { ...test, requests, ledger, generator, worker };
-}
-
-function response(
-  text = JSON.stringify(EVALUATION_DRAFT),
-  finishReason: "stop" | "length" = "stop",
-): readonly InferenceProviderEvent[] {
-  return [
-    { type: "text-delta", text: text.slice(0, 17) },
-    { type: "text-delta", text: text.slice(17) },
-    { type: "usage", inputTokens: 10, outputTokens: 20 },
-    { type: "completed", finishReason },
-  ];
-}
-
-function requireClaim(claim: EvaluationClaim | null): EvaluationClaim {
-  if (claim === null) throw new Error("Expected evaluation claim.");
-  return claim;
-}
 
 describe("budgeted private evaluation generation", () => {
   it("admits exact model-input bytes to budget admission and rejects the next byte first", async () => {
@@ -238,11 +184,32 @@ describe("budgeted private evaluation generation", () => {
     }
   });
 
+  const skillId = teachingConfiguration().content.didacticSkills[0]?.id ?? "";
+  const unknownCriterion = {
+    skillId,
+    code: "unknown",
+    result: "no-evidence",
+    confidence: "low",
+    evidence: "",
+  };
   it.each([
-    [response("not json"), "invalid-draft"],
-    [response("{}"), "invalid-draft"],
-    [response(JSON.stringify({ ...EVALUATION_DRAFT, approved: true })), "invalid-draft"],
-    [response(JSON.stringify(EVALUATION_DRAFT), "length"), "invalid-draft"],
+    [response("not json"), "invalid-draft", "malformed"],
+    [response("{}"), "invalid-draft", "schema"],
+    [response(JSON.stringify({ ...EVALUATION_DRAFT, approved: true })), "invalid-draft", "schema"],
+    [
+      response(JSON.stringify({ ...EVALUATION_DRAFT, criteria: [unknownCriterion] })),
+      "invalid-draft",
+      "criteria",
+    ],
+    [response(JSON.stringify(EVALUATION_DRAFT), "length"), "invalid-draft", "truncated"],
+    [
+      [
+        { type: "usage", inputTokens: 10, outputTokens: 20 },
+        { type: "completed", finishReason: "tool-call" },
+      ],
+      "invalid-draft",
+      "unfinished",
+    ],
     [
       [
         {
@@ -253,12 +220,14 @@ describe("budgeted private evaluation generation", () => {
         },
       ],
       "invalid-draft",
+      "tool-call",
     ],
-    [[], "inference-failed"],
+    [[], "inference-failed", undefined],
   ] as const)(
     "stores a safe failure for an unusable provider response %#",
-    async (events, failure) => {
-      const test = setup(events);
+    async (events, failure, reason) => {
+      const diagnostic = vi.fn<(event: EvaluationDraftDiagnostic) => void>();
+      const test = setup(events, undefined, diagnostic);
       try {
         test.queue();
         expect(await test.worker.runNext(new AbortController().signal)).toBe(true);
@@ -268,6 +237,11 @@ describe("budgeted private evaluation generation", () => {
         });
         expect(new SqliteNoticeRepository(test.database).pending("s1", 32)).toEqual([]);
         expect(test.ledger.totals({ runId: "run:b", purpose: "evaluation" }).requests).toBe(1);
+        expect(diagnostic.mock.calls).toEqual(
+          reason === undefined
+            ? []
+            : [[expect.objectContaining({ runId: "run:b", evaluationId: "evaluation:1", reason })]],
+        );
       } finally {
         test.database.close();
       }
