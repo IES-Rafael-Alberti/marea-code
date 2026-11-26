@@ -7,26 +7,19 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 vi.mock("bun:sqlite", () => import("../operator-cli/bun-sqlite.fixture.js"));
 
-const volume = vi.hoisted(() => ({ availableBytes: 1_000_000_000_000 }));
-vi.mock("../../../../../packages/sqlite-storage/src/disk-space.boundary.js", () => ({
-  diskSpace: { freeBytes: () => volume.availableBytes },
-}));
-
-import { initializeSqliteStorage } from "@marea/sqlite-storage";
+import { createDefaultDependencies, initializeSqliteStorageWith } from "@marea/sqlite-storage";
 
 import { RecoveryBundleError, createRecoveryBundle, restoreRecoveryBundle } from "./index.js";
 import { readVerifiedBundle } from "../operations/retention/retention-backups.boundary.js";
 
 const roots: string[] = [];
 afterEach(() => {
-  volume.availableBytes = 1_000_000_000_000;
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
@@ -34,10 +27,14 @@ afterEach(() => {
 const LIMITS = { fileBytes: 4096, fileCount: 2, totalBytes: 8192 };
 const RELEASE_ID = "release:large";
 
-function installation() {
+/** The free space the storage sees: injected, so no real volume has to be full. */
+function installation(availableBytes = 1_000_000_000_000) {
   const root = mkdtempSync(join(tmpdir(), "marea-recovery-large-"));
   roots.push(root);
-  const storage = initializeSqliteStorage({ databasePath: join(root, "teacher.sqlite") });
+  const storage = initializeSqliteStorageWith(
+    { databasePath: join(root, "teacher.sqlite") },
+    { ...createDefaultDependencies(), diskSpace: { freeBytes: () => availableBytes } },
+  );
   storage.database.execute(
     "INSERT INTO marea_classes (id, seed_key, display_name) VALUES (?1, ?2, ?3)",
     ["class:large", "large", "Synthetic large class"],
@@ -88,8 +85,7 @@ describe("backing up a database larger than the state-file limits", () => {
   });
 
   it("refuses before copying when the volume lacks the space, naming both figures", () => {
-    const { root, storage } = installation();
-    volume.availableBytes = 1_048_576;
+    const { root, storage } = installation(1_048_576);
     let failure: unknown;
     try {
       createRecoveryBundle(join(root, "bundle"), bundleInput(root, storage));

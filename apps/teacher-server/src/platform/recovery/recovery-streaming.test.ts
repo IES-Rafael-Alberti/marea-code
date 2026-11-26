@@ -125,4 +125,17 @@ describe("streamed database hashing", () => {
       record: large.database,
     });
   });
+
+  it("refuses a tampered database when verifying for restore", () => {
+    const base = join(root(), "tampered-restore-artifact");
+    const manifest = writeRecoveryArtifact(base);
+    writeFileSync(join(base, "database.sqlite"), "tampered-bytes");
+    expectRecoveryError(() => {
+      verifyArtifactFilesWithDatabase(base, manifest, {
+        fileBytes: 64,
+        fileCount: 4,
+        totalBytes: 64,
+      });
+    }, "bundle-database-invalid");
+  });
 });

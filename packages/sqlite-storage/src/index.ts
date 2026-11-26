@@ -18,8 +18,10 @@ export {
   type SqliteStorageOptions,
 } from "./contracts.js";
 export {
+  createDefaultDependencies,
   currentSqliteSchema,
   initializeSqliteStorage,
+  initializeSqliteStorageWith,
   openSqliteDatabaseFile,
   restoreSqliteBackup,
   restoreSqliteBackupFile,
