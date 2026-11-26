@@ -1,5 +1,6 @@
 import type { ToolLifecycleEvent } from "./tool-events.boundary.js";
 import { expect, it } from "vitest";
+import type { WhenPredicate } from "langchain";
 import { createControlledTools } from "./controlled-tools.boundary.js";
 import { QUESTION_TOOL_NAME } from "./questions.boundary.js";
 it.each([QUESTION_TOOL_NAME, "duplicate"])(
@@ -41,4 +42,32 @@ it("reserves the question channel even when only one effect is supplied", () => 
       () => undefined,
     ),
   ).toThrow(expect.objectContaining({ code: "invalid-runtime-dependency" }));
+});
+it("asks approval for every effect and gates it only when a blocking predicate is supplied", async () => {
+  const effect = {
+    name: "write_note",
+    description: "Synthetic",
+    execute: () => Promise.resolve("done"),
+  };
+  const decisions = ["approve", "edit", "reject"];
+  expect(createControlledTools([effect], () => undefined).interrupts).toEqual({
+    write_note: { allowedDecisions: decisions },
+  });
+  let blocked = true;
+  const request: Parameters<WhenPredicate>[0] = Object.freeze({}) as Parameters<WhenPredicate>[0];
+  const seen: Parameters<WhenPredicate>[0][] = [];
+  const gated = createControlledTools(
+    [effect],
+    () => undefined,
+    (received) => {
+      seen.push(received);
+      return Promise.resolve(blocked);
+    },
+  ).interrupts.write_note;
+  expect(gated?.allowedDecisions).toEqual(decisions);
+  // A blocked call needs no approval interrupt; an unblocked one does.
+  expect(await gated?.when?.(request)).toBe(false);
+  blocked = false;
+  expect(await gated?.when?.(request)).toBe(true);
+  expect(seen).toEqual([request, request]);
 });
