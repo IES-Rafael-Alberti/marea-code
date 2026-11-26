@@ -99,4 +99,10 @@ describe("virtual workspace paths", () => {
       segments: ["README.md"],
     });
   });
+
+  it("reports an unsafe discovered name as a listing failure", () => {
+    expect(() => appendVirtualPath(parseVirtualPath("/", "list"), "unsafe\\name")).toThrow(
+      new WorkspaceError("invalid-path", "list"),
+    );
+  });
 });
