@@ -1,4 +1,5 @@
-import { expect, it, vi } from "vitest";
+import type { InferenceProviderRequest, ProviderModel } from "@marea/plugin-api";
+import { describe, expect, it, vi } from "vitest";
 import { createContextPreflight } from "./context-preflight.js";
 
 const request = {
@@ -115,6 +116,27 @@ it("includes UTF-8 messages, tools, framing and output at the exact admission bo
   });
 });
 
+it("shrinks output asked beyond the default to the room left, never below the default", async () => {
+  const input = Buffer.byteLength(JSON.stringify({ messages: request.messages, tools: [] })) + 4096;
+  const preflight = (capacity: number) =>
+    createContextPreflight(() =>
+      Promise.resolve([{ ...model, contextWindowTokens: capacity, maxOutputTokens: 943_718 }]),
+    );
+  const wide = { ...request, maxOutputTokens: 32_768 };
+  await expect(preflight(input + 32_768)(wide, signal())).resolves.toMatchObject({
+    maxOutputTokens: 32_768,
+  });
+  await expect(preflight(input + 20_000)(wide, signal())).resolves.toMatchObject({
+    maxOutputTokens: 20_000,
+  });
+  await expect(preflight(input + 8192)(wide, signal())).resolves.toMatchObject({
+    maxOutputTokens: 8192,
+  });
+  await expect(preflight(input + 8191)(wide, signal())).rejects.toMatchObject({
+    code: "context-exceeded",
+  });
+});
+
 it("honors cancellation while the model catalog is loading", async () => {
   const controller = new AbortController();
   const preflight = createContextPreflight(() => {
@@ -129,4 +151,39 @@ it("loads the first catalog regardless of the injected clock origin", async () =
   const preflight = createContextPreflight(models, () => -1);
   await expect(preflight(request, signal())).resolves.toMatchObject({ maxOutputTokens: 8192 });
   expect(models).toHaveBeenCalledTimes(1);
+});
+
+describe("requests for the model maximum output", () => {
+  const prefer: InferenceProviderRequest = {
+    ...request,
+    maxOutputTokens: 32_768,
+    preferModelMaxOutput: true,
+  };
+  const admit = (candidate: ProviderModel, asked = prefer) =>
+    createContextPreflight(() => Promise.resolve([candidate]))(asked, signal());
+  it("asks for the declared maximum, even above the fallback or the 8192 default", async () => {
+    expect((await admit({ ...model, maxOutputTokens: 65_536 })).maxOutputTokens).toBe(65_536);
+    expect((await admit({ ...model, maxOutputTokens: 4096 })).maxOutputTokens).toBe(4096);
+  });
+  it("uses the request's own value when the model declares no maximum", async () => {
+    expect((await admit(model)).maxOutputTokens).toBe(32_768);
+    expect((await admit(model, { ...request, preferModelMaxOutput: true })).maxOutputTokens).toBe(
+      8192,
+    );
+  });
+  it("clamps the maximum to what is left of a small context", async () => {
+    const small = { ...model, contextWindowTokens: 20_000, maxOutputTokens: 65_536 };
+    const admitted = await admit(small);
+    const input = new TextEncoder().encode(
+      JSON.stringify({ messages: request.messages, tools: request.tools }),
+    ).byteLength;
+    expect(admitted.maxOutputTokens).toBe(20_000 - input - 4096);
+  });
+  it("without the preference still caps the request by the model maximum", async () => {
+    const capped = await admit(
+      { ...model, maxOutputTokens: 65_536 },
+      { ...prefer, preferModelMaxOutput: false },
+    );
+    expect(capped.maxOutputTokens).toBe(32_768);
+  });
 });

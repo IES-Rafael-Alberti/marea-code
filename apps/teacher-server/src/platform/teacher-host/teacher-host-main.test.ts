@@ -359,6 +359,24 @@ it("prints one private JSON line with the reason and cause of a failed start", a
     "Teacher host did not start: storage.\n",
   ]);
 });
+it("writes why an evaluation draft was rejected as one private JSON line", async () => {
+  const target = dependencies();
+  const event = {
+    runId: "run:test",
+    evaluationId: "evaluation:test",
+    reason: "truncated",
+    outputBytes: 32_000,
+  } as const;
+  mocks.start.mockImplementationOnce((options: TeacherHostOptions) => {
+    options.onEvaluationDiagnostic?.(event);
+    return Promise.resolve({ state: "failed", reason: "listen" });
+  });
+  expect(await runTeacherHost(ARGV, target.ports)).toBe(5);
+  expect(target.stderr).toEqual([
+    JSON.stringify({ component: "evaluation", ...event }) + "\n",
+    "Teacher host did not start: listen.\n",
+  ]);
+});
 it("writes recognized private startup diagnostics to stderr as bounded JSON", async () => {
   const target = dependencies();
   const diagnostic = {

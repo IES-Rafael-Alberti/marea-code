@@ -11,7 +11,6 @@ import {
   DashboardReleaseError,
   type DashboardReleaseDiagnostic,
 } from "../../dashboard-profiles/release.js";
-import type { InferenceDiagnosticSink } from "../../model-gateway/inference-failure.boundary.js";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 
@@ -96,6 +95,7 @@ import {
   type TeacherHostConfig,
 } from "./teacher-host-config.js";
 import { composeTeacherServices, type TeacherHostServiceDependencies } from "./teacher-services.js";
+import type { TeacherHostSinks } from "./teacher-services.js";
 import { migrateSchemaOnStartup, type StartupMigrationEvent } from "./startup-migration.js";
 import { describeError } from "../operations/host/error-detail.js";
 
@@ -106,7 +106,7 @@ export type ServePort = (options: {
   readonly fetch: (request: Request) => Promise<Response>;
 }) => { readonly url: string; stop(): Promise<void> };
 
-export interface TeacherHostOptions {
+export interface TeacherHostOptions extends TeacherHostSinks {
   /** Present only for an explicitly requested HTTP LAN invocation. */
   readonly httpHosts?: readonly string[] | undefined;
   readonly telemetry?: Pick<TelemetryRuntimeOptions, "catalog" | "resolver">;
@@ -117,10 +117,8 @@ export interface TeacherHostOptions {
   readonly releaseId: string;
   readonly serve: ServePort;
   readonly passwords: PasswordHasher;
-  readonly onInferenceDiagnostic?: InferenceDiagnosticSink | undefined;
   /** Operator-private; receives only recognized bounded release diagnostics, never caught text. */
   readonly onStartupDiagnostic?: ((diagnostic: DashboardReleaseDiagnostic) => void) | undefined;
-  readonly onEvaluationError: () => void;
   /** Operator-private; one structured line per startup schema migration or refusal. */
   readonly onSchemaMigration?: ((event: StartupMigrationEvent) => void) | undefined;
 }
@@ -356,6 +354,7 @@ async function composeHostServices(
     evaluationIntervalMs: host.evaluationIntervalMs,
     educationalInsights: host.educationalInsights,
     onEvaluationError: options.onEvaluationError,
+    onEvaluationDiagnostic: options.onEvaluationDiagnostic,
     onInferenceDiagnostic: options.onInferenceDiagnostic,
   });
 }

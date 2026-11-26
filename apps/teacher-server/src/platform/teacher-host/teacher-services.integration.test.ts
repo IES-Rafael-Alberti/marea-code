@@ -343,6 +343,35 @@ it.each([false, true])(
   },
 );
 
+it("reports why a composed evaluation rejected the model answer to the host diagnostic", async () => {
+  vi.useFakeTimers();
+  const f = evaluationFixture();
+  const diagnostic = vi.fn<NonNullable<Parameters<typeof composedHost>[5]>>();
+  const host = await composedHost(
+    f.database,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    diagnostic,
+  );
+  try {
+    f.queue();
+    host.composed.evaluations.start();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(f.repository.latest(evaluationTeacher, "run:b")).toMatchObject({
+      state: "failed",
+      failure: "invalid-draft",
+    });
+    expect(diagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({ runId: "run:b", reason: "malformed" }),
+    );
+  } finally {
+    await host.composed.evaluations.stop();
+    f.database.close();
+    vi.useRealTimers();
+  }
+});
 it("stops every composed background worker before releasing its database", async () => {
   vi.useFakeTimers();
   const database = seededDatabase();

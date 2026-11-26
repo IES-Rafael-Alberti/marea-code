@@ -80,7 +80,14 @@ export interface InferenceToolDefinition {
 }
 
 export interface InferenceProviderRequest {
+  /** Output room to ask for; with `preferModelMaxOutput` it is only the fallback. */
   readonly maxOutputTokens?: number;
+  /**
+   * Asks for the largest output the model declares in its catalog (`ProviderModel.maxOutputTokens`).
+   * `maxOutputTokens` applies instead when the model declares none. Providers still fit the result
+   * to the model context. Absent means the request's own `maxOutputTokens`, capped by the model.
+   */
+  readonly preferModelMaxOutput?: boolean;
   readonly messages: readonly InferenceMessage[];
   readonly requestId: string;
   readonly tools: readonly InferenceToolDefinition[];

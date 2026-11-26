@@ -12,7 +12,11 @@ import type { ModelGatewayClock } from "../model-gateway/contracts.js";
 import type { UsageLedger } from "../model-gateway/usage-ledger.js";
 import type { EvaluationClaim } from "./contracts.js";
 import { MAX_EVALUATION_INPUT_BYTES } from "./evaluation-input.js";
-import { EvaluationGenerationError } from "./generation-error.js";
+import {
+  EvaluationGenerationError,
+  type EvaluationDraftDiagnostic,
+  type InvalidDraftReason,
+} from "./generation-error.js";
 import { validateEvaluationDraft } from "./validate-draft.js";
 
 const INSTRUCTIONS = `You draft a private evaluation for a human teacher, not a student message.
@@ -25,12 +29,23 @@ when the record cannot support a conclusion. Do not invent numeric grades or ada
 In free mode, criteria must be empty. The selected method's teacher_note means teacherNote,
 student_feedback means studentFeedback. Do not invent personal history. When adaptive targets are supplied, include levelAttempted for each criterion exactly matching its captured target, and learningNote: a concise pedagogical summary for the next tutor session, reviewed by the teacher before use.`;
 
+/**
+ * Output room an evaluation asks for when its model declares no maximum. Reasoning models count
+ * their reasoning as output, and long sessions need more than a provider's small default. Under an
+ * unlimited budget the model's declared maximum is requested instead; a limited budget caps it lower.
+ */
+export const EVALUATION_OUTPUT_TOKENS = 32_768;
+
 export interface DraftGeneratorOptions {
   readonly ledger: UsageLedger;
   readonly clock: ModelGatewayClock;
   readonly createReservationId: () => string;
   readonly providers: { resolve(providerId: string): InferenceProvider | undefined };
+  /** Receives why an answer was rejected as `invalid-draft`; it never affects the outcome. */
+  readonly diagnostic?: ((event: EvaluationDraftDiagnostic) => void) | undefined;
 }
+
+const ignoreDiagnostic = (): void => undefined;
 
 export class EvaluationDraftGenerator {
   public constructor(private readonly options: DraftGeneratorOptions) {}
@@ -73,10 +88,26 @@ export class EvaluationDraftGenerator {
     });
     let output = "";
     let bytes = 0;
+    const report = this.options.diagnostic ?? ignoreDiagnostic;
+    const invalid = (reason: InvalidDraftReason) => {
+      try {
+        report({
+          runId: input.runId,
+          evaluationId: claim.evaluationId,
+          reason,
+          outputBytes: bytes,
+        });
+      } catch {
+        // A failing diagnostic sink never changes the public evaluation outcome.
+      }
+      return new EvaluationGenerationError("invalid-draft");
+    };
     for await (const event of budgeted.stream(
       {
         requestId: claim.evaluationId,
         upstreamModel: selection.model,
+        maxOutputTokens: EVALUATION_OUTPUT_TOKENS,
+        preferModelMaxOutput: true,
         tools: [],
         messages: [
           { role: "system", content: system },
@@ -85,27 +116,32 @@ export class EvaluationDraftGenerator {
       },
       cancellationFor(signal),
     )) {
-      if (event.type === "tool-call") throw new EvaluationGenerationError("invalid-draft");
+      if (event.type === "tool-call") throw invalid("tool-call");
       if (event.type === "text-delta") {
         bytes += Buffer.byteLength(event.text);
-        if (bytes > MAX_EVALUATION_DRAFT_BYTES)
-          throw new EvaluationGenerationError("invalid-draft");
+        if (bytes > MAX_EVALUATION_DRAFT_BYTES) throw invalid("oversized");
         output += event.text;
       }
-      if (event.type === "completed") {
-        if (event.finishReason !== "stop") throw new EvaluationGenerationError("invalid-draft");
-      }
+      if (event.type === "completed" && event.finishReason !== "stop")
+        throw invalid(event.finishReason === "length" ? "truncated" : "unfinished");
     }
+    let parsed: unknown;
     try {
-      const parsed: unknown = JSON.parse(output);
+      parsed = JSON.parse(output);
+    } catch {
+      throw invalid("malformed");
+    }
+    const draft = EvaluationDraftSchema.safeParse(parsed);
+    if (!draft.success) throw invalid("schema");
+    try {
       return validateEvaluationDraft(
-        EvaluationDraftSchema.parse(parsed),
+        draft.data,
         input.mode,
         content.teaching.didacticSkills,
         content.teaching.adaptive?.targets,
       );
     } catch {
-      throw new EvaluationGenerationError("invalid-draft");
+      throw invalid("criteria");
     }
   }
 }

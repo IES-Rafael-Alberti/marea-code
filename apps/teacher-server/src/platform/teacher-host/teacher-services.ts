@@ -21,6 +21,7 @@ import { UsageHealthService } from "../../usage-health/service.js";
 import { SqliteUsageHealthRepository } from "../persistence/sqlite-usage-health-repository.js";
 import type { DashboardProfileEndpoint } from "../../dashboard-profiles/contracts.js";
 import type { InferenceDiagnosticSink } from "../../model-gateway/inference-failure.boundary.js";
+import type { EvaluationDraftDiagnostic } from "../../evaluation/generation-error.js";
 import { RevisionIdSchema } from "@marea/protocol";
 import type { SqliteApplicationDatabase } from "@marea/sqlite-storage";
 
@@ -118,8 +119,15 @@ export interface TeacherHostServiceDependencies {
   readonly identityProviders?: readonly ConfiguredIdentityProvider[];
   readonly evaluationIntervalMs: number;
   readonly onInferenceDiagnostic?: InferenceDiagnosticSink | undefined;
+  readonly onEvaluationDiagnostic?: ((event: EvaluationDraftDiagnostic) => void) | undefined;
   readonly onEvaluationError: () => void;
 }
+
+/** The operator's private evaluation and inference sinks, passed to the services unchanged. */
+export type TeacherHostSinks = Pick<
+  TeacherHostServiceDependencies,
+  "onInferenceDiagnostic" | "onEvaluationError" | "onEvaluationDiagnostic"
+>;
 
 export interface TeacherHostServices {
   readonly services: TeacherProductServices;
@@ -245,6 +253,7 @@ export async function composeTeacherServices(
     createReservationId,
     providers: dependencies.providers,
     intervalMs: dependencies.evaluationIntervalMs,
+    diagnostic: dependencies.onEvaluationDiagnostic,
     onError: dependencies.onEvaluationError,
   });
   const governanceRepository = createSqliteGovernanceRepository(

@@ -7,6 +7,7 @@ import {
 /** Conservative admission, not token counting: one UTF-8 byte per token plus framing.
  * Never truncate messages. Reserve output explicitly, including on unlimited budget routes.
  */
+const DEFAULT_OUTPUT_TOKENS = 8192;
 /** An admitted request, with the capacity of the model it was admitted for. */
 export type AdmittedRequest = InferenceProviderRequest & { readonly contextWindowTokens?: number };
 
@@ -40,11 +41,17 @@ export function createContextPreflight(
       });
     }
     const capacity = model.contextWindowTokens;
-    const output = Math.min(request.maxOutputTokens ?? 8192, model.maxOutputTokens ?? 8192);
+    const requested = request.maxOutputTokens ?? DEFAULT_OUTPUT_TOKENS;
+    const output =
+      request.preferModelMaxOutput === true
+        ? (model.maxOutputTokens ?? requested)
+        : Math.min(requested, model.maxOutputTokens ?? DEFAULT_OUTPUT_TOKENS);
     const input =
       new TextEncoder().encode(JSON.stringify({ messages: request.messages, tools: request.tools }))
         .byteLength + 4096;
-    if (input + output > capacity) {
+    // Up to the default, the whole reservation must fit as before. Room asked beyond it is a
+    // preference that shrinks to the space left, so a larger request never refuses more input.
+    if (input + Math.min(output, DEFAULT_OUTPUT_TOKENS) > capacity) {
       throw new InferenceProviderError({
         code: "context-exceeded",
         message:
@@ -53,6 +60,10 @@ export function createContextPreflight(
       });
     }
     signal.throwIfAborted();
-    return { ...request, maxOutputTokens: output, contextWindowTokens: capacity };
+    return {
+      ...request,
+      maxOutputTokens: Math.min(output, capacity - input),
+      contextWindowTokens: capacity,
+    };
   };
 }
