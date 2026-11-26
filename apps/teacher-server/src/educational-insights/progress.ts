@@ -132,12 +132,14 @@ export class LearningProgress {
   apply(input: EvaluationInput, draft: EvaluationDraft, actor: string, now: string): void {
     const targets = input.content?.teaching.adaptive?.targets;
     if (input.mode !== "tutoring" || targets === undefined) return;
-    const run = this.database.readOne("SELECT class_id, student_id FROM marea_runs WHERE id = ?1", [
-      input.runId,
-    ]);
+    const run = this.database.readOne(
+      "SELECT class_id, student_id, opened_at FROM marea_runs WHERE id = ?1",
+      [input.runId],
+    );
     if (run === undefined) throw new TeacherDomainError("run.unavailable");
     const classId = rowText(run, "class_id");
     const studentId = rowText(run, "student_id");
+    const openedAt = rowText(run, "opened_at");
     for (const target of targets) {
       const assessment = draft.criteria.find(
         (item) => item.skillId === target.skillId && item.code === target.code,
@@ -174,19 +176,41 @@ export class LearningProgress {
           now,
         ],
       );
+      const note = assessment.learningNote?.trim() ?? "";
+      // A reviewed note replaces the memory only when it adds evidence and is not older than it.
+      const replacesMemory =
+        note !== "" &&
+        assessment.result !== "no-evidence" &&
+        !this.newerMemory(classId, studentId, target.key, openedAt);
       this.database.execute(
-        "UPDATE marea_learning_progress SET level = ?4, revision = ?5, memory = ?6, memory_run_id = ?7 WHERE class_id = ?1 AND student_id = ?2 AND criterion_key = ?3",
+        `UPDATE marea_learning_progress SET level = ?4, revision = ?5,
+          memory = CASE WHEN ?8 = 1 THEN ?6 ELSE memory END,
+          memory_run_id = CASE WHEN ?8 = 1 THEN ?7 ELSE memory_run_id END
+          WHERE class_id = ?1 AND student_id = ?2 AND criterion_key = ?3`,
         [
           classId,
           studentId,
           target.key,
           next,
           randomUUID(),
-          assessment.learningNote ?? "",
+          note,
           input.runId,
+          replacesMemory ? 1 : 0,
         ],
       );
     }
+  }
+  /** Whether the criterion's memory was written by a session opened after `openedAt`. */
+  private newerMemory(classId: string, studentId: string, key: string, openedAt: string): boolean {
+    return (
+      this.database.readOne(
+        `SELECT 1 FROM marea_learning_progress progress
+          JOIN marea_runs runs ON runs.id = progress.memory_run_id
+          WHERE progress.class_id = ?1 AND progress.student_id = ?2 AND progress.criterion_key = ?3
+            AND runs.opened_at > ?4`,
+        [classId, studentId, key, openedAt],
+      ) !== undefined
+    );
   }
   read(classId: string, studentId: string): Projection {
     return this.project(

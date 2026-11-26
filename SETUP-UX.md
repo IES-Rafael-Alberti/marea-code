@@ -131,6 +131,15 @@ New frontmatter remains inside `SKILL.md`; baseline bundle/criterion wire shapes
 unchanged. Only library requests with `includeCurriculum: true` receive the optional
 curriculum summary, so older strict dashboard requests retain their response shape.
 
+## Adaptive progress memory
+
+With adaptive tutoring, each new session targets the next level of every criterion and receives
+the reviewed learning note from earlier sessions. Only approving an evaluation updates them. An
+approval raises a level only when the criterion passed its frozen target. Its note replaces the
+stored one only when the criterion has evidence and the note is not blank. The session must also
+not be older than the one that wrote the stored note. The approval order therefore never
+discards a useful note. A manual adjustment still clears the note and starts a new epoch.
+
 ## Dashboard entry and language
 
 GET and HEAD on `/` redirect to `/dashboard/`; product `/api/` and `/v1/` routes retain
