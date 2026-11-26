@@ -3,6 +3,7 @@ import { StudentTuiStartupError } from "@marea/student-tui";
 import { ZodError } from "zod";
 
 import { StudentHttpError } from "./http-error.js";
+import { StudentStateNewerVersionError } from "./student-state-version.boundary.js";
 import { studentHttpTransportDiagnostics } from "./http-transport-diagnostics.boundary.js";
 
 const DIAGNOSTIC_CODE = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/u;
@@ -126,6 +127,9 @@ export function startupFailure(error: unknown, translator: Translator, stage: st
         ? "student.cli.terminal-required"
         : "student.cli.renderer-failed";
     code = error.code;
+  } else if (error instanceof StudentStateNewerVersionError) {
+    key = "student.cli.local-state-newer";
+    code = "local-state-newer";
   } else if (error instanceof ZodError) {
     key = "student.cli.local-state-invalid";
     code = "local-state-invalid";

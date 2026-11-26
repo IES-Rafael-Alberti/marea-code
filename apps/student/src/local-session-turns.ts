@@ -1,5 +1,6 @@
 import { MessageIdSchema, STARTUP_MESSAGE_ID, type CanonicalRunEvent } from "@marea/protocol";
 
+import { clipStoredText } from "./stored-limits.js";
 import type {
   Clock,
   IdSource,
@@ -85,7 +86,7 @@ export function updateStoredTurnText(run: StoredRun, messageId: string, text: st
   };
   return {
     ...run,
-    turns: replaceTurn(run.turns, withOptionalTurnText(turn, "started", text)),
+    turns: replaceTurn(run.turns, withOptionalTurnText(turn, "started", clipStoredText(text))),
   };
 }
 
@@ -157,11 +158,12 @@ export function finishStoredTurn(
   run: StoredRun,
   messageId: string,
   state: "completed" | "cancelled",
-  text: string,
+  fullText: string,
   ids: IdSource,
   clock: Clock,
 ): StoredRun {
   const key = `assistant:${messageId}`;
+  const text = clipStoredText(fullText);
   const withEvent =
     text.length === 0 || run.eventKeys.includes(key)
       ? run

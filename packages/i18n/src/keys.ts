@@ -41,6 +41,7 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.cli.terminal-required",
   "student.cli.renderer-failed",
   "student.cli.local-state-invalid",
+  "student.cli.local-state-newer",
   "student.cli.local-state-recovered",
   "student.cli.failure-code",
   "student.cli.unexpected-error",

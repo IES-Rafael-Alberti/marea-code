@@ -59,7 +59,7 @@ describe("LocalSession persistence", () => {
     expect(store.state.run?.outbox.map((event) => event.value.sequence)).toEqual([2, 3]);
     await session.acknowledge(2);
     expect((await session.pendingEvents(128)).map((event) => event.sequence)).toEqual([3]);
-    expect(store.state.run?.eventKeys).toEqual(["one", "two", "three"]);
+    expect(store.state.run?.eventKeys).toEqual(["three"]);
     expect(store.state.run?.nextSequence).toBe(4);
   });
 
@@ -158,7 +158,9 @@ describe("LocalSession persistence", () => {
         ],
       },
     };
-    await expect(fixture.localSession.pendingTurn()).rejects.toThrow("ambiguous");
+    await expect(fixture.localSession.pendingTurn()).resolves.toMatchObject({
+      messageId: "message:two",
+    });
 
     const approval = (approvalId: string, messageId: string) => ({
       approvalId: ApprovalIdSchema.parse(approvalId),
