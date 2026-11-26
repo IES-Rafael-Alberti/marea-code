@@ -50,6 +50,8 @@ export const PARITY_TEST_COPY: ParityCopy = Object.freeze({
     requestFailed: "El servidor del profesor no ha podido completar la solicitud.",
     resumeDetail: "Puedes reanudar el turno desde el último punto guardado.",
     actionNotPrepared: "Marea no pudo preparar esa acción. Vuelve a pedirla paso a paso.",
+    emptyResponse:
+      "El modelo no ha devuelto ninguna respuesta. Escribe /retry para intentarlo de nuevo.",
     invalidResponse: "Marea no pudo completar la acción. Escribe /retry para intentarlo de nuevo.",
     logLocation: "Registro de fallos en este equipo: {{path}}",
     sessionUnavailable: "La sesión ya no está disponible.",

@@ -32,6 +32,11 @@ export interface ApprovalTool {
   readonly lifecycle?: "external";
   readonly name: string;
   readonly description: string;
+  /**
+   * Why these arguments cannot be reviewed, or null. The model gets the answer as a tool error
+   * and corrects the call; the student is never asked about a call that cannot be applied.
+   */
+  validate?(arguments_: Readonly<Record<string, string>>): string | null;
   execute(arguments_: Readonly<Record<string, string>>): Promise<string>;
 }
 

@@ -134,6 +134,18 @@ describe("DeepAgents batch translation", () => {
       { type: "reject", reason: "No." },
       { type: "reject", reason: "The student rejected this action." },
     ]);
+    const blank = batchDecisions(
+      turn([
+        { kind: "operation", decision: "rejected", reason: "", result: null },
+        { kind: "write", decision: "rejected", reason: " ", effect: null },
+        { kind: "questions", values: ["Lista"] },
+      ]),
+      mediators,
+    );
+    expect(blank.decisions.slice(0, 2)).toEqual([
+      { type: "reject", reason: "The student rejected this action." },
+      { type: "reject", reason: "The student rejected this action." },
+    ]);
     // The first decision also travels on its own for the upstream resume.
     expect(result.decision).toBe(result.decisions[0]);
   });

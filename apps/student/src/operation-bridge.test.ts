@@ -25,7 +25,7 @@ it("refuses unavailable operations and approval without a durable result", async
     ),
   ).rejects.toThrow("recorded result");
 });
-it.each([undefined, "Explicit student reason"])(
+it.each([undefined, "", "   ", "Explicit student reason"])(
   "forwards rejected operations with reason %s",
   async (reason) => {
     const f = harness(true);
@@ -41,7 +41,11 @@ it.each([undefined, "Explicit student reason"])(
     expect(f.deep.resumes[0]).toMatchObject({
       toolName: "marea_execute",
       assistantText: "prefix",
-      decision: { type: "reject", reason: reason ?? "The student rejected this operation." },
+      decision: {
+        type: "reject",
+        reason:
+          reason === "Explicit student reason" ? reason : "The student rejected this operation.",
+      },
     });
   },
 );

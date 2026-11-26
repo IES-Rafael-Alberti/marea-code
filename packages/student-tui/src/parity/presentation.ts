@@ -23,6 +23,7 @@ import { finishAssistantText } from "./transcript.js";
 /** Failures the student can act on get their own words instead of the kind's message. */
 const CODE_MESSAGES: ReadonlyMap<string | undefined, (copy: ParityCopy) => string> = new Map([
   ["upstream-contract-changed", (copy: ParityCopy) => copy.failure.actionNotPrepared],
+  ["empty-response", (copy: ParityCopy) => copy.failure.emptyResponse],
   ["invalid-response", (copy: ParityCopy) => copy.failure.invalidResponse],
 ]);
 

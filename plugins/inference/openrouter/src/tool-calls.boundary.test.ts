@@ -121,6 +121,56 @@ describe("OpenRouter tool-call boundary", () => {
     });
   });
 
+  it("gives a repeated call id to the first call only, deterministically", () => {
+    const calls = [
+      { arguments: '{"a":"1"}', id: "same", index: 0, name: "grep" },
+      { arguments: '{"a":"2"}', id: "same", index: 1, name: "grep" },
+      { arguments: '{"a":"3"}', id: "same", index: 2, name: "grep" },
+    ] as const;
+    const ids = (events: ReturnType<typeof finish>) =>
+      events.map((event) => (event.type === "tool-call" ? event.callId : null));
+    const events = finish(...calls);
+    expect(ids(events)).toEqual([
+      "same",
+      expect.stringMatching(/^call-[0-9a-f]{8}-1$/u),
+      expect.stringMatching(/^call-[0-9a-f]{8}-2$/u),
+    ]);
+    expect(new Set(ids(events)).size).toBe(3);
+    expect(ids(finish(...calls))).toEqual(ids(events));
+    expect(events[0]).not.toHaveProperty("repair");
+    expect(events[1]).toMatchObject({
+      arguments: { a: "2" },
+      repair: { causes: ["duplicate-id"], rawName: "grep", rawArguments: '{"a":"2"}' },
+    });
+  });
+
+  it("combines a duplicate with another repair and never reuses a generated id", () => {
+    const accumulator = new ToolCallAccumulator("request:0");
+    accumulator.add([
+      { arguments: "{}", id: "call-0f58d1f8-1", index: 0, name: "grep" },
+      { arguments: "{", id: "call-0f58d1f8-1", index: 1, name: "grep" },
+    ]);
+    const [first, second] = accumulator.finish();
+    expect(first).toMatchObject({ callId: "call-0f58d1f8-1" });
+    expect(second).toMatchObject({
+      callId: "call-0f58d1f8-1-1",
+      repair: { causes: ["duplicate-id", "malformed-arguments"] },
+    });
+  });
+
+  it("keeps searching until the generated id is free", () => {
+    const accumulator = new ToolCallAccumulator("request:0");
+    accumulator.add([
+      { arguments: "{}", id: "call-0f58d1f8-2", index: 0, name: "grep" },
+      { arguments: "{}", id: "call-0f58d1f8-2-1", index: 1, name: "grep" },
+      { arguments: "{}", id: "call-0f58d1f8-2", index: 2, name: "grep" },
+    ]);
+    const ids = accumulator
+      .finish()
+      .map((event) => (event.type === "tool-call" ? event.callId : ""));
+    expect(ids).toEqual(["call-0f58d1f8-2", "call-0f58d1f8-2-1", "call-0f58d1f8-2-2"]);
+  });
+
   it("replaces a call id outside the gateway grammar", () => {
     const event = single("{}", "grep", "-bad id");
     expect(event).toMatchObject({ repair: { causes: ["invalid-id"] } });

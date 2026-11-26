@@ -1,5 +1,7 @@
-import { tool } from "langchain";
+import { tool, type WhenPredicate } from "langchain";
 import * as z from "zod";
+
+import { describeIssues } from "./input-issues.js";
 
 export const QUESTION_TOOL_NAME = "marea_ask_user";
 
@@ -23,6 +25,21 @@ export function parseQuestions(
   arguments_: Readonly<Record<string, string>>,
 ): readonly StudentQuestion[] {
   return QuestionsSchema.parse(JSON.parse(z.string().parse(arguments_.questions)));
+}
+
+/** Why a questions call cannot be shown to the student, or null when it can. */
+export function questionsProblem(arguments_: Readonly<Record<string, string>>): string | null {
+  const text = arguments_.questions;
+  if (text === undefined)
+    return "questions is required: a JSON array of {text, choices, required}.";
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    return "questions must be valid JSON: an array of {text, choices, required}.";
+  }
+  const parsed = QuestionsSchema.safeParse(json);
+  return parsed.success ? null : `questions is invalid: ${describeIssues(parsed.error)}`;
 }
 
 export function questionAnswers(
@@ -62,11 +79,12 @@ export function createQuestionTools(enabled: boolean) {
     : [];
 }
 
-export function questionInterrupts(enabled: boolean) {
+export function questionInterrupts(enabled: boolean, skipReview: WhenPredicate) {
   return enabled
     ? {
         [QUESTION_TOOL_NAME]: {
           allowedDecisions: ["approve", "edit", "reject"] as ("approve" | "edit" | "reject")[],
+          when: async (request: Parameters<WhenPredicate>[0]) => !(await skipReview(request)),
         },
       }
     : {};

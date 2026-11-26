@@ -1,5 +1,6 @@
 import type { StudentRunSnapshot } from "@marea/protocol";
 import type { ApprovalTool, AgentRuntimeOptions } from "@marea/deepagents-adapter";
+import { operationArgumentsProblem } from "./operation-arguments.js";
 import type { OperationName } from "./operation-contracts.js";
 import {
   COMMAND_DEADLINE_MS,
@@ -32,6 +33,9 @@ export class OperationMediator implements ApprovalTool {
         : operation === "delete"
           ? "Delete one project text file after explicit student authorization. Arguments: file_path. The exact contents are rechecked before deletion; directories are not accepted."
           : "Replace an exact unique text fragment in a project file after student authorization. Arguments: file_path, old_string, new_string. The file is rechecked before applying.";
+  }
+  validate(arguments_: Readonly<Record<string, string>>): string | null {
+    return operationArgumentsProblem(this.operation, arguments_);
   }
   authorize(arguments_: Readonly<Record<string, string>>, result: string): void {
     this.authorizations.push({ arguments: arguments_, result });

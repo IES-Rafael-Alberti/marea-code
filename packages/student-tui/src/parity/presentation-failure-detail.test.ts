@@ -6,6 +6,7 @@ const context = { cwd: "/project", branch: "", repositoryUrl: "", model: "" };
 it.each([
   ["upstream-contract-changed", "unexpected", copy.failure.actionNotPrepared],
   ["invalid-response", "request-failed", copy.failure.invalidResponse],
+  ["empty-response", "request-failed", copy.failure.emptyResponse],
   ["other-code", "request-failed", copy.failure.requestFailed],
 ] as const)("tells the student what to do for %s, in their language", (code, kind, message) => {
   const view = createPresentation(context, copy, vi.fn());

@@ -416,11 +416,12 @@ describe("Marea gateway model boundary", () => {
     const afterCompletion = new ScriptedGateway((request) =>
       streamOf([
         chunk(request, 0, "started"),
-        chunk(request, 1, "completed", {
+        chunk(request, 1, "text-delta", { delta: "on time" }),
+        chunk(request, 2, "completed", {
           finishReason: "stop",
           usage: { inputTokens: 1, outputTokens: 1 },
         }),
-        chunk(request, 2, "text-delta", { delta: "late" }),
+        chunk(request, 3, "text-delta", { delta: "late" }),
       ]),
     );
     const wrongRequest = new ScriptedGateway((request) => {

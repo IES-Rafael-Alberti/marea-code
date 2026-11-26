@@ -256,7 +256,7 @@ describe("OpenRouter inference provider", () => {
       httpResponse(
         sse(
           JSON.stringify({
-            choices: [{ index: 0, delta: {}, finish_reason: "content_filter" }],
+            choices: [{ index: 0, delta: {}, finish_reason: "something_new" }],
           }),
         ),
       ),
@@ -391,7 +391,7 @@ describe("OpenRouter inference provider", () => {
       httpResponse(
         sse(
           JSON.stringify({
-            choices: [{ index: 0, delta: {}, finish_reason: "content_filter" }],
+            choices: [{ index: 0, delta: {}, finish_reason: "something_new" }],
           }),
         ),
       ),

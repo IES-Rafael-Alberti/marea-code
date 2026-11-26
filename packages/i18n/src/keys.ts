@@ -111,6 +111,7 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.tui.failure.resume-detail",
   "student.tui.failure.action-not-prepared",
   "student.tui.failure.invalid-response",
+  "student.tui.failure.empty-response",
   "student.tui.failure.log-location",
   "student.tui.failure.session-ended-by-teacher",
   "student.tui.failure.session-expired",

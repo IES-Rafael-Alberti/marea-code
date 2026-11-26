@@ -8,6 +8,7 @@ import type {
   ApprovalReply,
   BatchAction,
 } from "./contracts.js";
+import { OperationRejectedError } from "./operation-feedback.boundary.js";
 import { batchSummary, isBatchApproval } from "./session-batch.js";
 import { createFixtureController, FixtureAgent } from "./student.fixture.js";
 
@@ -107,6 +108,24 @@ describe("several approvals from one model message", () => {
     expect(serverEvents(subject.fixture, "turn-ended").at(-1)).toMatchObject({
       state: "completed",
     });
+  });
+
+  it("answers an action the model got wrong itself and still asks about the next one", async () => {
+    const subject = setup([command(0, "cd src"), command(1, "dir")], ["approved"]);
+    subject.operations.prepare.mockRejectedValueOnce(
+      new OperationRejectedError("The text to replace must occur exactly once."),
+    );
+    await send(subject);
+    expect(subject.prompts.map((prompt) => prompt.batch?.position)).toEqual([2]);
+    expect(subject.agent.batches[0]?.decisions).toEqual([
+      {
+        kind: "operation",
+        decision: "rejected",
+        reason: "The text to replace must occur exactly once.",
+        result: null,
+      },
+      { kind: "operation", decision: "approved", reason: undefined, result: "ran dir" },
+    ]);
   });
 
   it("runs only the approved action and keeps asking after a rejection", async () => {

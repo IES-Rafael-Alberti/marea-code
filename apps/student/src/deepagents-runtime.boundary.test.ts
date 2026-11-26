@@ -125,17 +125,25 @@ describe("DeepAgents student runtime bridge", () => {
     ).resolves.toEqual([{ type: "turn-completed" }]);
   });
 
-  it("maps rejection without exposing a workspace effect", async () => {
-    const { deep, runtime } = harness();
-    await collect(runtime.streamMessage(message(), new AbortController().signal));
-    await expect(
-      collect(runtime.resumeApproval(approval("rejected", null), new AbortController().signal)),
-    ).resolves.toEqual([{ type: "turn-completed" }]);
-    expect(deep.resumes[0]?.decision).toEqual({
-      type: "reject",
-      reason: "The student rejected the workspace edit.",
-    });
-  });
+  it.each([undefined, "", "  \n"])(
+    "maps rejection without exposing a workspace effect, treating %j as no reason",
+    async (reason) => {
+      const { deep, runtime } = harness();
+      await collect(runtime.streamMessage(message(), new AbortController().signal));
+      await expect(
+        collect(
+          runtime.resumeApproval(
+            { ...approval("rejected", null), ...(reason === undefined ? {} : { reason }) },
+            new AbortController().signal,
+          ),
+        ),
+      ).resolves.toEqual([{ type: "turn-completed" }]);
+      expect(deep.resumes[0]?.decision).toEqual({
+        type: "reject",
+        reason: "The student rejected the workspace edit.",
+      });
+    },
+  );
 
   it("replays a still-pending approval and restores it after a failed resume", async () => {
     const { deep, runtime } = harness();
@@ -259,18 +267,6 @@ describe("DeepAgents student runtime bridge", () => {
     const invalidEvents: readonly (readonly [DeepAgentEvent, string])[] = [
       [approvalRequired({ toolName: "shell" }), "DeepAgents requested an unsupported tool."],
       [approvalRequired({ toolName: "write_file" }), "DeepAgents requested an unsupported tool."],
-      [
-        approvalRequired({ arguments: { path: "notes.txt" } }),
-        "DeepAgents returned invalid write_file arguments.",
-      ],
-      [
-        approvalRequired({ arguments: { content: "content" } }),
-        "DeepAgents returned invalid write_file arguments.",
-      ],
-      [
-        approvalRequired({ arguments: { path: "", content: "content" } }),
-        "DeepAgents returned invalid write_file arguments.",
-      ],
     ];
     for (const [event, expectedMessage] of invalidEvents) {
       const instance = harness();

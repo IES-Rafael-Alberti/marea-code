@@ -98,14 +98,15 @@ export class ToolCallAccumulator {
   }
 
   public finish(): readonly InferenceProviderEvent[] {
+    const seen = new Set<string>();
     return Object.freeze(
       [...this.#calls.entries()]
         .toSorted(([left], [right]) => left - right)
-        .map(([index, call]) => this.#event(index, call)),
+        .map(([index, call]) => this.#event(index, call, seen)),
     );
   }
 
-  #event(index: number, call: PendingToolCall): InferenceProviderEvent {
+  #event(index: number, call: PendingToolCall, seen: Set<string>): InferenceProviderEvent {
     const causes = new Set<InferenceToolCallRepairCause>();
     const name = callName(call.name, causes);
     let callId = call.id;
@@ -116,6 +117,15 @@ export class ToolCallAccumulator {
       causes.add("invalid-id");
       callId = `${this.#idPrefix}-${String(index)}`;
     }
+    // The gateway refuses a message whose call ids repeat; the first call keeps its id.
+    if (seen.has(callId)) {
+      causes.add("duplicate-id");
+      callId = `${this.#idPrefix}-${String(index)}`;
+      for (let attempt = 1; seen.has(callId); attempt += 1) {
+        callId = `${this.#idPrefix}-${String(index)}-${String(attempt)}`;
+      }
+    }
+    seen.add(callId);
     const parsed = parseArguments(call.argumentsText, causes);
     const event = { arguments: parsed, callId, name, type: "tool-call" as const };
     if (causes.size === 0) return Object.freeze(event);

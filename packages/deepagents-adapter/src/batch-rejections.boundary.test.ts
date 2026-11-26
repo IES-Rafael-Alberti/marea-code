@@ -22,6 +22,30 @@ const batch = new AIMessage({
 });
 
 describe("batch rejections", () => {
+  it("never forwards a blank rejection reason", async () => {
+    const subject = createBatchRejections();
+    expect(
+      subject.plan(state(), actions, [
+        { type: "reject", reason: "" },
+        { type: "reject", reason: "  " },
+      ]),
+    ).toEqual([
+      { type: "reject", message: "The student rejected this action." },
+      { type: "reject", message: "The student rejected this action." },
+    ]);
+    const mixed = createBatchRejections();
+    mixed.plan(state(batch), actions, [{ type: "approve" }, { type: "reject", reason: " " }]);
+    const wrap = mixed.middleware.wrapToolCall;
+    if (wrap === undefined) throw new Error("The middleware wraps tool calls.");
+    const answered = await wrap(
+      { toolCall: { id: "call-del", name: "marea_execute", args: {} } } as Parameters<
+        typeof wrap
+      >[0],
+      vi.fn() as never,
+    );
+    expect(answered).toMatchObject({ content: "The student rejected this action." });
+  });
+
   it("passes uniform decisions to upstream unchanged", () => {
     const subject = createBatchRejections();
     expect(subject.plan(state(), actions, [{ type: "approve" }, { type: "approve" }])).toEqual([

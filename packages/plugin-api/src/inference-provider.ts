@@ -95,6 +95,7 @@ export type InferenceToolCallRepairCause =
   | "malformed-arguments"
   | "missing-id"
   | "invalid-id"
+  | "duplicate-id"
   | "missing-name"
   | "invalid-name";
 

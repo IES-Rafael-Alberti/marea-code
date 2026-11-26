@@ -7,6 +7,7 @@ import type {
   StableTurnIdentity,
 } from "./session-turn-executor.js";
 import { interactionAfterAbort } from "./turn-interaction.js";
+import { modelFeedback } from "./operation-feedback.boundary.js";
 import type { ApprovalBatchPosition, ApprovalReply } from "./contracts.js";
 
 export interface ApprovalChoice {
@@ -35,7 +36,14 @@ export async function decideOperation(
     )
   )
     throw new Error("The teacher policy denies this operation.");
-  await operations.prepare(request);
+  try {
+    await operations.prepare(request);
+  } catch (error) {
+    // A request the model got wrong goes back to it as a rejection; the student is not asked.
+    const feedback = modelFeedback(error);
+    if (feedback === null) throw error;
+    return { decision: "rejected", reason: feedback, remaining: false };
+  }
   await options.localSession.appendEvent(
     `operation:${request.approvalId}:requested`,
     (sequence, occurredAt) => ({
@@ -112,13 +120,18 @@ export async function* runOperation(
     await options.evidence?.capture("agent", identity.messageId);
     await options.flushOutbox();
   } catch (error) {
+    const feedback = modelFeedback(error);
     yield {
       type: "tool-finished",
       callId,
       failed: true,
-      result: error instanceof Error ? error.message : "The operation failed without an error.",
+      result:
+        feedback ??
+        (error instanceof Error ? error.message : "The operation failed without an error."),
     };
-    throw error;
+    // The model gets the failure as the tool's result; only the machine's failures end the turn.
+    if (feedback === null) throw error;
+    return feedback;
   }
   yield { type: "tool-finished", callId, failed: false, result };
   return result;

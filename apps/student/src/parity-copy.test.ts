@@ -52,6 +52,7 @@ function expectedCopy(translator: Translator) {
       requestFailed: text("errors.server.error"),
       resumeDetail: text("student.tui.failure.resume-detail"),
       actionNotPrepared: text("student.tui.failure.action-not-prepared"),
+      emptyResponse: text("student.tui.failure.empty-response"),
       invalidResponse: text("student.tui.failure.invalid-response"),
       logLocation: text("student.tui.failure.log-location"),
       sessionUnavailable: text("errors.run.unavailable"),

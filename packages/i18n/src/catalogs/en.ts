@@ -141,6 +141,7 @@ const englishCatalog = {
     "Marea could not prepare that action. Ask for it again step by step.",
   "student.tui.failure.invalid-response":
     "Marea could not complete the action. Type /retry to try again.",
+  "student.tui.failure.empty-response": "The model returned no answer. Type /retry to try again.",
   "student.tui.failure.log-location": "Failure log on this computer: {{path}}",
   "student.tui.failure.session-ended-by-teacher":
     "Your teacher has ended this session. Run marea again to start a new one.",

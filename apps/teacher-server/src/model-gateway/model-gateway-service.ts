@@ -65,6 +65,30 @@ function providerRequest(
   });
 }
 
+const MAX_DELTA_LENGTH = 16_384;
+
+/** One provider delta may exceed the chunk limit; it is sent as several chunks, in order. */
+function splitDelta(text: string): readonly string[] {
+  const pieces: string[] = [];
+  let start = 0;
+  while (start < text.length) {
+    let end = Math.min(start + MAX_DELTA_LENGTH, text.length);
+    const last = text.charCodeAt(end - 1);
+    // Never cut a surrogate pair in half.
+    if (end < text.length && last >= 0xd800 && last <= 0xdbff) end -= 1;
+    pieces.push(text.slice(start, end));
+    start = end;
+  }
+  return pieces;
+}
+
+type StreamedEvent = Exclude<InferenceProviderEvent, { readonly type: "completed" }>;
+
+function splitEvent(event: StreamedEvent): readonly StreamedEvent[] {
+  if (event.type !== "text-delta") return [event];
+  return splitDelta(event.text).map((text) => ({ text, type: "text-delta" as const }));
+}
+
 interface StreamState {
   readonly sequence: number;
   readonly usage: {
@@ -208,9 +232,11 @@ export class ModelGatewayService implements ModelGateway {
         });
         return;
       }
-      const translated = eventChunk(request, this.#options.clock, state.sequence, event, state);
-      state = translated.state;
-      if (translated.chunk !== null) yield translated.chunk;
+      for (const piece of splitEvent(event)) {
+        const translated = eventChunk(request, this.#options.clock, state.sequence, piece, state);
+        state = translated.state;
+        if (translated.chunk !== null) yield translated.chunk;
+      }
     }
     yield failedChunk(request, this.#options.clock, state.sequence, {
       code: "inference-failed",
