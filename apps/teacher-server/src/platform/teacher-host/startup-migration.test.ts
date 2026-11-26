@@ -130,8 +130,7 @@ describe("startup schema migration", () => {
         outcome: "backup-failed",
         detectedSchema: previous,
         targetSchema: currentSqliteSchema().version,
-        error: "RecoveryBundleError",
-        detail,
+        error: `RecoveryBundleError bundle-insufficient-space: ${detail}`,
       },
     ]);
   });
@@ -145,7 +144,9 @@ describe("startup schema migration", () => {
     expect(failure).toMatchObject({
       message: "the pre-migration backup could not be created",
     });
-    expect(subject.events[0]).not.toHaveProperty("detail");
+    expect(subject.events[0]).toMatchObject({
+      error: "RecoveryBundleError bundle-database-invalid: bundle-database-invalid",
+    });
   });
 
   it("reports a failed migration and refuses to start", async () => {
