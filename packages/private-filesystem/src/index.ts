@@ -5,10 +5,8 @@ import { PrivateFilesystemError } from "./private-filesystem-error.js";
 export { checkWindowsPrivatePath, windowsPrivateKind } from "./windows-acl.boundary.js";
 export { PrivateFilesystemError } from "./private-filesystem-error.js";
 export type { WindowsPrivateFailureReason } from "./private-filesystem-error.js";
-export {
-  isVerifiedPrivateDirectory,
-  markVerifiedPrivateDirectory,
-} from "./verified-private-directories.js";
+export { auditWindowsPrivateAccess } from "./windows-access-audit.boundary.js";
+export type { WindowsAccessAudit, WindowsBroadPrincipal } from "./windows-access-audit.boundary.js";
 
 const SECURE_ERROR_MESSAGE = "Private filesystem permissions could not be established.";
 

@@ -62,6 +62,8 @@ jobs:
           bun run --cwd apps/dashboard build
           if ($LASTEXITCODE -ne 0) { throw 'Dashboard build failed' }
           Copy-Item apps/dashboard/dist reports/windows-smoke/dashboard -Recurse
+          # Server setup installs the shipped example skill from the release's skills folder.
+          Copy-Item content/skills reports/windows-smoke/skills -Recurse
           $entries = @{
             'marea-admin' = 'apps/teacher-server/cli-entry.ts'
             'marea-teacher' = 'apps/teacher-server/teacher-host-entry.ts'

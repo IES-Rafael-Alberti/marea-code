@@ -13,7 +13,10 @@ import { StoredUsageSchema } from "./session-usage.js";
 import { createFailureLog, FAILURE_LOG_FILE, type FailureLog } from "./failure-log.boundary.js";
 import { lstat, mkdir, open, readFile, realpath, rename, rm } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
-import * as privateWindows from "./private-file-windows.boundary.js";
+import {
+  securePrivateDirectory,
+  securePrivateFileParent,
+} from "./student-state-permissions.boundary.js";
 import {
   CanonicalRunEventSchema,
   ClientSessionIdSchema,
@@ -257,7 +260,7 @@ export interface AtomicFileOperations {
 
 const NODE_ATOMIC_FILE_OPERATIONS: AtomicFileOperations = Object.freeze({
   chmod: (path: string) => {
-    privateWindows.securePrivateFileParent(path);
+    securePrivateFileParent(path);
     return Promise.resolve();
   },
   open,
@@ -302,7 +305,6 @@ export async function readPrivateTextFile(
       throw new Error("Student state file is unsafe or exceeds its size limit.");
     }
     if (fileStat.size > maxBytes) throw new StudentStateFileTooLargeError();
-    if (process.platform === "win32") privateWindows.assertPrivateWindowsFileReadable(path);
     // Stryker disable next-line StringLiteral: Node treats an empty encoding as a binary read.
     return await readFile(path, "utf8");
   } catch (error: unknown) {
@@ -452,7 +454,7 @@ export async function createFileStudentStores(
   await mkdir(requestedStateDirectory, { recursive: true, mode: PRIVATE_DIRECTORY_MODE });
   const stateDirectory = await realpath(requestedStateDirectory);
   assertOutsideProject(projectRoot, stateDirectory);
-  privateWindows.securePrivateDirectory(stateDirectory);
+  securePrivateDirectory(stateDirectory);
   return Object.freeze({
     credentials: new FileCredentialStore(join(stateDirectory, "credential.json")),
     failures: createFailureLog(join(stateDirectory, FAILURE_LOG_FILE), writePrivateFileAtomically),

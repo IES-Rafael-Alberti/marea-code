@@ -1,11 +1,11 @@
 import { spawnSync, type SpawnSyncReturns } from "node:child_process";
-import { win32 } from "node:path";
 import {
   PrivateFilesystemError,
   privateFilesystemError,
   type WindowsPrivateFailureReason,
 } from "./private-filesystem-error.js";
 import { WINDOWS_ACL_SCRIPT } from "./windows-acl-script.js";
+import { windowsPowerShell } from "./windows-powershell.js";
 
 /** Delay before the single retry of a transient ACL failure (antivirus locks). */
 const RETRY_DELAY_MS = 250;
@@ -55,29 +55,14 @@ function failureReason(result: SpawnSyncReturns<string>): WindowsPrivateFailureR
 }
 
 function runAclCheck(path: string, action: "inspect" | "secure"): SpawnSyncReturns<string> {
-  return spawnSync(
-    win32.join(
-      process.env.SystemRoot ?? "C:\\Windows",
-      "System32",
-      "WindowsPowerShell",
-      "v1.0",
-      "powershell.exe",
-    ),
-    [
-      "-NoLogo",
-      "-NoProfile",
-      "-NonInteractive",
-      "-EncodedCommand",
-      Buffer.from(WINDOWS_ACL_SCRIPT, "utf16le").toString("base64"),
-    ],
-    {
-      input: Buffer.from(JSON.stringify({ path, action })).toString("base64"),
-      encoding: "utf8",
-      timeout: 30_000,
-      maxBuffer: 1024,
-      windowsHide: true,
-    },
-  );
+  const powershell = windowsPowerShell(WINDOWS_ACL_SCRIPT);
+  return spawnSync(powershell.file, powershell.args, {
+    input: Buffer.from(JSON.stringify({ path, action })).toString("base64"),
+    encoding: "utf8",
+    timeout: 30_000,
+    maxBuffer: 1024,
+    windowsHide: true,
+  });
 }
 
 /**

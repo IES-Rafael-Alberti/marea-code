@@ -1,4 +1,4 @@
-import { securePrivateDirectory } from "./private-file-windows.boundary.js";
+import { securePrivateDirectory } from "./student-state-permissions.boundary.js";
 import { createHash } from "node:crypto";
 import { mkdir } from "node:fs/promises";
 import { join } from "node:path";

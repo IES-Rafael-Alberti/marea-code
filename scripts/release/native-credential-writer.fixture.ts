@@ -14,8 +14,8 @@ try {
   const credential = join(root, "credential.json");
   for (const generation of ["initial", "replacement"]) {
     const value = JSON.stringify({ sessionToken: `synthetic-${generation}-credential` });
-    // The real writer applies permissions while its temporary descriptor is open,
-    // closes it, then renames over the existing destination on the second iteration.
+    // The real writer applies 0600 on POSIX while its temporary descriptor is open (on Windows
+    // the file inherits this folder's ACL), closes it, then renames over the destination.
     await writePrivateFileAtomically(credential, value);
     assert.equal(await readFile(credential, "utf8"), value, `${generation}: credential content`);
     assert.equal(inspectPrivatePath(credential), "file", `${generation}: private credential`);
