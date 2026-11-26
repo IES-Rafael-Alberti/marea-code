@@ -44,8 +44,27 @@ export const writeTurnFailure = (record: TurnFailureRecord): void => {
   process.stderr.write(`${JSON.stringify(record)}\n`);
 };
 
+/**
+ * One operator-private line per refused append: the run, the event types of the request and why.
+ * A student client isolates a refused event by sending it alone, so its final line is exact.
+ */
+interface EventRejectionRecord {
+  readonly component: "run-events";
+  readonly event: "events-rejected";
+  readonly runId: string;
+  readonly eventTypes: readonly string[];
+  readonly sequences: readonly number[];
+  readonly reason: string;
+}
+
+const writeEventRejection = (record: EventRejectionRecord): void => {
+  process.stderr.write(`${JSON.stringify(record)}\n`);
+};
+
 export interface RunSessionServiceDependencies {
   readonly clock: Clock;
+  /** Defaults to one JSON line on stderr. */
+  readonly onEventRejected?: (record: EventRejectionRecord) => void;
   /** Defaults to one JSON line on stderr. */
   readonly onTurnFailure?: (record: TurnFailureRecord) => void;
   readonly digest: SecretDigest;
@@ -141,11 +160,19 @@ export class RunSessionService {
   }
 
   public append(leaseToken: string, request: AppendRunEventsRequest): AppendRunEventsResponse {
-    const highestDurableSequence = this.#dependencies.repository.appendEvents({
-      events: request.events,
-      leaseTokenHash: this.#dependencies.digest.digest(leaseToken),
-      now: this.#dependencies.clock.now(),
-    });
+    let highestDurableSequence: number;
+    try {
+      highestDurableSequence = this.#dependencies.repository.appendEvents({
+        events: request.events,
+        leaseTokenHash: this.#dependencies.digest.digest(leaseToken),
+        now: this.#dependencies.clock.now(),
+      });
+    } catch (error) {
+      if (error instanceof TeacherDomainError && error.code === "request.conflict") {
+        this.reportRejection(leaseToken, request, error.code);
+      }
+      throw error;
+    }
     this.reportFailures(leaseToken, request);
     return AppendRunEventsResponseSchema.parse({
       highestDurableSequence,
@@ -153,6 +180,26 @@ export class RunSessionService {
       protocolVersion: CURRENT_PROTOCOL_VERSION,
       requestId: request.requestId,
     });
+  }
+
+  private reportRejection(
+    leaseToken: string,
+    request: AppendRunEventsRequest,
+    reason: string,
+  ): void {
+    const sink = this.#dependencies.onEventRejected ?? writeEventRejection;
+    try {
+      sink({
+        component: "run-events",
+        event: "events-rejected",
+        runId: this.authorizeLease(leaseToken).runId,
+        eventTypes: request.events.map((event) => event.eventType),
+        sequences: request.events.map((event) => event.sequence),
+        reason,
+      });
+    } catch {
+      // A failing private sink cannot change the refusal.
+    }
   }
 
   private reportFailures(leaseToken: string, request: AppendRunEventsRequest): void {

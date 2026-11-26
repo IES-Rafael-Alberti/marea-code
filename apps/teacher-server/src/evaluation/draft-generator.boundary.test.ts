@@ -382,6 +382,19 @@ it("evaluates canonical project evidence without feeding model diagnostics or st
       ),
       event(
         {
+          eventType: "turn-diagnostic",
+          messageId: "message:evidence",
+          category: "empty-response",
+          retryable: true,
+          exception: { name: "Error", message: "empty" },
+          causes: [],
+          stack: "PRIVATE_STACK_TRACE",
+          client: { version: "1.0.0", platform: "linux" },
+        },
+        3,
+      ),
+      event(
+        {
           eventType: "project-change",
           actor: "student",
           summary: "Student authored this",
@@ -401,6 +414,7 @@ it("evaluates canonical project evidence without feeding model diagnostics or st
     const material = JSON.stringify(test.requests[0]?.messages);
     expect(material).not.toContain("PRIVATE_RAW_PROMPT");
     expect(material).not.toContain("DUPLICATED_PREFIX");
+    expect(material).not.toContain("PRIVATE_STACK_TRACE");
     expect(material).toContain("ACTUAL_STUDENT_CHANGE");
   } finally {
     test.database.close();

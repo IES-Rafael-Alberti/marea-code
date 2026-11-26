@@ -25,7 +25,8 @@ function studentHistoryEvent(event: CanonicalRunEvent): CanonicalRunEvent {
   if (
     event.eventType !== "tool-started" &&
     event.eventType !== "tool-finished" &&
-    event.eventType !== "model-diagnostic"
+    event.eventType !== "model-diagnostic" &&
+    event.eventType !== "turn-diagnostic"
   )
     return event;
   return {

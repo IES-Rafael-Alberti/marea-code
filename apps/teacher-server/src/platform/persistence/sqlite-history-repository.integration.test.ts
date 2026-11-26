@@ -157,6 +157,17 @@ it("keeps tool details teacher-only across independent history pages without seq
         truncated: false,
       },
       {
+        eventType: "turn-diagnostic",
+        messageId: "message:1",
+        category: "empty-response",
+        retryable: true,
+        exception: { name: "Error", message: "PRIVATE_SKILL_CONTENT" },
+        causes: [],
+        stack: "PRIVATE_SKILL_CONTENT",
+        modelResponse: "PRIVATE_SKILL_CONTENT",
+        client: { version: "1.0.0", platform: "linux" },
+      },
+      {
         eventType: "tool-started",
         name: "marea_read_skill",
         target: "private-evaluation.md",
@@ -177,7 +188,7 @@ it("keeps tool details teacher-only across independent history pages without seq
         eventId: `event:private:${String(sequence)}`,
         sequence,
         occurredAt: NOW,
-        ...(payload.eventType === "model-diagnostic"
+        ...(payload.eventType === "model-diagnostic" || payload.eventType === "turn-diagnostic"
           ? {}
           : { callId: "read:private", messageId: "message:1" }),
       };

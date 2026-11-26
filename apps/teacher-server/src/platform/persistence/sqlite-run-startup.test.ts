@@ -80,6 +80,32 @@ describe("SQLite tutor startup lifecycle", () => {
       3,
     );
   });
+  it("admits the turn-diagnostic of a failed startup turn, and only after its start marker", () => {
+    const opened = services.runs.open(student, newRun("startup-diagnostic"));
+    const diagnostic = CanonicalRunEventSchema.parse({
+      eventType: "turn-diagnostic",
+      eventId: "event:startup-diagnostic",
+      messageId: STARTUP_MESSAGE_ID,
+      sequence: 2,
+      occurredAt: clock.now(),
+      category: "empty-response",
+      retryable: true,
+      exception: { name: "Error", message: "empty" },
+      causes: [],
+      stack: "Error: empty",
+      client: { version: "1.0.0", platform: "darwin" },
+    });
+    expect(() => services.runs.append(opened.lease.token, request([diagnostic]))).toThrow(
+      "request.conflict",
+    );
+    services.runs.append(opened.lease.token, request([lifecycle("started", 2)]));
+    expect(
+      services.runs.append(
+        opened.lease.token,
+        request([CanonicalRunEventSchema.parse({ ...diagnostic, sequence: 3 })]),
+      ).highestDurableSequence,
+    ).toBe(3);
+  });
   it.each(["assistant-progress", "turn-failed"] as const)(
     "admits %s during startup only after its start marker",
     (eventType) => {

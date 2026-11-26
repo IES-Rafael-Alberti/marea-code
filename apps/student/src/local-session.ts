@@ -23,6 +23,7 @@ import type {
   WorkspaceWrite,
 } from "./contracts.js";
 import { pendingStoredTurn } from "./pending-turn.js";
+import { narrowStoredDelivery, setAsideFirstPending } from "./local-session-outbox.js";
 import { assertActivationCompatible } from "./local-session-recovery.js";
 import { prepareStoredStartup, recordStartupProgress } from "./local-startup.js";
 import { SerialOperationQueue } from "./serial-operation-queue.js";
@@ -369,6 +370,20 @@ export class LocalSession {
                 return events.length === 0 ? null : { events };
               })(),
       };
+    });
+  }
+
+  /** After a permanent refusal of a batch, retry its first event alone to find the culprit. */
+  narrowDelivery(): Promise<StoredRun> {
+    return this.mutateRun(narrowStoredDelivery);
+  }
+
+  /** Sets the first undelivered event aside, closing the gap its removal would leave. */
+  setAsideFirstPending(): Promise<CanonicalRunEvent> {
+    return this.mutate((state) => {
+      if (state.run === null) throw new Error("No local student run exists.");
+      const { run, event } = setAsideFirstPending(state.run);
+      return { state: { ...state, run }, value: event };
     });
   }
 
