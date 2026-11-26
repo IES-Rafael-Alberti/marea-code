@@ -35,6 +35,7 @@ import type {
 } from "./contracts.js";
 import { NoActiveRunError } from "./contracts.js";
 import { alreadyClosedResponse } from "./closed-run-response.js";
+import { ConnectionDiagnostics } from "./connection-diagnostics.boundary.js";
 import { StudentHttpError } from "./http-error.js";
 import { LocalSession, type ReopenStoredRun } from "./local-session.js";
 import { SerialOperationQueue } from "./serial-operation-queue.js";
@@ -59,6 +60,11 @@ function isRunUnavailable(error: StudentHttpError): boolean {
 /** The server will refuse this event every time; retrying it can only block the ones after it. */
 function isPermanentRejection(error: StudentHttpError): boolean {
   return error.code === "request.invalid" && !error.retryable;
+}
+
+/** A background check found no usable sign-in; the student is asked when they next act. */
+function signInRequired(): StudentHttpError {
+  return new StudentHttpError(401, "auth.invalid", false);
 }
 
 function isRejectedPendingClose(error: StudentHttpError): boolean {
@@ -104,7 +110,9 @@ export class StudentSessionController {
   private readonly closeAbort = new AbortController();
   private closeAttempt: Promise<void> | null = null;
   private closeRequested: StoredCloseReason | null = null;
-  private leaseCheck: Promise<StoredRun> | null = null;
+  /** The lease check in progress, and whether it may ask the student to sign in. */
+  private leaseCheck: { readonly run: Promise<StoredRun>; readonly interactive: boolean } | null =
+    null;
   private startupComplete = false;
   private sessionToken: SessionToken | null = null;
   /** Set from the negotiated capabilities before any interactive sign-in. */
@@ -112,9 +120,17 @@ export class StudentSessionController {
   /** Set from the negotiated capabilities before any turn can fail. */
   private turnDiagnostics!: boolean;
   private readonly turns: SessionTurnExecutor;
+  private readonly connection: ConnectionDiagnostics;
 
   constructor(private readonly options: SessionControllerOptions) {
     const diagnostics = options.diagnostics;
+    this.connection = new ConnectionDiagnostics({
+      clock: options.clock,
+      diagnostics,
+      ids: options.ids,
+      localSession: options.localSession,
+      reportToServer: () => this.turnDiagnostics,
+    });
     this.turns = new SessionTurnExecutor({
       ...(diagnostics === undefined
         ? {}
@@ -145,14 +161,20 @@ export class StudentSessionController {
         heartbeat !== undefined &&
         this.presenceTimer === undefined
       ) {
+        // Presence never interrupts the student: it never asks them to sign in, and a failure
+        // is recorded for the teacher instead. Signing in again waits until the student acts.
         const send = async () => {
           if (this.presenceBusy || this.closeRequested !== null) return;
           this.presenceBusy = true;
+          let check: "lease-renewal" | "presence" = "lease-renewal";
           try {
-            const token = await this.modelRunToken();
+            const token = await this.modelRunToken(false);
+            this.connection.succeeded(check);
+            check = "presence";
             if (!this.closeAbort.signal.aborted) await heartbeat(token);
-          } catch {
-            /* Presence never interrupts a student session. */
+            this.connection.succeeded(check);
+          } catch (error) {
+            await this.connection.failed(check, error);
           } finally {
             this.presenceBusy = false;
           }
@@ -212,9 +234,10 @@ export class StudentSessionController {
     return this.closeAttempt;
   }
 
-  modelRunToken(): Promise<RunToken> {
+  /** A background caller passes `interactive: false`: it is then never asked to sign in. */
+  modelRunToken(interactive = true): Promise<RunToken> {
     if (this.closeRequested !== null) return Promise.reject(this.closingError());
-    return this.ensureLease().then((run) => {
+    return this.ensureLease(interactive).then((run) => {
       if (run.phase !== "active" || run.runId === null || run.runToken === null) {
         throw new NoActiveRunError("No active run token is available for model inference.");
       }
@@ -412,16 +435,22 @@ export class StudentSessionController {
     return { runId: run.runId, runToken: run.runToken, snapshot: run.snapshot };
   }
 
-  private ensureLease(): Promise<StoredRun> {
-    if (this.leaseCheck !== null) return this.leaseCheck;
-    const pending = this.ensureLeaseInternal();
-    this.leaseCheck = pending.finally(() => {
+  private ensureLease(interactive = true): Promise<StoredRun> {
+    const current = this.leaseCheck;
+    if (current !== null) {
+      // A student who acts while a background check is failing still gets to sign in again.
+      return interactive && !current.interactive
+        ? current.run.catch(() => this.ensureLease())
+        : current.run;
+    }
+    const run = this.ensureLeaseInternal(interactive).finally(() => {
       this.leaseCheck = null;
     });
-    return this.leaseCheck;
+    this.leaseCheck = { interactive, run };
+    return run;
   }
 
-  private async ensureLeaseInternal(): Promise<StoredRun> {
+  private async ensureLeaseInternal(interactive: boolean): Promise<StoredRun> {
     const run = (await this.options.localSession.load()).run;
     if (run === null) throw new NoActiveRunError("No active student run is available.");
     if (run.phase !== "active" && run.phase !== "closing") return run;
@@ -430,7 +459,7 @@ export class StudentSessionController {
     const expiresAt = Date.parse(run.leaseExpiresAt ?? nowText);
     const now = Date.parse(nowText);
     if (Number.isFinite(expiresAt) && expiresAt - now > RENEWAL_LEAD_TIME_MS) return run;
-    const sessionToken = await this.authenticationForRenewal();
+    const sessionToken = await this.authenticationForRenewal(interactive);
     const current = (await this.options.localSession.load()).run;
     if (
       current?.runId !== run.runId ||
@@ -493,9 +522,10 @@ export class StudentSessionController {
     return closeReason === null ? activated : this.options.localSession.beginClose(closeReason);
   }
 
-  private async authenticationForRenewal(): Promise<SessionToken> {
+  private async authenticationForRenewal(interactive = true): Promise<SessionToken> {
     const candidate = this.sessionToken ?? (await this.options.credentials.load());
     if (candidate === null) {
+      if (!interactive) throw signInRequired();
       return this.refreshAuthenticationForRenewal("missing");
     } else {
       const response = await bootstrapClass(this.options, candidate);
@@ -503,6 +533,7 @@ export class StudentSessionController {
         this.sessionToken = candidate;
         return candidate;
       }
+      if (!interactive) throw signInRequired();
       await this.options.credentials.clear();
       return this.refreshAuthenticationForRenewal("rejected");
     }
