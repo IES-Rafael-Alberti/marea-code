@@ -14,19 +14,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("bun:sqlite", () => import("../operator-cli/bun-sqlite.fixture.js"));
 
-const volume = vi.hoisted(() => ({ availableBytes: undefined as number | undefined }));
-vi.mock("node:fs", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("node:fs")>();
-  return {
-    ...actual,
-    statfsSync: ((...parameters: Parameters<typeof actual.statfsSync>) => {
-      const real = actual.statfsSync(...parameters);
-      return volume.availableBytes === undefined
-        ? real
-        : Object.assign({}, real, { bavail: BigInt(volume.availableBytes), bsize: 1n });
-    }) as typeof actual.statfsSync,
-  };
-});
+const volume = vi.hoisted(() => ({ availableBytes: 1_000_000_000_000 }));
+vi.mock("../../../../../packages/sqlite-storage/src/disk-space.boundary.js", () => ({
+  diskSpace: { freeBytes: () => volume.availableBytes },
+}));
 
 import { initializeSqliteStorage } from "@marea/sqlite-storage";
 
@@ -35,7 +26,7 @@ import { readVerifiedBundle } from "../operations/retention/retention-backups.bo
 
 const roots: string[] = [];
 afterEach(() => {
-  volume.availableBytes = undefined;
+  volume.availableBytes = 1_000_000_000_000;
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
@@ -56,10 +47,14 @@ function installation() {
   return { root, storage };
 }
 
+function exclusive<T>(operation: () => T): T {
+  return operation();
+}
+
 function bundleInput(root: string, storage: ReturnType<typeof installation>["storage"]) {
   return {
     createBackup: storage,
-    createExclusive: <T>(operation: () => T) => operation(),
+    createExclusive: exclusive,
     files: ["state/configuration.json"],
     limits: LIMITS,
     release: { id: RELEASE_ID, schemaVersion: storage.schema.version },
