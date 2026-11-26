@@ -11,6 +11,7 @@ import { createFileStudentStores } from "../../apps/student/src/filesystem.bound
 import { LocalSession } from "../../apps/student/src/local-session.js";
 import { createSystemIdSource } from "../../apps/student/src/platform.boundary.js";
 import { StudentSessionController } from "../../apps/student/src/session-controller.js";
+import type { SessionPresence } from "../../apps/student/src/session-presence.js";
 import { createCrashSafeWorkspaceWriter } from "../../apps/student/src/workspace-writer.js";
 import { openGuardedWorkspace } from "../../packages/workspace-backend/src/index.js";
 import {
@@ -98,7 +99,8 @@ async function classroom(options: { readonly clientSkewMs?: number } = {}) {
     }),
   });
   // The heartbeat starts synchronously on each interval and clears this flag when it settles.
-  const busy = () => Reflect.get(controller, "presenceBusy") === true;
+  const busy = () =>
+    (Reflect.get(controller, "presence") as SessionPresence | undefined)?.busy === true;
   const opened = await controller.start("presence-lab");
   await until(() => !busy());
   let messages = 0;

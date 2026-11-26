@@ -39,6 +39,8 @@ import { ConnectionDiagnostics } from "./connection-diagnostics.boundary.js";
 import { StudentHttpError } from "./http-error.js";
 import { LocalSession, type ReopenStoredRun } from "./local-session.js";
 import { SerialOperationQueue } from "./serial-operation-queue.js";
+import { SessionPresence } from "./session-presence.js";
+import { SharedLeaseCheck, signInRequired } from "./lease-check.js";
 import { negotiateSessionCapabilities } from "./session-capabilities.js";
 import { bootstrapClass, discoverProviders, exchangeExternal } from "./session-sign-in.js";
 import {
@@ -60,11 +62,6 @@ function isRunUnavailable(error: StudentHttpError): boolean {
 /** The server will refuse this event every time; retrying it can only block the ones after it. */
 function isPermanentRejection(error: StudentHttpError): boolean {
   return error.code === "request.invalid" && !error.retryable;
-}
-
-/** A background check found no usable sign-in; the student is asked when they next act. */
-function signInRequired(): StudentHttpError {
-  return new StudentHttpError(401, "auth.invalid", false);
 }
 
 function isRejectedPendingClose(error: StudentHttpError): boolean {
@@ -105,14 +102,13 @@ export interface ActiveStudentSession {
 export class StudentSessionController {
   private readonly lifecycle = new SerialOperationQueue();
   private readonly deliveries = new SerialOperationQueue();
-  private presenceTimer: ReturnType<typeof setInterval> | undefined;
-  private presenceBusy = false;
+  private presence: SessionPresence | undefined;
   private readonly closeAbort = new AbortController();
   private closeAttempt: Promise<void> | null = null;
   private closeRequested: StoredCloseReason | null = null;
-  /** The lease check in progress, and whether it may ask the student to sign in. */
-  private leaseCheck: { readonly run: Promise<StoredRun>; readonly interactive: boolean } | null =
-    null;
+  private readonly leaseChecks = new SharedLeaseCheck((interactive) =>
+    this.ensureLeaseInternal(interactive),
+  );
   private startupComplete = false;
   private sessionToken: SessionToken | null = null;
   /** Set from the negotiated capabilities before any interactive sign-in. */
@@ -159,31 +155,16 @@ export class StudentSessionController {
       if (
         !this.closeAbort.signal.aborted &&
         heartbeat !== undefined &&
-        this.presenceTimer === undefined
+        this.presence === undefined
       ) {
-        // Presence never interrupts the student: it never asks them to sign in, and a failure
-        // is recorded for the teacher instead. Signing in again waits until the student acts.
-        const send = async () => {
-          if (this.presenceBusy || this.closeRequested !== null) return;
-          this.presenceBusy = true;
-          let check: "lease-renewal" | "presence" = "lease-renewal";
-          try {
-            const token = await this.modelRunToken(false);
-            this.connection.succeeded(check);
-            check = "presence";
-            if (!this.closeAbort.signal.aborted) await heartbeat(token);
-            this.connection.succeeded(check);
-          } catch (error) {
-            await this.connection.failed(check, error);
-          } finally {
-            this.presenceBusy = false;
-          }
-        };
-        this.presenceTimer = setInterval(() => {
-          void send();
-        }, 30000);
-        this.presenceTimer.unref();
-        void send();
+        this.presence = new SessionPresence({
+          aborted: () => this.closeAbort.signal.aborted,
+          closing: () => this.closeRequested !== null,
+          connection: this.connection,
+          heartbeat,
+          token: () => this.modelRunToken(false),
+        });
+        this.presence.start();
       }
       this.startupComplete = true;
       return active;
@@ -221,8 +202,7 @@ export class StudentSessionController {
   }
 
   close(reason: StoredCloseReason = "student-exit"): Promise<void> {
-    clearInterval(this.presenceTimer);
-    this.presenceTimer = undefined;
+    this.presence?.stop();
     this.closeRequested ??= reason;
     this.closeAbort.abort();
     if (this.closeAttempt !== null) return this.closeAttempt;
@@ -436,18 +416,7 @@ export class StudentSessionController {
   }
 
   private ensureLease(interactive = true): Promise<StoredRun> {
-    const current = this.leaseCheck;
-    if (current !== null) {
-      // A student who acts while a background check is failing still gets to sign in again.
-      return interactive && !current.interactive
-        ? current.run.catch(() => this.ensureLease())
-        : current.run;
-    }
-    const run = this.ensureLeaseInternal(interactive).finally(() => {
-      this.leaseCheck = null;
-    });
-    this.leaseCheck = { interactive, run };
-    return run;
+    return this.leaseChecks.run(interactive);
   }
 
   private async ensureLeaseInternal(interactive: boolean): Promise<StoredRun> {

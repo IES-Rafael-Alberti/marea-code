@@ -1,4 +1,4 @@
-import { MessageIdSchema } from "@marea/protocol";
+import { MessageIdSchema, type RunToken } from "@marea/protocol";
 
 import type { Clock, IdSource } from "./contracts.js";
 import { StudentHttpError } from "./http-error.js";
@@ -28,6 +28,23 @@ export class ConnectionDiagnostics {
   readonly #reported = new Map<string, number>();
 
   public constructor(private readonly options: ConnectionDiagnosticsOptions) {}
+
+  /** One background heartbeat: the lease check, then presence; a failure is recorded. */
+  public async heartbeat(
+    token: () => Promise<RunToken>,
+    send: (token: RunToken) => Promise<void>,
+  ): Promise<void> {
+    let check: ConnectionCheck = "lease-renewal";
+    try {
+      const value = await token();
+      this.succeeded(check);
+      check = "presence";
+      await send(value);
+      this.succeeded(check);
+    } catch (error) {
+      await this.failed(check, error);
+    }
+  }
 
   public succeeded(check: ConnectionCheck): void {
     for (const key of this.#reported.keys())
