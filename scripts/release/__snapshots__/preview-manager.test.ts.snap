@@ -108,7 +108,7 @@ exports[`keeps offline diagnostics useful and checks server recovery after a fai
 ",
   ],
   [
-    "No se ha podido actualizar; se conserva la instalación verificada.
+    "No se ha podido actualizar; se conserva la instalación verificada. Causa: bad signature
 ",
   ],
 ]

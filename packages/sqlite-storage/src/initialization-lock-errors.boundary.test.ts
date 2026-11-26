@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const fileSystem = vi.hoisted(() => ({
   closeSync: vi.fn(),
   openSync: vi.fn(() => 7),
+  readFileSync: vi.fn(),
+  statSync: vi.fn(),
   unlinkSync: vi.fn(),
+  writeSync: vi.fn(),
 }));
 
 vi.mock("node:fs", () => fileSystem);

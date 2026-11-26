@@ -58,8 +58,9 @@ export function validDeadline(value: string, now: string): boolean {
 
 export function startFailure(
   reason: Extract<StartResult, { state: "failed" }>["reason"],
+  detail?: string,
 ): StartResult {
-  return { state: "failed", reason };
+  return detail === undefined ? { state: "failed", reason } : { state: "failed", reason, detail };
 }
 
 export function startReason(error: unknown): Extract<StartResult, { state: "failed" }>["reason"] {

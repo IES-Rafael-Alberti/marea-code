@@ -24,6 +24,7 @@ const ports = vi.hoisted(() => ({
   activatePreviewServer: vi.fn(),
   assertPreviewServerIdle: vi.fn(),
   assertPreviewServerReady: vi.fn(),
+  recoverInterruptedPreviewUpdate: vi.fn(),
   provisionServer: vi.fn(),
   scaffoldServer: vi.fn(),
   acceptUpdate: vi.fn(),

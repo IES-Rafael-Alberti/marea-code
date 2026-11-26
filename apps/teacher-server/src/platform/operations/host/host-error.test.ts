@@ -37,7 +37,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "lock" });
+    ).resolves.toMatchObject({ state: "failed", reason: "lock" });
     expect(harness.dependencies.configuration.read).not.toHaveBeenCalled();
   });
 
@@ -74,7 +74,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "index" });
+    ).resolves.toMatchObject({ state: "failed", reason: "index" });
 
     const expired = dependencyHarness({
       drain: {
@@ -334,7 +334,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "recovery" });
+    ).resolves.toMatchObject({ state: "failed", reason: "recovery" });
     expect(statusBroken.events).toContain("database.close");
     expect(statusBroken.events).toContain("lock.release");
     const startupReleaseFailure = dependencyHarness({
@@ -349,7 +349,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "lock" });
+    ).resolves.toMatchObject({ state: "failed", reason: "lock" });
 
     let held = false;
     let releaseAttempts = 0;
@@ -382,13 +382,13 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "lock" });
+    ).resolves.toMatchObject({ state: "failed", reason: "lock" });
     await expect(
       retainedRuntime.lifecycle.start({
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "config" });
+    ).resolves.toMatchObject({ state: "failed", reason: "config" });
     expect(releaseAttempts).toBe(3);
 
     let admissionAttempts = 0;
@@ -414,13 +414,13 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "lock" });
+    ).resolves.toMatchObject({ state: "failed", reason: "lock" });
     await expect(
       cleanupBlockedRuntime.lifecycle.start({
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "lock" });
+    ).resolves.toMatchObject({ state: "failed", reason: "lock" });
     expect(admissionAttempts).toBe(1);
 
     const missingRoot = new HostRuntimeController({
@@ -463,7 +463,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "config" });
+    ).resolves.toMatchObject({ state: "failed", reason: "config" });
 
     const genericStorageFailure = dependencyHarness({
       storage: {
@@ -482,7 +482,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "storage" });
+    ).resolves.toMatchObject({ state: "failed", reason: "storage" });
 
     const statusFailure = dependencyHarness({
       status: {
@@ -525,7 +525,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "storage" });
+    ).resolves.toMatchObject({ state: "failed", reason: "storage" });
     await expect(
       closeRuntime.lifecycle.shutdown({ drainUntil: "2026-09-13T12:00:00.000Z" }),
     ).resolves.toEqual({ state: "failed", reasonCode: "not-ready" });
@@ -659,7 +659,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "lock" });
+    ).resolves.toMatchObject({ state: "failed", reason: "lock" });
     await expect(
       runtime.lifecycle.start({
         installationRoot: "/synthetic/installation",
@@ -700,7 +700,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "storage" });
+    ).resolves.toMatchObject({ state: "failed", reason: "storage" });
     await expect(
       startup.dependencies.exclusivity.acquire("/synthetic/installation"),
     ).rejects.toMatchObject({
@@ -861,7 +861,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "index" });
+    ).resolves.toMatchObject({ state: "failed", reason: "index" });
 
     const uncertain = dependencyHarness({
       index: { inspect: vi.fn(() => Promise.resolve({ ...index, state: "uncertain" as const })) },
@@ -871,7 +871,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "index" });
+    ).resolves.toMatchObject({ state: "failed", reason: "index" });
 
     const exactIndexFailure = dependencyHarness({
       index: { inspect: vi.fn(() => Promise.resolve({ ...index, state: "uncertain" as const })) },
@@ -956,7 +956,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "recovery" });
+    ).resolves.toMatchObject({ state: "failed", reason: "recovery" });
 
     const lockFailure = dependencyHarness({
       exclusivity: {
@@ -969,7 +969,7 @@ describe("host terminal and diagnostic boundaries", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "lock" });
+    ).resolves.toMatchObject({ state: "failed", reason: "lock" });
   });
 
   it("validates standalone configuration before opening storage and preserves release reasons", async () => {

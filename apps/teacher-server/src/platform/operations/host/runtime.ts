@@ -28,6 +28,7 @@ import {
   writeStatus,
 } from "./runtime-support.js";
 import { controllerFor } from "./controller-registry.js";
+import { describeError } from "./error-detail.js";
 
 function asError(error: unknown): Error {
   return error instanceof Error ? error : new Error("unknown host failure");
@@ -119,7 +120,7 @@ export class HostRuntimeController {
       } catch (error) {
         const cleanupFailure = await this.cleanupResources();
         if (cleanupFailure !== undefined) return startFailure(this.resourceFailureReason());
-        return startFailure(startReason(error));
+        return startFailure(startReason(error), describeError(error));
       }
     });
   }

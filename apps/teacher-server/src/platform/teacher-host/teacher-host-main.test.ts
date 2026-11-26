@@ -342,6 +342,23 @@ it("writes structured inference diagnostics to the private stderr sink", async (
     "Teacher host did not start: listen.\n",
   ]);
 });
+it("prints one private JSON line with the reason and cause of a failed start", async () => {
+  const target = dependencies();
+  mocks.start.mockResolvedValueOnce({
+    state: "failed",
+    reason: "storage",
+    detail: "HostOperationError not-ready: EEXIST: file already exists",
+  });
+  expect(await runTeacherHost(ARGV, target.ports)).toBe(5);
+  expect(target.stderr).toEqual([
+    JSON.stringify({
+      event: "teacher-host-start-failed",
+      reason: "storage",
+      detail: "HostOperationError not-ready: EEXIST: file already exists",
+    }) + "\n",
+    "Teacher host did not start: storage.\n",
+  ]);
+});
 it("writes recognized private startup diagnostics to stderr as bounded JSON", async () => {
   const target = dependencies();
   const diagnostic = {

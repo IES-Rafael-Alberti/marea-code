@@ -80,7 +80,7 @@ it("does not label other ownership errors as a running server", async () => {
   const output = vi.spyOn(process.stderr, "write").mockReturnValue(true);
   await update();
   expect(output).toHaveBeenCalledExactlyOnceWith(
-    "No se ha podido actualizar; se conserva la instalación verificada.\n",
+    "No se ha podido actualizar; se conserva la instalación verificada. Causa: installation-unavailable\n",
   );
   expect(ports.downloadPreview).not.toHaveBeenCalled();
 });

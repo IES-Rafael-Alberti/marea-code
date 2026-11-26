@@ -32,7 +32,9 @@ import {
   activatePreviewServer,
   assertPreviewServerIdle,
   assertPreviewServerReady,
+  recoverInterruptedPreviewUpdate,
 } from "./preview-server-update.boundary.js";
+import { UpdateRolledBackError } from "./preview-update-rolled-back.js";
 import { type RunPrivateCommand } from "./preview-setup.boundary.js";
 import { acceptUpdate, question } from "./preview-terminal.boundary.js";
 import { markOnboardingPending, onboardingPending } from "./onboarding-state.boundary.js";
@@ -316,19 +318,60 @@ async function updateBeforeStart(
     );
   } catch (error) {
     if (settings.installation !== undefined && !onboardingPending(root))
-      assertPreviewServerReady(settings.installation);
+      assertReadyAfterFailure(settings.installation, error);
     if (required)
       throw new InstallerUsageError(
         `No se ha podido instalar la versión ${offered} necesaria para este servidor.`,
       );
-    process.stderr.write(
-      error instanceof OperatorCliError && error.code === "installation-busy"
-        ? "La instalación sigue bloqueada. Cierra el servidor si está en marcha y vuelve a ejecutar marea-teacher update para revisar el bloqueo. Se conserva la versión instalada.\n"
-        : "No se ha podido actualizar; se conserva la instalación verificada.\n",
-    );
+    process.stderr.write(updateFailureMessage(error));
     process.exitCode = 1;
     return activeRelease(root);
   }
+}
+
+function reportRecoveredUpdate(recovered: boolean | undefined): void {
+  if (recovered === true)
+    process.stderr.write(
+      "Una actualización anterior se interrumpió antes de modificar los datos. Se ha vuelto a la versión anterior; puedes reintentar con marea-teacher update.\n",
+    );
+}
+
+function recoverBeforeLaunch(
+  root: string,
+  settings: PreviewSettings,
+  request: { readonly action: string; readonly forwarded: readonly string[] },
+): void {
+  if (
+    settings.installation !== undefined &&
+    request.action !== "status" &&
+    request.forwarded[0] !== "--version" &&
+    !onboardingPending(root)
+  )
+    reportRecoveredUpdate(recoverInterruptedPreviewUpdate(settings.installation));
+}
+
+function failureReason(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** A failed update must not hide its own cause behind the readiness error it may have caused. */
+function assertReadyAfterFailure(installation: string, failure: unknown): void {
+  try {
+    assertPreviewServerReady(installation);
+  } catch (readiness) {
+    throw new Error(
+      `${failureReason(readiness)} Cause of the failed update: ${failureReason(failure)}`,
+      { cause: readiness },
+    );
+  }
+}
+
+function updateFailureMessage(error: unknown): string {
+  if (error instanceof UpdateRolledBackError)
+    return `La actualización ha fallado y se ha vuelto a la versión anterior, que sigue funcionando. Los datos no se han modificado. Causa: ${error.message}. Puedes reintentar con marea-teacher update.\n`;
+  if (error instanceof OperatorCliError && error.code === "installation-busy")
+    return "La instalación sigue bloqueada. Cierra el servidor si está en marcha y vuelve a ejecutar marea-teacher update para revisar el bloqueo. Se conserva la versión instalada.\n";
+  return `No se ha podido actualizar; se conserva la instalación verificada. Causa: ${failureReason(error)}\n`;
 }
 
 function selectedServerSettings(
@@ -372,6 +415,7 @@ export async function previewMain(argv: readonly string[]): Promise<void> {
   if (settings.component !== request.selected) throw new Error("Component selection mismatch");
   if (request.forwarded[0] === "uninstall")
     return uninstallPreview(root, settings, request.forwarded.slice(1));
+  recoverBeforeLaunch(root, settings, request);
   let release = activeRelease(root);
   const current = previewVersion.parse(
     manifestSchema.parse(JSON.parse(readFileSync(join(release, "manifest.json"), "utf8"))).version,

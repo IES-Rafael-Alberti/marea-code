@@ -125,7 +125,7 @@ describe("production teacher host", () => {
     );
     const events: { outcome?: string }[] = [];
     const host = await startRecordingMigrations(f, events);
-    expect(host).toEqual({ state: "failed", reason: "storage" });
+    expect(host).toMatchObject({ state: "failed", reason: "storage" });
     expect(f.served.fetch).toBeUndefined();
     expect(events.map((event) => event.outcome)).toEqual(["backup-failed"]);
     expect(inspectSqliteSchemaVersion({ databasePath: f.databasePath })).toBe(14);
@@ -304,13 +304,13 @@ describe("production teacher host", () => {
 
   it("refuses unactivated, foreign-release, busy or unrecovered installations", async () => {
     const unactivated = installation({ activate: false });
-    expect(await start(unactivated)).toEqual({ state: "failed", reason: "config" });
+    expect(await start(unactivated)).toMatchObject({ state: "failed", reason: "config" });
     expect(existsSync(unactivated.host.statusPath)).toBe(false);
 
     const f = installation();
-    expect(await start(f, "release:other")).toEqual({ state: "failed", reason: "config" });
+    expect(await start(f, "release:other")).toMatchObject({ state: "failed", reason: "config" });
     const operator = acquireInstallation(f.root);
-    expect(await start(f)).toEqual({ state: "failed", reason: "lock" });
+    expect(await start(f)).toMatchObject({ state: "failed", reason: "lock" });
     operator.release();
     const operations = JSON.parse(
       readFileSync(join(f.root, "config", "operations.json"), "utf8"),
@@ -322,12 +322,12 @@ describe("production teacher host", () => {
       JSON.stringify({ ...operations, databasePath: copy }),
       { mode: 0o600 },
     );
-    expect(await start(f)).toEqual({ state: "failed", reason: "config" });
+    expect(await start(f)).toMatchObject({ state: "failed", reason: "config" });
     writeFileSync(join(f.root, "config", "operations.json"), JSON.stringify(operations), {
       mode: 0o600,
     });
     writeFileSync(join(f.root, "config", "teacher-host.json"), "{}", { mode: 0o600 });
-    expect(await start(f)).toEqual({ state: "failed", reason: "config" });
+    expect(await start(f)).toMatchObject({ state: "failed", reason: "config" });
     f.writeHost(f.host);
     const ready = await start(f);
     expect(ready).toMatchObject({ state: "ready" });
@@ -363,20 +363,22 @@ describe("production teacher host", () => {
         },
       ],
     });
-    expect(await start(f)).toEqual({ state: "failed", reason: "config" });
+    expect(await start(f)).toMatchObject({ state: "failed", reason: "config" });
     acquireInstallation(f.root).release();
     f.writeHost({
       ...f.host,
       providers: [{ pluginId: "org.marea.openrouter", credentialPath: credential }],
     });
     writeFileSync(credential, "short\n", { mode: 0o600 });
-    expect(await start(f)).toEqual({ state: "failed", reason: "config" });
+    expect(await start(f)).toMatchObject({ state: "failed", reason: "config" });
     expectConnectionsClosed();
     expect(status(f)).toMatchObject({ status: "stopped" });
     acquireInstallation(f.root).release();
     f.writeHost(f.host);
     rmSync(join(f.root, "dashboard", "index.html"));
-    expect(await start(f)).toEqual({ state: "failed", reason: "assets" });
+    const missingAssets = await start(f);
+    expect(missingAssets).toMatchObject({ state: "failed", reason: "assets" });
+    expect(JSON.stringify(missingAssets)).toMatch(/"detail":"\w*Error ENOENT"/u);
     expectConnectionsClosed();
     acquireInstallation(f.root).release();
     writeFileSync(join(f.root, "dashboard", "index.html"), "<!doctype html><title>Marea</title>", {
@@ -393,7 +395,12 @@ describe("production teacher host", () => {
         passwords,
         onEvaluationError: () => undefined,
       }),
-    ).toEqual({ state: "failed", reason: "listen" });
+    ).toEqual({
+      state: "failed",
+      reason: "listen",
+      // The diagnostic names the failure, never its message.
+      detail: "Error",
+    });
     expectConnectionsClosed();
     expect(status(f)).toMatchObject({ status: "stopped" });
     acquireInstallation(f.root).release();
@@ -427,7 +434,7 @@ describe("production teacher host", () => {
     } finally {
       index.close();
     }
-    expect(await start(f)).toEqual({ state: "failed", reason: "index" });
+    expect(await start(f)).toMatchObject({ state: "failed", reason: "index" });
     expectConnectionsClosed();
   });
 

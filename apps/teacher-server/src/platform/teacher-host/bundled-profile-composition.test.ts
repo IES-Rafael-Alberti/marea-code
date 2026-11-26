@@ -253,7 +253,7 @@ it("requires an offline profile upgrade when an explicit profile factory is supp
     passwords: { hash: (value) => Promise.resolve(value), verify: () => Promise.resolve(false) },
     onEvaluationError: () => undefined,
   });
-  expect(host).toEqual({ state: "failed", reason: "config" });
+  expect(host).toMatchObject({ state: "failed", reason: "config" });
   expect(profiles).not.toHaveBeenCalled();
   expect(f.served.fetch).toBeUndefined();
   expect(inspectSqliteSchemaVersion({ databasePath: f.databasePath })).toBe(9);

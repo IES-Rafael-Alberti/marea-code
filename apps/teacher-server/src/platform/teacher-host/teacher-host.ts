@@ -97,6 +97,7 @@ import {
 } from "./teacher-host-config.js";
 import { composeTeacherServices, type TeacherHostServiceDependencies } from "./teacher-services.js";
 import { migrateSchemaOnStartup, type StartupMigrationEvent } from "./startup-migration.js";
+import { describeError } from "../operations/host/error-detail.js";
 
 /** The network listener of a compiled host; tests may serve requests without binding a socket. */
 export type ServePort = (options: {
@@ -409,19 +410,19 @@ export async function startTeacherHost(
     resolver: options.telemetry?.resolver ?? privateTelemetryResolver(options.installationRoot),
     signal: options.startupSignal ?? new AbortController().signal,
   });
-  const abandon = async (reason: "config" | "assets" | "listen") => {
+  const abandon = async (reason: "config" | "assets" | "listen", cause: unknown) => {
     await telemetry.runtime.close(new AbortController().signal);
     await runtime.lifecycle.shutdown({
       drainUntil: new Date(Date.now() + host.shutdownDrainMs).toISOString(),
     });
     closeIndex();
-    return { state: "failed" as const, reason };
+    return { state: "failed" as const, reason, detail: describeError(cause, false) };
   };
   let composed: Awaited<ReturnType<typeof composeHostServices>>;
   try {
     composed = await composeHostServices(options, ports);
   } catch (error) {
-    const failed = await abandon("config");
+    const failed = await abandon("config", error);
     reportStartupDiagnostic(options.onStartupDiagnostic ?? (() => undefined), error);
     return failed;
   }
@@ -430,13 +431,13 @@ export async function startTeacherHost(
     dashboard = createDashboardAssetHandler(
       await loadFileSystemDashboardAssets(host.dashboardDistPath),
     );
-  } catch {
-    return abandon("assets");
+  } catch (error) {
+    return abandon("assets", error);
   }
   try {
     composed.evaluations.recoverAfterExclusiveStartup();
-  } catch {
-    return abandon("config");
+  } catch (error) {
+    return abandon("config", error);
   }
   const product = withTelemetryPreview(
     createTeacherProductHttp({
@@ -476,9 +477,8 @@ export async function startTeacherHost(
         return admitted ?? Promise.resolve(protocolError(503, "server.error", true));
       },
     });
-  } catch {
-    // An address already in use or not available is reported, never thrown past the lock.
-    return abandon("listen");
+  } catch (error) {
+    return abandon("listen", error); // Address in use: reported, never thrown past the lock.
   }
   // Evaluation work starts only once the host is actually listening.
   composed.evaluations.start();

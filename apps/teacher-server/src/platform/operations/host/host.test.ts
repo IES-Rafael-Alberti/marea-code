@@ -255,7 +255,11 @@ describe("host lifecycle and maintenance", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "storage" });
+    ).resolves.toEqual({
+      state: "failed",
+      reason: "storage",
+      detail: "HostOperationError not-ready: open failed",
+    });
     expect(failure.events).toContain("lock.release");
     const pending = dependencyHarness({
       recovery: {
@@ -275,7 +279,7 @@ describe("host lifecycle and maintenance", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "index" });
+    ).resolves.toMatchObject({ state: "failed", reason: "index" });
     expect(pending.events).not.toContain("storage.open:read-write");
   });
 
@@ -311,13 +315,13 @@ describe("host lifecycle and maintenance", () => {
     ).resolves.toMatchObject({ state: "ready" });
     await expect(
       runtime.lifecycle.start({ installationRoot: "/other", releaseId: "release-1" }),
-    ).resolves.toEqual({ state: "failed", reason: "lock" });
+    ).resolves.toStrictEqual({ state: "failed", reason: "lock" });
     await expect(
       runtime.lifecycle.start({
         installationRoot: "/synthetic/installation",
         releaseId: "release-2",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "lock" });
+    ).resolves.toMatchObject({ state: "failed", reason: "lock" });
     await expect(runtime.lifecycle.shutdown({ drainUntil: "invalid" })).resolves.toEqual({
       state: "failed",
       reasonCode: "drain-expired",
@@ -351,7 +355,7 @@ describe("host lifecycle and maintenance", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "recovery" });
+    ).resolves.toMatchObject({ state: "failed", reason: "recovery" });
 
     const codedNonHostFailure = dependencyHarness({
       recovery: {
@@ -365,7 +369,7 @@ describe("host lifecycle and maintenance", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "recovery" });
+    ).resolves.toMatchObject({ state: "failed", reason: "recovery" });
 
     const corruptIndex = dependencyHarness({
       index: { inspect: vi.fn(() => Promise.resolve({ corrupt: true } as never)) },
@@ -375,7 +379,7 @@ describe("host lifecycle and maintenance", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "index" });
+    ).resolves.toMatchObject({ state: "failed", reason: "index" });
 
     const statusFailure = dependencyHarness({
       status: {
@@ -388,7 +392,7 @@ describe("host lifecycle and maintenance", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "recovery" });
+    ).resolves.toMatchObject({ state: "failed", reason: "recovery" });
 
     const storageFailure = dependencyHarness({
       storage: { open: vi.fn(() => Promise.reject(new Error("storage unavailable"))) },
@@ -398,7 +402,7 @@ describe("host lifecycle and maintenance", () => {
         installationRoot: "/synthetic/installation",
         releaseId: "release-1",
       }),
-    ).resolves.toEqual({ state: "failed", reason: "storage" });
+    ).resolves.toMatchObject({ state: "failed", reason: "storage" });
   });
 
   it("handles standalone preview/run and always resumes and cleans up", async () => {
