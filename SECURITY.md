@@ -86,7 +86,10 @@ Bearer sessions have a 30-minute idle timeout and an absolute lifetime of 8 hour
 from sign-in. Authenticated teacher dashboard activity, including live connection
 checks, slides teacher sessions. Authenticated presence heartbeats and successful
 lease renewals for a student's own active run count as activity using the server
-clock; lease renewal slides the student's session. Closing the terminal stops
+clock. Lease renewal slides the session that renewed; a presence heartbeat, which
+carries the run lease, slides the run owner's newest live sign-in session for that
+class, so a student who keeps working is not signed out. Older sessions of the same
+student, for example on another computer, are left to lapse. Closing the terminal stops
 heartbeats and renewal, so the session lapses after 30 minutes. Teacher revocation,
 account deactivation, closed runs, and expired sessions are never extended or revived.
 

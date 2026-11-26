@@ -163,6 +163,16 @@ On Windows the same file also receives a `state-permissions` record when the sta
 finds that other accounts may read the student's state folder (principal categories only) or
 cannot run (the numeric HRESULT); the client keeps working either way.
 
+The student terminal's background presence heartbeat and run lease renewal never ask the
+student to sign in; if the sign-in session can no longer be used, Marea asks when the
+student next sends a message and then continues the same session. A failed check is
+recorded instead of hidden: a `connection-failed` line in `turn-failures.jsonl` with the
+category (`presence/<origin>` or `lease-renewal/<origin>`, for example
+`lease-renewal/http.auth.invalid`), the HTTP status and the time, and, on servers announcing
+`marea.runs.turn-diagnostics`, a `turn-diagnostic` event for message `marea:connection`
+delivered with the next events of the session. The same failure is recorded at most once
+every ten minutes until a check succeeds again, so a long outage stays a few lines.
+
 ## Developer acceptance
 
 The trace extension belongs to `@marea/plugin-api`. Installed telemetry exporters

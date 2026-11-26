@@ -35,9 +35,12 @@ import type {
 } from "./contracts.js";
 import { NoActiveRunError } from "./contracts.js";
 import { alreadyClosedResponse } from "./closed-run-response.js";
+import { ConnectionDiagnostics } from "./connection-diagnostics.boundary.js";
 import { StudentHttpError } from "./http-error.js";
 import { LocalSession, type ReopenStoredRun } from "./local-session.js";
 import { SerialOperationQueue } from "./serial-operation-queue.js";
+import { SessionPresence } from "./session-presence.js";
+import { SharedLeaseCheck, signInRequired } from "./lease-check.js";
 import { negotiateSessionCapabilities } from "./session-capabilities.js";
 import { bootstrapClass, discoverProviders, exchangeExternal } from "./session-sign-in.js";
 import {
@@ -99,12 +102,13 @@ export interface ActiveStudentSession {
 export class StudentSessionController {
   private readonly lifecycle = new SerialOperationQueue();
   private readonly deliveries = new SerialOperationQueue();
-  private presenceTimer: ReturnType<typeof setInterval> | undefined;
-  private presenceBusy = false;
+  private presence: SessionPresence | undefined;
   private readonly closeAbort = new AbortController();
   private closeAttempt: Promise<void> | null = null;
   private closeRequested: StoredCloseReason | null = null;
-  private leaseCheck: Promise<StoredRun> | null = null;
+  private readonly leaseChecks = new SharedLeaseCheck((interactive) =>
+    this.ensureLeaseInternal(interactive),
+  );
   private startupComplete = false;
   private sessionToken: SessionToken | null = null;
   /** Set from the negotiated capabilities before any interactive sign-in. */
@@ -112,9 +116,17 @@ export class StudentSessionController {
   /** Set from the negotiated capabilities before any turn can fail. */
   private turnDiagnostics!: boolean;
   private readonly turns: SessionTurnExecutor;
+  private readonly connection: ConnectionDiagnostics;
 
   constructor(private readonly options: SessionControllerOptions) {
     const diagnostics = options.diagnostics;
+    this.connection = new ConnectionDiagnostics({
+      clock: options.clock,
+      diagnostics,
+      ids: options.ids,
+      localSession: options.localSession,
+      reportToServer: () => this.turnDiagnostics,
+    });
     this.turns = new SessionTurnExecutor({
       ...(diagnostics === undefined
         ? {}
@@ -143,25 +155,16 @@ export class StudentSessionController {
       if (
         !this.closeAbort.signal.aborted &&
         heartbeat !== undefined &&
-        this.presenceTimer === undefined
+        this.presence === undefined
       ) {
-        const send = async () => {
-          if (this.presenceBusy || this.closeRequested !== null) return;
-          this.presenceBusy = true;
-          try {
-            const token = await this.modelRunToken();
-            if (!this.closeAbort.signal.aborted) await heartbeat(token);
-          } catch {
-            /* Presence never interrupts a student session. */
-          } finally {
-            this.presenceBusy = false;
-          }
-        };
-        this.presenceTimer = setInterval(() => {
-          void send();
-        }, 30000);
-        this.presenceTimer.unref();
-        void send();
+        this.presence = new SessionPresence({
+          aborted: () => this.closeAbort.signal.aborted,
+          closing: () => this.closeRequested !== null,
+          connection: this.connection,
+          heartbeat,
+          token: () => this.modelRunToken(false),
+        });
+        this.presence.start();
       }
       this.startupComplete = true;
       return active;
@@ -199,8 +202,7 @@ export class StudentSessionController {
   }
 
   close(reason: StoredCloseReason = "student-exit"): Promise<void> {
-    clearInterval(this.presenceTimer);
-    this.presenceTimer = undefined;
+    this.presence?.stop();
     this.closeRequested ??= reason;
     this.closeAbort.abort();
     if (this.closeAttempt !== null) return this.closeAttempt;
@@ -212,9 +214,10 @@ export class StudentSessionController {
     return this.closeAttempt;
   }
 
-  modelRunToken(): Promise<RunToken> {
+  /** A background caller passes `interactive: false`: it is then never asked to sign in. */
+  modelRunToken(interactive = true): Promise<RunToken> {
     if (this.closeRequested !== null) return Promise.reject(this.closingError());
-    return this.ensureLease().then((run) => {
+    return this.ensureLease(interactive).then((run) => {
       if (run.phase !== "active" || run.runId === null || run.runToken === null) {
         throw new NoActiveRunError("No active run token is available for model inference.");
       }
@@ -412,16 +415,11 @@ export class StudentSessionController {
     return { runId: run.runId, runToken: run.runToken, snapshot: run.snapshot };
   }
 
-  private ensureLease(): Promise<StoredRun> {
-    if (this.leaseCheck !== null) return this.leaseCheck;
-    const pending = this.ensureLeaseInternal();
-    this.leaseCheck = pending.finally(() => {
-      this.leaseCheck = null;
-    });
-    return this.leaseCheck;
+  private ensureLease(interactive = true): Promise<StoredRun> {
+    return this.leaseChecks.run(interactive);
   }
 
-  private async ensureLeaseInternal(): Promise<StoredRun> {
+  private async ensureLeaseInternal(interactive: boolean): Promise<StoredRun> {
     const run = (await this.options.localSession.load()).run;
     if (run === null) throw new NoActiveRunError("No active student run is available.");
     if (run.phase !== "active" && run.phase !== "closing") return run;
@@ -430,7 +428,7 @@ export class StudentSessionController {
     const expiresAt = Date.parse(run.leaseExpiresAt ?? nowText);
     const now = Date.parse(nowText);
     if (Number.isFinite(expiresAt) && expiresAt - now > RENEWAL_LEAD_TIME_MS) return run;
-    const sessionToken = await this.authenticationForRenewal();
+    const sessionToken = await this.authenticationForRenewal(interactive);
     const current = (await this.options.localSession.load()).run;
     if (
       current?.runId !== run.runId ||
@@ -493,9 +491,10 @@ export class StudentSessionController {
     return closeReason === null ? activated : this.options.localSession.beginClose(closeReason);
   }
 
-  private async authenticationForRenewal(): Promise<SessionToken> {
+  private async authenticationForRenewal(interactive = true): Promise<SessionToken> {
     const candidate = this.sessionToken ?? (await this.options.credentials.load());
     if (candidate === null) {
+      if (!interactive) throw signInRequired();
       return this.refreshAuthenticationForRenewal("missing");
     } else {
       const response = await bootstrapClass(this.options, candidate);
@@ -503,6 +502,7 @@ export class StudentSessionController {
         this.sessionToken = candidate;
         return candidate;
       }
+      if (!interactive) throw signInRequired();
       await this.options.credentials.clear();
       return this.refreshAuthenticationForRenewal("rejected");
     }

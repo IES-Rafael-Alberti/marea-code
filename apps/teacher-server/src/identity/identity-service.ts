@@ -180,8 +180,9 @@ export class IdentityService {
 
   /**
    * Account tokens slide a live student session after successful lease renewal.
-   * Run lease tokens record presence using the server clock, without changing account
-   * sessions. Expired or revoked sessions are never revived.
+   * Run lease tokens record presence using the server clock and slide the run owner's newest
+   * live session for that class, so a student who keeps working stays signed in. Expired or
+   * revoked sessions are never revived, and no session outlives its absolute lifetime.
    */
   public extendForRunActivity(token: string, runId: string): string | undefined {
     const now = this.#dependencies.clock.now();
