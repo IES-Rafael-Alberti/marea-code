@@ -30,6 +30,7 @@ import {
   RenewRunLeaseRequestSchema,
   RunSkillRequestSchema,
   RunHistoryQuerySchema,
+  ClassSessionsQuerySchema,
   SessionHistoryQuerySchema,
   SoftwareVersionSchema,
   TURN_DIAGNOSTICS_CAPABILITY,
@@ -269,7 +270,7 @@ export function createTeacherProductHttp(
   app.post("/api/v1/dashboard/history/classes", productPolicy, (context) =>
     authenticatedJson(
       context.req.raw,
-      SessionHistoryQuerySchema,
+      ClassSessionsQuerySchema,
       (request) => {
         const identity = options.services.identity.authenticate(
           parseCookie(request.headers.get("cookie"), cookieName),

@@ -4,6 +4,8 @@ import {
   StudentRunSnapshotSchema,
 } from "@marea/protocol";
 
+import { createEducationalMigrationCatalog } from "@marea/sqlite-storage/catalogs";
+
 import { NodeSqliteTestDatabase } from "./node-sqlite-database.boundary.js";
 import { seedTeachingDatabase } from "./teaching-integration.fixture.js";
 import { teachingConfiguration } from "./teaching-fixture.js";
@@ -45,6 +47,14 @@ export function addEvent(database: NodeSqliteTestDatabase, runId: string, sequen
     VALUES (?1, ?2, ?3, ?4, ?5, ?6)`,
     [event.eventId, runId, sequence, NOW, event.eventType, JSON.stringify(event)],
   );
+}
+/** Adds the learning history the teacher session listing summarizes, without the full catalog. */
+export function withLearningHistory(database: NodeSqliteTestDatabase) {
+  const statement = createEducationalMigrationCatalog()
+    .flatMap((migration) => migration.statements)
+    .find((sql) => sql.startsWith("CREATE TABLE marea_learning_history"));
+  if (statement === undefined) throw new Error("The learning history table is not migrated.");
+  database.executeScript(statement);
 }
 export function setup(databasePath?: string) {
   const database = new NodeSqliteTestDatabase(databasePath);

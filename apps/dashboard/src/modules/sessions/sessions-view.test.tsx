@@ -4,7 +4,12 @@ import { ClassSessionsResponseSchema } from "@marea/protocol";
 import { SessionsModule } from "./sessions-module.js";
 import { SessionsController } from "./sessions-controller.js";
 import { sessionsMessages } from "./sessions-messages.js";
-import { evaluationClientFixture, SESSIONS, HISTORY } from "../evaluation/evaluation.fixture.js";
+import {
+  evaluationClientFixture,
+  SESSIONS,
+  HISTORY,
+  NO_REVIEW,
+} from "../evaluation/evaluation.fixture.js";
 import { reviewButton, reviewElements } from "../evaluation/react-tree.fixture.js";
 
 const hooks = vi.hoisted(() => ({
@@ -47,7 +52,7 @@ function setup() {
   const page = ClassSessionsResponseSchema.parse({
     ...SESSIONS,
     kind: "class-sessions-response",
-    runs: SESSIONS.runs.map((run) => ({ ...run, classId: "class:one" })),
+    runs: SESSIONS.runs.map((run) => ({ ...run, classId: "class:one", review: NO_REVIEW })),
   });
   controller.state = { ...controller.state, runs: page.runs, next: "run:older" };
   const render = () => {
@@ -77,12 +82,6 @@ it("routes class, page, search and session selection without conflating their fi
   selects[0]?.props.onChange?.({ currentTarget: { value: "class:one" } });
   selects[0]?.props.onChange?.({ currentTarget: { value: "" } });
   expect(choose.mock.calls).toEqual([["class:one"], [null]]);
-  elements
-    .find((element) => element.type === "input")
-    ?.props.onChange?.({ currentTarget: { value: "Ada" } });
-  expect(hooks.setters[0]).toHaveBeenCalledWith("Ada");
-  selects[1]?.props.onChange?.({ currentTarget: { value: "closed" } });
-  expect(hooks.setters[1]).toHaveBeenCalledWith("closed");
   const card = elements.find((element) => element.type === "li");
   reviewElements(card?.props.children)
     .find((element) => element.type === "button")
@@ -93,12 +92,13 @@ it("routes class, page, search and session selection without conflating their fi
   reviewButton(elements, m.more).props.onClick?.();
   expect(newest).toHaveBeenCalledOnce();
   expect(more).toHaveBeenCalledOnce();
-  hooks.values = ["missing", "all", "conversation", false];
-  expect(render().filter((element) => element.type === "li")).toHaveLength(0);
-  hooks.values = ["", "active", "conversation", false];
-  expect(render().filter((element) => element.type === "li")).toHaveLength(0);
-  hooks.values = ["aDA", "closed", "conversation", false];
-  expect(render().filter((element) => element.type === "li")).toHaveLength(1);
+  hooks.values[1] = "all";
+  controller.state = { ...controller.state, filters: {} };
+  expect(
+    render()
+      .filter((element) => element.type === "small")
+      .map((element) => element.props.children),
+  ).toContain("Sin evaluación");
   controller.state = { ...controller.state, moreBusy: true, next: null };
   expect(reviewButton(render(), m.more).props.disabled).toBe(true);
   expect(reviewButton(render(), m.newest).props.disabled).toBe(true);
@@ -106,8 +106,85 @@ it("routes class, page, search and session selection without conflating their fi
     ...controller.state,
     runs: controller.state.runs.map((run) => ({ ...run, state: "active" })),
   };
-  hooks.values[1] = "all";
   expect(render().find((element) => element.type === "small")?.props.children).toContain("Abierta");
+  controller.dispose();
+});
+it("routes the search and the single show choice to server-side filters", () => {
+  const { controller, render } = setup();
+  const elements = render();
+  const selects = elements.filter((element) => element.type === "select");
+  const filter = vi.spyOn(controller, "filter").mockResolvedValue();
+  const search = vi.spyOn(controller, "search").mockReturnValue();
+  elements
+    .find((element) => element.type === "input")
+    ?.props.onChange?.({ currentTarget: { value: "Ada" } });
+  expect(hooks.setters[0]).toHaveBeenCalledWith("Ada");
+  // Typing never asks the server by itself; the controller debounces it.
+  expect(search.mock.calls).toEqual([[{ search: "Ada" }]]);
+  expect(filter).not.toHaveBeenCalled();
+  for (const value of [
+    "open",
+    "closed",
+    "pending",
+    "empty",
+    "approved",
+    "failed",
+    "running",
+    "unknown",
+  ])
+    selects[1]?.props.onChange?.({ currentTarget: { value } });
+  expect(hooks.setters[1]?.mock.calls).toEqual([
+    ["open"],
+    ["closed"],
+    ["pending"],
+    ["empty"],
+    ["approved"],
+    ["failed"],
+    ["running"],
+    ["unknown"],
+  ]);
+  expect(filter.mock.calls).toEqual([
+    [{ search: undefined, runState: "active" }],
+    [{ search: undefined, runState: "closed" }],
+    [{ search: undefined, evaluation: ["draft"], evidence: "with" }],
+    [{ search: undefined, evaluation: ["draft"], evidence: "without" }],
+    [{ search: undefined, evaluation: ["approved"] }],
+    [{ search: undefined, evaluation: ["failed"] }],
+    [{ search: undefined, evaluation: ["queued", "running"] }],
+    [{ search: undefined }],
+  ]);
+  // A new choice replaces every filter but keeps the search, and the search keeps the choice.
+  controller.state = {
+    ...controller.state,
+    filters: { search: "Ada", evaluation: ["draft"], evidence: "with" },
+  };
+  hooks.values[1] = "pending";
+  const filtered = render();
+  const show = filtered.filter((element) => element.type === "select")[1];
+  expect(show?.props.value).toBe("pending");
+  show?.props.onChange?.({ currentTarget: { value: "all" } });
+  expect(filter).toHaveBeenLastCalledWith({ search: "Ada" });
+  filtered
+    .find((element) => element.type === "input")
+    ?.props.onChange?.({ currentTarget: { value: "Bea" } });
+  expect(search).toHaveBeenLastCalledWith({
+    search: "Bea",
+    evaluation: ["draft"],
+    evidence: "with",
+  });
+  expect(filtered.find((element) => element.type === "input")?.props).toMatchObject({
+    maxLength: 80,
+  });
+  controller.state = {
+    ...controller.state,
+    filters: {},
+    runs: SESSIONS.runs.map((run) => ({ ...run, classId: "class:one" })),
+  };
+  expect(
+    render()
+      .filter((element) => element.type === "small")
+      .map((element) => element.props.children),
+  ).not.toContain("Sin evaluación");
   controller.dispose();
 });
 it("keeps conversation and evaluation contextual and supports returning to the list", async () => {

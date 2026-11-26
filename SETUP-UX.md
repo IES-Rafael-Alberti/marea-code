@@ -131,6 +131,26 @@ New frontmatter remains inside `SKILL.md`; baseline bundle/criterion wire shapes
 unchanged. Only library requests with `includeCurriculum: true` receive the optional
 curriculum summary, so older strict dashboard requests retain their response shape.
 
+## Session review status
+
+Each row in **Sessions** shows its review state: the latest evaluation, its state, how many
+criteria have evidence and, once approved, how many criteria the approval applied to learning
+progress and how many it raised a level. Manual adjustments have no session, so they never count.
+A draft with criteria but no evidence is reported as such. One that assessed no criteria stays
+undetermined.
+
+Search ignores case and accents, including the tilde of ñ (so `nino` finds "Niño"), and matches
+the student name and the project name one at a time, never across both. While you type, the rows
+already loaded are filtered instantly in the browser with the same rule as the server
+(`sessionSearchMatches` in `@marea/protocol`). About 300 ms after the last key press the server
+applies the search before paging and its complete answer replaces the list, so older sessions are
+never missed. The **Show** choice asks the server at once. Changing the search or the choice never
+closes the session you are reading, even when it is not in the filtered list. The options are
+open, finished, pending with or without evidence, approved, failed, or evaluating. The
+dashboard-only `POST /api/v1/dashboard/history/classes` carries these through
+`ClassSessionsQuerySchema` and `ClassSessionItem.review`. The student history shape is
+unchanged.
+
 ## Dashboard entry and language
 
 GET and HEAD on `/` redirect to `/dashboard/`; product `/api/` and `/v1/` routes retain

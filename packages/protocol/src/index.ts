@@ -18,6 +18,7 @@ export * from "./evaluations.js";
 export * from "./teaching-configuration.js";
 export * from "./skill-authoring.js";
 export * from "./class-history.js";
+export * from "./session-search.js";
 export * from "./teaching-mode-instructions.js";
 export * from "./dashboard-profiles.js";
 export * from "./dashboard-profile-document.boundary.js";

@@ -21,6 +21,7 @@ const classes = ClassSessionsResponseSchema.parse({
       state: "closed",
       openedAt: timestamp,
       closedAt: timestamp,
+      review: { evaluation: "none", criteria: 0, evidenced: 0, applied: 0, raised: 0 },
     },
   ],
 });

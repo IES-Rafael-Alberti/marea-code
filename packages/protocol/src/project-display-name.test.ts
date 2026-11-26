@@ -32,7 +32,11 @@ const carriers = {
     }).success,
   "student history": (name: string) => SessionHistoryItemSchema.safeParse(listed(name)).success,
   "class history": (name: string) =>
-    ClassSessionItemSchema.safeParse({ ...listed(name), classId: "class:main" }).success,
+    ClassSessionItemSchema.safeParse({
+      ...listed(name),
+      classId: "class:main",
+      review: { evaluation: "none", criteria: 0, evidenced: 0, applied: 0, raised: 0 },
+    }).success,
   "active runs": (name: string) =>
     ActiveRunDashboardResponseSchema.safeParse({
       kind: "active-runs-response",

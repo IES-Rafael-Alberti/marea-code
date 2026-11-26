@@ -1,5 +1,7 @@
 import {
   ClassSessionsResponseSchema,
+  type ClassSessionItem,
+  type ClassSessionsQuery,
   type ClassSessionsResponse,
   type CanonicalRunEvent,
   CURRENT_PROTOCOL_VERSION,
@@ -14,11 +16,16 @@ import {
 import type { AuthenticatedIdentity } from "../identity/contracts.js";
 
 export type RunHistoryPage = Omit<RunHistoryResponse, "kind" | "protocolVersion" | "requestId">;
-export type SessionHistoryPage = Pick<ClassSessionsResponse, "runs" | "nextBeforeRunId">;
+export type ClassSessionsPage = Pick<ClassSessionsResponse, "runs" | "nextBeforeRunId">;
+export interface SessionHistoryPage {
+  readonly runs: readonly Omit<ClassSessionItem, "review">[];
+  readonly nextBeforeRunId: ClassSessionsPage["nextBeforeRunId"];
+}
 
 export interface HistoryRepository {
   readRun(identity: AuthenticatedIdentity, query: RunHistoryQuery): RunHistoryPage;
   listSessions(identity: AuthenticatedIdentity, query: SessionHistoryQuery): SessionHistoryPage;
+  listClassSessions(identity: AuthenticatedIdentity, query: ClassSessionsQuery): ClassSessionsPage;
 }
 
 function studentHistoryEvent(event: CanonicalRunEvent): CanonicalRunEvent {
@@ -78,10 +85,10 @@ export class HistoryService {
   }
   public listClassSessions(
     identity: AuthenticatedIdentity,
-    query: SessionHistoryQuery,
+    query: ClassSessionsQuery,
   ): ClassSessionsResponse {
     return ClassSessionsResponseSchema.parse({
-      ...this.#repository.listSessions(identity, query),
+      ...this.#repository.listClassSessions(identity, query),
       kind: "class-sessions-response",
       protocolVersion: CURRENT_PROTOCOL_VERSION,
       requestId: query.requestId,
