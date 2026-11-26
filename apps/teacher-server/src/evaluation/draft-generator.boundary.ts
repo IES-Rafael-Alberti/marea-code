@@ -44,6 +44,8 @@ export interface DraftGeneratorOptions {
   readonly diagnostic?: ((event: EvaluationDraftDiagnostic) => void) | undefined;
 }
 
+const ignoreDiagnostic = (): void => undefined;
+
 export class EvaluationDraftGenerator {
   public constructor(private readonly options: DraftGeneratorOptions) {}
 
@@ -85,9 +87,10 @@ export class EvaluationDraftGenerator {
     });
     let output = "";
     let bytes = 0;
+    const report = this.options.diagnostic ?? ignoreDiagnostic;
     const invalid = (reason: InvalidDraftReason) => {
       try {
-        this.options.diagnostic?.({
+        report({
           runId: input.runId,
           evaluationId: claim.evaluationId,
           reason,
