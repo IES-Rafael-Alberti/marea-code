@@ -416,15 +416,44 @@ detected schema, the final schema and the backup path). If that backup or the mi
 fails, the database is left unchanged and the server does not start. The matching
 dashboard and server version change together. Settings and credentials are preserved.
 
-An interrupted server update leaves `installation/state/preview-update-pending.json`
-with the backup location and previous host configuration. The managed launcher
-refuses to start until recovery has been performed. Keep this file and the backup;
-do not delete the journal or point an old executable at a migrated database.
-Use the existing `marea-operations backup restore` command with a private JSON
-input containing `bundlePath` and a **new** `destinationRoot`. That operation
-enforces deletion authority. Inspect the restored installation and explicitly
-select its matching program version before resuming. Retained executables alone
-are not a database rollback.
+Before activation the server update writes
+`installation/state/preview-update-pending.json`. It records the backup location,
+the previous host configuration, the previous `active.json` pointer and the database
+schema version at that moment. The journal is removed only when the new release is
+fully selected.
+
+The new server binary migrates the database itself at startup, so an update that
+stops before the server has run cannot have changed any data. When the update fails
+(for example a locked `active.json` on Windows, a failed example-skill copy or an
+invalid configuration), or the process dies and the next launch finds the journal,
+the launcher compares the current schema version with the recorded one. If they
+match, it restores the previous `active.json` pointer and `teacher-host.json`,
+removes the unpublished program directory and the journal, starts the previous
+release, and prints why the update failed. Retry with `marea-teacher update`; the
+failed attempt leaves nothing behind. The original error is always printed.
+
+Manual restore is only needed when the schema version differs, meaning the new
+binary already ran and may have migrated data, or when the journal is from an older
+launcher that did not record the schema. In that case the launcher refuses to start
+and keeps the journal and the backup: do not delete the journal or point an old
+executable at a migrated database. Use the existing `marea-operations backup restore`
+command with a private JSON input containing `bundlePath` and a **new**
+`destinationRoot`. That operation enforces deletion authority. Inspect the restored
+installation and explicitly select its matching program version before resuming.
+Retained executables alone are not a database rollback.
+
+A crash during SQLite initialization used to leave its lock file
+(`.marea-init-<hash>.lock`, next to the database) behind. The lock now records its
+process id and host. At the next start, if that process no longer exists on this
+host, the lock is removed and one JSON line (`initialization-lock-removed`) is
+written to stderr. A lock held by a live process, or by another host, is never
+removed. A lock without a recorded owner, written by an older release, is removed
+only when it is older than ten minutes, far longer than any initialization.
+
+When the teacher host cannot start, it prints one operator-private JSON line to
+stderr (`teacher-host-start-failed`) with the reason and the underlying error name,
+code and, where it cannot quote input, message. Credentials, keys and student content
+are never included.
 
 If first-time browser setup is interrupted, run `marea-teacher` again. The
 pending marker keeps setup separate from an active school; a failed attempt

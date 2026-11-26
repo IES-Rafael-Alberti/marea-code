@@ -114,6 +114,14 @@ export async function runTeacherHost(
     host = await start();
   if (host.state === "failed") {
     stopListening();
+    if (host.detail !== undefined)
+      dependencies.stderr(
+        JSON.stringify({
+          event: "teacher-host-start-failed",
+          reason: host.reason,
+          detail: host.detail,
+        }) + "\n",
+      );
     dependencies.stderr(`Teacher host did not start: ${host.reason}.\n`);
     return START_EXIT[host.reason];
   }

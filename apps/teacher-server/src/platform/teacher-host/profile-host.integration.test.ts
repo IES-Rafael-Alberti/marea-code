@@ -283,7 +283,11 @@ it("fails readiness before listening when a required dashboard release is missin
         sink.push(diagnostic);
       },
     });
-  expect(await failing(missingRelease)).toEqual({ state: "failed", reason: "config" });
+  expect(await failing(missingRelease)).toEqual({
+    state: "failed",
+    reason: "config",
+    detail: "Error",
+  });
   expect(f.served.fetch).toBeUndefined();
   expect(diagnostics).toEqual([
     {
@@ -302,14 +306,14 @@ it("fails readiness before listening when a required dashboard release is missin
     });
     throw new Error("Invalid release was accepted");
   };
-  expect(await failing(cycle)).toEqual({ state: "failed", reason: "config" });
+  expect(await failing(cycle)).toMatchObject({ state: "failed", reason: "config" });
   expect(diagnostics.at(-1)).toMatchObject({ reason: "dependency-cycle" });
   // Arbitrary caught text never reaches the private sink.
   expect(
     await failing(() => {
       throw new Error("/private/credential secret");
     }),
-  ).toEqual({ state: "failed", reason: "config" });
+  ).toMatchObject({ state: "failed", reason: "config" });
   expect(diagnostics).toHaveLength(2);
 });
 it("releases ownership and keeps the public failure when the private sink throws", async () => {
@@ -325,7 +329,7 @@ it("releases ownership and keeps the public failure when the private sink throws
     ...syntheticProfileHostServices(() => "unused"),
     profiles: missingRelease,
   });
-  expect(unobserved).toEqual({ state: "failed", reason: "config" });
+  expect(unobserved).toMatchObject({ state: "failed", reason: "config" });
   const host = await startTeacherHost({
     installationRoot: f.root,
     releaseId: "release:host",
@@ -337,7 +341,7 @@ it("releases ownership and keeps the public failure when the private sink throws
     },
     onStartupDiagnostic: sink,
   });
-  expect(host).toEqual({ state: "failed", reason: "config" });
+  expect(host).toMatchObject({ state: "failed", reason: "config" });
   expect(sink).toHaveBeenCalledExactlyOnceWith({
     kind: "dashboard-release",
     pluginId: "org.marea.absent",

@@ -6,6 +6,7 @@ import {
   type SqliteSchemaCatalog,
 } from "@marea/sqlite-storage";
 
+import { describeError } from "../operations/host/error-detail.js";
 import { HostOperationError } from "../operations/host/contracts.js";
 
 /** One operator-private stderr line per startup schema decision that changed or refused data. */
@@ -35,10 +36,6 @@ export interface StartupMigrationDependencies {
 
 function migrateWithCatalog(databasePath: string, schema: SqliteSchemaCatalog): void {
   initializeSqliteStorage({ databasePath, schema }).close();
-}
-
-function errorName(error: unknown): string {
-  return error instanceof Error ? error.name : typeof error;
 }
 
 /**
@@ -73,7 +70,7 @@ export async function migrateSchemaOnStartup(
       outcome: "backup-failed",
       detectedSchema,
       targetSchema: target.version,
-      error: errorName(error),
+      error: describeError(error),
     });
     throw new HostOperationError("not-ready", "the pre-migration backup could not be created");
   }
@@ -85,7 +82,7 @@ export async function migrateSchemaOnStartup(
       outcome: "migration-failed",
       detectedSchema,
       targetSchema: target.version,
-      error: errorName(error),
+      error: describeError(error),
     });
     throw new HostOperationError("not-ready", "the database schema migration failed");
   }

@@ -104,7 +104,7 @@ describe("startup schema migration", () => {
         outcome: "backup-failed",
         detectedSchema: previous,
         targetSchema: currentSqliteSchema().version,
-        error: "TypeError",
+        error: "TypeError: disk full",
       },
     ]);
   });
@@ -127,16 +127,33 @@ describe("startup schema migration", () => {
         outcome: "migration-failed",
         detectedSchema: previous,
         targetSchema: currentSqliteSchema().version,
-        error: "RangeError",
+        error: "RangeError: synthetic",
       },
     ]);
+  });
+
+  it("names the error code of a system failure and bounds the text", async () => {
+    const path = database("skill-assignments");
+    const systemFailure = Object.assign(new Error("EEXIST: file already exists"), {
+      code: "EEXIST",
+    });
+    const subject = harness(path);
+    await subject
+      .run(() => {
+        throw systemFailure;
+      })
+      .catch(() => undefined);
+    expect(subject.events[0]).toMatchObject({ error: "Error EEXIST: EEXIST: file already exists" });
+    const long = harness(path, () => Promise.reject(new Error("x".repeat(1000))));
+    await long.run().catch(() => undefined);
+    expect((long.events[0] as { error: string }).error).toHaveLength(300);
   });
 
   it("names a non-error rejection by its type", async () => {
     const path = database("skill-assignments");
     const subject = harness(path, () => Promise.reject(new Error("x")));
     await subject.run().catch(() => undefined);
-    expect(subject.events[0]).toMatchObject({ error: "Error" });
+    expect(subject.events[0]).toMatchObject({ error: "Error: x" });
     // A rejected non-error value is still named by its type.
     const other = harness(path, vi.fn<() => Promise<string>>().mockRejectedValue("text"));
     await other.run().catch(() => undefined);

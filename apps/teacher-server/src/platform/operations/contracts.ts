@@ -58,6 +58,8 @@ export const StartResultSchema = z.discriminatedUnion("state", [
         "assets",
         "listen",
       ]),
+      /** Operator-private cause for the host's stderr; never sent over the network. */
+      detail: z.string().min(1).max(300).optional(),
     })
     .strict(),
 ]);

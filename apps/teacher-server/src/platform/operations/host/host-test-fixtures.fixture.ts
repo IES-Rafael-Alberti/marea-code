@@ -281,7 +281,7 @@ export async function expectStartupFailure(
       installationRoot: "/synthetic/installation",
       releaseId: "release-1",
     }),
-  ).resolves.toEqual({ state: "failed", reason });
+  ).resolves.toMatchObject({ state: "failed", reason });
 }
 
 export async function expectShutdownFailure(

@@ -182,7 +182,7 @@ it.each(["assets", "listen"])(
           : f.serve,
       onEvaluationError: () => undefined,
     });
-    expect(host).toEqual({ state: "failed", reason });
+    expect(host).toMatchObject({ state: "failed", reason });
     expect(telemetry.otlp.shutdownSignals).toHaveLength(1);
     expect(telemetry.langfuse.shutdownSignals).toHaveLength(1);
   },
@@ -351,7 +351,7 @@ function expectCleanConfigurationFailure(
   installation: ReturnType<typeof teacherHostInstallation>,
   telemetry: ReturnType<typeof runtimeFixture>,
 ) {
-  expect(result).toEqual({ state: "failed", reason: "config" });
+  expect(result).toMatchObject({ state: "failed", reason: "config" });
   expect(telemetry.otlp.shutdownSignals).toHaveLength(1);
   expect(telemetry.langfuse.shutdownSignals).toHaveLength(1);
   expect(installation.served.fetch).toBeUndefined();

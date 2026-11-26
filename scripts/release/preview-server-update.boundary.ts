@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { acquireInstallation } from "../../apps/teacher-server/src/platform/operator-cli/installation-lock.js";
 import { OperatorCliError } from "../../apps/teacher-server/src/platform/operator-cli/errors.js";
@@ -9,6 +9,12 @@ import { createOperationsApplication } from "../../apps/teacher-server/src/platf
 import { readOperationsConfig } from "../../apps/teacher-server/src/platform/operations-cli/operations-config.js";
 import { readTeacherHostConfig } from "../../apps/teacher-server/src/platform/teacher-host/teacher-host-config.js";
 import { installExampleSkill } from "./preview-skills.boundary.js";
+import {
+  currentDatabaseSchema,
+  rollbackInterruptedUpdate,
+  type UpdateJournal,
+} from "./preview-update-recovery.boundary.js";
+import { UpdateRolledBackError } from "./preview-update-rolled-back.js";
 
 export const updateJournal = "preview-update-pending.json";
 
@@ -21,7 +27,11 @@ export async function assertPreviewServerIdle(installation: string): Promise<voi
   if (!owner.release()) throw new OperatorCliError("installation-lost");
 }
 
-/** One installation owner covers backup, config and activation; interrupted updates fail closed. */
+/**
+ * One installation owner covers backup, config and activation. A failure after the journal is
+ * written returns to the previous release when the database was not changed; otherwise the
+ * journal stays and launches fail closed until the backup is restored.
+ */
 export async function activatePreviewServer<T>(
   installation: string,
   destination: string,
@@ -44,33 +54,82 @@ export async function activatePreviewServer<T>(
     } finally {
       application.close();
     }
-    writeFileSync(
-      journal,
-      JSON.stringify({ format: 1, version, destination, backup, previousHost: host }),
-      { flag: "wx", mode: 0o600 },
-    );
-    owner.capability.assertOwned();
-    // The new binary migrates its own schema at startup, after its own backup; an older manager
-    // running this update cannot know newer migrations.
-    const result = await activate();
-    installExampleSkill(installation, destination);
-    const hostPath = join(installation, "config", "teacher-host.json");
-    const next = `${hostPath}.${randomUUID()}.tmp`;
-    writeFileSync(
-      next,
-      JSON.stringify(
-        { ...host, dashboardDistPath: join(destination, "dashboard"), serverVersion: version },
-        null,
-        2,
-      ),
-      { flag: "wx", mode: 0o600 },
-    );
-    renameSync(next, hostPath);
-    owner.capability.assertOwned();
-    // Parse and validate the newly selected files before declaring the transaction finished.
-    readTeacherHostConfig(installation);
-    rmSync(journal);
-    return result;
+    const record: UpdateJournal = {
+      format: 2,
+      version,
+      destination,
+      backup,
+      previousHost: { ...host },
+      schemaVersion: currentDatabaseSchema(installation),
+      previousActive: readIfPresent(join(dirname(destination), "active.json")),
+      destinationExisted: existsSync(destination),
+    };
+    writeFileSync(journal, JSON.stringify(record), { flag: "wx", mode: 0o600 });
+    try {
+      owner.capability.assertOwned();
+      return await switchRelease(
+        owner.capability,
+        installation,
+        host,
+        destination,
+        version,
+        activate,
+      );
+    } catch (error) {
+      // The new binary migrates at startup, so a database still at the recorded schema is untouched.
+      if (rollbackInterruptedUpdate(installation, journal))
+        throw new UpdateRolledBackError(error instanceof Error ? error.message : String(error));
+      throw error;
+    }
+  } finally {
+    owner.release();
+  }
+}
+
+function readIfPresent(path: string): string | null {
+  return existsSync(path) ? readFileSync(path, "utf8") : null;
+}
+
+async function switchRelease<T>(
+  capability: { readonly assertOwned: () => void },
+  installation: string,
+  host: ReturnType<typeof readTeacherHostConfig>,
+  destination: string,
+  version: string,
+  activate: () => Promise<T>,
+): Promise<T> {
+  const result = await activate();
+  installExampleSkill(installation, destination);
+  const hostPath = join(installation, "config", "teacher-host.json");
+  const next = `${hostPath}.${randomUUID()}.tmp`;
+  writeFileSync(
+    next,
+    JSON.stringify(
+      { ...host, dashboardDistPath: join(destination, "dashboard"), serverVersion: version },
+      null,
+      2,
+    ),
+    { flag: "wx", mode: 0o600 },
+  );
+  renameSync(next, hostPath);
+  capability.assertOwned();
+  // Parse and validate the newly selected files before declaring the transaction finished.
+  readTeacherHostConfig(installation);
+  rmSync(join(installation, "state", updateJournal));
+  return result;
+}
+
+/**
+ * Called at launch when a journal remains: the process died mid-update. Takes the installation
+ * lock and returns to the previous release if the database is unchanged; returns false when it
+ * must be restored by hand. Does nothing and returns undefined without a journal.
+ */
+export function recoverInterruptedPreviewUpdate(installation: string): boolean | undefined {
+  const journal = join(installation, "state", updateJournal);
+  if (!existsSync(journal)) return undefined;
+  const owner = acquireInstallation(installation);
+  try {
+    return rollbackInterruptedUpdate(installation, journal);
   } finally {
     owner.release();
   }
