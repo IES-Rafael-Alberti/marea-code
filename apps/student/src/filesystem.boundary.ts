@@ -1,4 +1,14 @@
 import { randomUUID } from "node:crypto";
+import {
+  collectLegacy,
+  LegacyDataSchema,
+  requireExplicitRecovery,
+} from "./student-state-legacy.boundary.js";
+import {
+  assertStateVersionNotNewer,
+  refuseUnknownFields,
+} from "./student-state-version.boundary.js";
+import { MAX_STORED_APPROVAL_CONTENT, MAX_STORED_TEXT } from "./stored-limits.js";
 import { StoredUsageSchema } from "./session-usage.js";
 import { createFailureLog, FAILURE_LOG_FILE, type FailureLog } from "./failure-log.boundary.js";
 import { lstat, mkdir, open, readFile, realpath, rename, rm } from "node:fs/promises";
@@ -26,7 +36,6 @@ import * as z from "zod";
 import {
   CURRENT_STUDENT_STATE_VERSION,
   type CredentialStore,
-  type LegacyValue,
   type StudentState,
   type StudentStateStore,
 } from "./contracts.js";
@@ -38,18 +47,6 @@ const PRIVATE_DIRECTORY_MODE = 0o700;
 const PRIVATE_FILE_MODE = 0o600;
 
 const CredentialFileSchema = z.object({ token: SessionTokenSchema }).strict().readonly();
-const LegacyValueSchema: z.ZodType<LegacyValue> = z.lazy(() =>
-  z.union([
-    z.boolean(),
-    z.null(),
-    z.number(),
-    z.string(),
-    z.array(LegacyValueSchema),
-    z.record(z.string(), LegacyValueSchema),
-  ]),
-);
-const LegacyDataSchema = z.record(z.string(), LegacyValueSchema).readonly();
-
 function hasUniqueValues<T>(values: readonly T[], select: (value: T) => unknown): boolean {
   return new Set(values.map(select)).size === values.length;
 }
@@ -103,7 +100,7 @@ const StoredApprovalsSchema = z
 const StoredPendingApprovalSchema = z
   .object({
     approvalId: ApprovalIdSchema,
-    content: z.string().max(65_536),
+    content: z.string().max(MAX_STORED_APPROVAL_CONTENT),
     effectId: EffectIdSchema,
     messageId: MessageIdSchema,
     path: z.string().min(1).max(512),
@@ -162,8 +159,8 @@ const StoredTurnSchema = z
     kind: z.literal("startup").optional(),
     messageId: MessageIdSchema,
     state: z.enum(["started", "completed", "cancelled"]),
-    studentText: z.string().max(65_536).optional(),
-    text: z.string().max(65_536).optional(),
+    studentText: z.string().max(MAX_STORED_TEXT).optional(),
+    text: z.string().max(MAX_STORED_TEXT).optional(),
   })
   .strict()
   .refine(
@@ -395,10 +392,13 @@ export function parseStudentState(value: unknown): StudentState {
     );
   }
   if (root.version !== undefined) {
+    assertStateVersionNotNewer(root.version, CURRENT_STUDENT_STATE_VERSION);
     if (root.version !== CURRENT_STUDENT_STATE_VERSION) {
       throw new Error("The student state version is unsupported.");
     }
-    return StudentStateSchema.parse(root);
+    const parsed = StudentStateSchema.safeParse(root);
+    if (parsed.success) return parsed.data;
+    throw refuseUnknownFields(parsed.error);
   }
   if (!("run" in root)) {
     throw new Error("Legacy student state is missing its run field.");
@@ -430,31 +430,6 @@ export function parseStudentState(value: unknown): StudentState {
   return requireExplicitRecovery(StudentStateSchema.parse(migrated));
 }
 
-function requireExplicitRecovery(state: StudentState): StudentState {
-  if (state.run === null) return state;
-  return {
-    ...state,
-    run: {
-      ...state.run,
-      turns: state.run.turns.map((turn) =>
-        turn.state !== "started"
-          ? turn
-          : {
-              ...turn,
-              lastFailure: {
-                code: "legacy-pending",
-                detail: "Resume this saved turn explicitly to continue.",
-                hasPrefix: (turn.text ?? "") !== "",
-                kind: "recovery-pending",
-                recoverable: true,
-                retryable: true,
-              },
-            },
-      ),
-    },
-  };
-}
-
 function assertLegacyTurnsRecoverable(run: Readonly<Record<string, unknown>>): void {
   const turns = StoredTurnsSchema.parse(run.turns);
   const pendingApprovals = StoredPendingApprovalsSchema.parse(run.pendingApprovals ?? []);
@@ -465,19 +440,6 @@ function assertLegacyTurnsRecoverable(run: Readonly<Record<string, unknown>>): v
       throw new Error("Legacy student state contains an ambiguous unfinished turn.");
     }
   }
-}
-
-function collectLegacy(
-  record: Readonly<Record<string, unknown>>,
-  knownKeys: ReadonlySet<string>,
-): Record<string, LegacyValue> {
-  const previous = record.legacy === undefined ? {} : LegacyDataSchema.parse(record.legacy);
-  const unknown = LegacyDataSchema.parse(
-    Object.fromEntries(
-      Object.entries(record).filter(([key]) => key !== "legacy" && !knownKeys.has(key)),
-    ),
-  );
-  return { ...previous, ...unknown };
 }
 
 export async function createFileStudentStores(

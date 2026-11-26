@@ -1,6 +1,7 @@
 import { STARTUP_MESSAGE_ID, type CanonicalRunEvent, type MessageId } from "@marea/protocol";
 import type { AgentEvent, IdSource, QuestionReply, TurnAttemptIdentity } from "./contracts.js";
 import type { LocalSession } from "./local-session.js";
+import { turnEndedKey } from "./turn-keys.js";
 
 type Activity = Extract<
   CanonicalRunEvent,
@@ -45,11 +46,9 @@ export class TeacherActivity {
   ): Promise<void> {
     if (identity.messageId === STARTUP_MESSAGE_ID && payload.eventType === "turn-ended") return;
     await this.options.localSession.appendEvent(
-      JSON.stringify([
-        identity.messageId,
-        payload.eventType === "turn-ended" ? "terminal" : identity.attemptId,
-        payload.eventType,
-      ]),
+      payload.eventType === "turn-ended"
+        ? turnEndedKey(identity.messageId)
+        : JSON.stringify([identity.messageId, identity.attemptId, payload.eventType]),
       (sequence, occurredAt) => ({
         ...payload,
         sequence,

@@ -476,10 +476,20 @@ export class StudentSessionController {
       throw new Error("The pending run close has no reason.");
     }
     const closeReason = closing ? current.closeReason : null;
-    const opening = await this.options.localSession.reopenLease(this.requireRunId(current));
     const sessionToken = authenticatedToken ?? (await this.authenticationForRenewal());
-    const opened = await this.options.server.openRun(sessionToken, this.openRequest(opening));
-    const activated = await this.options.localSession.activate(opened);
+    const opening = await this.options.localSession.reopenLease(this.requireRunId(current));
+    let activated: StoredRun;
+    try {
+      const opened = await this.options.server.openRun(sessionToken, this.openRequest(opening));
+      activated = await this.options.localSession.activate(opened);
+    } catch (error) {
+      // A failed reopen must not strand the run in `opening`: the next call tries again.
+      await this.options.localSession.restoreAfterFailedReopen(
+        this.requireRunId(current),
+        closing ? "closing" : "active",
+      );
+      throw error;
+    }
     return closeReason === null ? activated : this.options.localSession.beginClose(closeReason);
   }
 

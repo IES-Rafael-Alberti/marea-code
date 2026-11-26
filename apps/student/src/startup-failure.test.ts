@@ -3,6 +3,7 @@ import { StudentTuiStartupError } from "@marea/student-tui";
 import { describe, expect, it, vi } from "vitest";
 import * as z from "zod";
 
+import { StudentStateNewerVersionError } from "./student-state-version.boundary.js";
 import { StudentHttpError } from "./http-error.js";
 import {
   diagnosticCodeFor,
@@ -111,6 +112,12 @@ describe("safe startup diagnostics", () => {
     expect(result).toContain("Keep the data");
     expect(result).toContain("local-state/local-state-invalid");
     expect(result).not.toContain("synthetic-private-data");
+  });
+
+  it("asks the student to update Marea when the saved data comes from a newer version", () => {
+    const result = startupFailure(new StudentStateNewerVersionError(), translator, "local-state");
+    expect(result).toContain(translator.t("student.cli.local-state-newer"));
+    expect(result).toContain("local-state/local-state-newer");
   });
 
   it("shows the sanitized origin and allowlisted transport cause", () => {

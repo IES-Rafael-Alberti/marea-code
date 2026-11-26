@@ -43,9 +43,7 @@ describe("SessionTurnExecutor", () => {
       state: "completed",
     });
     expect(run?.turns.at(-1)?.kind).toBeUndefined();
-    expect(run?.eventKeys.filter((key) => key === "student:message:ordinary")).toEqual([
-      "student:message:ordinary",
-    ]);
+    expect(run?.eventKeys).not.toContain("student:message:ordinary");
     const studentEvents = Array.from(fixture.server.events.values()).filter(
       (event) => event.eventType === "student-message" && event.messageId === "message:ordinary",
     );
