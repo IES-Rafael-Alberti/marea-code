@@ -103,6 +103,15 @@ export class RunSessionService {
     this.#dependencies = dependencies;
   }
 
+  /**
+   * Before a new run opens, lets the snapshot source do slow work outside the opening
+   * transaction. It never fails: whatever it could not prepare, the capture works without.
+   */
+  public async prepare(identity: AuthenticatedIdentity, request: OpenRunRequest): Promise<void> {
+    if (identity.role !== "student" || request.intent.kind !== "new") return;
+    await this.#dependencies.snapshots.prepare?.(identity).catch(() => undefined);
+  }
+
   public open(
     identity: AuthenticatedIdentity,
     request: OpenRunRequest,

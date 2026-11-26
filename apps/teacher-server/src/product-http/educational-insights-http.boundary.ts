@@ -4,6 +4,7 @@ import {
   EDUCATIONAL_INSIGHTS_PATH,
   InsightsRequestSchema,
   MAX_INSIGHTS_BYTES,
+  MAX_INSIGHTS_REQUEST_BYTES,
 } from "@marea/protocol";
 import type { AuthenticatedIdentity } from "../identity/contracts.js";
 import type { EducationalInsightsService } from "../educational-insights/service.js";
@@ -31,9 +32,15 @@ export function registerEducationalInsightsRoutes(options: {
     try {
       options.authenticate(context.req.raw);
       if (options.service === undefined) return protocolError(503, "server.error", false);
-      const parsed = await parseSkillAuthoringJson(context.req.raw, InsightsRequestSchema, 16384);
+      const parsed = await parseSkillAuthoringJson(
+        context.req.raw,
+        InsightsRequestSchema,
+        MAX_INSIGHTS_REQUEST_BYTES,
+      );
       if (!parsed.ok) return parsed.response;
-      const result = options.service.read(options.authenticate(context.req.raw), parsed.value);
+      const read = options.service.read(options.authenticate(context.req.raw), parsed.value);
+      // A notes proposal waits for the model; every other kind is already complete.
+      const result = { ...read, data: await read.data };
       return boundedSkillAuthoringJson(
         z.object({
           protocolVersion: z.string(),

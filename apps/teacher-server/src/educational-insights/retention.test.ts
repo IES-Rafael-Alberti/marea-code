@@ -7,7 +7,8 @@ import { fixture } from "./insights.fixture.js";
 import { NOW, teacher } from "../../test-support/evaluation-fixture.js";
 import { inspectRun } from "../platform/operations/retention/retention-runs.js";
 import { inspectAccount } from "../platform/operations/retention/retention-accounts.js";
-import { capture, enabled, targetOf } from "./progress.fixture.js";
+import { approve, capture, enabled, targetOf } from "./progress.fixture.js";
+import { recordNotesNotice } from "./notes-notice.js";
 import { deleteRetentionContent } from "../platform/operations/retention/retention-content.js";
 it("includes report dependencies in retention previews and invalidates them during exact deletion", () => {
   const f = fixture();
@@ -43,6 +44,7 @@ it("includes learning progress and manual history in account retention", () => {
   expect(educationalAccountRows(f.database).map(([name]) => name)).toEqual([
     "learningProgress",
     "learningManualHistory",
+    "learningNotesNotice",
   ]);
 });
 
@@ -60,6 +62,16 @@ it("deletes reviewed progress and manual history with the account using the exac
     teacher.userId,
     NOW,
   );
+  recordNotesNotice(f.database, "s1", {
+    classId: "class:one",
+    sessionDate: "07/09/2026",
+    shortened: "trimmed",
+  });
+  recordNotesNotice(f.database, "s2", {
+    classId: "class:one",
+    sessionDate: "07/09/2026",
+    shortened: "trimmed",
+  });
   expect(f.database.readAll("SELECT 1 FROM marea_learning_progress")).toHaveLength(1);
   expect(
     f.database.readAll("SELECT 1 FROM marea_learning_history WHERE run_id IS NULL"),
@@ -80,4 +92,25 @@ it("deletes reviewed progress and manual history with the account using the exac
   expect(f.database.readOne("SELECT 1 FROM marea_learning_history")).toBeUndefined();
   expect(f.database.readOne("SELECT 1 FROM marea_users WHERE id = 's1'")).toBeUndefined();
   expect(f.database.readOne("SELECT 1 FROM marea_users WHERE id = 's2'")).toBeDefined();
+  expect(
+    f.database.readAll("SELECT key FROM marea_metadata WHERE key LIKE 'learning-notes%'"),
+  ).toEqual([{ key: "learning-notes-notice:s2" }]);
+});
+
+it("keeps a student's learning notes when exact run deletion removes the run that wrote them", () => {
+  const f = fixture();
+  enabled(f);
+  const captured = capture(f);
+  approve(f, captured);
+  const run = inspectRun(f.database, "run:b", NOW);
+  if (run === undefined) throw new Error("run");
+  deleteRetentionContent(
+    f.database,
+    { runIds: ["run:b"], snapshotIds: [], accountIds: [], backupNames: [] },
+    run.rows,
+  );
+  expect(f.database.readOne("SELECT memory, memory_run_id FROM marea_learning_progress")).toEqual({
+    memory: "07/09/2026: Practice an empty collection next.",
+    memory_run_id: null,
+  });
 });

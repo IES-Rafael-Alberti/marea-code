@@ -1,20 +1,23 @@
-import { rowText } from "../platform/persistence/row-parser.boundary.js";
+import { rowNullableText, rowText } from "../platform/persistence/row-parser.boundary.js";
 import { studentClassMember } from "../platform/persistence/governance-access-sql.js";
 import { createHash, randomUUID } from "node:crypto";
 import {
   StudentRunSnapshotSchema,
   type EvaluationDraft,
-  type InsightsSettings,
-  InsightsSettingsSchema,
   LearningTargetSchema,
   type LearningTarget,
 } from "@marea/protocol";
 import type { SqliteApplicationDatabase } from "@marea/sqlite-storage";
-import type { AuthenticatedIdentity } from "../identity/contracts.js";
+import type { AuthenticatedIdentity, Clock } from "../identity/contracts.js";
 import { TeacherDomainError } from "../identity/errors.js";
 import type { RunSnapshotCapture } from "../sessions/contracts.js";
 import type { EvaluationInput } from "../evaluation/evaluation-input.js";
 import { SqliteTeachingConfigurationRepository } from "../platform/persistence/sqlite-teaching-configuration-repository.js";
+import type { TeachingSnapshotContent } from "../teaching/configuration/configuration-schema.js";
+import { appendNote, noteDate } from "./notes-text.js";
+import { LearningSettings } from "./learning-settings.js";
+import { readNotesNotice, recordNotesNotice } from "./notes-notice.js";
+import type { CriterionNotes, SessionNotes } from "./session-notes.js";
 
 const OVERVIEW_PAGE = 25;
 interface Projection {
@@ -23,6 +26,7 @@ interface Projection {
     readonly level: number;
     readonly epoch: number;
     readonly revision: string;
+    readonly notesLength: number;
   })[];
 }
 const digest = (value: string): string =>
@@ -33,8 +37,29 @@ const DEFAULT_LEVELS = [
   "Resolver de forma autónoma y justificar las decisiones",
   "Transferir el aprendizaje a una situación nueva",
 ];
-export class LearningProgress {
-  constructor(readonly database: SqliteApplicationDatabase) {}
+/** Every criterion of the session's didactic skills, keyed by its frozen definition. */
+function definitions(teaching: TeachingSnapshotContent) {
+  return teaching.didacticSkills.flatMap((skill) =>
+    skill.criteria.map((criterion) => {
+      const levels = criterion.levels ?? DEFAULT_LEVELS;
+      return {
+        key: digest(JSON.stringify([skill.id, criterion.code, criterion.statement, levels])),
+        skillId: skill.id,
+        code: criterion.code,
+        statement: criterion.statement,
+        levels,
+      };
+    }),
+  );
+}
+export class LearningProgress extends LearningSettings {
+  constructor(
+    database: SqliteApplicationDatabase,
+    readonly clock: Clock,
+    readonly notes: SessionNotes,
+  ) {
+    super(database);
+  }
   require(identity: AuthenticatedIdentity, classId: string): void {
     if (identity.role !== "teacher") throw new TeacherDomainError("dashboard.forbidden");
     new SqliteTeachingConfigurationRepository(this.database).requireTeacherClass(
@@ -42,35 +67,8 @@ export class LearningProgress {
       classId,
     );
   }
-  settings(classId: string): { settings: InsightsSettings; revision: string } {
-    const row = this.database.readOne("SELECT * FROM marea_learning_settings WHERE class_id = ?1", [
-      classId,
-    ]);
-    return row === undefined
-      ? { settings: { map: false, adaptive: false }, revision: "initial" }
-      : {
-          settings: InsightsSettingsSchema.parse(JSON.parse(String(row.value_json))),
-          revision: String(row.revision),
-        };
-  }
-  configure(
-    classId: string,
-    value: InsightsSettings,
-    revision: string,
-    authorize: () => void = () => undefined,
-  ) {
-    return this.database.transaction(() => {
-      authorize();
-      if (this.settings(classId).revision !== revision)
-        throw new TeacherDomainError("request.conflict");
-      this.database.execute(
-        "INSERT INTO marea_learning_settings VALUES (?1, ?2, ?3) ON CONFLICT(class_id) DO UPDATE SET revision = excluded.revision, value_json = excluded.value_json",
-        [classId, randomUUID(), JSON.stringify(value)],
-      );
-      return this.settings(classId);
-    });
-  }
-  capture(captured: RunSnapshotCapture, identity: AuthenticatedIdentity): RunSnapshotCapture {
+  /** The class and teaching content of an adaptive tutoring capture, or undefined. */
+  private adaptive(captured: RunSnapshotCapture, identity: AuthenticatedIdentity) {
     const classId = identity.classId;
     if (
       // Stryker disable next-line ConditionalExpression: a null class has no settings row, so adaptation stays off.
@@ -79,38 +77,74 @@ export class LearningProgress {
       !this.settings(classId).settings.adaptive ||
       captured.teaching === undefined
     )
-      return captured;
+      return undefined;
+    return { classId, teaching: captured.teaching };
+  }
+  /** The stored notes of the given criteria, labelled as the tutor prompt shows them. */
+  private notesOf(
+    classId: string,
+    studentId: string,
+    criteria: ReturnType<typeof definitions>,
+  ): CriterionNotes[] {
+    return criteria.flatMap((criterion) => {
+      const notes = this.database.readOne(
+        "SELECT memory FROM marea_learning_progress WHERE class_id = ?1 AND student_id = ?2 AND criterion_key = ?3",
+        [classId, studentId, criterion.key],
+      )?.memory;
+      return notes
+        ? [{ label: `${criterion.skillId}/${criterion.code}`, notes: String(notes) }]
+        : [];
+    });
+  }
+  /**
+   * Runs before a new run opens, outside its transaction: when the session's notes would not
+   * fit the tutor prompt it asks the model for a summary that `capture` can then use.
+   */
+  async prepare(captured: RunSnapshotCapture, identity: AuthenticatedIdentity): Promise<void> {
+    const adaptive = this.adaptive(captured, identity);
+    if (adaptive === undefined) return;
+    await this.notes.prepare(
+      captured.providerRoute,
+      `${adaptive.classId}\n${identity.userId}`,
+      `notes-session:${identity.userId}:${this.clock.now().slice(0, 10)}`,
+      this.notesOf(adaptive.classId, identity.userId, definitions(adaptive.teaching)),
+    );
+  }
+  capture(captured: RunSnapshotCapture, identity: AuthenticatedIdentity): RunSnapshotCapture {
+    const adaptive = this.adaptive(captured, identity);
+    if (adaptive === undefined) return captured;
+    const { classId, teaching } = adaptive;
+    const criteria = definitions(teaching);
     const targets: LearningTarget[] = [];
-    const memories: string[] = [];
-    for (const skill of captured.teaching.didacticSkills)
-      for (const criterion of skill.criteria) {
-        const levels = criterion.levels ?? DEFAULT_LEVELS;
-        const key = digest(JSON.stringify([skill.id, criterion.code, criterion.statement, levels]));
-        const definition = {
-          key,
-          skillId: skill.id,
-          code: criterion.code,
-          statement: criterion.statement,
-          levels,
-        };
-        this.database.execute(
-          "INSERT OR IGNORE INTO marea_learning_progress (class_id,student_id,criterion_key,definition_json,level,epoch,revision) VALUES (?1, ?2, ?3, ?4, 0, 0, ?5)",
-          [classId, identity.userId, key, JSON.stringify(definition), randomUUID()],
-        );
-        const row = this.database.readOne(
-          "SELECT level, epoch, memory FROM marea_learning_progress WHERE class_id = ?1 AND student_id = ?2 AND criterion_key = ?3",
-          [classId, identity.userId, key],
-        );
-        const achieved = Number(row?.level ?? 0);
-        if (row?.memory) memories.push(`${skill.id}/${criterion.code}: ${String(row.memory)}`);
-        targets.push({
-          ...definition,
-          levels: [...levels],
-          achieved,
-          target: Math.min(4, achieved + 1),
-          epoch: Number(row?.epoch ?? 0),
-        });
-      }
+    for (const definition of criteria) {
+      this.database.execute(
+        "INSERT OR IGNORE INTO marea_learning_progress (class_id,student_id,criterion_key,definition_json,level,epoch,revision) VALUES (?1, ?2, ?3, ?4, 0, 0, ?5)",
+        [classId, identity.userId, definition.key, JSON.stringify(definition), randomUUID()],
+      );
+      const row = this.database.readOne(
+        "SELECT level, epoch FROM marea_learning_progress WHERE class_id = ?1 AND student_id = ?2 AND criterion_key = ?3",
+        [classId, identity.userId, definition.key],
+      );
+      const achieved = Number(row?.level ?? 0);
+      targets.push({
+        ...definition,
+        levels: [...definition.levels],
+        achieved,
+        target: Math.min(4, achieved + 1),
+        epoch: Number(row?.epoch ?? 0),
+      });
+    }
+    const notes = this.notes.fit(
+      captured.providerRoute,
+      `${classId}\n${identity.userId}`,
+      this.notesOf(classId, identity.userId, criteria),
+    );
+    if (notes.shortened !== null)
+      recordNotesNotice(this.database, identity.userId, {
+        classId,
+        sessionDate: noteDate(this.clock.now()),
+        shortened: notes.shortened,
+      });
     const context = targets
       .filter((item) => item.achieved < 4)
       .map(
@@ -119,22 +153,23 @@ export class LearningProgress {
           `${item.skillId}/${item.code}: ${item.levels.slice(item.target - 1, item.target).join("")}`,
       )
       .join("\n");
-    const content = `${captured.snapshot.prompt.content}\n\nObjetivos pedagógicos revisados para esta sesión. Adapta la ayuda a estos objetivos sin revelar notas privadas ni presentar niveles como calificaciones:\n${context}\nSíntesis pedagógica revisada:\n${memories.join("\n")}`;
+    const content = `${captured.snapshot.prompt.content}\n\nObjetivos pedagógicos revisados para esta sesión. Adapta la ayuda a estos objetivos sin revelar notas privadas ni presentar niveles como calificaciones:\n${context}\nNotas de aprendizaje revisadas:\n${notes.text}`;
     return {
       ...captured,
       snapshot: StudentRunSnapshotSchema.parse({
         ...captured.snapshot,
         prompt: { ...captured.snapshot.prompt, content, digest: digest(content) },
       }),
-      teaching: { ...captured.teaching, adaptive: { targets } },
+      teaching: { ...teaching, adaptive: { targets } },
     };
   }
   apply(input: EvaluationInput, draft: EvaluationDraft, actor: string, now: string): void {
     const targets = input.content?.teaching.adaptive?.targets;
     if (input.mode !== "tutoring" || targets === undefined) return;
-    const run = this.database.readOne("SELECT class_id, student_id FROM marea_runs WHERE id = ?1", [
-      input.runId,
-    ]);
+    const run = this.database.readOne(
+      "SELECT class_id, student_id, opened_at FROM marea_runs WHERE id = ?1",
+      [input.runId],
+    );
     if (run === undefined) throw new TeacherDomainError("run.unavailable");
     const classId = rowText(run, "class_id");
     const studentId = rowText(run, "student_id");
@@ -174,6 +209,9 @@ export class LearningProgress {
           now,
         ],
       );
+      // One dated line per reviewed note; a note without evidence or text adds nothing.
+      const note = (assessment.learningNote ?? "").replaceAll(/\s+/gu, " ").trim();
+      const adds = note !== "" && assessment.result !== "no-evidence";
       this.database.execute(
         "UPDATE marea_learning_progress SET level = ?4, revision = ?5, memory = ?6, memory_run_id = ?7 WHERE class_id = ?1 AND student_id = ?2 AND criterion_key = ?3",
         [
@@ -182,8 +220,10 @@ export class LearningProgress {
           target.key,
           next,
           randomUUID(),
-          assessment.learningNote ?? "",
-          input.runId,
+          adds
+            ? appendNote(String(row.memory), `${noteDate(rowText(run, "opened_at"))}: ${note}`)
+            : String(row.memory),
+          adds ? input.runId : rowNullableText(row, "memory_run_id"),
         ],
       );
     }
@@ -220,6 +260,7 @@ export class LearningProgress {
       students: students.map((student) => ({
         ...student,
         ...this.project(rows.filter((row) => String(row.student_id) === student.id)),
+        notesNotice: readNotesNotice(this.database, classId, student.id),
       })),
       next: last?.id ?? null,
     };
@@ -234,6 +275,7 @@ export class LearningProgress {
         level: Number(r.level),
         epoch: Number(r.epoch),
         revision: String(r.revision),
+        notesLength: String(r.memory).length,
       })),
     };
   }
@@ -263,7 +305,7 @@ export class LearningProgress {
           [classId, studentId, key, Number(row.level), level, reason, actor, now],
         );
         this.database.execute(
-          "UPDATE marea_learning_progress SET level = ?4, epoch = epoch + 1, revision = ?5, memory = '', memory_run_id = NULL WHERE class_id = ?1 AND student_id = ?2 AND criterion_key = ?3",
+          "UPDATE marea_learning_progress SET level = ?4, epoch = epoch + 1, revision = ?5 WHERE class_id = ?1 AND student_id = ?2 AND criterion_key = ?3",
           [classId, studentId, key, level, randomUUID()],
         );
       }

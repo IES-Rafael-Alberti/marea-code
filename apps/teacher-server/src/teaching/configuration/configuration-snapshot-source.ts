@@ -14,11 +14,26 @@ export class ConfigurationSnapshotSource implements RunSnapshotSource {
       capture: RunSnapshotCapture,
       identity: AuthenticatedIdentity,
     ) => RunSnapshotCapture,
+    private readonly prepareCapture?: (
+      capture: RunSnapshotCapture,
+      identity: AuthenticatedIdentity,
+    ) => Promise<void>,
   ) {
     this.#repository = repository;
   }
 
+  /** Hands the capture a new run would get to the slow preparation, before the run opens. */
+  async prepare(identity: AuthenticatedIdentity): Promise<void> {
+    if (this.prepareCapture === undefined) return;
+    await this.prepareCapture(this.base("snapshot:preparing", identity), identity);
+  }
+
   capture(snapshotId: string, identity: AuthenticatedIdentity): RunSnapshotCapture {
+    const capture = this.base(snapshotId, identity);
+    return this.adapt?.(capture, identity) ?? capture;
+  }
+
+  private base(snapshotId: string, identity: AuthenticatedIdentity): RunSnapshotCapture {
     if (identity.role !== "student" || identity.classId === null)
       throw new TeacherDomainError("run.unavailable");
     const configuration = this.#repository.loadForStudent(identity);
@@ -40,6 +55,6 @@ export class ConfigurationSnapshotSource implements RunSnapshotSource {
       providerRoute: configuration.providerRoute,
       teaching: configuration.content,
     });
-    return this.adapt?.(capture, identity) ?? capture;
+    return capture;
   }
 }

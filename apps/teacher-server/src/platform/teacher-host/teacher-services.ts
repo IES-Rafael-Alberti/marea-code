@@ -10,7 +10,8 @@ import { ServerSettingsService } from "../../server-settings/service.boundary.js
 import { SessionExportService } from "../../session-export/service.boundary.js";
 import { SqliteSessionExportRepository } from "../persistence/sqlite-session-export.js";
 import { composeObservability, observabilityEndpoint } from "./observability-composition.js";
-import { serverSettingsOperator, usesCommonRoute } from "../../server-settings/operator.js";
+import { serverSettingsOperator } from "../../server-settings/operator.js";
+import { notesModels, sessionSnapshots } from "./notes-models.js";
 import type { ServerSettingsStore } from "../../server-settings/contracts.js";
 import type { InferenceProviderCatalogEntry } from "@marea/plugin-api";
 import { EducationalInsightsService } from "../../educational-insights/service.js";
@@ -56,7 +57,6 @@ import { RunSessionService } from "../../sessions/run-session-service.js";
 import { createProductSkillAuthoringService } from "../../teaching/authoring-runtime/skill-authoring-service.js";
 import { SkillAuthoringSource } from "../../teaching/authoring/skill-authoring-source.boundary.js";
 import { SkillAuthoringStore } from "../../teaching/authoring/skill-authoring-store.boundary.js";
-import { ConfigurationSnapshotSource } from "../../teaching/configuration/configuration-snapshot-source.js";
 import type { TeachingOperatorConfiguration } from "../../teaching/configuration/dashboard-contracts.js";
 import { createTeachingConfigurationModule } from "../../teaching/configuration/dashboard-module.js";
 import { CompositeSkillSource } from "../../teaching/skills/composite-skill-source.js";
@@ -206,6 +206,7 @@ export async function composeTeacherServices(
           dependencies.serverSettings?.store.read()?.education ??
             dependencies.educationalInsights ??
             {},
+          notesModels(configurations, dependencies.serverSettings),
         );
   const runs = new RunSessionService({
     clock,
@@ -213,14 +214,7 @@ export async function composeTeacherServices(
     ids,
     repository: new SqliteRunSessionRepository(database),
     secrets,
-    snapshots: new ConfigurationSnapshotSource(configurations, (capture, identity) => {
-      const settings = dependencies.serverSettings?.store.read();
-      const current =
-        settings && usesCommonRoute(settings)
-          ? { ...capture, providerRoute: settings.route }
-          : capture;
-      return insights === undefined ? current : insights.progress.capture(current, identity);
-    }),
+    snapshots: sessionSnapshots(configurations, dependencies.serverSettings, insights?.progress),
   });
   const ledger = new SqliteUsageLedger(database);
   const createReservationId = () => ids.createId("event");

@@ -71,6 +71,8 @@ export interface ProductRunService {
     request: OpenRunRequest,
     socraticSupport?: boolean,
   ): OpenRunResponse;
+  /** Slow work a new run may need before `open`, such as summarizing long learning notes. */
+  prepare?(identity: AuthenticatedIdentity, request: OpenRunRequest): Promise<void>;
   renew(identity: AuthenticatedIdentity, request: RenewRunLeaseRequest): RenewRunLeaseResponse;
   closeAuthenticated(identity: AuthenticatedIdentity, request: CloseRunRequest): CloseRunResponse;
 }

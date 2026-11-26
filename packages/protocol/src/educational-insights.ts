@@ -5,6 +5,14 @@ import { UtcTimestampSchema } from "./runs.js";
 
 export const EDUCATIONAL_INSIGHTS_PATH = "/api/v1/dashboard/educational-insights";
 export const MAX_INSIGHTS_BYTES = 4 * 1024 * 1024;
+/**
+ * A teacher saves at most this many characters of learning notes for one criterion: about a
+ * thousand dated notes, far more than years of weekly sessions. Approvals may still append past
+ * it; such a text is shown in full but must be shortened before it can be saved again.
+ */
+export const MAX_LEARNING_NOTES_CHARACTERS = 200_000;
+/** Request bodies stay bounded while admitting a full notes text, even if JSON escapes it. */
+export const MAX_INSIGHTS_REQUEST_BYTES = 2 * 1024 * 1024;
 const id = z.string().min(1).max(256);
 const level = z.number().int().min(0).max(4);
 export const LearningTargetSchema = z
@@ -63,6 +71,17 @@ export const InsightsRequestSchema = z.discriminatedUnion("kind", [
       studentId: id,
       key: id,
       after: z.number().int().nonnegative().default(0),
+    })
+    .strict(),
+  z.object({ ...scope, kind: z.enum(["notes", "propose-notes"]), studentId: id, key: id }).strict(),
+  z
+    .object({
+      ...scope,
+      kind: z.literal("save-notes"),
+      studentId: id,
+      key: id,
+      notes: z.string().max(MAX_LEARNING_NOTES_CHARACTERS),
+      expectedRevision: id,
     })
     .strict(),
   z.object({ ...scope, kind: z.literal("reports"), after: id.nullable().default(null) }).strict(),

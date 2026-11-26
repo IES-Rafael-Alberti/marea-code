@@ -30,6 +30,8 @@ export interface RunSnapshotCapture {
 
 export interface RunSnapshotSource {
   capture(snapshotId: string, identity: AuthenticatedIdentity): RunSnapshotCapture;
+  /** Optional slow work before a capture, outside the opening transaction. */
+  prepare?(identity: AuthenticatedIdentity): Promise<void>;
 }
 
 export interface OpenStoredRunInput {
