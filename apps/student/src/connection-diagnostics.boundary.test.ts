@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ConnectionDiagnostics } from "./connection-diagnostics.boundary.js";
 import type { FailureLog } from "./failure-log.boundary.js";
@@ -155,15 +155,19 @@ describe("connection diagnostics", () => {
 
   it("does nothing without diagnostics", async () => {
     const f = await fixture();
+    const ids = new FixtureIds();
+    const reportToServer = vi.fn(() => true);
     const silent = new ConnectionDiagnostics({
       clock: { now: () => "2026-09-03T10:00:00.000Z" },
       diagnostics: undefined,
-      ids: new FixtureIds(),
+      ids,
       localSession: new LocalSession(f.state, new FixtureIds(), { now: () => "x" }),
-      reportToServer: () => true,
+      reportToServer,
     });
     await silent.failed("presence", conflict());
 
     expect(f.events()).toEqual([]);
+    expect(reportToServer).not.toHaveBeenCalled();
+    expect(ids.count).toBe(0);
   });
 });

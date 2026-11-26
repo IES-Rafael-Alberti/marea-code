@@ -40,8 +40,7 @@ export class ConnectionDiagnostics {
     const category = `${check}/${failureOrigin(error)}`;
     const occurredAt = this.options.clock.now();
     const at = Date.parse(occurredAt);
-    const last = this.#reported.get(category);
-    if (last !== undefined && at - last < 10 * 60 * 1_000) return;
+    if (at - (this.#reported.get(category) ?? -Infinity) < 10 * 60 * 1_000) return;
     this.#reported.set(category, at);
     const status = error instanceof StudentHttpError ? { status: error.status } : {};
     try {

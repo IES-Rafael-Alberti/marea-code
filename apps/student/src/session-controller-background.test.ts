@@ -10,7 +10,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const signInRequired = { code: "auth.invalid", status: 401 } as const;
+const signInRequired = { code: "auth.invalid", retryable: false, status: 401 } as const;
 
 async function expiringFixture(server = new FixtureServer()) {
   const records: Parameters<FailureLog["append"]>[0][] = [];
