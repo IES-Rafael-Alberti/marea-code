@@ -3,7 +3,11 @@ import { FAILURE_LOG_FILE } from "./failure-log.boundary.js";
 import { startupFailure } from "./startup-failure.boundary.js";
 import { ensureGitWorkspace } from "./git-workspace.boundary.js";
 import { openInputHistory, type PersistentInputHistory } from "./input-history.boundary.js";
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
+import {
+  canonicalStateDirectory,
+  locateStateDirectory,
+} from "./student-state-directory.boundary.js";
 import { basename, join, resolve } from "node:path";
 import { projectDisplayNameFromFolder } from "./project-name.js";
 
@@ -224,12 +228,7 @@ export function createStudentStateDirectory(
   serverUrl: string,
   projectRoot: string,
 ): string {
-  const identity = createHash("sha256")
-    .update(serverUrl)
-    .update("\0")
-    .update(resolve(projectRoot))
-    .digest("hex");
-  return join(resolve(root), "student", identity);
+  return canonicalStateDirectory(root, serverUrl, projectRoot);
 }
 
 async function sendTurn(send: () => Promise<void>): Promise<void> {
@@ -378,7 +377,7 @@ function studentLocations(options: MareaCommandOptions, serverUrl: string) {
       : configuredStateRoot;
   return {
     projectRoot,
-    stateDirectory: createStudentStateDirectory(stateRoot, serverUrl, projectRoot),
+    stateDirectory: locateStateDirectory(stateRoot, serverUrl, projectRoot),
   };
 }
 

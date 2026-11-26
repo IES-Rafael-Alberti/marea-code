@@ -125,7 +125,7 @@ describe("guarded workspace revalidation", () => {
     );
   });
 
-  it("fails a listing when an entry disappears after readdir", async () => {
+  it("skips an entry that disappears after readdir", async () => {
     const vanishedPath = join(ROOT_PATH, "vanished");
     inspectPathMock.mockImplementation((hostPath) =>
       Promise.resolve(hostPath === vanishedPath ? undefined : directoryStats()),
@@ -133,7 +133,20 @@ describe("guarded workspace revalidation", () => {
     readNamesMock.mockResolvedValue(["vanished"]);
     const workspace = await openGuardedWorkspace({ rootPath: ROOT_PATH });
 
-    await expect(workspace.list("/")).rejects.toEqual(new WorkspaceError("not-found", "list"));
+    await expect(workspace.list("/")).resolves.toEqual([]);
+  });
+
+  it("fails a listing on an unexpected error instead of hiding it", async () => {
+    const brokenPath = join(ROOT_PATH, "broken");
+    inspectPathMock.mockImplementation((hostPath) =>
+      hostPath === brokenPath
+        ? Promise.reject(new TypeError("unexpected"))
+        : Promise.resolve(directoryStats()),
+    );
+    readNamesMock.mockResolvedValue(["broken"]);
+    const workspace = await openGuardedWorkspace({ rootPath: ROOT_PATH });
+
+    await expect(workspace.list("/")).rejects.toThrow("unexpected");
   });
 
   it("rejects unsupported filesystem entry types for every relevant operation", async () => {
@@ -156,9 +169,7 @@ describe("guarded workspace revalidation", () => {
     await expect(workspace.renameEntry("/special", "/moved")).rejects.toEqual(
       new WorkspaceError("not-regular-file", "rename"),
     );
-    await expect(workspace.list("/")).rejects.toEqual(
-      new WorkspaceError("not-regular-file", "list"),
-    );
+    await expect(workspace.list("/")).resolves.toEqual([]);
     await expect(workspace.list("/special")).rejects.toEqual(
       new WorkspaceError("not-directory", "list"),
     );

@@ -42,7 +42,12 @@ it("searches guarded files, excludes dependency internals and rejects traversal 
     });
     await expect(search.execute({ query: "needle", path: "/../" })).rejects.toThrow();
     await symlink("/etc/passwd", join(root, "escape"));
-    await expect(search.execute({ query: "root" })).rejects.toThrow();
+    // The link is skipped, not followed, and does not break the search of everything else.
+    expect(JSON.parse(await search.execute({ query: "root" }))).toEqual({
+      matches: [],
+      truncated: false,
+    });
+    expect(await search.execute({ query: "needle" })).toContain("/src/main.ts");
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -251,3 +251,38 @@ it("preserves a Git failure before index creation and avoids context files for u
   await f.evidence.capture("student");
   expect(await readdir(await journal(f))).toEqual(["state.json"]);
 });
+
+it("cuts a diff larger than the output limit instead of failing the capture", async () => {
+  const f = await fixture();
+  await f.evidence.start();
+  await writeFile(join(f.root, "code.ts"), "y".repeat(9_000_000));
+  await f.evidence.capture("student");
+  const change = (await f.changes())[0];
+  expect(change?.truncated).toBe(true);
+  expect(change?.patch).toHaveLength(16384);
+  expect(change?.patch).toContain("+yyyy");
+}, 30_000);
+
+it("rethrows output-limit-unrelated Git failures from a diff", async () => {
+  const f = await fixture();
+  await f.evidence.start();
+  await writeFile(join(f.root, "code.ts"), "changed\n");
+  const real = git.projectGit;
+  vi.spyOn(git, "projectGit").mockImplementation((...arguments_) =>
+    arguments_[1][0] === "diff"
+      ? Promise.reject(Object.assign(new Error("diff failed"), { code: "EPERM", stdout: "" }))
+      : real(...arguments_),
+  );
+  await expect(f.evidence.capture("student")).rejects.toThrow("diff failed");
+});
+
+it("records plain patches even when the repository forces colored diffs", async () => {
+  const f = await fixture();
+  await projectGit(f.root, ["config", "color.ui", "always"]);
+  await f.evidence.start();
+  await writeFile(join(f.root, "code.ts"), "const value = 5;\n");
+  await f.evidence.capture("student");
+  const patch = (await f.changes())[0]?.patch ?? "";
+  expect(patch).toContain("+const value = 5;");
+  expect(patch).not.toContain("\u001b");
+});

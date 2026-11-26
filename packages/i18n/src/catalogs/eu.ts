@@ -75,6 +75,8 @@ const basqueCatalog = {
   "student.git.confirm":
     "Mareak Git biltegi bat behar du zure aldaketak erregistratzeko eta irakasleari erakusteko. Sortu karpeta honetan?",
   "student.git.create": "Bai, sortu biltegia",
+  "student.git.dubious-ownership":
+    'Gitek ez dio konfiantzarik karpeta honen jabeari (USB memoriekin, sareko karpetekin edo beste kontu batekin gertatzen da), beraz Mareak ez du ukitzen eta ez du biltegi berririk sortzen. Fidagarria bada, exekutatu git config --global --add safe.directory "{{path}}" eta abiarazi Marea berriro.',
   "student.git.missing":
     "Mareak Git behar du zure lana erregistratzeko. Instalatu Git eta hasi Marea berriro.",
   "student.git.not-root":

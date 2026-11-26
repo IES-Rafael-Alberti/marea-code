@@ -81,3 +81,24 @@ it("catches cancellation that races with installing the listener", async () => {
     stopped: true,
   });
 });
+
+it.runIf(process.platform === "win32")(
+  "keeps inner quotes and UTF-8 output on the real Windows command processor",
+  async () => {
+    const directory = await mkdtemp(join(tmpdir(), "marea ñ "));
+    try {
+      const result = await runProjectCommand(
+        directory,
+        'echo "two words" & echo canción & cd',
+        new AbortController().signal,
+      );
+      const parsed = JSON.parse(result) as { exitCode: number; output: string };
+      expect(parsed.exitCode).toBe(0);
+      expect(parsed.output).toContain('"two words"');
+      expect(parsed.output).toContain("canción");
+      expect(parsed.output).toContain("marea ñ ");
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  },
+);

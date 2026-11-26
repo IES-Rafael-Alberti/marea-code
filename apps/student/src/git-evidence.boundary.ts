@@ -34,6 +34,9 @@ const StateSchema = z
   })
   .strict();
 
+const DIFF_OUTPUT_LIMIT = 256 * 1024;
+const OverflowSchema = z.object({ code: z.string(), stdout: z.string() });
+
 export interface GitEvidenceOptions {
   readonly root: string;
   readonly directory: string;
@@ -161,6 +164,28 @@ export class GitProjectEvidence implements ProjectEvidence {
     return "";
   }
 
+  /** A huge diff is cut at the output limit instead of failing: only a prefix is ever kept. */
+  private async boundedDiff(
+    options: readonly string[],
+    before: string,
+    after: string,
+  ): Promise<string> {
+    try {
+      return await projectGit(
+        this.options.root,
+        ["diff", "--no-ext-diff", "--no-textconv", ...options, before, after, "--", "."],
+        undefined,
+        DIFF_OUTPUT_LIMIT,
+      );
+    } catch (error) {
+      const partial = OverflowSchema.safeParse(error);
+      if (!partial.success || partial.data.code !== "ERR_CHILD_PROCESS_STDIO_MAXBUFFER")
+        throw error;
+      // The prefix alone already exceeds the stored limits, so the result is flagged as truncated.
+      return partial.data.stdout;
+    }
+  }
+
   async capture(actor: Change["actor"], messageId?: MessageId): Promise<void> {
     const directory = await this.location();
     const previous = await this.settle(directory, await this.state(directory));
@@ -169,26 +194,8 @@ export class GitProjectEvidence implements ProjectEvidence {
       await this.save(directory, { ...previous, agentPending: false });
       return;
     }
-    const patch = await projectGit(this.options.root, [
-      "diff",
-      "--no-ext-diff",
-      "--no-textconv",
-      "--no-color",
-      previous.tree,
-      tree,
-      "--",
-      ".",
-    ]);
-    const summary = await projectGit(this.options.root, [
-      "diff",
-      "--no-ext-diff",
-      "--no-textconv",
-      "--stat",
-      previous.tree,
-      tree,
-      "--",
-      ".",
-    ]);
+    const patch = await this.boundedDiff(["--no-color"], previous.tree, tree);
+    const summary = await this.boundedDiff(["--stat"], previous.tree, tree);
     const pending = {
       tree,
       actor: previous.agentPending && actor !== "agent" ? ("unknown" as const) : actor,

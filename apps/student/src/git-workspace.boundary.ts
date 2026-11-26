@@ -3,7 +3,8 @@ import { StudentWorkspaceError } from "./startup-failure.boundary.js";
 import * as z from "zod";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { realpath, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
+import { canonicalPath, comparablePath } from "./canonical-path.boundary.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import select from "@inquirer/select";
@@ -18,6 +19,7 @@ const AUTOMATIC_CONTENT_COMMANDS = new Set<string | undefined>([
   "diff",
 ]);
 const SAFE_GIT_OPTIONS = ["-c", "core.hooksPath=/dev/null", "-c", "core.fsmonitor=false"];
+const StderrSchema = z.object({ stderr: z.string() });
 const ExitSchema = z.object({ code: z.number() });
 
 /** Read names only: config enumeration does not run configured filter commands. */
@@ -67,12 +69,15 @@ export async function projectGit(
   root: string,
   args: readonly string[],
   index?: string,
+  maxBuffer = 8 * 1024 * 1024,
 ): Promise<string> {
   const env = {
     ...process.env,
     GIT_TERMINAL_PROMPT: "0",
     GIT_NO_LAZY_FETCH: "1",
     GIT_ALLOW_PROTOCOL: "",
+    // Stable English messages: the repository check recognizes them.
+    LC_ALL: "C",
     ...(index === undefined ? {} : { GIT_INDEX_FILE: index }),
   };
   const overrides = AUTOMATIC_CONTENT_COMMANDS.has(args[0]) ? await filterOverrides(root, env) : "";
@@ -100,7 +105,7 @@ export async function projectGit(
     // Auxiliary Git processes must not attach a window while the TUI shuts down.
     windowsHide: true,
     timeout: 15_000,
-    maxBuffer: 8 * 1024 * 1024,
+    maxBuffer,
     env: commandEnv,
   });
   return stdout;
@@ -131,7 +136,9 @@ async function startedBelowRoot(
   terminal: GitWorkspaceTerminal,
 ): Promise<void> {
   const lines = [translator.t("student.git.not-root", { current, root: repositoryRoot })];
-  if (repositoryRoot === (await realpath(terminal.homeDirectory)))
+  if (
+    comparablePath(repositoryRoot) === comparablePath(await canonicalPath(terminal.homeDirectory))
+  )
     lines.push(translator.t("student.git.not-root-home"));
   const instruction = translator.t("student.git.not-root-instruction", { root: repositoryRoot });
   const refuse = () =>
@@ -167,13 +174,20 @@ export async function ensureGitWorkspace(
   let repository: string | null = null;
   try {
     repository = (await projectGit(root, ["rev-parse", "--show-toplevel"])).trim();
-  } catch {
+  } catch (error) {
+    // An untrusted owner (USB, network share, another account) is a repository we must not recreate.
+    if (StderrSchema.safeParse(error).data?.stderr.includes("dubious ownership") === true)
+      throw new StudentWorkspaceError(
+        "student.git.dubious-ownership",
+        translator,
+        translator.t("student.git.dubious-ownership", { path: root.replaceAll("\\", "/") }),
+      );
     /* Offer initialization below. */
   }
   if (repository !== null) {
-    const repositoryRoot = await realpath(repository);
-    const current = await realpath(root);
-    if (repositoryRoot === current) return;
+    const repositoryRoot = await canonicalPath(repository);
+    const current = await canonicalPath(root);
+    if (comparablePath(repositoryRoot) === comparablePath(current)) return;
     await startedBelowRoot(current, repositoryRoot, translator, terminal);
   } else {
     const accepted = await select({

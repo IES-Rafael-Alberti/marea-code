@@ -148,7 +148,13 @@ class LocalGuardedWorkspace implements WorkspaceBackend {
     }
     const entries: WorkspaceEntry[] = [];
     for (const name of names) {
-      entries.push(await this.describeEntry(parsed, directory.hostPath, name, operation));
+      // One link, reserved Windows name or vanished entry must not break the whole listing.
+      try {
+        const entry = await this.describeEntry(parsed, directory.hostPath, name, operation);
+        if (entry !== undefined) entries.push(entry);
+      } catch (error) {
+        if (!(error instanceof WorkspaceError)) throw error;
+      }
     }
     return entries.toSorted((left, right) => left.path.localeCompare(right.path));
   }
@@ -197,12 +203,12 @@ class LocalGuardedWorkspace implements WorkspaceBackend {
     parentHostPath: string,
     name: string,
     operation: WorkspaceOperation,
-  ): Promise<WorkspaceEntry> {
+  ): Promise<WorkspaceEntry | undefined> {
     const virtualPath = appendVirtualPath(parent, name);
     const hostPath = join(parentHostPath, name);
     const stat = await inspectPath(hostPath, operation);
     if (stat === undefined) {
-      throw new WorkspaceError("not-found", operation);
+      return undefined;
     }
     await this.resolver.assertPhysicalEntry(hostPath, stat, operation);
     assertSupportedEntry(stat, operation);

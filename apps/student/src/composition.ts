@@ -5,6 +5,7 @@ import { clientIdentity } from "./turn-diagnostic-report.js";
 import { meterUsage } from "./session-usage.js";
 import { FileOperationExecutor } from "./operation-executor.boundary.js";
 import { GitProjectEvidence } from "./git-evidence.boundary.js";
+import { ResilientProjectEvidence } from "./resilient-evidence.boundary.js";
 import { join, resolve } from "node:path";
 
 import {
@@ -208,12 +209,11 @@ export async function createProductionStudentApplication(
     credentials: stores.credentials,
     ids,
     localSession,
-    evidence: new GitProjectEvidence({
-      root: projectRoot,
-      directory: stateDirectory,
+    evidence: new ResilientProjectEvidence(
+      new GitProjectEvidence({ root: projectRoot, directory: stateDirectory, localSession, ids }),
       localSession,
       ids,
-    }),
+    ),
     operations: new FileOperationExecutor({
       root: projectRoot,
       directory: stateDirectory,

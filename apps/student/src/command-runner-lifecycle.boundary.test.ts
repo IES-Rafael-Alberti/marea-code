@@ -139,9 +139,10 @@ it.each([0, 1])(
       const f = fixture();
       expect(spawn).toHaveBeenLastCalledWith(
         "D:\\Windows\\System32\\cmd.exe",
-        ["/d", "/s", "/c", "synthetic command"],
+        ["/d", "/s", "/c", '"chcp 65001>nul & synthetic command"'],
         {
           cwd: "/synthetic",
+          windowsVerbatimArguments: true,
           detached: false,
           windowsHide: true,
           stdio: ["ignore", "pipe", "pipe"],

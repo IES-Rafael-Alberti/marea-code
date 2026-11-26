@@ -54,6 +54,7 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.git.cancelled",
   "student.git.confirm",
   "student.git.create",
+  "student.git.dubious-ownership",
   "student.git.missing",
   "student.git.not-root",
   "student.git.not-root-home",
@@ -186,6 +187,7 @@ export type MessageKey = (typeof MESSAGE_KEYS)[number];
 export interface MessageParameterMap {
   readonly "bootstrap.connection-failed-at": { readonly origin: string };
   readonly "student.cli.failure-code": { readonly code: string };
+  readonly "student.git.dubious-ownership": { readonly path: string };
   readonly "student.git.not-root": { readonly current: string; readonly root: string };
   readonly "student.git.not-root-instruction": { readonly root: string };
   readonly "student.git.not-root-create": { readonly current: string };

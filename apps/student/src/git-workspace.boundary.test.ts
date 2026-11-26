@@ -94,6 +94,8 @@ it("uses the requested private index and never enables interactive Git prompts",
   await projectGit(path, ["config", "alias.promptstate", '!printf %s "$GIT_TERMINAL_PROMPT"']);
   vi.stubEnv("GIT_TERMINAL_PROMPT", "1");
   expect(await projectGit(path, ["promptstate"])).toBe("0");
+  await projectGit(path, ["config", "alias.localestate", '!printf %s "$LC_ALL"']);
+  expect(await projectGit(path, ["localestate"])).toBe("C");
 });
 
 async function nestedProject() {

@@ -19,9 +19,12 @@ export function runProjectCommand(
     const systemDirectory = win32.join(process.env.SystemRoot ?? "C:\\Windows", "System32");
     const child = spawn(
       windows ? win32.join(systemDirectory, "cmd.exe") : "/bin/sh",
-      windows ? ["/d", "/s", "/c", command] : ["-c", command],
+      // Verbatim arguments plus /s keep inner quotes intact for cmd.exe, and code page 65001
+      // makes accents and paths in the output decodable as UTF-8 instead of the OEM code page.
+      windows ? ["/d", "/s", "/c", `"chcp 65001>nul & ${command}"`] : ["-c", command],
       {
         cwd: root,
+        ...(windows ? { windowsVerbatimArguments: true } : {}),
         detached: !windows,
         windowsHide: true,
         stdio: ["ignore", "pipe", "pipe"],

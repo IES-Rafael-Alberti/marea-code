@@ -76,6 +76,8 @@ const englishCatalog = {
   "student.git.confirm":
     "Marea needs a Git repository to record your changes and show them to your teacher. Create one in this folder?",
   "student.git.create": "Yes, create repository",
+  "student.git.dubious-ownership":
+    'Git does not trust the owner of this folder (common with USB drives, network shares or another account), so Marea leaves it alone and does not create a new repository. If you trust it, run git config --global --add safe.directory "{{path}}" and start Marea again.',
   "student.git.missing": "Marea needs Git to record your work. Install Git and start Marea again.",
   "student.git.not-root":
     "Marea must run from your project's root folder. You are in {{current}}, but the Git repository starts at {{root}}.",
