@@ -113,30 +113,40 @@ explains that the session ended and starts a new run the next time `marea` runs.
 ## Private state file protection
 
 Student state, credentials and input history are stored outside the project
-workspace in a per-account private directory. On Windows, that directory is
-protected by a PowerShell ACL boundary (`packages/private-filesystem`): it
-rejects network and other unsupported volumes, reparse points, foreign owners,
-and foreign access-control entries, then grants access only to the current user,
-`SYSTEM` and `Administrators`.
+workspace in a per-account private directory (`~/.marea` by default, or the
+managed installation's student state folder).
 
-A directory is secured and verified **once per process** (memoized by its
-resolved realpath). Files created inside a verified directory inherit its
-protected ACL, so the model is _private directory = no foreign writers_: after
-securing, a foreign principal has no write access to the directory, and
-re-verifying every file that lives inside it would add PowerShell latency
-without closing an attack surface. Atomic writes therefore verify the containing
-directory instead of re-securing each temporary file, and reads skip the
-per-file ACL inspect only when the parent directory was verified this process
-and the file is a regular, non-link file. This optimization never skips the
-directory checks themselves: volume, reparse-point, owner and ACE rejection
-still run on first verification.
+On macOS and Linux the student client creates that directory with mode `0700`
+and its files with `0600`, and checks the owner and mode before reading.
 
-Failures surface as a typed `PrivateFilesystemError` whose `diagnosticCode` is
-`private-fs.<reason>` from a fixed allowlist (for example `private-fs.timeout`,
-`private-fs.reparse-point`, `private-fs.set-acl-failed`). Diagnostic codes never
-carry paths, tokens or user content. Only transient failures (spawn failure,
-timeout, or an antivirus sharing violation during `Set-Acl`) are retried once;
-owner, ACE, volume and reparse-point failures are rejected immediately.
+On Windows the student client **does not write ACLs** on its state. It relies on
+the protection of the Windows user profile, like any other application: files
+and folders under `%USERPROFILE%` inherit the profile's default permissions
+(the user, `SYSTEM` and `Administrators`). A folder Windows refuses to
+re-protect (`Set-Acl` failures, antivirus locks) therefore never locks a student
+out, and `marea logout` always deletes the stored credential. At startup the
+client only **checks**, read-only, whether broad principals (`Everyone`,
+`Users`, `Authenticated Users` or another non-administrator account) may read
+its state folder. If they may, or if the check itself fails, it appends a
+`state-permissions` record to the private local failure log
+(`turn-failures.jsonl`) with the principal categories or the numeric Windows
+HRESULT, never a path or an account name, and continues. Permissions never
+block startup, logout or any command. A school that needs stronger isolation
+than the profile gives should protect the profile itself (or set
+`MAREA_STATE_HOME` to a folder it protects).
+
+The teacher server and the installers keep the strict PowerShell ACL boundary
+(`packages/private-filesystem`, `securePrivatePath`/`inspectPrivatePath`) on
+every operating system: on Windows it rejects network and other unsupported
+volumes, reparse points, foreign owners and foreign access-control entries,
+then grants access only to the current user, `SYSTEM` and `Administrators`.
+Its failures surface as a typed `PrivateFilesystemError` whose `diagnosticCode`
+is `private-fs.<reason>` from a fixed allowlist (for example
+`private-fs.timeout`, `private-fs.reparse-point`, `private-fs.set-acl-failed`).
+Diagnostic codes never carry paths, tokens or user content. Only transient
+failures (spawn failure, timeout, or an antivirus sharing violation during
+`Set-Acl`) are retried once; owner, ACE, volume and reparse-point failures are
+rejected immediately.
 
 ## Preview baseline CodeQL review
 

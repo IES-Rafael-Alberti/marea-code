@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { inspectPrivatePath, securePrivatePath } from "../src/index.js";
+import { auditWindowsPrivateAccess, inspectPrivatePath, securePrivatePath } from "../src/index.js";
 import { WINDOWS_ACL_SCRIPT } from "../src/windows-acl-script.js";
 
 const root = mkdtempSync(join(tmpdir(), "marea-native-privacy-"));
@@ -131,6 +131,32 @@ try {
     assert.equal(inspectPrivatePath(child), "directory");
     assert.equal(inspectPrivatePath(join(child, "lock")), "file");
     checks.push("junction-and-junction-ancestor");
+    // The student only audits its folder: the check must never change the ACL it reads.
+    securePrivatePath(root, 0o700);
+    assert.deepEqual(await auditWindowsPrivateAccess(root), { status: "private" });
+    assert.equal(inspectPrivatePath(root), "directory", "Audit must not change the ACL");
+    for (const [sid, category] of [
+      ["S-1-1-0", "everyone"],
+      ["S-1-5-32-545", "users"],
+    ] as const) {
+      powershell(
+        `$acl=Get-Acl -LiteralPath $path; $rule=[Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.SecurityIdentifier]::new('${sid}'),[Security.AccessControl.FileSystemRights]::ReadAndExecute,[Security.AccessControl.InheritanceFlags]'ContainerInherit, ObjectInherit',[Security.AccessControl.PropagationFlags]::None,[Security.AccessControl.AccessControlType]::Allow); $acl.AddAccessRule($rule); Set-Acl -LiteralPath $path -AclObject $acl`,
+        root,
+      );
+      assert.deepEqual(
+        await auditWindowsPrivateAccess(root),
+        {
+          status: "exposed",
+          principals: category === "users" ? ["everyone", "users"] : [category],
+        },
+        `Audit must report ${category}`,
+      );
+    }
+    const missing = await auditWindowsPrivateAccess(join(root, "absent"));
+    assert.equal(missing.status, "failed");
+    assert.match(missing.code, /^0x[0-9A-F]{8}$/u);
+    securePrivatePath(root, 0o700);
+    checks.push("read-only-student-audit");
   }
   console.log(
     JSON.stringify({ platform: process.platform, arch: process.arch, checks, status: "passed" }),

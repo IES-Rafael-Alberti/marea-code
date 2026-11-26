@@ -27,6 +27,7 @@ import type {
   StudentServer,
 } from "./contracts.js";
 import { createFileStudentStores } from "./filesystem.boundary.js";
+import { auditStudentStatePermissions } from "./student-state-permissions.boundary.js";
 import { createFileClassPreferenceStore } from "./class-preference.boundary.js";
 import { createFileEffectLedger } from "./effect-ledger.boundary.js";
 import { createDeepAgentsStudentRuntime } from "./deepagents-runtime.boundary.js";
@@ -122,6 +123,8 @@ export async function createProductionStudentApplication(
   const projectRoot = resolve(options.projectRoot);
   const stateDirectory = resolve(options.stateDirectory);
   const stores = await createFileStudentStores({ projectRoot, stateDirectory });
+  // Not awaited: a slow or failing permission check never delays or blocks the student.
+  void auditStudentStatePermissions(stateDirectory, stores.failures);
   const localState = createLocalStateRecovery({
     notice: options.notice,
     probes: [

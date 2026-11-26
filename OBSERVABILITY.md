@@ -159,6 +159,9 @@ The student never sees this technical text in the conversation; `/details` shows
 path of a private local copy kept beside `session.json` (`turn-failures.jsonl`, at most
 256 KiB, oldest records dropped first), which also covers failures that never reached the
 teacher server.
+On Windows the same file also receives a `state-permissions` record when the startup check
+finds that other accounts may read the student's state folder (principal categories only) or
+cannot run (the numeric HRESULT); the client keeps working either way.
 
 ## Developer acceptance
 
