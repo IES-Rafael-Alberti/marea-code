@@ -118,3 +118,24 @@ describe("turn failure diagnostic", () => {
     expect(failureDiagnostic("t".repeat(3_000)).exception.message).toHaveLength(2_048);
   });
 });
+
+describe("model stream failure diagnostics", () => {
+  it("records the gateway's code and message, bounded", () => {
+    const short = new ModelStreamError({
+      code: "invalid-response",
+      message: "The inference provider returned an invalid stream chunk ({choices:string}).",
+      retryable: false,
+    });
+    expect(failureDiagnostic(new TurnAttemptFailed("", short)).exception).toEqual({
+      name: "ModelStreamError",
+      message:
+        "invalid-response: The inference provider returned an invalid stream chunk ({choices:string}).",
+    });
+    const long = new ModelStreamError({
+      code: "unavailable",
+      message: "m".repeat(3000),
+      retryable: true,
+    });
+    expect(failureDiagnostic(new TurnAttemptFailed("", long)).exception.message).toHaveLength(2048);
+  });
+});

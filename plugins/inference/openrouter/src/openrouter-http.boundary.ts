@@ -2,6 +2,7 @@ import * as z from "zod";
 
 import { InferenceProviderError } from "@marea/plugin-api";
 
+import { chunkShape, safeCode } from "./chunk-shape.boundary.js";
 import type { OpenRouterChunk, OpenRouterHttpPort, OpenRouterHttpResponse } from "./contracts.js";
 
 const toolCallSchema = z
@@ -37,7 +38,11 @@ const chunkSchema = z
           finish_reason: z.string().max(64).nullable().optional(),
         }),
       )
-      .max(1),
+      .max(1)
+      // Metadata and keep-alive chunks carry no choices; they say nothing about the answer.
+      .optional(),
+    // OpenRouter reports a failure that happens after streaming began as a chunk with `error`.
+    error: z.object({ code: z.unknown().optional() }).loose().optional(),
     usage: z
       .object({
         prompt_tokens: z.number().int().nonnegative(),
@@ -47,7 +52,7 @@ const chunkSchema = z
       .optional(),
   })
   .transform((chunk): OpenRouterChunk => {
-    const choice = chunk.choices[0];
+    const choice = chunk.choices?.[0];
     const delta = choice?.delta;
     return {
       delta:
@@ -58,6 +63,7 @@ const chunkSchema = z
               toolCalls: delta.tool_calls,
             },
       finishReason: choice?.finish_reason,
+      ...(chunk.error === undefined ? {} : { errorCode: safeCode(chunk.error.code) }),
       usage:
         chunk.usage == null
           ? undefined
@@ -141,9 +147,10 @@ export function parseOpenRouterData(text: string): OpenRouterChunk {
   try {
     return parseOpenRouterChunk(JSON.parse(text) as unknown);
   } catch {
+    // A chunk with choices Marea cannot read may carry part of the answer: it is not skipped.
     throw new InferenceProviderError({
       code: "invalid-response",
-      message: "The inference provider returned an invalid stream chunk.",
+      message: `The inference provider returned an invalid stream chunk (${chunkShape(text)}).`,
       retryable: false,
     });
   }

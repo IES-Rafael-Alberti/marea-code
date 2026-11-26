@@ -11,6 +11,7 @@ import { InferenceProviderError } from "@marea/plugin-api";
 import type { OpenRouterHttpPort, OpenRouterHttpResponse } from "./contracts.js";
 import type { OpenRouterConfiguration } from "./configuration.js";
 import { parseOpenRouterData } from "./openrouter-http.boundary.js";
+import { safeCode } from "./chunk-shape.boundary.js";
 import { readSseData } from "./sse.boundary.js";
 import { ToolCallAccumulator } from "./tool-calls.boundary.js";
 
@@ -79,10 +80,12 @@ function finishReason(
   if (value === "stop" || value === "length" || value === "content_filter" || value === "error") {
     return value;
   }
+  // An answer that ended for a reason Marea does not know may be incomplete, as with
+  // DeepSeek's `insufficient_system_resource`: a new answer can succeed.
   throw providerError(
-    "invalid-response",
-    "The inference provider returned an unsupported finish reason.",
-    false,
+    "unavailable",
+    `The inference provider ended the answer with an unsupported finish reason (${safeCode(value)}).`,
+    true,
   );
 }
 
@@ -129,6 +132,13 @@ async function* translateStream(
       break;
     }
     const chunk = parseOpenRouterData(data);
+    if (chunk.errorCode !== undefined) {
+      throw providerError(
+        "unavailable",
+        `The inference provider reported an error while streaming (${chunk.errorCode}).`,
+        true,
+      );
+    }
     const text = chunk.delta?.content;
     if (text !== undefined && text !== null && text.length > 0) {
       streamedText = true;
@@ -153,10 +163,11 @@ async function* translateStream(
     yield usage;
   }
   if (reason === undefined) {
+    // The stream closed normally but never said the answer was finished: it was cut short.
     throw providerError(
-      "invalid-response",
+      "unavailable",
       "The inference provider stream ended before completion.",
-      false,
+      true,
     );
   }
   if (reason === "error" || reason === "content_filter") {

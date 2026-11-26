@@ -84,9 +84,10 @@ describe("diagnostics of a failed turn", () => {
         eventType: "turn-diagnostic",
         messageId: "message:1",
         category: "request-failed/provider.invalid-response",
+        // The gateway's code and message name the provider check that ended the answer.
         exception: {
           name: "ModelStreamError",
-          message: "The Marea model gateway reported a failed stream.",
+          message: "invalid-response: The inference provider returned an invalid tool call.",
         },
         client: { version: "0.1.0-preview.44", platform: "win32-x64" },
         requestId: "request:last",

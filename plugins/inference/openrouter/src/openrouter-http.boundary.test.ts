@@ -157,7 +157,8 @@ describe("OpenRouter HTTP boundary", () => {
     expect(() => parseOpenRouterData("not-json")).toThrow(
       expect.objectContaining({
         code: "invalid-response",
-        message: "The inference provider returned an invalid stream chunk.",
+        message:
+          "The inference provider returned an invalid stream chunk (not JSON, 8 characters).",
         retryable: false,
       }),
     );

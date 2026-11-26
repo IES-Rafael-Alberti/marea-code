@@ -32,6 +32,8 @@ export interface OpenRouterToolCallDelta {
 
 export interface OpenRouterChunk {
   readonly delta?: OpenRouterDelta | undefined;
+  /** Present when the provider reported a failure inside the stream; sanitized. */
+  readonly errorCode?: string;
   readonly finishReason?: string | null | undefined;
   readonly usage?: OpenRouterUsage | undefined;
 }
