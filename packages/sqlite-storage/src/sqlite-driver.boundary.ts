@@ -14,6 +14,10 @@ class BunSqliteDatabase implements SqliteDatabasePort {
     this.#database = database;
   }
 
+  public backupTo(destinationPath: string): void {
+    this.#database.run("VACUUM INTO ?", [destinationPath]);
+  }
+
   public close(): void {
     this.#database.close(true);
   }

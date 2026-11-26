@@ -264,7 +264,9 @@ describe("SQLite storage lifecycle", () => {
     const open = vi.fn(() => new ReadyDatabase());
     const installNew = vi.fn();
     const invalidDependencies: StorageDependencies = {
+      backupFileCopier: { installFile: vi.fn() },
       backupFiles: { installNew },
+      diskSpace: { freeBytes: () => undefined },
       driver: driverFor(open),
       initializationLock: {
         runExclusive<T>(_databasePath: string, operation: () => T): T {

@@ -56,6 +56,9 @@ export function governanceDatabase(version = 7) {
   const root = mkdtempSync(join(tmpdir(), "marea-governance-schema-"));
   const database = createDatabase(join(root, "state.sqlite"));
   const port: SqliteDatabasePort = {
+    backupTo: () => {
+      throw new Error("Backups are not part of this migration probe.");
+    },
     close: () => {
       database.close();
     },
