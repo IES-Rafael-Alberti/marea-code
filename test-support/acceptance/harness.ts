@@ -78,6 +78,8 @@ const TEST_INVITATION_BOB = InvitationCodeSchema.parse("physics_invite_bob_2026"
 const TEST_PROMPT_DIGEST = Sha256DigestSchema.parse(`sha256:${"a".repeat(64)}`);
 
 export const ACCEPTANCE_CLIENT_VERSION = "0.2.0";
+/** Deliberately another release than the client's: equal versions must be chosen, never assumed. */
+const ACCEPTANCE_SERVER_VERSION = "0.1.0-preview.0";
 export const ACCEPTANCE_PROJECT = "wave-lab";
 export const ACCEPTANCE_SESSION = Object.freeze({
   ada: Object.freeze({
@@ -202,6 +204,8 @@ export async function createAcceptanceHarness(
     readonly evaluationIntervalMs?: number;
     readonly dashboardAssets?: (request: Request) => Response;
     readonly observeHttpResponse?: (path: string, status: number) => void;
+    /** The release this synthetic server announces in its capabilities. */
+    readonly serverVersion?: string;
   } = {},
 ): Promise<AcceptanceHarness> {
   const database = new NodeSqliteTestDatabase();
@@ -274,7 +278,7 @@ export async function createAcceptanceHarness(
   const productOptions: TeacherProductHttpOptions = {
     allowedHosts: ["127.0.0.1"],
     allowedOrigins: ["http://127.0.0.1"],
-    serverVersion: ACCEPTANCE_CLIENT_VERSION,
+    serverVersion: options.serverVersion ?? ACCEPTANCE_SERVER_VERSION,
     services: {
       teachingConfiguration: unavailableTeachingConfiguration,
       skillAuthoring: unavailableSkillAuthoring,

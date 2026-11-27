@@ -281,8 +281,48 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
+  version-rehearsal:
+    needs: native
+    if: ${{ !inputs.verify_published && startsWith(github.ref, 'refs/tags/v') }}
+    name: Released student against released server (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      CANDIDATE_VERSION: ${{ inputs.version }}
+      RUNNER: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.2
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: candidate-${{ matrix.runner }}-student
+          path: reports/rehearsal/student
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: candidate-${{ matrix.runner }}-server
+          path: reports/rehearsal/server
+      - name: Same release connects without a prompt; another release is refused without a terminal
+        run: |
+          student=$(dirname "$(find reports/rehearsal/student -name manifest.json -not -path '*/dashboard/*' | head -n 1)")
+          server=$(dirname "$(find reports/rehearsal/server -name manifest.json -not -path '*/dashboard/*' | head -n 1)")
+          # Artifacts do not keep the executable bit.
+          chmod 700 "$student"/marea* "$server"/marea*
+          test "$(jq -r .version "$student/manifest.json")" = "$CANDIDATE_VERSION"
+          bun scripts/release/version-rehearsal-smoke.mjs "$student" "$server"
+
   publish:
-    needs: [quality, native]
+    needs: [quality, native, version-rehearsal]
     if: ${{ !inputs.verify_published && inputs.publish }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
