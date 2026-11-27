@@ -104,7 +104,7 @@ exports[`installs per-user Windows launchers and PATH without a shell profile > 
 exports[`keeps offline diagnostics useful and checks server recovery after a failed update > offline and failed update diagnostics 1`] = `
 [
   [
-    "No se ha podido comprobar la actualización; se conserva la versión instalada.
+    "No se ha podido consultar GitHub (raw.githubusercontent.com) para buscar actualizaciones: respuesta no válida. Se conserva la versión instalada.
 ",
   ],
   [

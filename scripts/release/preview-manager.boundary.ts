@@ -17,18 +17,14 @@ import {
   verifySignature,
 } from "./install.boundary.js";
 import {
-  comparePreview,
   previewSettingsSchema,
   previewVersion,
   repositoryName,
   serverOrigin,
   type PreviewSettings,
 } from "./preview-channel.js";
-import {
-  downloadPreview,
-  offeredVersion,
-  requiredPreviewVersion,
-} from "./preview-download.boundary.js";
+import { downloadPreview, offeredVersion } from "./preview-download.boundary.js";
+import { checkForUpdate, shouldOfferUpdate } from "./preview-update-check.boundary.js";
 import {
   activatePreviewServer,
   assertPreviewServerIdle,
@@ -264,59 +260,43 @@ function savedServerOrigin(root: string): string | undefined {
   return undefined;
 }
 
-function shouldOfferUpdate(
-  settings: PreviewSettings,
-  offered: string,
-  current: string,
-  required: boolean,
-  selectedVersion: string | undefined,
-): boolean {
-  const comparison = comparePreview(offered, current);
-  if (comparison === 0) {
-    if (required)
-      throw new Error(
-        "El servidor anuncia un protocolo incompatible para la misma versión. Contacta con el administrador.",
-      );
-    return false;
-  }
-  if (comparison === -1 && settings.component === "server") {
-    if (selectedVersion !== undefined)
-      throw new Error(
-        "Server downgrades require backup recovery; an older executable cannot open migrated data.",
-      );
-    return false;
-  }
-  if (comparison === -1 && !required && selectedVersion === undefined) return false;
-  return true;
-}
+/** `-v` is `--version`: the installed release, printed without any network check. */
+const asksVersion = (forwarded: readonly string[]) =>
+  ["--version", "-v"].includes(String(forwarded[0]));
+
+/** Commands that only talk to the student's own state or account never check for updates. */
+const skipsUpdateCheck = (forwarded: readonly string[]) =>
+  ["feedback", "logout"].includes(String(forwarded[0]));
 
 async function updateBeforeStart(
   root: string,
   settings: PreviewSettings,
   release: string,
   current: string,
-  manual: boolean,
-  selectedVersion?: string,
+  request: {
+    readonly action: string;
+    readonly flags: ReadonlyMap<string, string>;
+    readonly forwarded: readonly string[];
+  },
 ): Promise<string> {
-  let offered: string | undefined;
-  let required = false;
-  try {
-    if (!manual) {
-      offered = await requiredPreviewVersion(settings, current, globalThis.fetch);
-      required = offered !== undefined;
-    }
-    offered ??=
-      selectedVersion ??
-      (await offeredVersion(settings, globalThis.fetch, manual ? "available" : "recommended"));
-  } catch {
-    process.stderr.write(
-      "No se ha podido comprobar la actualización; se conserva la versión instalada.\n",
-    );
-    process.exitCode = 1;
+  if (skipsUpdateCheck(request.forwarded)) return release;
+  const manual = request.action === "update";
+  const selectedVersion = request.flags.get("--version");
+  const { offered, required, failed } = await checkForUpdate({
+    settings,
+    current,
+    manual,
+    selectedVersion,
+  });
+  if (failed) process.exitCode = 1;
+  if (
+    offered === undefined ||
+    !shouldOfferUpdate(settings, offered, current, required, selectedVersion)
+  ) {
+    if (manual && !failed && selectedVersion === undefined)
+      process.stdout.write(`Marea ya está en la última versión (${current}).\n`);
     return release;
   }
-  if (offered === undefined) return release;
-  if (!shouldOfferUpdate(settings, offered, current, required, selectedVersion)) return release;
   if (!(await acceptUpdate(offered, required))) {
     if (required)
       throw new Error(
@@ -361,7 +341,7 @@ function recoverBeforeLaunch(
   if (
     settings.installation !== undefined &&
     request.action !== "status" &&
-    request.forwarded[0] !== "--version" &&
+    !asksVersion(request.forwarded) &&
     !onboardingPending(root)
   )
     reportRecoveredUpdate(recoverInterruptedPreviewUpdate(settings.installation));
@@ -441,7 +421,7 @@ export async function previewMain(argv: readonly string[]): Promise<void> {
   const current = previewVersion.parse(
     manifestSchema.parse(JSON.parse(readFileSync(join(release, "manifest.json"), "utf8"))).version,
   );
-  if (request.forwarded[0] === "--version") {
+  if (asksVersion(request.forwarded)) {
     process.stdout.write(`${current}\n`);
     return;
   }
@@ -477,14 +457,7 @@ export async function previewMain(argv: readonly string[]): Promise<void> {
   if (settings.installation !== undefined && !pending)
     assertPreviewServerReady(settings.installation);
   const selectedSettings = selectedServerSettings(root, settings, request.forwarded);
-  release = await updateBeforeStart(
-    root,
-    selectedSettings,
-    release,
-    current,
-    request.action === "update",
-    request.flags.get("--version"),
-  );
+  release = await updateBeforeStart(root, selectedSettings, release, current, request);
   if (request.action === "update") return;
   if (settings.component === "server") {
     process.exitCode = await launchServer(settings.allowHttp === true);
