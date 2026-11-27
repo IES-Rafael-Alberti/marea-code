@@ -82,6 +82,7 @@ const en = {
   classLabel: "Class",
   nothing: "No recorded messages yet.",
   clientVersionDiffers: "Different client version: {client} (server {server})",
+  legacyClientVersion: "Preview 49 or earlier",
   evaluationState: {
     none: "Not evaluated",
     queued: "Evaluation queued",
@@ -188,6 +189,7 @@ const es: typeof en = {
   classLabel: "Clase",
   nothing: "Todavía no hay mensajes registrados.",
   clientVersionDiffers: "Versión del cliente distinta: {client} (servidor {server})",
+  legacyClientVersion: "Preview 49 o anterior",
   evaluationState: {
     none: "Sin evaluación",
     queued: "Evaluación en cola",
@@ -294,6 +296,7 @@ const eu: SessionsMessages = {
   classLabel: "Ikasgela",
   nothing: "Oraindik ez dago erregistratutako mezurik.",
   clientVersionDiffers: "Bezeroaren bertsio desberdina: {client} (zerbitzaria {server})",
+  legacyClientVersion: "Preview 49 edo lehenagokoa",
   evaluationState: {
     none: "Ebaluatu gabe",
     queued: "Ebaluazioa ilaran",

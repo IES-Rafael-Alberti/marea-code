@@ -56,3 +56,4 @@ export {
 
 export * from "./request-limits.js";
 export * from "./run-closure.js";
+export * from "./software-version.js";

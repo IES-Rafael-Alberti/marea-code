@@ -4,6 +4,7 @@ import {
   ServerCapabilitySchema,
   missingCapabilities,
   selectProtocolVersion,
+  softwareVersionsDiffer,
 } from "@marea/protocol";
 
 import type { IdSource, StudentServer } from "./contracts.js";
@@ -23,7 +24,7 @@ export interface SessionCapabilityOptions {
   readonly clientVersion: string;
   readonly ids: IdSource;
   readonly server: StudentServer;
-  /** Asked, after the compatibility checks, when the two software versions differ. */
+  /** Asked, after the compatibility checks, when two release versions differ (never for dev). */
   readonly versionGate?:
     ((serverVersion: string, clientVersion: string) => Promise<void>) | undefined;
 }
@@ -52,7 +53,7 @@ export async function negotiateSessionCapabilities(
   const missing = missingCapabilities(response.capabilities, required);
   if (missing.length !== 0)
     throw new Error(`The teacher server is missing required capabilities: ${missing.join(", ")}.`);
-  if (response.serverVersion !== options.clientVersion)
+  if (softwareVersionsDiffer(response.serverVersion, options.clientVersion))
     await options.versionGate?.(response.serverVersion, options.clientVersion);
   return response.capabilities;
 }

@@ -33,6 +33,17 @@ describe("software version confirmation at startup", () => {
     expect(versionGate).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["0.0.0-dev", "0.1.0-preview.50"],
+    ["0.1.0-preview.50", "0.0.0-dev"],
+  ])("never asks when the client is %s and the server is %s", async (clientVersion, server) => {
+    const versionGate = vi.fn(() => Promise.resolve());
+    const test = createFixtureController({ clientVersion, versionGate });
+    withServerVersion(test, server);
+    await test.controller.start("Project One");
+    expect(versionGate).not.toHaveBeenCalled();
+  });
+
   it("starts without a gate even when the versions differ", async () => {
     const test = createFixtureController();
     withServerVersion(test, "2.0.0");

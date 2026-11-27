@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import console from "node:console";
 import {
@@ -66,25 +67,60 @@ async function durable(value: AcceptanceHarness, type: string): Promise<void> {
   }
 }
 
-afterEach(async () => {
-  for (const terminal of processes) terminal.kill();
-  try {
-    await Promise.all(processes.map((terminal) => terminal.waitForExit(5_000)));
-  } finally {
-    await harness?.close();
-    if (scratch) await rm(scratch, { recursive: true, force: true });
-  }
-});
+/** The version notice, compared without ANSI codes or the terminal's line wrapping. */
+const mismatchNotice = "isnotthesameastheteacherserverversion";
+// eslint-disable-next-line no-control-regex -- terminal escape sequences are the point here.
+const flat = (text: string) => text.replace(/\u001b\[[0-9;?]*[A-Za-z]/gu, "").replace(/\s+/gu, "");
 
-it("runs the distributed client through login, approval, checkpoint and reconnect without replay", async () => {
+/** The release this artifact reports; both version flags must agree and never say dev. */
+function releaseVersion(executable: string): string {
+  const read = (flag: string) => execFileSync(executable, [flag], { encoding: "utf8" }).trim();
+  const version = read("--version");
+  expect(read("-v")).toBe(version);
+  expect(version).toMatch(/^\d+\.\d+\.\d+-preview\.\d+$/u);
+  return version;
+}
+
+/** Records the clientVersion of every capabilities request without changing any response. */
+function observeAnnouncedVersions(value: AcceptanceHarness): string[] {
+  const announced: string[] = [];
+  value.http.loseNextResponse({
+    path: "/v1/capabilities",
+    matches: (body) => {
+      announced.push(String((JSON.parse(body) as { clientVersion: unknown }).clientVersion));
+      return false;
+    },
+  });
+  return announced;
+}
+
+async function installedCopy(): Promise<{ executable: string; project: string; state: string }> {
   scratch = await realpath(await mkdtemp(join(tmpdir(), "marea-installed-client-")));
   securePrivatePath(scratch, 0o700);
   const programs = join(scratch, "programs");
   const project = join(scratch, "project");
-  const state = join(scratch, "state");
   await Promise.all([mkdir(programs), mkdir(project)]);
   const executable = join(programs, process.platform === "win32" ? "marea.exe" : "marea");
   await copyFile(executableSource, executable);
+  return { executable, project, state: join(scratch, "state") };
+}
+
+afterEach(async () => {
+  const started = processes.splice(0);
+  for (const terminal of started) terminal.kill();
+  try {
+    await Promise.all(started.map((terminal) => terminal.waitForExit(5_000)));
+  } finally {
+    await harness?.close();
+    harness = undefined;
+    if (scratch) await rm(scratch, { recursive: true, force: true });
+    scratch = undefined;
+  }
+});
+
+it("runs the distributed client through login, approval, checkpoint and reconnect without replay", async () => {
+  const { executable, project, state } = await installedCopy();
+  const release = releaseVersion(executable);
   const binaryHash = digest(await readFile(executable));
   expect(binaryHash).toBe(digest(await readFile(executableSource)));
   const startedAt = Date.now();
@@ -95,8 +131,11 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
     observeHttpResponse: (path, status) => {
       requests.push({ path, status, atMs: Date.now() - startedAt });
     },
+    // A server of the same release: the version prompt must not appear.
+    serverVersion: release,
   });
   const value = harness;
+  const announced = observeAnnouncedVersions(value);
   const providerEvents: string[] = [];
   const stream = value.provider.stream.bind(value.provider);
   vi.spyOn(value.provider, "stream").mockImplementation(async function* (request, cancellation) {
@@ -117,6 +156,8 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   };
   const first = launch();
   await first.waitForText("How would you like to continue?");
+  expect(announced).toEqual([release]);
+  expect(flat(first.transcript())).not.toContain(mismatchNotice);
   first.write("\r");
   const account = ACCEPTANCE_SESSION.ada;
   await first.waitForText("Username");
@@ -218,4 +259,27 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
       effects: ledger.effects.length,
     }),
   );
+});
+
+it("asks before using a server of a different release and leaves by default", async () => {
+  const { executable, project, state } = await installedCopy();
+  const release = releaseVersion(executable);
+  harness = await createAcceptanceHarness({
+    initialTime: new Date().toISOString(),
+    serverVersion: `${release}.other`,
+  });
+  const announced = observeAnnouncedVersions(harness);
+  const terminal = launchInstalledClient(executable, project, harness.http.baseUrl, state);
+  processes.push(terminal);
+  await terminal.waitForText("No, exit", operationTimeout);
+  const notice = flat(terminal.transcript());
+  expect(notice).toContain(mismatchNotice);
+  expect(notice).toContain(`(${release})`);
+  expect(notice).toContain(`(${release}.other)`);
+  expect(announced).toEqual([release]);
+  terminal.write("\r");
+  await terminal.waitForText("You did not accept the risk", operationTimeout);
+  const exit = await terminal.waitForExit(15_000);
+  expect(exit.exitCode).not.toBe(0);
+  expect(terminal.transcript()).not.toContain("Username");
 });

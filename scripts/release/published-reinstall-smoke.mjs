@@ -172,6 +172,21 @@ async function installStudent() {
     });
     assert.equal(installed.status, 0, installed.stderr);
     assert.equal(installed.stdout.trim(), version);
+    // The launcher answers -v itself; the published binary must report the same release.
+    const binary = join(studentRoot, "programs", `student-${version}`, "marea");
+    for (const [command, flag] of [
+      [student, "-v"],
+      [binary, "--version"],
+      [binary, "-v"],
+    ]) {
+      const reported = spawnSync(command, [flag], {
+        env: environment,
+        encoding: "utf8",
+        timeout: 120000,
+      });
+      assert.equal(reported.status, 0, reported.stderr);
+      assert.equal(reported.stdout.trim(), version, `${command} ${flag}`);
+    }
     const removed = spawnSync(student, ["uninstall", "--yes"], {
       env: environment,
       encoding: "utf8",

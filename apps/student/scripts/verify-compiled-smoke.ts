@@ -50,7 +50,7 @@ try {
     "compile",
   );
   const environment = { ...process.env, LANG: "en-US", MAREA_SERVER_URL: "" };
-  requireResult(run([executablePath, "--version"], environment), 0, "0.2.0");
+  requireResult(run([executablePath, "--version"], environment), 0, "0.0.0-dev");
   requireResult(run([executablePath, "--help"], environment), 0, "Usage: marea");
   requireResult(
     run([executablePath], environment),

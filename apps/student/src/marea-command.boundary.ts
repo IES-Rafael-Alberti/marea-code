@@ -45,6 +45,7 @@ import {
 } from "./conversation-interface.js";
 import type { PendingStudentTurn } from "./contracts.js";
 import { createVersionGate } from "./version-gate.boundary.js";
+import { studentClientVersion } from "./client-version.js";
 import type { StudentVersionAcceptanceStore } from "./version-acceptance.boundary.js";
 import { createParityCopy } from "./parity-copy.js";
 import { readProjectGitContext, type ProjectGitContext } from "./project-git.boundary.js";
@@ -59,7 +60,8 @@ import type {
   StudentUsagePreferenceStore,
 } from "./interface-locale.boundary.js";
 
-export const MAREA_CLIENT_VERSION = "0.2.0";
+/** The release version injected by the release build, or the development version. */
+export const MAREA_CLIENT_VERSION = studentClientVersion();
 
 export interface MareaCommandOutput {
   readonly error: (text: string) => void;
