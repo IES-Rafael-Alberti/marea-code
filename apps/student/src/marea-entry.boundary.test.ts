@@ -27,7 +27,7 @@ describe("marea executable entry", () => {
       const entry = await import("./marea-entry.boundary.js");
       entry.createProcessCommandOutput().error("safe error\n");
 
-      expect(write).toHaveBeenCalledWith("0.2.0\n");
+      expect(write).toHaveBeenCalledWith("0.0.0-dev\n");
       expect(writeError).toHaveBeenCalledWith("safe error\n");
       expect(process.exitCode).toBe(0);
     },

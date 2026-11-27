@@ -49,7 +49,7 @@ beforeEach(() => {
         ? "a".repeat(40)
         : args[0] === "ls-files"
           ? "tracked\0deleted\0new\0"
-          : "",
+          : reportedVersion(args),
     stderr: "",
   }));
 });
@@ -59,6 +59,11 @@ afterEach(() => {
   Object.defineProperty(process, "platform", platform);
   Object.defineProperty(process, "arch", arch);
 });
+
+/** What a compiled student built for release 1.2.3 prints for its version flags. */
+export function reportedVersion(args: readonly string[]): string {
+  return ["--version", "-v"].includes(String(args[0])) ? "1.2.3\n" : "";
+}
 
 export function buildMocks() {
   return mocks;
@@ -75,8 +80,9 @@ export function expectStudentSmoke(executable: string): void {
     encoding: "utf8",
     env: { ...process.env, MAREA_STATE_HOME: "/isolated/state" },
   };
-  expect(mocks.spawnSync.mock.calls.slice(-2)).toEqual([
+  expect(mocks.spawnSync.mock.calls.slice(-3)).toEqual([
     [executable, ["--lang", "en", "--help"], options],
     [executable, ["--version"], options],
+    [executable, ["-v"], options],
   ]);
 }

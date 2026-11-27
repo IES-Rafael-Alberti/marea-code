@@ -50,6 +50,13 @@ export function buildCandidate(argv: readonly string[]): string {
       ["bun", "install", "--frozen-lockfile", "--ignore-scripts", "--backend", "copyfile"],
       workspace,
     );
+    // The student reports the release it belongs to. A generated module, unlike a quoted
+    // --define value, survives the Windows PowerShell argument passing used by buildCommand.
+    if (selected === "student")
+      writeFileSync(
+        join(workspace, "apps/student/src/release-version.ts"),
+        `export const INJECTED_RELEASE_VERSION: string | undefined = ${JSON.stringify(version)};\n`,
+      );
     const suffix = process.platform === "win32" ? ".exe" : "";
     const entries =
       selected === "student"
@@ -252,7 +259,11 @@ export function buildCandidate(argv: readonly string[]): string {
     withBuildWorkspace(process.cwd(), [], (smokeRoot) => {
       const environment = { ...process.env, MAREA_STATE_HOME: join(smokeRoot, "state") };
       run([executable, "--lang", "en", "--help"], smokeRoot, environment);
-      run([executable, "--version"], smokeRoot, environment);
+      const reported = run([executable, "--version"], smokeRoot, environment).trim();
+      if (reported !== version)
+        throw new Error(`Student binary reports ${reported} instead of ${version}`);
+      if (run([executable, "-v"], smokeRoot, environment).trim() !== version)
+        throw new Error("Student binary -v differs from --version");
     });
   }
   return built;

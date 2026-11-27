@@ -72,6 +72,16 @@ describe("client version of each run on the teacher dashboard", () => {
     ]);
   });
 
+  it.each([
+    ["0.0.0-dev", "0.1.0-preview.50"],
+    ["0.1.0-preview.50", "0.0.0-dev"],
+  ])("never marks a development build: client %s, server %s", (clientVersion, serverVersion) => {
+    services.runs.open(student, { ...newRun("development"), clientVersion });
+    expect(mismatches(database, serverVersion).map((run) => run.versionMismatch)).toEqual([
+      undefined,
+    ]);
+  });
+
   it("follows the client that resumes the session and never reaches the student's history", () => {
     const first = services.runs.open(student, { ...newRun("resume"), clientVersion: "0.1.0" });
     expect(mismatches(database, "0.2.0")[0]?.versionMismatch?.clientVersion).toBe("0.1.0");

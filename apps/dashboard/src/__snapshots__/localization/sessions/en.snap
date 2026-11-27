@@ -48,6 +48,7 @@
   "heading": "Sessions",
   "interrupted": "Response interrupted",
   "latest": "Go to latest activity",
+  "legacyClientVersion": "Preview 49 or earlier",
   "levelRaised": "Levels raised",
   "listed": "listed",
   "loading": "Connecting…",

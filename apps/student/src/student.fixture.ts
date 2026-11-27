@@ -439,6 +439,7 @@ export function createFixtureController(
     readonly studentInterface?: FixtureInterface;
     readonly workspace?: FixtureWorkspace;
     readonly versionGate?: SessionControllerOptions["versionGate"];
+    readonly clientVersion?: string;
   } = {},
 ) {
   const ids = new FixtureIds();
@@ -468,7 +469,7 @@ export function createFixtureController(
         ? {}
         : { externalAuthorization: options.externalAuthorization }),
       agent,
-      clientVersion: "1.0.0",
+      clientVersion: options.clientVersion ?? "1.0.0",
       clock: FIXTURE_CLOCK,
       credentials,
       ids,

@@ -16,7 +16,10 @@ export function VersionMismatch({
   return (
     <small className="session-version">
       {messages.clientVersionDiffers
-        .replace("{client}", () => clientVersion)
+        .replace("{client}", () =>
+          // Every student binary up to preview 49 announced this constant instead of its release.
+          clientVersion === "0.2.0" ? messages.legacyClientVersion : clientVersion,
+        )
         .replace("{server}", () => serverVersion)}
     </small>
   );

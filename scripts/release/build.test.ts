@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { expect, it, vi } from "vitest";
-import { buildMocks, expectStudentSmoke } from "./build.fixture.js";
+import { buildMocks, expectStudentSmoke, reportedVersion } from "./build.fixture.js";
 import { buildCandidate } from "./build.js";
 import { collectDependencyNotices } from "./notices.boundary.js";
 const mocks = buildMocks();
@@ -369,7 +369,7 @@ it("records dirty and clean source distinctly, normalizes git whitespace and ret
             ? status
             : args[0] === "ls-files"
               ? "tracked\0deleted\0new\0"
-              : "",
+              : reportedVersion(args),
       stderr: "",
     }));
     const root = buildCandidate(["1.2.3", "student"]);

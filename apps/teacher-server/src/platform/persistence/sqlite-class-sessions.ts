@@ -2,6 +2,7 @@ import {
   ClassSessionItemSchema,
   RunIdSchema,
   sessionSearchMatches,
+  softwareVersionsDiffer,
   type ClassSessionsQuery,
 } from "@marea/protocol";
 import type { SqliteApplicationDatabase, SqliteRow } from "@marea/sqlite-storage";
@@ -57,10 +58,14 @@ const filteredRuns = (progress: string) => `SELECT * FROM (${reviewedRuns(progre
       OR (?8 = 'without' AND listed.criteria_count > 0 AND listed.evidenced_count = 0))
   ORDER BY listed.opened_at DESC, listed.id DESC LIMIT ?9`;
 
-/** Marks a run opened by a client of another software version than this server's. */
+/** Marks a run opened by a client of another release than this server's; never a dev build. */
 function versionMismatch(row: SqliteRow, serverVersion: string | undefined) {
   const clientVersion = rowNullableText(row, "client_version");
-  if (serverVersion === undefined || clientVersion === null || clientVersion === serverVersion)
+  if (
+    serverVersion === undefined ||
+    clientVersion === null ||
+    !softwareVersionsDiffer(clientVersion, serverVersion)
+  )
     return {};
   return { versionMismatch: { clientVersion, serverVersion } };
 }
