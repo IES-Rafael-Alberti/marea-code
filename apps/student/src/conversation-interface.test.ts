@@ -20,6 +20,7 @@ import {
 function conversation(): ConversationController {
   return {
     appendAssistantText: vi.fn(() => true),
+    restartAssistantText: vi.fn(() => true),
     cancel: vi.fn(() => true),
     complete: vi.fn(() => true),
     dispose: vi.fn(() => true),
@@ -101,6 +102,13 @@ describe("conversation student interface", () => {
       "message:one",
       "attempt:one",
     );
+    studentInterface.present({
+      attemptId: "attempt:one",
+      messageId: "message:one",
+      discardedLength: 4,
+      type: "assistant-text-restarted",
+    });
+    expect(controller.restartAssistantText).toHaveBeenCalledWith(4, "message:one", "attempt:one");
     expect(controller.complete).not.toHaveBeenCalled();
     expect(controller.cancel).not.toHaveBeenCalled();
     const completedEvent = {
@@ -192,6 +200,7 @@ describe("conversation student interface", () => {
   it("adapts the exported TUI session surface without requiring its private controller", async () => {
     const session = {
       appendAssistantText: vi.fn(() => true),
+      restartAssistantText: vi.fn(() => true),
       cancel: vi.fn(() => true),
       complete: vi.fn(() => true),
       fail: vi.fn(() => true),
@@ -209,6 +218,9 @@ describe("conversation student interface", () => {
     expect(conversation.reportUsage(usage)).toBe(true);
     expect(session.reportUsage).toHaveBeenCalledWith(usage);
     expect(conversation.appendAssistantText("Partial")).toBe(true);
+    expect(conversation.restartAssistantText(7)).toBe(true);
+    expect(session.restartAssistantText).toHaveBeenCalledWith(7);
+    expect(session.restartAssistantText.mock.contexts[0]).toBe(session);
     expect(conversation.complete()).toBe(true);
     expect(conversation.cancel()).toBe(true);
     await expect(

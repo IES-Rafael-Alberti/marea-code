@@ -43,7 +43,7 @@ const controlledWrite = {
 };
 
 describe("failed DeepAgents turn recovery", () => {
-  it("replays partial provider text on the same message after a durable restart", async () => {
+  it("regenerates partial provider text on the same message after a durable restart", async () => {
     const gateway = new ScriptedGateway(
       textResponse("prior answer"),
       partialTextFailureResponse(),
@@ -94,8 +94,9 @@ describe("failed DeepAgents turn recovery", () => {
           ),
         ),
       ).resolves.toEqual([
-        { type: "assistant-text-delta", text: "tial" },
-        { type: "assistant-text-delta", text: " recovered" },
+        // The interrupted model call is made again: the text the student holds is dropped.
+        { type: "assistant-text-restarted", discardedLength: 3 },
+        { type: "assistant-text-delta", text: "partial recovered" },
         { type: "turn-completed" },
       ]);
     } finally {
@@ -162,7 +163,8 @@ describe("failed DeepAgents turn recovery", () => {
           ),
         ),
       ).resolves.toEqual([
-        { type: "assistant-text-delta", text: " saved" },
+        { type: "assistant-text-restarted", discardedLength: 7 },
+        { type: "assistant-text-delta", text: "partial saved" },
         { type: "turn-completed" },
       ]);
       expect(execute).toHaveBeenCalledOnce();
@@ -301,7 +303,8 @@ describe("failed DeepAgents turn recovery", () => {
     await expectFailedMessage(runtimeValue, "provider-recovery", "message:failed");
     await expectFreshMessage(runtimeValue, "provider-recovery");
     expect(execute).not.toHaveBeenCalled();
-    expect(studentMessages(gateway, 2)).toEqual(["first", "after"]);
+    // The failed question stays in the conversation; its partial answer does not.
+    expect(studentMessages(gateway, 2)).toEqual(["first", "failed", "after"]);
     expect(gateway.requests[2]?.messages).toContainEqual({
       role: "assistant",
       content: "prior answer",
@@ -321,6 +324,7 @@ describe("failed DeepAgents turn recovery", () => {
 
     expect(execute).not.toHaveBeenCalled();
     expect(gateway.requests[1]?.messages.filter((message) => message.role !== "system")).toEqual([
+      { role: "student", content: "failed" },
       { role: "student", content: "after" },
     ]);
   });

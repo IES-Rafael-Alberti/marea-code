@@ -16,6 +16,7 @@ describe("conversation command helpers", () => {
     const approval: ConversationApproval = { path: "notes.md", summary: "Create notes" };
     const notReady = "The conversation interface is not ready.";
     expect(() => bridge.appendAssistantText("before")).toThrow(notReady);
+    expect(() => bridge.restartAssistantText(1)).toThrow(notReady);
     expect(() => bridge.cancel()).toThrow(notReady);
     expect(() => bridge.complete()).toThrow(notReady);
     expect(() => bridge.requestApproval(approval)).toThrow(notReady);
@@ -26,6 +27,7 @@ describe("conversation command helpers", () => {
       bridge.toolFinished({ callId: "call:1", failed: false, result: "content" }),
     ).toThrow(notReady);
     const appendAssistantText = vi.fn(() => true);
+    const restartAssistantText = vi.fn(() => true);
     const cancel = vi.fn(() => false);
     const complete = vi.fn(() => true);
     const requestApproval = vi.fn(() => Promise.resolve("rejected" as const));
@@ -33,6 +35,7 @@ describe("conversation command helpers", () => {
     const toolStarted = vi.fn(() => true);
     const target: StudentConversationPort = {
       appendAssistantText,
+      restartAssistantText,
       cancel,
       complete,
       requestApproval,
@@ -73,6 +76,8 @@ describe("conversation command helpers", () => {
       ),
     ).toBe(true);
     expect(appendAssistantText.mock.calls.at(-1)).toEqual(["active", "message:one", "attempt:one"]);
+    expect(bridge.restartAssistantText(3, "message:one", "attempt:one")).toBe(true);
+    expect(restartAssistantText.mock.calls.at(-1)).toEqual([3, "message:one", "attempt:one"]);
     expect(complete.mock.calls.at(-1)).toEqual(["message:one", "attempt:one"]);
     expect(requestApproval.mock.calls.at(-1)).toEqual([approval, "message:one", "attempt:one"]);
     expect(toolStarted.mock.calls.at(-1)).toEqual([

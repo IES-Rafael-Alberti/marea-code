@@ -143,6 +143,11 @@ export interface ToolFinishedEvent {
 
 export type AgentEvent =
   | { readonly type: "assistant-text-delta"; readonly text: string }
+  /**
+   * The model call that produced the last `discardedLength` characters the caller holds was
+   * interrupted and is being made again: drop them before applying the following deltas.
+   */
+  | { readonly type: "assistant-text-restarted"; readonly discardedLength: number }
   | ToolStartedEvent
   | ToolFinishedEvent
   | {

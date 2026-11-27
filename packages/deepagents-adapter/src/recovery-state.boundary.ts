@@ -14,6 +14,7 @@ import type {
   CheckpointTurnRecord,
   RuntimeCheckpointSaver,
 } from "./durable-checkpoint.boundary.js";
+import { commonPrefixLength, isKnownPrefix, type SupersededText } from "./superseded-text.js";
 
 const graphStateSchema = z
   .object({
@@ -37,7 +38,9 @@ export interface RecoveredGraphTurn {
   readonly assistantText: string;
   readonly checkpointConfig: RunnableConfig;
   readonly events: readonly AgentEvent[];
+  /** Journaled text of a model call the checkpoint does not hold: it is made again. */
   readonly replayText: string;
+  readonly superseded: SupersededText | null;
   readonly type: AgentRecovery["type"];
 }
 
@@ -78,6 +81,7 @@ export async function recoverGraphTurn(
       checkpointConfig,
       events: [...reconciled.events, approval],
       replayText: reconciled.replayText,
+      superseded: supersededIn(recorded),
     };
   }
   if (parsed.data.next.length > 0 || parsed.data.tasks.length > 0) {
@@ -88,6 +92,7 @@ export async function recoverGraphTurn(
       checkpointConfig,
       events: reconciled.events,
       replayText: reconciled.replayText,
+      superseded: supersededIn(recorded),
     };
   }
   const completed = { type: "turn-completed" as const };
@@ -98,6 +103,7 @@ export async function recoverGraphTurn(
     checkpointConfig,
     events: [...reconciled.events, completed],
     replayText: "",
+    superseded: supersededIn(recorded),
   };
 }
 
@@ -119,6 +125,7 @@ function recoveredFromJournal(
     checkpointConfig: { configurable: { thread_id: sessionId } },
     events: recoveryEvents(recorded.state, assistantEvents, approval),
     replayText: recorded.state === "in-progress" ? assistantTextFor(assistantEvents) : "",
+    superseded: supersededIn(recorded),
     type: recorded.state,
   };
 }
@@ -196,6 +203,10 @@ function approvalEventIn(events: readonly AgentEvent[]): ApprovalEvent | null {
   );
 }
 
+function supersededIn(recorded: CheckpointTurnRecord | null): SupersededText | null {
+  return recorded?.superseded ?? null;
+}
+
 function approvalEventFrom(recorded: CheckpointTurnRecord | null): ApprovalEvent | null {
   return recorded === null ? null : approvalEventIn(recorded.events);
 }
@@ -205,11 +216,13 @@ export function recoveryAfterPrefix(
   persistedAssistantText: string | undefined,
 ): AgentRecovery {
   const prefix = persistedAssistantText ?? "";
-  if (!recovered.assistantText.startsWith(prefix)) {
-    throw invalidReplayPrefix();
-  }
-  let remaining = prefix.length;
-  const events: AgentEvent[] = [];
+  assertKnownPrefix(recovered, prefix);
+  let remaining = commonPrefixLength(prefix, recovered.assistantText);
+  // A caller that stopped before discarding superseded text drops it first.
+  const events: AgentEvent[] =
+    prefix.length > remaining
+      ? [{ type: "assistant-text-restarted", discardedLength: prefix.length - remaining }]
+      : [];
   for (const event of recovered.events) {
     if (event.type !== "assistant-text-delta") {
       events.push(event);
@@ -235,6 +248,21 @@ export function recoveryAfterPrefix(
   }
 }
 
+/** The caller's text must be the durable text, or text it was told to discard. */
+export function assertKnownPrefix(recovered: RecoveredGraphTurn, held: string): void {
+  if (!isKnownPrefix(recovered.assistantText, recovered.superseded, held)) {
+    throw invalidReplayPrefix();
+  }
+}
+
+/** The text that survives when the interrupted model call is made again. */
+export function keptText(recovered: RecoveredGraphTurn): string {
+  return recovered.assistantText.slice(
+    0,
+    recovered.assistantText.length - recovered.replayText.length,
+  );
+}
+
 function eventsAfterPrefix(
   assistantText: string,
   events: readonly AgentEvent[],
@@ -248,6 +276,7 @@ export function recordTurnWith(
   checkpointer: RuntimeCheckpointSaver,
   turn: { readonly sessionId: string; readonly messageId: string },
   assistantText: string,
+  superseded: SupersededText | null = null,
 ) {
   return (
     state: "pending-approval" | "in-progress" | "completed",
@@ -265,6 +294,7 @@ export function recordTurnWith(
     return checkpointer.recordTurn(turn.sessionId, turn.messageId, {
       state,
       events: completeEvents,
+      ...(superseded === null ? {} : { superseded }),
     });
   };
 }

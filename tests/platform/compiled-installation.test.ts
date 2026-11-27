@@ -415,12 +415,17 @@ describe("compiled pilot", () => {
     const beforePartial = tutoring().length;
     await submit(free, "PilotPartialQuestion", async () => (await turnCount()) >= 2);
     await free.waitForText("Retrying the interrupted turn", 120_000);
-    // A retry must continue the shown prefix; a divergent continuation is refused, not replayed.
+    // The retry makes the interrupted model call again: its new answer replaces the partial one.
     await until(
       "the automatic retry to reach the provider",
       () => tutoring().length >= beforePartial + 2,
     );
-    await free.waitForText("could not complete the request", 120_000);
+    await free.waitForText("The answer was cut off; Marea generated it again.", 120_000);
+    await until("the regenerated answer to complete", async () =>
+      ((await studentState())?.run?.turns ?? []).some(
+        (turn) => turn.studentText === "PilotPartialQuestion" && turn.state === "completed",
+      ),
+    );
     await free.waitForQuiet(500);
     expect(tutoring()).toHaveLength(beforePartial + 2);
     expect(

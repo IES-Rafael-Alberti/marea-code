@@ -162,6 +162,10 @@ export type StudentViewEvent =
   | (TurnAttemptIdentity & { readonly type: "thinking" | "skills-loading" })
   | (TurnAttemptIdentity & { readonly type: "assistant-text"; readonly text: string })
   | (TurnAttemptIdentity & {
+      readonly type: "assistant-text-restarted";
+      readonly discardedLength: number;
+    })
+  | (TurnAttemptIdentity & {
       readonly type: "tool-started";
       readonly callId: string;
       readonly name: string;
@@ -265,6 +269,8 @@ export interface GuardedWorkspaceWriter {
 export type AgentEvent =
   | (OperationRequest & { readonly type: "operation-approval-required" })
   | { readonly type: "assistant-text-delta"; readonly text: string }
+  /** The last `discardedLength` characters of the turn's text belong to an interrupted answer. */
+  | { readonly type: "assistant-text-restarted"; readonly discardedLength: number }
   | { readonly type: "questions-required"; readonly request: QuestionRequest }
   | ToolStartedEvent
   | ToolFinishedEvent

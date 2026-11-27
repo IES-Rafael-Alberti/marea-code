@@ -7,6 +7,10 @@ it.each([
   ["upstream-contract-changed", "unexpected", copy.failure.actionNotPrepared],
   ["invalid-response", "request-failed", copy.failure.invalidResponse],
   ["empty-response", "request-failed", copy.failure.emptyResponse],
+  ["authentication-failed", "request-failed", copy.failure.modelFailed],
+  ["usage-invalid", "request-failed", copy.failure.modelFailed],
+  ["context-exceeded", "request-failed", copy.failure.modelFailed],
+  ["context-unavailable", "request-failed", copy.failure.modelFailed],
   ["other-code", "request-failed", copy.failure.requestFailed],
 ] as const)("tells the student what to do for %s, in their language", (code, kind, message) => {
   const view = createPresentation(context, copy, vi.fn());

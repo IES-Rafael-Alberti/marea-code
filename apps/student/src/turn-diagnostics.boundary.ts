@@ -37,6 +37,12 @@ function chain(error: unknown): readonly unknown[] {
 }
 
 function exception(value: unknown): DiagnosticException {
+  // The gateway's code and message say which provider check ended the answer.
+  if (value instanceof ModelStreamError)
+    return {
+      name: value.name,
+      message: `${value.streamCode}: ${value.streamMessage}`.slice(0, MAX_MESSAGE),
+    };
   if (value instanceof Error)
     return {
       name: value.name.slice(0, MAX_NAME) || "Error",

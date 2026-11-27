@@ -17,6 +17,7 @@ export function createParityCopy(translator: Translator): ParityCopy {
       actionNotPrepared: translator.t("student.tui.failure.action-not-prepared"),
       emptyResponse: translator.t("student.tui.failure.empty-response"),
       invalidResponse: translator.t("student.tui.failure.invalid-response"),
+      modelFailed: translator.t("student.tui.failure.model-failed"),
       logLocation: translator.t("student.tui.failure.log-location"),
       sessionUnavailable: translator.t("errors.run.unavailable"),
       sessionEndedByTeacher: translator.t("student.tui.failure.session-ended-by-teacher"),
@@ -83,6 +84,7 @@ export function createParityCopy(translator: Translator): ParityCopy {
       outputsCompact: translator.t("student.tui.notice.outputs-compact"),
       outputsDetailed: translator.t("student.tui.notice.outputs-detailed"),
       retrying: translator.t("student.tui.notice.retrying"),
+      regenerated: translator.t("student.tui.notice.regenerated"),
     },
     question: {
       cancelled: translator.t("student.tui.question.cancelled"),

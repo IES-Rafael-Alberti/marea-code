@@ -110,6 +110,8 @@ interface NoticeCopy {
   readonly outputsCompact: string;
   readonly outputsDetailed: string;
   readonly retrying: string;
+  /** An interrupted answer was replaced by a newly generated one. */
+  readonly regenerated: string;
 }
 
 interface FailureCopy {
@@ -118,6 +120,8 @@ interface FailureCopy {
   /** The model's response could not be read even after retrying. */
   readonly emptyResponse: string;
   readonly invalidResponse: string;
+  /** The AI model failed to answer; never blamed on the teacher's server. */
+  readonly modelFailed: string;
   /** Takes `{{path}}`. */
   readonly logLocation: string;
   readonly deadlineExceeded: string;

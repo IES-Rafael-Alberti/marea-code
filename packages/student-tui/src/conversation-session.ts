@@ -118,6 +118,11 @@ export function createConversationTuiSession(
     },
     appendAssistantText: (text: string, messageId?: string, attemptId?: ConversationAttemptId) =>
       active(() => controller.appendAssistantText(text, messageId, attemptId)),
+    restartAssistantText: (
+      discardedLength: number,
+      messageId?: string,
+      attemptId?: ConversationAttemptId,
+    ) => active(() => controller.restartAssistantText(discardedLength, messageId, attemptId)),
     cancel: (messageId?: string, attemptId?: ConversationAttemptId) =>
       active(() => controller.cancel(messageId, attemptId)),
     close: () => finish("closed"),

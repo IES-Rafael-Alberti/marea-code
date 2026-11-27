@@ -37,6 +37,7 @@ import type {
 } from "./contracts.js";
 import { StoredTurnFailure } from "./contracts.js";
 import { attemptFailure } from "./turn-failure.boundary.js";
+import { appendText, restartText } from "./turn-text.js";
 import { LocalSession } from "./local-session.js";
 type WriteApprovalEvent = Extract<AgentEvent, { readonly type: "write-approval-required" }>;
 type ApprovalRequest = Omit<WriteApprovalEvent, "type">;
@@ -203,7 +204,6 @@ export class SessionTurnExecutor {
     allowWrites = true,
     privateCalls = new Set<string>(),
   ): Promise<{ readonly state: "completed" | "cancelled"; readonly text: string }> {
-    const { messageId } = identity;
     const text = [initialText];
     const progress = new TurnProgress(this.options, identity);
     let resume: AsyncIterable<AgentEvent> | null = null;
@@ -216,14 +216,9 @@ export class SessionTurnExecutor {
         },
       )) {
         if (event.type === "assistant-text-delta") {
-          text.push(event.text);
-          await this.options.localSession.updateTurnText(messageId, text.join(""));
-          await progress.publish(text.join(""));
-          this.options.studentInterface.present({
-            ...identity,
-            type: "assistant-text",
-            text: event.text,
-          });
+          await appendText(this.options, identity, text, event.text, progress);
+        } else if (event.type === "assistant-text-restarted") {
+          await restartText(this.options, identity, text, event.discardedLength, progress);
         } else if (event.type === "tool-started" || event.type === "tool-finished") {
           presentTool(this.options, identity, event);
         } else if (event.type !== "turn-cancelled" && event.type !== "turn-completed") {
@@ -293,6 +288,7 @@ export class SessionTurnExecutor {
       {
         readonly type:
           | "assistant-text-delta"
+          | "assistant-text-restarted"
           | "tool-started"
           | "tool-finished"
           | "turn-cancelled"

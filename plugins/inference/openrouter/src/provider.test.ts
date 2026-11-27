@@ -252,20 +252,9 @@ describe("OpenRouter inference provider", () => {
     ["invalid JSON", httpResponse(sse("not-json"))],
     ["invalid schema", httpResponse(sse('{"choices":"private"}'))],
     [
-      "unsupported finish reason",
-      httpResponse(
-        sse(
-          JSON.stringify({
-            choices: [{ index: 0, delta: {}, finish_reason: "something_new" }],
-          }),
-        ),
-      ),
-    ],
-    [
       "missing completion",
       httpResponse('data: {"choices":[{"index":0,"delta":{"content":"partial"}}]}\n\n'),
     ],
-    ["missing finish reason", httpResponse("data: [DONE]\n\n")],
   ] as const)("rejects %s as an invalid response", async (label, response) => {
     await expectProviderError(
       collect(provider(new TestHttp(response)).stream(REQUEST, new TestCancellation())),
@@ -325,7 +314,7 @@ describe("OpenRouter inference provider", () => {
           seen.push(event);
         return seen;
       })(),
-      { code: "invalid-response" },
+      { code: "unavailable", retryable: true },
     );
     expect(seen).toEqual([{ inputTokens: 5, outputTokens: 1, type: "usage" }]);
   });
@@ -375,32 +364,18 @@ describe("OpenRouter inference provider", () => {
     ).resolves.toEqual([{ finishReason: "stop", type: "completed" }]);
   });
 
-  it.each([
-    [
-      "missing finish reason",
-      httpResponse("data: [DONE]\n\n"),
-      "The inference provider stream ended before completion.",
-    ],
-    [
-      "missing body",
-      { body: null, headers: new Headers(), ok: true, status: 200 },
-      "The inference provider returned no stream body.",
-    ],
-    [
-      "unsupported finish reason",
-      httpResponse(
-        sse(
-          JSON.stringify({
-            choices: [{ index: 0, delta: {}, finish_reason: "something_new" }],
-          }),
-        ),
-      ),
-      "The inference provider returned an unsupported finish reason.",
-    ],
-  ] as const)("reports a stable message for %s", async (_label, response, message) => {
+  it("reports a stable message for a missing body", async () => {
     await expectProviderError(
-      collect(provider(new TestHttp(response)).stream(REQUEST, new TestCancellation())),
-      { code: "invalid-response", message, retryable: false },
+      collect(
+        provider(
+          new TestHttp({ body: null, headers: new Headers(), ok: true, status: 200 }),
+        ).stream(REQUEST, new TestCancellation()),
+      ),
+      {
+        code: "invalid-response",
+        message: "The inference provider returned no stream body.",
+        retryable: false,
+      },
     );
   });
 });

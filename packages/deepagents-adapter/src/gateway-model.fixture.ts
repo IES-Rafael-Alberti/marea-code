@@ -138,6 +138,20 @@ export function partialTextFailureResponse(text = "partial"): GatewayScript {
     ]);
 }
 
+/** Text already streamed, then a chunk the provider plugin could not read. */
+export function midStreamInvalidResponse(text: string): GatewayScript {
+  return (request) =>
+    streamOf([
+      gatewayChunk(request, 0, "started"),
+      gatewayChunk(request, 1, "text-delta", { delta: text }),
+      gatewayChunk(request, 2, "failed", {
+        code: "invalid-response",
+        message: "The inference provider returned an invalid stream chunk.",
+        retryable: false,
+      }),
+    ]);
+}
+
 export function failedResponse(): GatewayScript {
   return (request) =>
     streamOf([

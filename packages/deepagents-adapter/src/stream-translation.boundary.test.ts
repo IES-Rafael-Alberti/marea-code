@@ -119,49 +119,23 @@ describe("stream translation boundary", () => {
     ]);
   });
 
-  it("rejects provider text that diverges from the durable replay prefix", async () => {
-    const iterator = translateRun(
-      () =>
-        Promise.resolve({
-          messages: messages(),
-          output: Promise.resolve({ messages: [] }),
-        }),
-      new AbortController().signal,
-      undefined,
-      undefined,
-      undefined,
-      "persisted",
-    );
-
-    await expect(iterator.next()).rejects.toMatchObject({
-      code: "invalid-replay-prefix",
-    });
-  });
-
-  it("consumes a durable replay prefix across provider chunks", async () => {
+  it("passes a regenerated answer through without comparing it to earlier text", async () => {
     const events = await translateText(
       messageStream({ text: textStream("per", "sisted", " tail") }),
-      "persisted",
     );
 
     expect(events).toEqual([
+      { type: "assistant-text-delta", text: "per" },
+      { type: "assistant-text-delta", text: "sisted" },
       { type: "assistant-text-delta", text: " tail" },
       { type: "turn-completed" },
     ]);
   });
 
-  it("rejects an unconsumed durable replay prefix", async () => {
-    await expect(translateText(messageStream(), "persisted")).rejects.toMatchObject({
-      code: "invalid-replay-prefix",
-    });
-  });
-
   it("preserves adapter errors raised by the recovery recorder", async () => {
     const error = new AgentAdapterError("invalid-checkpoint-state", "synthetic recorder failure");
 
-    await expect(translateText(messageStream(), "", () => Promise.reject(error))).rejects.toBe(
-      error,
-    );
+    await expect(translateText(messageStream(), () => Promise.reject(error))).rejects.toBe(error);
   });
 
   it("records a submitted approval with the completed turn", async () => {
@@ -210,7 +184,6 @@ describe("stream translation boundary", () => {
 
 function translateText(
   messageValues: AsyncIterable<{ readonly text: AsyncIterable<string> }>,
-  replayText: string,
   recordTurn?: Parameters<typeof translateRun>[3],
 ) {
   return collect(
@@ -223,8 +196,6 @@ function translateText(
       new AbortController().signal,
       undefined,
       recordTurn,
-      undefined,
-      replayText,
     ),
   );
 }
@@ -266,7 +237,6 @@ it("drains tools executed while awaiting the next model message before its answe
       undefined,
       undefined,
       undefined,
-      "",
       () => pending.splice(0),
     ),
   );

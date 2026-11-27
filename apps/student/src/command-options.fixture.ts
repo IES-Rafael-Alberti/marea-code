@@ -31,6 +31,7 @@ export function conversationSession(
   return {
     withTerminalSuspended: <T>(operation: () => Promise<T>) => operation(),
     appendAssistantText: vi.fn(() => true),
+    restartAssistantText: vi.fn(() => true),
     cancel: vi.fn(() => true),
     close: vi.fn(() => true),
     complete: vi.fn(() => true),

@@ -54,6 +54,7 @@ function expectedCopy(translator: Translator) {
       actionNotPrepared: text("student.tui.failure.action-not-prepared"),
       emptyResponse: text("student.tui.failure.empty-response"),
       invalidResponse: text("student.tui.failure.invalid-response"),
+      modelFailed: text("student.tui.failure.model-failed"),
       logLocation: text("student.tui.failure.log-location"),
       sessionUnavailable: text("errors.run.unavailable"),
       sessionEndedByTeacher: text("student.tui.failure.session-ended-by-teacher"),
@@ -78,6 +79,7 @@ function expectedCopy(translator: Translator) {
       outputsCompact: text("student.tui.notice.outputs-compact"),
       outputsDetailed: text("student.tui.notice.outputs-detailed"),
       retrying: text("student.tui.notice.retrying"),
+      regenerated: text("student.tui.notice.regenerated"),
     },
     preparing: text("student.tui.status.preparing"),
     question: {

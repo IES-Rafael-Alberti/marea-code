@@ -83,7 +83,12 @@ describe("conversation TUI session", () => {
     const target = createTarget();
 
     expect(target.binding.handleAction({ type: "submit", text: "Help" })).toBe(true);
-    expect(target.binding.session.appendAssistantText("Working")).toBe(true);
+    expect(target.binding.session.appendAssistantText("Working on it")).toBe(true);
+    expect(target.binding.session.restartAssistantText(6)).toBe(true);
+    expect(target.binding.session.snapshot().messages.at(-1)).toEqual({
+      author: "marea",
+      text: "Working",
+    });
     const approval = target.binding.session.requestApproval({
       path: "notes.txt",
       summary: "Create notes",
@@ -166,6 +171,7 @@ describe("conversation TUI session", () => {
     expect(target.binding.handleAction({ type: "exit" })).toBe(true);
     expect(target.binding.handleAction({ type: "exit" })).toBe(false);
     expect(target.binding.session.appendAssistantText("late")).toBe(false);
+    expect(target.binding.session.restartAssistantText(1)).toBe(false);
     expect(target.binding.session.complete()).toBe(false);
     expect(target.binding.session.fail()).toBe(false);
     await expect(

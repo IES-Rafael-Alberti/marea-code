@@ -139,6 +139,27 @@ export function finishedTools(transcript: Transcript): readonly ToolEntry[] {
   );
 }
 
+/**
+ * Removes the last `length` characters of assistant text, newest first. Notices and failure
+ * cards in between stay; anything else ends the answer being removed.
+ */
+export function withoutAssistantTail(transcript: Transcript, length: number): Transcript {
+  let remaining = length;
+  const kept: TranscriptEntry[] = [];
+  for (const entry of [...transcript].reverse()) {
+    if (remaining > 0 && entry.kind === "assistant") {
+      const removed = Math.min(remaining, entry.text.length);
+      remaining -= removed;
+      const text = entry.text.slice(0, entry.text.length - removed);
+      if (text.length > 0) kept.unshift({ ...entry, text });
+      continue;
+    }
+    if (entry.kind !== "notice" && entry.kind !== "error") remaining = 0;
+    kept.unshift(entry);
+  }
+  return kept;
+}
+
 /** Takes back every retry offer so the same checkpoint is not resumed twice. */
 export function withdrawRetryOffers(transcript: Transcript): Transcript {
   return transcript.map((entry) =>

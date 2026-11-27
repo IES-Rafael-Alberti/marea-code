@@ -2,6 +2,7 @@ import { RequiredSkillContext } from "./required-skill-context.js";
 import { deniesWrite, socraticOptions } from "./operation-mediator.js";
 import { OperationMediator } from "./operation-mediator.js";
 import { rejectionReason } from "./rejection-reason.js";
+import { textAfter } from "./turn-text.js";
 import { writeRequestProblem, type WriteRequest } from "./write-request.js";
 import { parseApprovalId, parseWriteRequest, StudentAgentBridgeError } from "./bridge-parsing.js";
 export { StudentAgentBridgeError } from "./bridge-parsing.js";
@@ -428,8 +429,8 @@ class DeepAgentsStudentRuntime implements AgentRuntime {
         }
         yield approval;
       } else {
-        if (event.type === "assistant-text-delta") {
-          assistantText += event.text;
+        if (event.type === "assistant-text-delta" || event.type === "assistant-text-restarted") {
+          assistantText = textAfter(assistantText, event);
           context.assistantText.set(messageId, assistantText);
         }
         yield event;

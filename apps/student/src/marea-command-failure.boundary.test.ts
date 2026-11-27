@@ -12,6 +12,7 @@ describe("marea command failure classification", () => {
     const session: ConversationTuiSession = {
       withTerminalSuspended: <T>(operation: () => Promise<T>) => operation(),
       appendAssistantText: () => true,
+      restartAssistantText: () => true,
       cancel: () => true,
       close: () => true,
       complete: () => true,
