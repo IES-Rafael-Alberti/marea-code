@@ -44,6 +44,8 @@ import {
   type StudentConversationPort,
 } from "./conversation-interface.js";
 import type { PendingStudentTurn } from "./contracts.js";
+import { createVersionGate } from "./version-gate.boundary.js";
+import type { StudentVersionAcceptanceStore } from "./version-acceptance.boundary.js";
 import { createParityCopy } from "./parity-copy.js";
 import { readProjectGitContext, type ProjectGitContext } from "./project-git.boundary.js";
 import { runInteractiveMarea, type MareaSessionLifecycle } from "./main.js";
@@ -51,6 +53,7 @@ import { createSessionContext, sessionModelAlias } from "./session-context.js";
 import { classifyTurnFailure } from "./turn-failure.boundary.js";
 import { runFeedbackCommand, type FeedbackCommandOptions } from "./feedback-command.boundary.js";
 import { runLogoutCommand, type LogoutCommandOptions } from "./logout-command.boundary.js";
+import type { SavedServerStore } from "./saved-server.boundary.js";
 import type {
   StudentLanguagePreferenceStore,
   StudentUsagePreferenceStore,
@@ -75,6 +78,8 @@ export interface MareaCommandOptions {
   readonly automaticLocale?: Locale;
   readonly languagePreferenceStore?: StudentLanguagePreferenceStore;
   readonly usagePreferenceStore?: StudentUsagePreferenceStore;
+  readonly savedServerStore?: SavedServerStore;
+  readonly versionAcceptanceStore?: StudentVersionAcceptanceStore;
 }
 
 export interface MareaCommandRuntime {
@@ -249,7 +254,11 @@ async function runStudent(
   runtime: MareaCommandRuntime,
   serverUrl: string,
   stage: (value: string) => void,
+  remember: boolean,
 ): Promise<void> {
+  options.output.write(
+    `${options.translator.t("student.cli.connecting", { server: serverUrl })}\n`,
+  );
   let languagePreference: LocalePreference =
     options.languagePreference ?? options.translator.locale;
   let translator = options.translator;
@@ -273,6 +282,11 @@ async function runStudent(
     serverUrl,
     stateDirectory,
     translator,
+    versionGate: createVersionGate({
+      serverUrl,
+      translator,
+      store: options.versionAcceptanceStore,
+    }),
     studentInterface: createConversationStudentInterface({
       authentication,
       withAuthentication: (operation) => session?.withTerminalSuspended(operation) ?? operation(),
@@ -294,6 +308,8 @@ async function runStudent(
     projectDisplayName: projectDisplayNameFromFolder(basename(projectRoot)),
     async waitForExit(): Promise<void> {
       stage("interface");
+      // Only a connection that signed in and opened its run is worth remembering.
+      if (remember) await options.savedServerStore?.save(serverUrl).catch(() => undefined);
       const pendingTurn = await application.controller.pendingTurn();
       const history = await runtime.openHistory?.(stateDirectory);
       session = await runtime.startConversation({
@@ -391,6 +407,7 @@ async function executeSelectedCommand(
   runtime: MareaCommandRuntime,
   feedback: (options: FeedbackCommandOptions) => Promise<number>,
   logout: (options: LogoutCommandOptions) => Promise<number>,
+  explicitServer: string | undefined,
 ): Promise<number> {
   const kind = commandKind(options.arguments);
   if (kind === "help" || kind === "invalid") {
@@ -403,7 +420,12 @@ async function executeSelectedCommand(
     options.output.write(`${MAREA_CLIENT_VERSION}\n`);
     return 0;
   }
-  const serverUrl = options.serverUrl?.trim();
+  // Priority: --server, then the server remembered from a successful sign-in, then the install.
+  const serverUrl = (
+    explicitServer ??
+    (await options.savedServerStore?.load()) ??
+    options.serverUrl
+  )?.trim();
   if (serverUrl === undefined || serverUrl.length === 0) {
     options.output.error(`${options.translator.t("student.cli.server-url-missing")}\n`);
     return 1;
@@ -424,9 +446,15 @@ async function executeSelectedCommand(
         translator: options.translator,
         output: options.output,
       });
-    await runStudent(options, runtime, serverUrl, (value) => {
-      stage = value;
-    });
+    await runStudent(
+      options,
+      runtime,
+      serverUrl,
+      (value) => {
+        stage = value;
+      },
+      explicitServer !== undefined,
+    );
     return 0;
   } catch (error) {
     options.output.error(startupFailure(error, options.translator, stage));
@@ -447,9 +475,10 @@ export async function executeMareaCommand(
     return 2;
   }
   return executeSelectedCommand(
-    { ...options, arguments: parsed.arguments, serverUrl: parsed.serverUrl ?? options.serverUrl },
+    { ...options, arguments: parsed.arguments },
     runtime,
     feedback,
     logout,
+    parsed.serverUrl,
   );
 }

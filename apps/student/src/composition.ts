@@ -27,6 +27,7 @@ import type {
   StudentServer,
 } from "./contracts.js";
 import { createFileStudentStores } from "./filesystem.boundary.js";
+import { auditStudentStatePermissions } from "./student-state-permissions.boundary.js";
 import { createFileClassPreferenceStore } from "./class-preference.boundary.js";
 import { createFileEffectLedger } from "./effect-ledger.boundary.js";
 import { createDeepAgentsStudentRuntime } from "./deepagents-runtime.boundary.js";
@@ -41,6 +42,7 @@ import {
 import { createSystemClock, createSystemIdSource } from "./platform.boundary.js";
 import { StudentSessionController, type StudentStartupStage } from "./session-controller.js";
 import { createCrashSafeWorkspaceWriter } from "./workspace-writer.js";
+import type { VersionGate } from "./version-gate.boundary.js";
 import { RunSkillReader } from "./run-skill-reader.js";
 import { createRuntimeReadTools } from "./runtime-read-tools.js";
 
@@ -66,6 +68,8 @@ export interface ProductionStudentCompositionOptions {
   readonly studentInterface: StudentInterface;
   /** Interface language for the recovery notice; resolved from the environment when absent. */
   readonly translator?: Translator;
+  /** Confirms a server of a different software version before anyone signs in. */
+  readonly versionGate?: VersionGate | undefined;
 }
 
 export interface ProductionStudentApplication {
@@ -122,6 +126,8 @@ export async function createProductionStudentApplication(
   const projectRoot = resolve(options.projectRoot);
   const stateDirectory = resolve(options.stateDirectory);
   const stores = await createFileStudentStores({ projectRoot, stateDirectory });
+  // Not awaited: a slow or failing permission check never delays or blocks the student.
+  void auditStudentStatePermissions(stateDirectory, stores.failures);
   const localState = createLocalStateRecovery({
     notice: options.notice,
     probes: [
@@ -201,6 +207,7 @@ export async function createProductionStudentApplication(
     },
     onStartupStage: options.onStartupStage,
     onServerCapabilities: usage.onServerCapabilities,
+    versionGate: options.versionGate,
     agent,
     classPreference: createFileClassPreferenceStore(stateDirectory),
     clientVersion,

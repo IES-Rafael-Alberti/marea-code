@@ -45,6 +45,7 @@ const englishCatalog = {
     "Invalid language option {{option}}. Use automatic, es, en, or eu.",
   "student.cli.language-save-failed":
     "The interface language could not be saved. It is active for this session only.",
+  "student.cli.connecting": "Connecting to {{server}}…",
   "student.cli.server-url-missing": "Marea does not have a teacher server address yet.",
   "student.cli.class-configuration-required":
     "Your teacher must save this class configuration in Settings → This class before you can start. Then run marea again; you do not need to reinstall or delete your session.",
@@ -88,6 +89,17 @@ const englishCatalog = {
   "student.git.not-root-instruction": 'Run cd "{{root}}" and start marea again.',
   "student.git.not-root-exit": "Exit",
   "student.git.not-root-create": "Create a new repository in {{current}}",
+  "student.version.mismatch":
+    "The Marea version on this computer ({{client}}) is not the same as the teacher server version ({{server}}).",
+  "student.version.recommendation":
+    "The best fix is for the teacher to update the server, or for you to run marea update on this computer, so both versions match.",
+  "student.version.question":
+    "If you continue with different versions, something may fail or behave differently. Do you accept that risk?",
+  "student.version.continue": "Yes, I accept the risk and continue",
+  "student.version.exit": "No, exit",
+  "student.version.declined": "You did not accept the risk, so Marea has not started.",
+  "student.version.terminal-required":
+    "To accept the risk, open marea directly in an interactive terminal.",
   "student.conversation.approve": "Y approve",
   "student.conversation.input-placeholder": "Write a message",
   "student.conversation.marea-label": "Marea",

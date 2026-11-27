@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as z from "zod";
 
 import { StudentStateNewerVersionError } from "./student-state-version.boundary.js";
+import { StudentVersionError } from "./version-gate.boundary.js";
 import { StudentHttpError } from "./http-error.js";
 import {
   diagnosticCodeFor,
@@ -96,6 +97,14 @@ describe("safe startup diagnostics", () => {
       expect(result).toContain(`workspace/${key}`);
     },
   );
+
+  it("prints the translated version message with its own failure code", () => {
+    const error = new StudentVersionError("Versiones distintas.");
+    expect(error.name).toBe("StudentVersionError");
+    expect(startupFailure(error, translator, "capabilities")).toBe(
+      `Versiones distintas.\n${translator.t("student.cli.failure-code", { code: "capabilities/version-mismatch" })}\n`,
+    );
+  });
 
   it.each([
     ["NON_INTERACTIVE", "interactive terminal"],

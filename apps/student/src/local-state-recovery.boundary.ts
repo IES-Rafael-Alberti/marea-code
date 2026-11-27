@@ -5,7 +5,6 @@ import { basename, dirname, join } from "node:path";
 
 import { AgentAdapterError } from "@marea/deepagents-adapter";
 import { createTranslator, type Translator } from "@marea/i18n";
-import { securePrivatePath } from "@marea/private-filesystem";
 import { ZodError } from "zod";
 
 import { isMissingFile } from "./filesystem.boundary.js";
@@ -14,6 +13,7 @@ import {
   resolveStudentLocale,
   systemLocaleCandidates,
 } from "./interface-locale.boundary.js";
+import { securePrivateDirectory } from "./student-state-permissions.boundary.js";
 
 const PRIVATE_DIRECTORY_MODE = 0o700;
 const QUARANTINE_DIRECTORY_NAME = "quarantine";
@@ -130,7 +130,7 @@ export function createNodeLocalStateFileSystem(): LocalStateRecoveryFileSystem {
     remove: (path: string) => rm(path),
     async secureDirectory(path: string): Promise<void> {
       await mkdir(path, { recursive: true, mode: PRIVATE_DIRECTORY_MODE });
-      securePrivatePath(path, PRIVATE_DIRECTORY_MODE);
+      securePrivateDirectory(path);
     },
   });
 }

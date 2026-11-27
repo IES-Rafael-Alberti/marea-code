@@ -34,6 +34,7 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.cli.invalid-language",
   "student.cli.language-save-failed",
   "student.cli.server-url-missing",
+  "student.cli.connecting",
   "student.cli.class-configuration-required",
   "student.cli.run-unavailable",
   "student.cli.connection-timeout",
@@ -62,6 +63,13 @@ export const MESSAGE_KEYS = Object.freeze([
   "student.git.not-root-instruction",
   "student.git.not-root-exit",
   "student.git.not-root-create",
+  "student.version.mismatch",
+  "student.version.recommendation",
+  "student.version.question",
+  "student.version.continue",
+  "student.version.exit",
+  "student.version.declined",
+  "student.version.terminal-required",
   "student.conversation.approve",
   "student.conversation.input-placeholder",
   "student.conversation.marea-label",
@@ -194,7 +202,9 @@ export interface MessageParameterMap {
   readonly "student.git.not-root": { readonly current: string; readonly root: string };
   readonly "student.git.not-root-instruction": { readonly root: string };
   readonly "student.git.not-root-create": { readonly current: string };
+  readonly "student.version.mismatch": { readonly client: string; readonly server: string };
   readonly "student.cli.invalid-language": { readonly option: string };
+  readonly "student.cli.connecting": { readonly server: string };
   readonly "student.auth.external": { readonly provider: string };
   readonly "student.auth.external-open": { readonly url: string };
   readonly "student.tui.notice.language-changed": { readonly language: string };

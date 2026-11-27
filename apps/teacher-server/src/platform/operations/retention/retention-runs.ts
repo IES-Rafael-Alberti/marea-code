@@ -55,6 +55,10 @@ function runRows(): readonly DerivedQuery[] {
       "SELECT idempotency_key, 1 AS rows, 0 AS bytes FROM marea_run_open_requests WHERE run_id = ?1 ORDER BY student_id, idempotency_key",
     ],
     ["activeRuns", "SELECT 1 AS rows, 0 AS bytes FROM marea_active_runs WHERE run_id = ?1"],
+    [
+      "clientVersion",
+      "SELECT 1 AS rows, LENGTH(value) AS bytes FROM marea_metadata WHERE key = 'run-client-version:' || ?1",
+    ],
   ];
 }
 

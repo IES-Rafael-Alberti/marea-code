@@ -22,9 +22,12 @@ import { HISTORY_ACCESS, historyItem, RUN_SELECT } from "./sqlite-history-sql.js
 
 export class SqliteHistoryRepository implements HistoryRepository {
   readonly #database: SqliteApplicationDatabase;
+  readonly #serverVersion: string | undefined;
 
-  public constructor(database: SqliteApplicationDatabase) {
+  /** With the server version, class sessions opened by a client of another version are marked. */
+  public constructor(database: SqliteApplicationDatabase, serverVersion?: string) {
     this.#database = database;
+    this.#serverVersion = serverVersion;
   }
 
   public readRun(identity: AuthenticatedIdentity, query: RunHistoryQuery): RunHistoryPage {
@@ -84,7 +87,9 @@ export class SqliteHistoryRepository implements HistoryRepository {
     identity: AuthenticatedIdentity,
     query: ClassSessionsQuery,
   ): ClassSessionsPage {
-    return this.#database.transaction(() => listClassSessions(this.#database, identity, query));
+    return this.#database.transaction(() =>
+      listClassSessions(this.#database, identity, query, this.#serverVersion),
+    );
   }
 
   private sessionRows(

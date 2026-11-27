@@ -10,6 +10,7 @@ import type { SessionsController } from "./sessions-controller.js";
 import { sessionsMessages } from "./sessions-messages.js";
 import { ConversationEvent } from "./conversation-events.js";
 import { NoticePanel } from "./notice-panel.js";
+import { VersionMismatch } from "./version-mismatch.js";
 import { sessionTime } from "./session-time.js";
 import { ClassClosure, SelectedClosure } from "./sessions-closure.js";
 import { SessionReviewSummary } from "./session-review-summary.js";
@@ -122,6 +123,7 @@ export function SessionsModule({
                 {run.review !== undefined && (
                   <SessionReviewSummary review={run.review} messages={m} />
                 )}
+                <VersionMismatch messages={m} run={run} />
               </button>
             </li>
           ))}
@@ -157,6 +159,7 @@ export function SessionsModule({
           </button>
           <h2>{selected?.studentDisplayName ?? m.conversation}</h2>
           <p>{selected?.projectDisplayName}</p>
+          <VersionMismatch messages={m} run={selected} />
           <SelectedClosure controller={controller} locale={locale} selected={selected} />
           {controller.exportClient && state.runId !== null && (
             <SessionExportPanel

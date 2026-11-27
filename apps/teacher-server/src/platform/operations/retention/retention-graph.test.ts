@@ -48,6 +48,21 @@ describe("retention reference graph", () => {
     expect(changed.counts).toEqual(localized.counts);
     expect(changed.graph.digest).not.toBe(localized.graph.digest);
   });
+  it("includes the client version of a run in retention counts and the stable preview fingerprint", () => {
+    const h = retentionHarness();
+    const run = h.observe("run", "run:closed");
+    const before = graphOf(h, [run]);
+    h.database.execute("INSERT INTO marea_metadata (key, value) VALUES (?1, ?2)", [
+      "run-client-version:run:closed",
+      "0.1.0",
+    ]);
+    const recorded = graphOf(h, [run]);
+    expect(recorded.counts.rows).toBe(before.counts.rows + 1);
+    expect(recorded.bytes.database).toBe(before.bytes.database + 5);
+    expect(recorded.graph.digest).toMatchInlineSnapshot(
+      `"sha256:81e6a87280e73b746ef3fb3c0becd27294cac36b27b001495fe7a29b435ca83f"`,
+    );
+  });
   it("measures the complete closure of a closed run with an exclusive snapshot", () => {
     const h = retentionHarness();
     const result = graphOf(h, [h.observe("run", "run:closed")]);

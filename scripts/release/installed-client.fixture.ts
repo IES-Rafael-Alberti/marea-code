@@ -167,6 +167,11 @@ it("runs the distributed client through login, approval, checkpoint and reconnec
   const stateDirectory = join(state, "student", stateName);
   expect((await stat(join(stateDirectory, "agent/checkpoints.bin"))).size).toBeGreaterThan(0);
   expect((await stat(join(stateDirectory, "credential.json"))).size).toBeGreaterThan(0);
+  // The folder inherits a private ACL here, so the read-only startup audit must report nothing.
+  const failures = await readFile(join(stateDirectory, "turn-failures.jsonl"), "utf8").catch(
+    () => "",
+  );
+  expect(failures).not.toContain("state-permissions");
   await durable(value, "turn-ended");
   first.kill();
   await first.waitForExit(5_000);

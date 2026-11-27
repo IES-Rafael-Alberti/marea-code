@@ -60,6 +60,7 @@ export async function composedHost(
     ...(identityProviders === undefined ? {} : { identityProviders }),
     educationalInsights: {},
     database,
+    serverVersion: "0.2.0",
     clock: { now: () => NOW },
     ids: cryptoIdGenerator,
     secrets: cryptoSecretIssuer,

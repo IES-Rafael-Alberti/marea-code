@@ -260,6 +260,14 @@ export class SqliteIdentityRepository implements IdentityRepository {
     readonly runId: string;
     readonly tokenHash: string;
   }): string | undefined {
+    const parameters = [
+      input.tokenHash,
+      input.now,
+      input.runId,
+      input.activitySince,
+      input.expiresAt,
+      `+${String(input.maxLifetimeSeconds)} seconds`,
+    ];
     // Presence carries a run lease rather than an account bearer token. Only a
     // current lease of this active run may advance its server activity clock.
     this.#database.execute(
@@ -287,17 +295,39 @@ export class SqliteIdentityRepository implements IdentityRepository {
               AND runs.student_id = marea_auth_sessions.user_id
               AND active.last_activity_at >= ?4)
         RETURNING expires_at`,
-      [
-        input.tokenHash,
-        input.now,
-        input.runId,
-        input.activitySince,
-        input.expiresAt,
-        `+${String(input.maxLifetimeSeconds)} seconds`,
-      ],
+      parameters,
     );
-    const [row] = extended;
+    const [row = this.extendOwnerSessionForPresence(parameters)] = extended;
     return row === undefined ? undefined : rowText(row, "expires_at");
+  }
+
+  /**
+   * Presence carries the run lease, so it slides the session the run owner most recently signed
+   * in with for the run's class, while that session is still live. Older sessions of the same
+   * student, for example on another classroom computer, are left to lapse, also after the newest
+   * one is revoked or has expired.
+   */
+  private extendOwnerSessionForPresence(parameters: readonly string[]): SqliteRow | undefined {
+    const sameClass = this.classScoped() ? "AND sessions.class_id = runs.class_id" : "";
+    // One statement: a concurrent revocation or expiry can never be overwritten.
+    const [row] = this.#database.readAll(
+      `UPDATE marea_auth_sessions
+          SET expires_at = min(?5, ${SESSION_LIFETIME_LIMIT})
+        WHERE revoked_at IS NULL AND expires_at > ?2
+          AND min(?5, ${SESSION_LIFETIME_LIMIT}) > expires_at
+          AND id = (SELECT sessions.id FROM marea_run_leases leases
+            JOIN marea_runs runs ON runs.id = leases.run_id
+            JOIN marea_users users ON users.id = runs.student_id AND users.role = 'student'
+            JOIN marea_auth_sessions sessions ON sessions.user_id = runs.student_id
+            WHERE leases.token_hash = ?1 AND leases.run_id = ?3
+              AND leases.revoked_at IS NULL AND leases.expires_at > ?2
+              AND runs.state = 'active' ${sameClass}
+              AND ${activeStudentClass("runs.student_id", "runs.class_id")}
+            ORDER BY sessions.issued_at DESC, sessions.id DESC LIMIT 1)
+        RETURNING expires_at`,
+      parameters,
+    );
+    return row;
   }
 
   public revokeSession(tokenHash: string, revokedAt: string): boolean {

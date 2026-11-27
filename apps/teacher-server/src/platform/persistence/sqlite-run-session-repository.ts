@@ -23,6 +23,9 @@ import { closeActiveRun, insertRunEvent, refusalForRun } from "./sqlite-run-clos
 import { loadRunStartup } from "./sqlite-run-startup.js";
 import { PrivateProviderRouteSchema as StoredProviderRouteSchema } from "../../model-gateway/route-policy.js";
 
+/** Key prefix, in the metadata table, of the client version each run was last opened with. */
+export const RUN_CLIENT_VERSION_PREFIX = "run-client-version:";
+
 interface StoredRun {
   readonly runId: string;
   readonly snapshot: StudentRunSnapshot;
@@ -91,6 +94,8 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
       );
       input.acceptSnapshot?.(stored.snapshot);
       this.rotateLease(stored.runId, input);
+      if (input.clientVersion !== undefined)
+        this.rememberClientVersion(stored.runId, input.clientVersion);
       const startupState = loadRunStartup(this.#database, stored.runId, stored.snapshot);
       return {
         highestDurableSequence,
@@ -372,6 +377,15 @@ export class SqliteRunSessionRepository implements RunSessionRepository {
       `INSERT INTO marea_run_open_requests
         (student_id, idempotency_key, fingerprint, run_id) VALUES (?1, ?2, ?3, ?4)`,
       [input.student.userId, input.idempotencyKey, input.fingerprint, runId],
+    );
+  }
+
+  /** The latest client version of the run lives in the key-value table, so no schema change is needed. */
+  private rememberClientVersion(runId: string, clientVersion: string): void {
+    this.#database.execute(
+      `INSERT INTO marea_metadata(key, value) VALUES (?1, ?2)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+      [`${RUN_CLIENT_VERSION_PREFIX}${runId}`, clientVersion],
     );
   }
 

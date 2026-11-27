@@ -297,3 +297,23 @@ it("renders only the selected conversation/evaluation tab and never invents miss
   expect(elements.some((element) => element.props.className === "evaluation-actions")).toBe(false);
   controller.dispose();
 });
+it("flags, in the list and in the open session, a client of another version", async () => {
+  const { controller, render } = setup();
+  const flagged = (elements: ReturnType<typeof render>) =>
+    elements.filter((element) => element.props.className === "session-version");
+  await controller.select("run:one");
+  expect(flagged(render())).toHaveLength(0);
+  const versionMismatch = { clientVersion: "0.1.0", serverVersion: "0.2.0" };
+  controller.state = {
+    ...controller.state,
+    runs: controller.state.runs.map((run) =>
+      run.runId === "run:one" ? { ...run, versionMismatch } : run,
+    ),
+    selected: controller.state.selected && { ...controller.state.selected, versionMismatch },
+  };
+  expect(flagged(render()).map((element) => element.props.children)).toEqual([
+    "Versión del cliente distinta: 0.1.0 (servidor 0.2.0)",
+    "Versión del cliente distinta: 0.1.0 (servidor 0.2.0)",
+  ]);
+  controller.dispose();
+});

@@ -24,6 +24,7 @@ import type {
   AgentMessageTurn,
   AgentRuntime,
   ApprovalDecision,
+  AuthenticationInput,
   ApprovalPrompt,
   AuthenticationReason,
   StudentInterface,
@@ -52,7 +53,7 @@ export class AcceptanceInterface implements StudentInterface {
     return Promise.reject(new Error("Acceptance students never choose a class."));
   }
 
-  public authenticate(reason: AuthenticationReason) {
+  public authenticate(reason: AuthenticationReason): Promise<AuthenticationInput> {
     this.authenticationReasons.push(reason);
     const credentials = ACCEPTANCE_SESSION[this.account];
     return Promise.resolve({

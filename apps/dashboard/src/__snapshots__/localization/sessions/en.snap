@@ -12,6 +12,7 @@
   "catchingUp": "Loading recorded activity…",
   "choose": "Choose a session to follow the conversation.",
   "classLabel": "Class",
+  "clientVersionDiffers": "Different client version: {client} (server {server})",
   "closeReasons": {
     "cancelled": "The student cancelled the session",
     "class-ended": "A teacher ended all sessions of the class",

@@ -52,7 +52,7 @@ function exception(value: unknown): DiagnosticException {
 }
 
 /** Where a failure came from, so a category names its origin and not only its kind. */
-function origin(error: unknown): string {
+export function failureOrigin(error: unknown): string {
   const errors = chain(failureCause(error));
   const recognized = errors.findLast(
     (value) =>
@@ -78,7 +78,7 @@ function origin(error: unknown): string {
  * example `unexpected/adapter.upstream-execution-failed/ZodError`. It never contains messages.
  */
 export function failureCategory(error: unknown, failure: TurnFailureInfo): string {
-  return `${failure.kind}/${origin(error)}`.slice(0, MAX_CATEGORY);
+  return `${failure.kind}/${failureOrigin(error)}`.slice(0, MAX_CATEGORY);
 }
 
 /** The technical detail of a failure: exception, cause chain and stack, bounded. */

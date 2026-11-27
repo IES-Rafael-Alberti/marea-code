@@ -43,6 +43,7 @@ const basqueCatalog = {
     "{{option}} hizkuntza-aukera ez da baliozkoa. Erabili automatic, es, en edo eu.",
   "student.cli.language-save-failed":
     "Ezin izan da interfazearen hizkuntza gorde. Saio honetan bakarrik egongo da aktibo.",
+  "student.cli.connecting": "{{server}} zerbitzarira konektatzen…",
   "student.cli.server-url-missing": "Mareak oraindik ez du irakaslearen zerbitzariaren helbiderik.",
   "student.cli.class-configuration-required":
     "Irakasleak klase honen konfigurazioa Ezarpenak → Klase hau atalean gorde behar du hasi ahal izateko. Ondoren, exekutatu marea berriro; ez duzu berriro instalatu edo saioa ezabatu behar.",
@@ -88,6 +89,17 @@ const basqueCatalog = {
   "student.git.not-root-instruction": 'Exekutatu cd "{{root}}" eta abiarazi marea berriro.',
   "student.git.not-root-exit": "Irten",
   "student.git.not-root-create": "Sortu biltegi berri bat {{current}} karpetan",
+  "student.version.mismatch":
+    "Ekipo honetako Marearen bertsioa ({{client}}) ez da irakasleen zerbitzariarena ({{server}}) bera.",
+  "student.version.recommendation":
+    "Onena da irakasleak zerbitzaria eguneratzea edo zuk ekipo honetan marea update exekutatzea, bi bertsioak berdinak izan daitezen.",
+  "student.version.question":
+    "Bertsio desberdinekin jarraitzen baduzu, zerbaitek huts egin dezake edo bestela jokatu dezake. Onartzen duzu arrisku hori?",
+  "student.version.continue": "Bai, arriskua onartzen dut eta jarraitzen dut",
+  "student.version.exit": "Ez, irten",
+  "student.version.declined": "Ez duzu arriskua onartu, beraz Marea ez da abiarazi.",
+  "student.version.terminal-required":
+    "Arriskua onartzeko, ireki marea zuzenean terminal interaktibo batean.",
   "student.conversation.approve": "Y baimendu",
   "student.conversation.input-placeholder": "Idatzi mezu bat",
   "student.conversation.marea-label": "Marea",

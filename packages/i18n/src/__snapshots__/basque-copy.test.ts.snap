@@ -40,6 +40,7 @@ exports[`preserves the reviewed Basque interface copy 1`] = `
   "student.auth.password-label": "Pasahitza",
   "student.auth.required": "Eremu hau beharrezkoa da.",
   "student.cli.class-configuration-required": "Irakasleak klase honen konfigurazioa Ezarpenak → Klase hau atalean gorde behar du hasi ahal izateko. Ondoren, exekutatu marea berriro; ez duzu berriro instalatu edo saioa ezabatu behar.",
+  "student.cli.connecting": "{{server}} zerbitzarira konektatzen…",
   "student.cli.connection-timeout": "Zerbitzariak ez du garaiz erantzun. Egiaztatu martxan dagoela eta ikasgelako sarean zaudela; exekutatu marea berriro.",
   "student.cli.failure-code": "Diagnostiko-kodea: {{code}}. Sartu arazoaren berri ematean.",
   "student.cli.help": "Erabilera: marea [--server <URL>] [--lang <locale>] [--no-mouse]
@@ -212,5 +213,12 @@ Ireki Marea uneko proiektuan, irakurri irakaslearen irakurri gabeko feedbacka, m
   "student.tui.turn.interrupted": "Txanda etenda.",
   "student.tui.turn.retry": "Berriro saiatu / jarraitu",
   "student.tui.turn.retry-started": "Berriro saiatzen hasi da",
+  "student.version.continue": "Bai, arriskua onartzen dut eta jarraitzen dut",
+  "student.version.declined": "Ez duzu arriskua onartu, beraz Marea ez da abiarazi.",
+  "student.version.exit": "Ez, irten",
+  "student.version.mismatch": "Ekipo honetako Marearen bertsioa ({{client}}) ez da irakasleen zerbitzariarena ({{server}}) bera.",
+  "student.version.question": "Bertsio desberdinekin jarraitzen baduzu, zerbaitek huts egin dezake edo bestela jokatu dezake. Onartzen duzu arrisku hori?",
+  "student.version.recommendation": "Onena da irakasleak zerbitzaria eguneratzea edo zuk ekipo honetan marea update exekutatzea, bi bertsioak berdinak izan daitezen.",
+  "student.version.terminal-required": "Arriskua onartzeko, ireki marea zuzenean terminal interaktibo batean.",
 }
 `;
