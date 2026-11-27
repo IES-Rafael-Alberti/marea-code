@@ -124,6 +124,7 @@ export class RunSessionService {
     const stored = this.#dependencies.repository.openRun({
       activatedEventId: this.#dependencies.ids.createId("event"),
       clientSessionId: request.clientSessionId,
+      clientVersion: request.clientVersion,
       expiresAt: leaseExpiry(issuedAt),
       fingerprint: fingerprint(request),
       idempotencyKey: request.idempotencyKey,

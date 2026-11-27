@@ -95,7 +95,7 @@ export interface StudentLanguagePreferenceStore {
 }
 
 /** Reads one value of the shared settings file; an unreadable file counts as unset. */
-async function loadSetting(path: string, key: string): Promise<unknown> {
+export async function loadSetting(path: string, key: string): Promise<unknown> {
   try {
     return parseLanguageSettings(await readPrivateTextFile(path))[key];
   } catch {
@@ -105,7 +105,7 @@ async function loadSetting(path: string, key: string): Promise<unknown> {
 }
 
 /** Writes one value of the shared settings file, keeping every other value. */
-async function saveSetting(stateRoot: string, key: string, value: unknown): Promise<void> {
+export async function saveSetting(stateRoot: string, key: string, value: unknown): Promise<void> {
   const path = join(resolve(stateRoot), "settings.json");
   await mkdir(resolve(stateRoot), { recursive: true, mode: 0o700 });
   const current = parseLanguageSettings(await readPrivateTextFile(path));

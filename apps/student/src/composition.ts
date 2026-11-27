@@ -42,6 +42,7 @@ import {
 import { createSystemClock, createSystemIdSource } from "./platform.boundary.js";
 import { StudentSessionController, type StudentStartupStage } from "./session-controller.js";
 import { createCrashSafeWorkspaceWriter } from "./workspace-writer.js";
+import type { VersionGate } from "./version-gate.boundary.js";
 import { RunSkillReader } from "./run-skill-reader.js";
 import { createRuntimeReadTools } from "./runtime-read-tools.js";
 
@@ -67,6 +68,8 @@ export interface ProductionStudentCompositionOptions {
   readonly studentInterface: StudentInterface;
   /** Interface language for the recovery notice; resolved from the environment when absent. */
   readonly translator?: Translator;
+  /** Confirms a server of a different software version before anyone signs in. */
+  readonly versionGate?: VersionGate | undefined;
 }
 
 export interface ProductionStudentApplication {
@@ -204,6 +207,7 @@ export async function createProductionStudentApplication(
     },
     onStartupStage: options.onStartupStage,
     onServerCapabilities: usage.onServerCapabilities,
+    versionGate: options.versionGate,
     agent,
     classPreference: createFileClassPreferenceStore(stateDirectory),
     clientVersion,

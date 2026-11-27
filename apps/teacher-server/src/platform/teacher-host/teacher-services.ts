@@ -104,6 +104,8 @@ export interface TeacherHostServiceDependencies {
     ((database: SqliteApplicationDatabase) => DashboardProfileEndpoint) | undefined;
   readonly educationalInsights?: EducationalConfiguration | undefined;
   readonly database: SqliteApplicationDatabase;
+  /** Marks, on the dashboard, sessions opened by a client of another software version. */
+  readonly serverVersion?: string | undefined;
   readonly clock: Clock;
   readonly ids: IdGenerator;
   readonly secrets: SecretIssuer;
@@ -353,7 +355,7 @@ export async function composeTeacherServices(
       ids,
       digest,
     }),
-    history: new HistoryService(new SqliteHistoryRepository(database)),
+    history: new HistoryService(new SqliteHistoryRepository(database, dependencies.serverVersion)),
     skills: new RunSkillService(new SqliteRunSkillRepository(database), runs),
     classroom: new ClassBootstrapService(new SqliteClassroomRepository(database)),
     dashboard: new ActiveRunsService(new SqliteDashboardRepository(database), clock),

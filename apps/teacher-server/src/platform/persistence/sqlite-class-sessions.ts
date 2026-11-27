@@ -9,7 +9,8 @@ import type { SqliteApplicationDatabase, SqliteRow } from "@marea/sqlite-storage
 import type { AuthenticatedIdentity } from "../../identity/contracts.js";
 import { TeacherDomainError } from "../../identity/errors.js";
 import type { ClassSessionsPage } from "../../sessions/history-service.js";
-import { rowInteger, rowText } from "./row-parser.boundary.js";
+import { rowInteger, rowNullableText, rowText } from "./row-parser.boundary.js";
+import { RUN_CLIENT_VERSION_PREFIX } from "./sqlite-run-session-repository.js";
 import { HISTORY_ACCESS, historyItem } from "./sqlite-history-sql.js";
 
 /** Progress an approval applied to the run; manual adjustments carry no run, so never count. */
@@ -31,7 +32,7 @@ const CANDIDATES = `SELECT runs.id, users.display_name AS student_name, runs.pro
 
 /** Each accessible run with a summary of its latest evaluation generation and its progress. */
 const reviewedRuns = (progress: string) => `SELECT runs.*, users.display_name AS student_name,
-    classes.display_name AS class_name,
+    classes.display_name AS class_name, versions.value AS client_version,
     COALESCE(latest.state, 'none') AS evaluation_state,
     COALESCE(json_array_length(latest.draft_json, '$.criteria'), 0) AS criteria_count,
     (SELECT COUNT(*) FROM json_each(latest.draft_json, '$.criteria') item
@@ -40,6 +41,7 @@ const reviewedRuns = (progress: string) => `SELECT runs.*, users.display_name AS
   FROM marea_runs runs
   JOIN marea_users users ON users.id = runs.student_id
   JOIN marea_classes classes ON classes.id = runs.class_id
+  LEFT JOIN marea_metadata versions ON versions.key = '${RUN_CLIENT_VERSION_PREFIX}' || runs.id
   LEFT JOIN marea_evaluations latest ON latest.run_id = runs.id
     AND latest.generation = (SELECT MAX(generation) FROM marea_evaluations WHERE run_id = runs.id)
   WHERE ${SCOPE}`;
@@ -55,8 +57,17 @@ const filteredRuns = (progress: string) => `SELECT * FROM (${reviewedRuns(progre
       OR (?8 = 'without' AND listed.criteria_count > 0 AND listed.evidenced_count = 0))
   ORDER BY listed.opened_at DESC, listed.id DESC LIMIT ?9`;
 
-function listedItem(row: SqliteRow, includeReview: boolean) {
-  if (!includeReview) return ClassSessionItemSchema.parse(historyItem(row));
+/** Marks a run opened by a client of another software version than this server's. */
+function versionMismatch(row: SqliteRow, serverVersion: string | undefined) {
+  const clientVersion = rowNullableText(row, "client_version");
+  if (serverVersion === undefined || clientVersion === null || clientVersion === serverVersion)
+    return {};
+  return { versionMismatch: { clientVersion, serverVersion } };
+}
+
+function listedItem(row: SqliteRow, includeReview: boolean, serverVersion: string | undefined) {
+  const run = { ...historyItem(row), ...versionMismatch(row, serverVersion) };
+  if (!includeReview) return ClassSessionItemSchema.parse(run);
   const review = {
     evaluation: rowText(row, "evaluation_state"),
     criteria: rowInteger(row, "criteria_count"),
@@ -64,7 +75,7 @@ function listedItem(row: SqliteRow, includeReview: boolean) {
     applied: rowInteger(row, "applied_count"),
     raised: rowInteger(row, "raised_count"),
   };
-  return ClassSessionItemSchema.parse({ ...historyItem(row), review });
+  return ClassSessionItemSchema.parse({ ...run, review });
 }
 
 function anchorOf(
@@ -111,6 +122,7 @@ export function listClassSessions(
   database: SqliteApplicationDatabase,
   identity: AuthenticatedIdentity,
   query: ClassSessionsQuery,
+  serverVersion?: string,
 ): ClassSessionsPage {
   const scope = [
     identity.role,
@@ -133,7 +145,9 @@ export function listClassSessions(
   ]);
   const next = rows.length > query.limit ? rows.at(query.limit - 1) : undefined;
   return {
-    runs: rows.slice(0, query.limit).map((row) => listedItem(row, query.includeReview === true)),
+    runs: rows
+      .slice(0, query.limit)
+      .map((row) => listedItem(row, query.includeReview === true, serverVersion)),
     nextBeforeRunId: next === undefined ? null : RunIdSchema.parse(rowText(next, "id")),
   };
 }

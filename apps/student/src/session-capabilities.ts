@@ -23,6 +23,9 @@ export interface SessionCapabilityOptions {
   readonly clientVersion: string;
   readonly ids: IdSource;
   readonly server: StudentServer;
+  /** Asked, after the compatibility checks, when the two software versions differ. */
+  readonly versionGate?:
+    ((serverVersion: string, clientVersion: string) => Promise<void>) | undefined;
 }
 
 /** Resolves to every capability the server offers once the required ones are present. */
@@ -47,6 +50,9 @@ export async function negotiateSessionCapabilities(
     ServerCapabilitySchema.parse(capability),
   );
   const missing = missingCapabilities(response.capabilities, required);
-  if (missing.length === 0) return response.capabilities;
-  throw new Error(`The teacher server is missing required capabilities: ${missing.join(", ")}.`);
+  if (missing.length !== 0)
+    throw new Error(`The teacher server is missing required capabilities: ${missing.join(", ")}.`);
+  if (response.serverVersion !== options.clientVersion)
+    await options.versionGate?.(response.serverVersion, options.clientVersion);
+  return response.capabilities;
 }

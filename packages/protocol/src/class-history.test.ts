@@ -102,3 +102,21 @@ it("accepts optional server-side filters and rejects empty or unknown ones", () 
   ])
     expect(ClassSessionsQuerySchema.safeParse({ ...query, ...patch }).success).toBe(false);
 });
+it("carries the client version only as a strict pair of software versions", () => {
+  const versionMismatch = { clientVersion: "0.1.0", serverVersion: "0.2.0-preview.48" };
+  const withMismatch = { ...response, runs: [{ ...run, versionMismatch }] };
+  expect(ClassSessionsResponseSchema.parse(withMismatch)).toEqual(withMismatch);
+  for (const bad of [
+    { ...versionMismatch, extra: "no" },
+    { clientVersion: "0.1.0" },
+    { serverVersion: "0.2.0" },
+    { ...versionMismatch, clientVersion: "latest" },
+    { ...versionMismatch, serverVersion: "2" },
+  ])
+    expect(
+      ClassSessionsResponseSchema.safeParse({
+        ...response,
+        runs: [{ ...run, versionMismatch: bad }],
+      }).success,
+    ).toBe(false);
+});

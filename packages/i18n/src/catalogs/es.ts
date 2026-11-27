@@ -92,6 +92,17 @@ const spanishCatalog = {
   "student.git.not-root-instruction": 'Ejecuta cd "{{root}}" y vuelve a lanzar marea.',
   "student.git.not-root-exit": "Salir",
   "student.git.not-root-create": "Crear un repositorio nuevo en {{current}}",
+  "student.version.mismatch":
+    "La versión de Marea de este equipo ({{client}}) no es la misma que la del servidor del profesorado ({{server}}).",
+  "student.version.recommendation":
+    "Lo recomendable es que el profesorado actualice el servidor o que ejecutes marea update en este equipo, para que las dos versiones coincidan.",
+  "student.version.question":
+    "Si continúas con versiones distintas, algo podría fallar o comportarse de otra forma. ¿Aceptas ese riesgo?",
+  "student.version.continue": "Sí, acepto el riesgo y continúo",
+  "student.version.exit": "No, salir",
+  "student.version.declined": "No has aceptado el riesgo, así que Marea no se ha iniciado.",
+  "student.version.terminal-required":
+    "Para aceptar el riesgo necesito que abras marea directamente en una terminal interactiva.",
   "student.conversation.approve": "Y aprobar",
   "student.conversation.input-placeholder": "Escribe un mensaje",
   "student.conversation.marea-label": "Marea",

@@ -36,6 +36,8 @@ export interface RunSnapshotSource {
 
 export interface OpenStoredRunInput {
   readonly activatedEventId: string;
+  /** Software version of the student's client; kept per run for the teacher dashboard only. */
+  readonly clientVersion?: string | undefined;
   readonly clientSessionId: string;
   readonly expiresAt: string;
   readonly fingerprint: string;

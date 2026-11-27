@@ -14,6 +14,7 @@ const RUN_TABLES = [
   ["marea_run_events", "run_id = 'run:closed'"],
   ["marea_run_leases", "run_id = 'run:closed'"],
   ["marea_run_open_requests", "run_id = 'run:closed'"],
+  ["marea_metadata", "key = 'run-client-version:run:closed'"],
   ["marea_teacher_notices", "run_id = 'run:closed'"],
   ["marea_evaluations", "run_id = 'run:closed'"],
   ["marea_usage_accounts", "run_id = 'run:closed'"],
@@ -26,6 +27,10 @@ const RUN_TABLES = [
 describe("scoped permanent deletion", () => {
   it("previews a closed run closure without writing and deletes exactly that closure on confirmation", async () => {
     const h = retentionHarness();
+    for (const runId of ["run:closed", "run:other"])
+      h.database.execute("INSERT INTO marea_metadata (key, value) VALUES (?1, '0.1.0')", [
+        `run-client-version:${runId}`,
+      ]);
     const run = h.observe("run", "run:closed");
     const before = RUN_TABLES.map(([table, where]) => rowCount(h.database, table, where));
     const artifact = await h.service.preview(h.request([run]));
@@ -47,6 +52,7 @@ describe("scoped permanent deletion", () => {
     );
     expect(rowCount(h.database, "marea_runs")).toBe(2);
     expect(rowCount(h.database, "marea_run_events", "run_id = 'run:other'")).toBe(1);
+    expect(rowCount(h.database, "marea_metadata", "key = 'run-client-version:run:other'")).toBe(1);
     expect((await h.index.inspect()).generation).toBe(1);
     expect(await h.index.assertCreatable(run)).toEqual({ allowed: false, code: "tombstoned" });
     expect(await h.service.confirm({ artifact, now: NOW, drainUntil: NOW })).toMatchObject({

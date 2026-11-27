@@ -13,7 +13,6 @@ import {
 } from "../../dashboard-profiles/release.js";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
-
 import { MAX_TEACHING_CONFIGURATION_BYTES } from "@marea/protocol";
 import {
   createAuditMigrationCatalog,
@@ -312,6 +311,7 @@ async function composeHostServices(
     profiles:
       options.profiles ?? (ports.state.profiles ? composeBundledDashboardProfiles : undefined),
     database,
+    serverVersion: host.serverVersion,
     clock: systemClock,
     ids: cryptoIdGenerator,
     secrets: cryptoSecretIssuer,

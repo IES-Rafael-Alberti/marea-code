@@ -8,6 +8,7 @@ import {
 
 interface ElementProperties {
   readonly children?: ReactNode;
+  readonly className?: string;
   readonly disabled?: boolean;
   readonly value?: string;
   readonly onClick?: () => void;

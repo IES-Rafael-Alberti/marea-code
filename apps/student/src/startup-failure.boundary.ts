@@ -2,6 +2,7 @@ import type { MessageKey, Translator } from "@marea/i18n";
 import { StudentTuiStartupError } from "@marea/student-tui";
 import { ZodError } from "zod";
 
+import { StudentVersionError } from "./version-gate.boundary.js";
 import { StudentHttpError } from "./http-error.js";
 import { StudentStateNewerVersionError } from "./student-state-version.boundary.js";
 import { studentHttpTransportDiagnostics } from "./http-transport-diagnostics.boundary.js";
@@ -100,6 +101,9 @@ export function startupFailure(error: unknown, translator: Translator, stage: st
   if (error instanceof StudentWorkspaceError) {
     key = error.key;
     code = key;
+    workspaceMessage = error.message;
+  } else if (error instanceof StudentVersionError) {
+    code = "version-mismatch";
     workspaceMessage = error.message;
   } else if (error instanceof StudentHttpError) {
     const message = HTTP_MESSAGES.get(error.code);

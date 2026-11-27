@@ -12,6 +12,7 @@
   "catchingUp": "Cargando actividad registrada…",
   "choose": "Selecciona una sesión para seguir la conversación.",
   "classLabel": "Clase",
+  "clientVersionDiffers": "Versión del cliente distinta: {client} (servidor {server})",
   "closeReasons": {
     "cancelled": "El estudiante ha cancelado la sesión",
     "class-ended": "Un docente ha finalizado todas las sesiones de la clase",

@@ -11,6 +11,7 @@ import {
   systemLocaleCandidates,
 } from "./interface-locale.boundary.js";
 import { createSavedServerStore } from "./saved-server.boundary.js";
+import { createStudentVersionAcceptanceStore } from "./version-acceptance.boundary.js";
 import { executeMareaCommand, type MareaCommandOutput } from "./marea-command.boundary.js";
 
 export function createProcessCommandOutput(): MareaCommandOutput {
@@ -65,5 +66,6 @@ if (parsedArguments.invalid !== undefined) {
     languagePreferenceStore: preferenceStore,
     usagePreferenceStore: createStudentUsagePreferenceStore(stateRoot),
     savedServerStore: createSavedServerStore(stateRoot),
+    versionAcceptanceStore: createStudentVersionAcceptanceStore(stateRoot),
   });
 }
