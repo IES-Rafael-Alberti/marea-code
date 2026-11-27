@@ -1,11 +1,45 @@
 # Preview installation and updates
 
-The commands below target `0.1.0-preview.48`.
+The commands below target `0.1.0-preview.49`.
 
-This preview fixes situations that could leave a session or a server permanently blocked. The
-protocol remains 0.1 and the database schema remains 15. **Update the server first**, then
-**students update the client** (`marea update`). Students who were stuck on preview 46 or 47
-recover once the server and their client are updated.
+This preview fixes the most frequent classroom failures seen with preview 48 and adds tools for
+teachers. The protocol remains 0.1. The first server start backs up the database and migrates it
+to **schema 16**. **Update the server first**, then **students update the client**
+(`marea update`).
+
+Students no longer lose their turn or their session:
+
+- When the model fails in the middle of an answer and the automatic retry writes a different
+  answer, the student sees the new complete answer with a short notice instead of a failed turn
+  ("invalid-replay-prefix"). Odd chunks in the middle of an OpenRouter stream are retried, the
+  error no longer blames the teacher server, and a failed question stays in the tutor's context.
+- A student who keeps working is no longer signed out after about half an hour (for example on a
+  computer whose clock is a few minutes behind): presence keeps the sign-in alive within the
+  8-hour limit, background checks never open the sign-in prompt while the student types, and
+  connection failures reach the teacher as diagnostics.
+- On Windows, the student client no longer changes folder permissions, so `set-acl-failed` can no
+  longer keep a student out. It relies on the user profile's protection and only records a
+  warning when the folder is readable by others.
+- After `marea --server URL` signs in, a plain `marea` reuses that server next time.
+- When the client and the server versions differ, the student sees both versions and confirms
+  once per pair; the teacher sees the difference in **Sessions**.
+
+For teachers:
+
+- **Learning notes** keep a dated history per student and criterion instead of being replaced on
+  each approval; a manual level adjustment no longer erases them. Teachers can view, edit and
+  ask for a proposed summary in **Progress**. Long notes are summarized automatically for a
+  session when they would not fit the tutor's context, and the session always starts (see
+  [SETUP-UX.md](SETUP-UX.md#learning-notes)). Schema 16 keeps notes when their session is
+  deleted and dates existing notes.
+- **Sessions** show each session's review status and filter by state, review and evidence; the
+  search filters instantly and then completes from the server, without closing the open session.
+- Evaluations under an unlimited budget request the model's maximum output (32 768 tokens when
+  the model declares none), so long evaluations are no longer cut, and the server logs why a
+  draft was rejected.
+
+Preview 48, the previous published release, fixed situations that could leave a session or a
+server permanently blocked:
 
 Sessions that no longer block:
 
@@ -47,7 +81,7 @@ Teacher server:
   and a server that does not start writes the reason to stderr.
 - Turn diagnostics stay out of the student's history and the evaluation input.
 
-Preview 47, the previous published release, helped students who start Marea in the wrong folder
+Preview 47 helped students who start Marea in the wrong folder
 and added a guide for students.
 
 - Starting Marea in a subfolder of a Git repository shows both folders. At a terminal it offers
@@ -225,25 +259,18 @@ full-content observability through Langfuse or an OTLP collector.
 
 Published installers and tags remain immutable.
 
-## Next preview: learning notes
-
-The next preview keeps a dated history of each student's learning notes that teachers can view,
-edit and summarize from **Progress** (see [SETUP-UX.md](SETUP-UX.md#learning-notes)). Its first
-start backs up the database and migrates it to schema 16, which keeps notes when their session is
-deleted and dates existing notes. The protocol and the student client are unchanged.
-
 ## Teacher server
 
 macOS Apple Silicon or Linux x64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.48/install.sh | sh -s -- server
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.49/install.sh | sh -s -- server
 ```
 
 Windows x64, in PowerShell:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.48/install.ps1'))) -Component server
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.49/install.ps1'))) -Component server
 ```
 
 The installer puts programs and launchers under `~/.marea-preview/server`.
@@ -383,13 +410,13 @@ change the saved address or silently downgrade an HTTPS connection.
 macOS Apple Silicon or Linux x64/ARM64:
 
 ```sh
-curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.48/install.sh | sh -s -- student --server https://marea.example.edu
+curl -fsSL https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.49/install.sh | sh -s -- student --server https://marea.example.edu
 ```
 
 Windows x64/ARM64:
 
 ```powershell
-& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.48/install.ps1'))) -Component student -Server https://marea.example.edu
+& ([scriptblock]::Create((Invoke-RestMethod 'https://github.com/IES-Rafael-Alberti/marea-code/releases/download/v0.1.0-preview.49/install.ps1'))) -Component student -Server https://marea.example.edu
 ```
 
 Use **PowerShell**, identified by a prompt such as `PS C:\Users\david>`, for the
@@ -579,14 +606,14 @@ the empty root allows the same installation command to run again. Do not delete
 ## Test this preview in a classroom
 
 1. Update the teacher server (`marea-teacher update`) and start it, then update a Windows student
-   PC (`marea update`) and check that `marea --version` shows `0.1.0-preview.48`.
-2. A student who could not start Marea, or whose session stopped reaching the dashboard, starts
-   `marea` again: confirm the session works and appears in **Sessions**.
-3. Reject an action without typing a reason, then send another message: the tutor answers.
-4. Ask the tutor to edit a file with text that is not in it: the turn continues and the tutor
-   corrects itself.
-5. Run a command with quotes and accents, for example `python -c "print('canción')"`.
-6. Open the project with a file locked in another program and send a message: the turn works.
+   PC (`marea update`) and check that `marea --version` shows `0.1.0-preview.49`.
+2. Keep a student working for more than 45 minutes: they are not asked to sign in again.
+3. A Windows student who saw `set-acl-failed` starts `marea`: it opens normally.
+4. Start once with `marea --server URL`, then with plain `marea`: it connects to the same server.
+5. In **Progress**, open a student's **Notas de aprendizaje**, edit and save them; approve an
+   evaluation and check that a dated line is added.
+6. In **Sessions**, type in the search box and change **Mostrar**: the open session stays open.
+7. If a student sees "La respuesta se cortó; el tutor la ha vuelto a generar", the turn completes.
 
 Report back: the preview and OS, which step failed, and any diagnostic code shown by the client
 or the dashboard (do not send student passwords or API keys).
@@ -595,7 +622,7 @@ or the dashboard (do not send student passwords or API keys).
 
 1. Review the change and pass `bun run release:audit` and `bun run quality`.
 2. Commit the complete tested source, including the MIT license, dependency patch
-   and workflows. Create and push an immutable tag such as `v0.1.0-preview.48`.
+   and workflows. Create and push an immutable tag such as `v0.1.0-preview.49`.
 3. Run **Native preview releases** on that tag with the matching version. Leave
    `publish` false for a rehearsal; enable it for an actual prerelease.
    `native_only` avoids duplicating an already-running quality check during a
